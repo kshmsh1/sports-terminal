@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../screens/compare_screen.dart';
+import '../screens/dashboard_screen.dart';
+import '../screens/players_screen.dart';
+import '../screens/teams_screen.dart';
+
 class TerminalShell extends StatefulWidget {
   const TerminalShell({super.key});
 
@@ -110,7 +115,7 @@ class _BrandHeader extends StatelessWidget {
             ),
             SizedBox(height: 3),
             Text(
-              'NBA MVP Shell',
+              'NBA Historical Build',
               style: TextStyle(color: Color(0xFF8794A5), fontSize: 12),
             ),
           ],
@@ -210,7 +215,7 @@ class _TopBar extends StatelessWidget {
                 Icon(Icons.search, color: Color(0xFF8794A5), size: 18),
                 SizedBox(width: 10),
                 Text(
-                  'Search players, teams, reports...',
+                  'Search players, teams, seasons, reports...',
                   style: TextStyle(color: Color(0xFF8794A5), fontSize: 13),
                 ),
               ],
@@ -235,7 +240,7 @@ class _SidebarFooter extends StatelessWidget {
         border: Border.all(color: const Color(0xFF263241)),
       ),
       child: const Text(
-        'Local mock data only. No paid APIs, no backend, no database.',
+        'Historical-first. NBA-first. Real data only; blanks until sources are connected.',
         style: TextStyle(color: Color(0xFF8794A5), fontSize: 12, height: 1.35),
       ),
     );
@@ -251,170 +256,13 @@ class _ScreenBody extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (index) {
       case 1:
-        return const _PlaceholderScreen(
-          eyebrow: 'NBA PLAYER DATABASE',
-          title: 'Players page coming next',
-          body: 'This will become a sortable player table with scoring, efficiency, usage, minutes, health, contracts, and custom tags.',
-        );
+        return const PlayersScreen();
       case 2:
-        return const _PlaceholderScreen(
-          eyebrow: 'NBA TEAM DATABASE',
-          title: 'Teams page coming next',
-          body: 'This will become the team command center with records, ratings, roster context, schedule strength, and transaction history.',
-        );
+        return const TeamsScreen();
       case 3:
-        return const _PlaceholderScreen(
-          eyebrow: 'PLAYER COMPARISON',
-          title: 'Comparison tool coming next',
-          body: 'This will let us compare players side by side across box score production, efficiency, role, team context, and availability.',
-        );
+        return const CompareScreen();
       default:
-        return const _DashboardScreen();
+        return const DashboardScreen();
     }
-  }
-}
-
-class _DashboardScreen extends StatelessWidget {
-  const _DashboardScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'NBA Command Center',
-          style: TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'A zero-cost MVP shell for building the Bloomberg Terminal of sports.',
-          style: TextStyle(color: Color(0xFF9AA7B6), fontSize: 15),
-        ),
-        const SizedBox(height: 24),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth > 900;
-            return GridView.count(
-              crossAxisCount: isWide ? 4 : 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-              childAspectRatio: isWide ? 1.8 : 1.5,
-              children: const [
-                _MetricCard(label: 'Tracked Players', value: '6', detail: 'Mock player records'),
-                _MetricCard(label: 'Tracked Teams', value: '6', detail: 'Mock team records'),
-                _MetricCard(label: 'Data Cost', value: r'$0', detail: 'Static local data'),
-                _MetricCard(label: 'Current Sport', value: 'NBA', detail: 'MVP focus area'),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 24),
-        const _TerminalPanel(
-          title: 'Build Priorities',
-          lines: [
-            '1. Replace Flutter starter app with a professional dashboard shell.',
-            '2. Add static player and team data models.',
-            '3. Build sortable tables for players and teams.',
-            '4. Add a lightweight comparison workflow.',
-            '5. Only then consider real data ingestion.',
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.label, required this.value, required this.detail});
-
-  final String label;
-  final String value;
-  final String detail;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111820),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF263241)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Color(0xFF8794A5), fontSize: 13)),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
-          Text(detail, style: const TextStyle(color: Color(0xFF8AB4F8), fontSize: 12)),
-        ],
-      ),
-    );
-  }
-}
-
-class _TerminalPanel extends StatelessWidget {
-  const _TerminalPanel({required this.title, required this.lines});
-
-  final String title;
-  final List<String> lines;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111820),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF263241)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 14),
-          for (final line in lines)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(line, style: const TextStyle(color: Color(0xFFB6C0CC), height: 1.4)),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlaceholderScreen extends StatelessWidget {
-  const _PlaceholderScreen({required this.eyebrow, required this.title, required this.body});
-
-  final String eyebrow;
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111820),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF263241)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(eyebrow, style: const TextStyle(color: Color(0xFF8AB4F8), fontSize: 12, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 10),
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 12),
-          Text(body, style: const TextStyle(color: Color(0xFFB6C0CC), fontSize: 15, height: 1.45)),
-        ],
-      ),
-    );
   }
 }
