@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../screens/accessibility_screen.dart';
+import '../screens/alert_evaluation_screen.dart';
 import '../screens/alerts_screen.dart';
 import '../screens/audit_trail_screen.dart';
 import '../screens/build_milestones_screen.dart';
+import '../screens/column_library_screen.dart';
 import '../screens/compare_screen.dart';
 import '../screens/contracts_screen.dart';
 import '../screens/dashboard_screen.dart';
@@ -29,6 +31,7 @@ import '../screens/integration_plan_screen.dart';
 import '../screens/keyboard_shortcuts_screen.dart';
 import '../screens/league_ecosystem_screen.dart';
 import '../screens/league_expansion_screen.dart';
+import '../screens/metric_packages_screen.dart';
 import '../screens/module_inventory_screen.dart';
 import '../screens/navigation_strategy_screen.dart';
 import '../screens/performance_budget_screen.dart';
@@ -43,6 +46,7 @@ import '../screens/release_plan_screen.dart';
 import '../screens/reports_screen.dart';
 import '../screens/research_source_screen.dart';
 import '../screens/risk_register_screen.dart';
+import '../screens/saved_view_lifecycle_screen.dart';
 import '../screens/saved_views_screen.dart';
 import '../screens/screen_depth_plan_screen.dart';
 import '../screens/search_screen.dart';
@@ -52,6 +56,7 @@ import '../screens/source_registry_screen.dart';
 import '../screens/standings_playoffs_screen.dart';
 import '../screens/stat_dictionary_screen.dart';
 import '../screens/stats_screen.dart';
+import '../screens/table_templates_screen.dart';
 import '../screens/teams_screen.dart';
 import '../screens/ui_patterns_screen.dart';
 import '../screens/workflow_playbook_screen.dart';
@@ -100,6 +105,9 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Integration Plan', icon: Icons.integration_instructions_outlined, screen: IntegrationPlanScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Privacy Controls', icon: Icons.lock_outline, screen: PrivacyControlsScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'UI Patterns', icon: Icons.dashboard_customize_outlined, screen: UiPatternsScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Table Templates', icon: Icons.table_chart_outlined, screen: TableTemplatesScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Column Library', icon: Icons.view_column_outlined, screen: ColumnLibraryScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Metric Packages', icon: Icons.analytics_outlined, screen: MetricPackagesScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Keyboard Shortcuts', icon: Icons.keyboard_alt_outlined, screen: KeyboardShortcutsScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Navigation Strategy', icon: Icons.route_outlined, screen: NavigationStrategyScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Module Inventory', icon: Icons.view_module_outlined, screen: ModuleInventoryScreen(), section: _TabSection.buildLab),
@@ -107,6 +115,8 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Entity Detail Plan', icon: Icons.article_outlined, screen: EntityDetailPlanScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Personas', icon: Icons.supervised_user_circle_outlined, screen: PersonasScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Workflow Playbooks', icon: Icons.playlist_add_check_circle_outlined, screen: WorkflowPlaybookScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Saved View Lifecycle', icon: Icons.bookmarks_outlined, screen: SavedViewLifecycleScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Alert Evaluation', icon: Icons.notification_important_outlined, screen: AlertEvaluationScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Basketball Ecosystem', icon: Icons.hub_outlined, screen: LeagueEcosystemScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'League Expansion', icon: Icons.public_outlined, screen: LeagueExpansionScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Information Architecture', icon: Icons.account_tree_outlined, screen: InformationArchitectureScreen(), section: _TabSection.buildLab),
