@@ -1,0 +1,10 @@
+import '../models/registry_item.dart';
+
+const dataLineageItems = <RegistryItem>[
+  RegistryItem(id: 'raw-source', title: 'Raw Source Reference', category: 'Lineage Stage', priority: 'P0', status: 'Planned', description: 'Record the original source reference and retrieval context before normalization.', inputs: 'Research sources, source registry, import job', nextStep: 'Add source decision records before first real import.'),
+  RegistryItem(id: 'snapshot-record', title: 'Snapshot Record', category: 'Lineage Stage', priority: 'P0', status: 'Planned', description: 'Track the source snapshot date and as-of metadata for imported records.', inputs: 'Import jobs, source metadata, asOf fields', nextStep: 'Add snapshot metadata to every populated asset.'),
+  RegistryItem(id: 'normalization-map', title: 'Normalization Map', category: 'Transform', priority: 'P1', status: 'Planned', description: 'Map source fields into Sports Terminal normalized fields.', inputs: 'Field dictionary, source schema, normalized models', nextStep: 'Create field mapping records for player identity and stats imports.'),
+  RegistryItem(id: 'validation-results', title: 'Validation Results', category: 'Quality', priority: 'P1', status: 'Future', description: 'Store row counts, failed joins, missing required fields, and value-range checks.', inputs: 'QA console, import job runs, repository loaders', nextStep: 'Add validation run model when import scripts exist.'),
+  RegistryItem(id: 'published-asset', title: 'Published Local Asset', category: 'Output', priority: 'P1', status: 'Connected', description: 'Current app-readable JSON files that screens load through NbaAssetRepository.', inputs: 'assets/data/nba paths, pubspec.yaml, repository loaders', nextStep: 'Keep source metadata inside every local asset.'),
+  RegistryItem(id: 'screen-consumption', title: 'Screen Consumption', category: 'Usage', priority: 'P2', status: 'Active pattern', description: 'Track which screens depend on each normalized dataset.', inputs: 'Data coverage, entity graph, repository loaders', nextStep: 'Use coverage registry to flag screens blocked by missing data.'),
+];
