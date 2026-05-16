@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../screens/alerts_screen.dart';
 import '../screens/build_milestones_screen.dart';
 import '../screens/compare_screen.dart';
 import '../screens/dashboard_screen.dart';
+import '../screens/data_health_screen.dart';
 import '../screens/data_model_screen.dart';
 import '../screens/data_roadmap_screen.dart';
 import '../screens/dataset_registry_screen.dart';
@@ -19,6 +21,7 @@ import '../screens/player_schema_screen.dart';
 import '../screens/players_screen.dart';
 import '../screens/quality_controls_screen.dart';
 import '../screens/reports_screen.dart';
+import '../screens/saved_views_screen.dart';
 import '../screens/screen_depth_plan_screen.dart';
 import '../screens/search_screen.dart';
 import '../screens/seasons_screen.dart';
@@ -47,6 +50,8 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Draft', icon: Icons.school_outlined),
     _TerminalTab(label: 'Transactions', icon: Icons.swap_horiz_outlined),
     _TerminalTab(label: 'Reports', icon: Icons.article_outlined),
+    _TerminalTab(label: 'Saved Views', icon: Icons.bookmark_border_outlined),
+    _TerminalTab(label: 'Alerts', icon: Icons.notifications_none_outlined),
     _TerminalTab(label: 'Compare', icon: Icons.compare_arrows_outlined),
     _TerminalTab(label: 'Build Milestones', icon: Icons.flag_outlined),
     _TerminalTab(label: 'Navigation Strategy', icon: Icons.route_outlined),
@@ -60,13 +65,14 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Player Schema', icon: Icons.badge_outlined),
     _TerminalTab(label: 'Dataset Registry', icon: Icons.dataset_outlined),
     _TerminalTab(label: 'Data Roadmap', icon: Icons.storage_outlined),
+    _TerminalTab(label: 'Data Health', icon: Icons.health_and_safety_outlined),
     _TerminalTab(label: 'Quality Controls', icon: Icons.verified_outlined),
     _TerminalTab(label: 'Source Policy', icon: Icons.policy_outlined),
     _TerminalTab(label: 'Ingestion Pipeline', icon: Icons.schema_outlined),
     _TerminalTab(label: 'G League Roadmap', icon: Icons.sports_basketball_outlined),
   ];
 
-  bool get _isCoreTab => selectedIndex <= 11;
+  bool get _isCoreTab => selectedIndex <= 13;
 
   @override
   Widget build(BuildContext context) {
@@ -88,13 +94,13 @@ class _TerminalShellState extends State<TerminalShell> {
                   children: [
                     const _BrandHeader(),
                     const SizedBox(height: 20),
-                    _SidebarSectionLabel(label: _isCoreTab ? 'Core Terminal' : 'Temporary Build Lab'),
+                    _SidebarSectionLabel(label: _isCoreTab ? 'Core Terminal' : 'Build Lab'),
                     const SizedBox(height: 8),
                     Expanded(
                       child: ListView.builder(
                         itemCount: tabs.length,
                         itemBuilder: (context, i) {
-                          final showDivider = i == 12;
+                          final showDivider = i == 14;
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -218,11 +224,7 @@ class _NavButton extends StatelessWidget {
               Icon(icon, color: isSelected ? const Color(0xFF8AB4F8) : const Color(0xFF8794A5), size: 20),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: isSelected ? Colors.white : const Color(0xFFB6C0CC), fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500),
-                ),
+                child: Text(label, overflow: TextOverflow.ellipsis, style: TextStyle(color: isSelected ? Colors.white : const Color(0xFFB6C0CC), fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500)),
               ),
             ],
           ),
@@ -246,9 +248,7 @@ class _TopBar extends StatelessWidget {
       decoration: const BoxDecoration(color: Color(0xFF0D1218), border: Border(bottom: BorderSide(color: Color(0xFF263241)))),
       child: Row(
         children: [
-          Expanded(
-            child: Text(title, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
-          ),
+          Expanded(child: Text(title, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800))),
           InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: onSearchTap,
@@ -313,38 +313,44 @@ class _ScreenBody extends StatelessWidget {
       case 10:
         return const ReportsScreen();
       case 11:
-        return const CompareScreen();
+        return const SavedViewsScreen();
       case 12:
-        return const BuildMilestonesScreen();
+        return const AlertsScreen();
       case 13:
-        return const NavigationStrategyScreen();
+        return const CompareScreen();
       case 14:
-        return const ModuleInventoryScreen();
+        return const BuildMilestonesScreen();
       case 15:
-        return const ScreenDepthPlanScreen();
+        return const NavigationStrategyScreen();
       case 16:
-        return const LeagueEcosystemScreen();
+        return const ModuleInventoryScreen();
       case 17:
-        return const InformationArchitectureScreen();
+        return const ScreenDepthPlanScreen();
       case 18:
-        return const DataModelScreen();
+        return const LeagueEcosystemScreen();
       case 19:
-        return const FranchiseHistoryScreen();
+        return const InformationArchitectureScreen();
       case 20:
-        return const EraContextScreen();
+        return const DataModelScreen();
       case 21:
-        return const PlayerSchemaScreen();
+        return const FranchiseHistoryScreen();
       case 22:
-        return const DatasetRegistryScreen();
+        return const EraContextScreen();
       case 23:
-        return const DataRoadmapScreen();
+        return const PlayerSchemaScreen();
       case 24:
-        return const QualityControlsScreen();
+        return const DatasetRegistryScreen();
       case 25:
-        return const SourcePolicyScreen();
+        return const DataRoadmapScreen();
       case 26:
-        return const IngestionPipelineScreen();
+        return const DataHealthScreen();
       case 27:
+        return const QualityControlsScreen();
+      case 28:
+        return const SourcePolicyScreen();
+      case 29:
+        return const IngestionPipelineScreen();
+      case 30:
         return const GLeagueRoadmapScreen();
       default:
         return const DashboardScreen();
