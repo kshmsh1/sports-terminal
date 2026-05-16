@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../screens/accessibility_screen.dart';
+import '../screens/advanced_stat_taxonomy_screen.dart';
 import '../screens/alert_evaluation_screen.dart';
 import '../screens/alerts_screen.dart';
 import '../screens/audit_trail_screen.dart';
+import '../screens/award_races_screen.dart';
 import '../screens/build_milestones_screen.dart';
 import '../screens/column_library_screen.dart';
 import '../screens/compare_screen.dart';
@@ -101,6 +103,8 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Core MVP Gaps', icon: Icons.track_changes_outlined, screen: CoreMvpGapsScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Player Identity Import', icon: Icons.person_add_alt_1_outlined, screen: PlayerIdentityImportScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Season Command Plan', icon: Icons.calendar_view_month_outlined, screen: SeasonCommandScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Advanced Stat Taxonomy', icon: Icons.stacked_line_chart_outlined, screen: AdvancedStatTaxonomyScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Award Races', icon: Icons.emoji_events_outlined, screen: AwardRacesScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Build Milestones', icon: Icons.flag_outlined, screen: BuildMilestonesScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Release Plan', icon: Icons.rocket_launch_outlined, screen: ReleasePlanScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Product Backlog', icon: Icons.checklist_rtl_outlined, screen: ProductBacklogScreen(), section: _TabSection.buildLab),
