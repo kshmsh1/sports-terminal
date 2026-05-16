@@ -12,6 +12,21 @@ class TransactionRecord {
     this.asOf,
   });
 
+  factory TransactionRecord.fromJson(Map<String, dynamic> json) {
+    return TransactionRecord(
+      id: json['id'] as String,
+      date: json['date'] as String?,
+      transactionType: json['transactionType'] as String?,
+      playerId: json['playerId'] as String?,
+      playerName: json['playerName'] as String?,
+      fromTeamId: json['fromTeamId'] as String?,
+      toTeamId: json['toTeamId'] as String?,
+      description: json['description'] as String?,
+      sourceId: json['sourceId'] as String?,
+      asOf: json['asOf'] as String?,
+    );
+  }
+
   final String id;
   final String? date;
   final String? transactionType;
