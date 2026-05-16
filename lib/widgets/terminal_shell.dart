@@ -35,6 +35,7 @@ import '../screens/league_expansion_screen.dart';
 import '../screens/metric_packages_screen.dart';
 import '../screens/module_inventory_screen.dart';
 import '../screens/navigation_strategy_screen.dart';
+import '../screens/nba_mvp_completion_screen.dart';
 import '../screens/performance_budget_screen.dart';
 import '../screens/personas_screen.dart';
 import '../screens/player_identity_import_screen.dart';
@@ -96,10 +97,11 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Saved Views', icon: Icons.bookmark_border_outlined, screen: SavedViewsScreen(), section: _TabSection.core),
     _TerminalTab(label: 'Alerts', icon: Icons.notifications_none_outlined, screen: AlertsScreen(), section: _TabSection.core),
     _TerminalTab(label: 'Compare', icon: Icons.compare_arrows_outlined, screen: CompareScreen(), section: _TabSection.core),
-    _TerminalTab(label: 'Build Milestones', icon: Icons.flag_outlined, screen: BuildMilestonesScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'NBA MVP Completion', icon: Icons.task_alt_outlined, screen: NbaMvpCompletionScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Core MVP Gaps', icon: Icons.track_changes_outlined, screen: CoreMvpGapsScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Player Identity Import', icon: Icons.person_add_alt_1_outlined, screen: PlayerIdentityImportScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Season Command Plan', icon: Icons.calendar_view_month_outlined, screen: SeasonCommandScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Build Milestones', icon: Icons.flag_outlined, screen: BuildMilestonesScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Release Plan', icon: Icons.rocket_launch_outlined, screen: ReleasePlanScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Product Backlog', icon: Icons.checklist_rtl_outlined, screen: ProductBacklogScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'QA Console', icon: Icons.bug_report_outlined, screen: QaConsoleScreen(), section: _TabSection.buildLab),
@@ -152,28 +154,20 @@ class _TerminalShellState extends State<TerminalShell> {
   Widget build(BuildContext context) {
     final selected = tabs[selectedIndex];
     final filteredTabs = tabs.where((tab) => navQuery.trim().isEmpty || tab.label.toLowerCase().contains(navQuery.trim().toLowerCase())).toList();
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B0F14),
-      body: Row(children: [
-        Container(width: 286, decoration: const BoxDecoration(color: Color(0xFF111820), border: Border(right: BorderSide(color: Color(0xFF263241)))), child: SafeArea(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const _BrandHeader(), const SizedBox(height: 16),
-          _NavSearch(value: navQuery, onChanged: (value) => setState(() => navQuery = value)),
-          const SizedBox(height: 14), _SidebarSectionLabel(label: selected.section == _TabSection.core ? 'Core Terminal' : 'Build Lab'), const SizedBox(height: 8),
-          Expanded(child: ListView.builder(itemCount: filteredTabs.length, itemBuilder: (context, i) {
-            final tab = filteredTabs[i];
-            final originalIndex = tabs.indexOf(tab);
-            final previous = i == 0 ? null : filteredTabs[i - 1];
-            final showDivider = previous != null && tab.section != previous.section;
-            return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              if (showDivider) ...[const SizedBox(height: 8), const Divider(color: Color(0xFF263241)), const SizedBox(height: 8), const _SidebarSectionLabel(label: 'Build Lab'), const SizedBox(height: 8)],
-              _NavButton(label: tab.label, icon: tab.icon, isSelected: selectedIndex == originalIndex, onTap: () => setState(() => selectedIndex = originalIndex)),
-            ]);
-          })),
-          const SizedBox(height: 12), const _SidebarFooter(),
-        ])))),
-        Expanded(child: SafeArea(child: Column(children: [_TopBar(title: selected.label, onSearchTap: () => setState(() => selectedIndex = 1)), Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: selected.screen))]))),
-      ]),
-    );
+    return Scaffold(backgroundColor: const Color(0xFF0B0F14), body: Row(children: [
+      Container(width: 286, decoration: const BoxDecoration(color: Color(0xFF111820), border: Border(right: BorderSide(color: Color(0xFF263241)))), child: SafeArea(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const _BrandHeader(), const SizedBox(height: 16), _NavSearch(value: navQuery, onChanged: (value) => setState(() => navQuery = value)), const SizedBox(height: 14), _SidebarSectionLabel(label: selected.section == _TabSection.core ? 'Core Terminal' : 'Build Lab'), const SizedBox(height: 8),
+        Expanded(child: ListView.builder(itemCount: filteredTabs.length, itemBuilder: (context, i) {
+          final tab = filteredTabs[i];
+          final originalIndex = tabs.indexOf(tab);
+          final previous = i == 0 ? null : filteredTabs[i - 1];
+          final showDivider = previous != null && tab.section != previous.section;
+          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [if (showDivider) ...[const SizedBox(height: 8), const Divider(color: Color(0xFF263241)), const SizedBox(height: 8), const _SidebarSectionLabel(label: 'Build Lab'), const SizedBox(height: 8)], _NavButton(label: tab.label, icon: tab.icon, isSelected: selectedIndex == originalIndex, onTap: () => setState(() => selectedIndex = originalIndex))]);
+        })),
+        const SizedBox(height: 12), const _SidebarFooter(),
+      ])))),
+      Expanded(child: SafeArea(child: Column(children: [_TopBar(title: selected.label, onSearchTap: () => setState(() => selectedIndex = 1)), Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: selected.screen))]))),
+    ]));
   }
 }
 
@@ -190,11 +184,7 @@ class _TerminalTab {
 class _BrandHeader extends StatelessWidget {
   const _BrandHeader();
   @override
-  Widget build(BuildContext context) => Row(children: [
-    Container(width: 38, height: 38, decoration: BoxDecoration(color: const Color(0xFF152235), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF2B3B52))), child: const Icon(Icons.sports_basketball, color: Color(0xFF8AB4F8))),
-    const SizedBox(width: 12),
-    const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Sports Terminal', overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)), SizedBox(height: 3), Text('NBA Historical Build', overflow: TextOverflow.ellipsis, style: TextStyle(color: Color(0xFF8794A5), fontSize: 12))])),
-  ]);
+  Widget build(BuildContext context) => Row(children: [Container(width: 38, height: 38, decoration: BoxDecoration(color: const Color(0xFF152235), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF2B3B52))), child: const Icon(Icons.sports_basketball, color: Color(0xFF8AB4F8))), const SizedBox(width: 12), const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Sports Terminal', overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)), SizedBox(height: 3), Text('NBA Historical Build', overflow: TextOverflow.ellipsis, style: TextStyle(color: Color(0xFF8794A5), fontSize: 12))]))]);
 }
 
 class _NavSearch extends StatelessWidget {
