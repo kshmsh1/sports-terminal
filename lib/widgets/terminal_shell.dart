@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../screens/compare_screen.dart';
 import '../screens/dashboard_screen.dart';
+import '../screens/data_model_screen.dart';
 import '../screens/data_roadmap_screen.dart';
 import '../screens/g_league_roadmap_screen.dart';
 import '../screens/information_architecture_screen.dart';
@@ -10,6 +11,7 @@ import '../screens/league_ecosystem_screen.dart';
 import '../screens/module_inventory_screen.dart';
 import '../screens/player_schema_screen.dart';
 import '../screens/players_screen.dart';
+import '../screens/quality_controls_screen.dart';
 import '../screens/seasons_screen.dart';
 import '../screens/source_policy_screen.dart';
 import '../screens/teams_screen.dart';
@@ -29,11 +31,13 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Module Inventory', icon: Icons.view_module_outlined),
     _TerminalTab(label: 'Basketball Ecosystem', icon: Icons.hub_outlined),
     _TerminalTab(label: 'Information Architecture', icon: Icons.account_tree_outlined),
+    _TerminalTab(label: 'Data Model', icon: Icons.data_object_outlined),
     _TerminalTab(label: 'Players', icon: Icons.person_search_outlined),
     _TerminalTab(label: 'Teams', icon: Icons.groups_outlined),
     _TerminalTab(label: 'Seasons', icon: Icons.calendar_month_outlined),
     _TerminalTab(label: 'Player Schema', icon: Icons.badge_outlined),
     _TerminalTab(label: 'Data Roadmap', icon: Icons.storage_outlined),
+    _TerminalTab(label: 'Quality Controls', icon: Icons.verified_outlined),
     _TerminalTab(label: 'Source Policy', icon: Icons.policy_outlined),
     _TerminalTab(label: 'Ingestion Pipeline', icon: Icons.schema_outlined),
     _TerminalTab(label: 'G League Roadmap', icon: Icons.sports_basketball_outlined),
@@ -317,22 +321,26 @@ class _ScreenBody extends StatelessWidget {
       case 3:
         return const InformationArchitectureScreen();
       case 4:
-        return const PlayersScreen();
+        return const DataModelScreen();
       case 5:
-        return const TeamsScreen();
+        return const PlayersScreen();
       case 6:
-        return const SeasonsScreen();
+        return const TeamsScreen();
       case 7:
-        return const PlayerSchemaScreen();
+        return const SeasonsScreen();
       case 8:
-        return const DataRoadmapScreen();
+        return const PlayerSchemaScreen();
       case 9:
-        return const SourcePolicyScreen();
+        return const DataRoadmapScreen();
       case 10:
-        return const IngestionPipelineScreen();
+        return const QualityControlsScreen();
       case 11:
-        return const GLeagueRoadmapScreen();
+        return const SourcePolicyScreen();
       case 12:
+        return const IngestionPipelineScreen();
+      case 13:
+        return const GLeagueRoadmapScreen();
+      case 14:
         return const CompareScreen();
       default:
         return const DashboardScreen();
