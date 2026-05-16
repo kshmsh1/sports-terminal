@@ -17,6 +17,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
   String selectedConference = 'All';
   String selectedDivision = 'All';
   String query = '';
+  String? selectedTeamId;
 
   @override
   Widget build(BuildContext context) {
@@ -33,11 +34,14 @@ class _TeamsScreenState extends State<TeamsScreen> {
 
         final teams = snapshot.data ?? [];
         final divisions = ['All', ...teams.map((team) => team.division).toSet().toList()..sort()];
+        final conferenceCounts = _countsBy(teams, (team) => team.conference);
+        final divisionCounts = _countsBy(teams, (team) => team.division);
         final filteredTeams = teams.where((team) {
           final matchesConference = selectedConference == 'All' || team.conference == selectedConference;
           final matchesDivision = selectedDivision == 'All' || team.division == selectedDivision;
           final normalizedQuery = query.trim().toLowerCase();
           final matchesQuery = normalizedQuery.isEmpty ||
+              team.id.toLowerCase().contains(normalizedQuery) ||
               team.name.toLowerCase().contains(normalizedQuery) ||
               team.city.toLowerCase().contains(normalizedQuery) ||
               team.abbreviation.toLowerCase().contains(normalizedQuery) ||
@@ -53,15 +57,14 @@ class _TeamsScreenState extends State<TeamsScreen> {
             return a.name.compareTo(b.name);
           });
 
-        final eastTeams = teams.where((team) => team.conference == 'East').length;
-        final westTeams = teams.where((team) => team.conference == 'West').length;
+        final selectedTeam = teams.where((team) => team.id == selectedTeamId).firstOrNull ?? (filteredTeams.isNotEmpty ? filteredTeams.first : null);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SectionHeader(
               title: 'NBA Teams',
-              subtitle: 'Asset-backed NBA franchise directory with conference, division, city, and abbreviation filtering.',
+              subtitle: 'Asset-backed NBA franchise directory with conference, division, city, abbreviation, team detail, and data-readiness context.',
             ),
             const SizedBox(height: 22),
             LayoutBuilder(
@@ -76,8 +79,8 @@ class _TeamsScreenState extends State<TeamsScreen> {
                   childAspectRatio: isWide ? 2.0 : 1.5,
                   children: [
                     _TeamMetric(label: 'NBA Teams', value: '${teams.length}', detail: 'Loaded from JSON asset'),
-                    _TeamMetric(label: 'East', value: '$eastTeams', detail: 'Conference teams'),
-                    _TeamMetric(label: 'West', value: '$westTeams', detail: 'Conference teams'),
+                    _TeamMetric(label: 'East', value: '${conferenceCounts['East'] ?? 0}', detail: 'Conference teams'),
+                    _TeamMetric(label: 'West', value: '${conferenceCounts['West'] ?? 0}', detail: 'Conference teams'),
                     _TeamMetric(label: 'Filtered', value: '${filteredTeams.length}', detail: 'Current view'),
                   ],
                 );
@@ -115,12 +118,49 @@ class _TeamsScreenState extends State<TeamsScreen> {
               ),
             ),
             const SizedBox(height: 22),
-            _TeamsTable(title: 'Team Directory', teams: filteredTeams),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 980;
+                final children = [
+                  _ConferenceDivisionPanel(conferenceCounts: conferenceCounts, divisionCounts: divisionCounts),
+                  _SelectedTeamPanel(team: selectedTeam),
+                ];
+                if (!isWide) {
+                  return Column(children: [for (final child in children) Padding(padding: const EdgeInsets.only(bottom: 14), child: child)]);
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: children[0]),
+                    const SizedBox(width: 14),
+                    Expanded(child: children[1]),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 22),
+            _TeamsTable(
+              title: 'Team Directory',
+              teams: filteredTeams,
+              selectedTeamId: selectedTeam?.id,
+              onSelected: (team) => setState(() => selectedTeamId = team.id),
+            ),
+            const SizedBox(height: 22),
+            const _ReadinessPanel(),
           ],
         );
       },
     );
   }
+}
+
+Map<String, int> _countsBy(List<Team> teams, String Function(Team team) selector) {
+  final counts = <String, int>{};
+  for (final team in teams) {
+    final key = selector(team);
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts;
 }
 
 InputDecoration _inputDecoration(String hintText) {
@@ -167,14 +207,8 @@ class _FilterDropdown extends StatelessWidget {
           labelStyle: const TextStyle(color: terminalTextMuted),
           filled: true,
           fillColor: terminalPanelDark,
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: terminalBorder),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: terminalAccent),
-          ),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: terminalBorder)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: terminalAccent)),
         ),
         items: values.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
         onChanged: (value) {
@@ -185,11 +219,106 @@ class _FilterDropdown extends StatelessWidget {
   }
 }
 
+class _ConferenceDivisionPanel extends StatelessWidget {
+  const _ConferenceDivisionPanel({required this.conferenceCounts, required this.divisionCounts});
+
+  final Map<String, int> conferenceCounts;
+  final Map<String, int> divisionCounts;
+
+  @override
+  Widget build(BuildContext context) {
+    final sortedDivisions = divisionCounts.keys.toList()..sort();
+    return TerminalCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('League Structure', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final entry in conferenceCounts.entries) _StructureChip(label: entry.key, value: entry.value),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text('Divisions', style: TextStyle(color: terminalTextMuted, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final division in sortedDivisions) _StructureChip(label: division, value: divisionCounts[division] ?? 0),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SelectedTeamPanel extends StatelessWidget {
+  const _SelectedTeamPanel({required this.team});
+
+  final Team? team;
+
+  @override
+  Widget build(BuildContext context) {
+    if (team == null) {
+      return const TerminalCard(
+        child: Text('Select a team from the table to inspect its reference record.', style: TextStyle(color: terminalTextSoft)),
+      );
+    }
+    return TerminalCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Selected Team', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 14),
+          Text(team!.name, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8),
+          Text('${team!.city} • ${team!.abbreviation}', style: const TextStyle(color: terminalTextSoft, fontSize: 14)),
+          const SizedBox(height: 16),
+          Wrap(spacing: 10, runSpacing: 10, children: [
+            InfoPill(label: team!.conference),
+            InfoPill(label: team!.division),
+            const InfoPill(label: 'Reference asset'),
+          ]),
+          const SizedBox(height: 16),
+          Text('Internal ID: ${team!.id}', style: const TextStyle(color: terminalTextMuted, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+}
+
+class _StructureChip extends StatelessWidget {
+  const _StructureChip({required this.label, required this.value});
+
+  final String label;
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: terminalPanelDark,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: terminalBorder),
+      ),
+      child: Text('$label  $value', style: const TextStyle(color: Color(0xFFDDE6F1), fontWeight: FontWeight.w700)),
+    );
+  }
+}
+
 class _TeamsTable extends StatelessWidget {
-  const _TeamsTable({required this.title, required this.teams});
+  const _TeamsTable({required this.title, required this.teams, required this.selectedTeamId, required this.onSelected});
 
   final String title;
   final List<Team> teams;
+  final String? selectedTeamId;
+  final ValueChanged<Team> onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -224,23 +353,45 @@ class _TeamsTable extends StatelessWidget {
                 DataColumn(label: Text('City')),
                 DataColumn(label: Text('Conference')),
                 DataColumn(label: Text('Division')),
+                DataColumn(label: Text('Internal ID')),
                 DataColumn(label: Text('Source')),
               ],
               rows: [
                 for (final team in teams)
                   DataRow(
+                    selected: selectedTeamId == team.id,
+                    onSelectChanged: (_) => onSelected(team),
                     cells: [
                       DataCell(SizedBox(width: 240, child: Text(team.name, style: const TextStyle(fontWeight: FontWeight.w800)))),
                       DataCell(Text(team.abbreviation)),
                       DataCell(SizedBox(width: 160, child: Text(team.city))),
                       DataCell(Text(team.conference)),
                       DataCell(Text(team.division)),
+                      DataCell(Text(team.id)),
                       const DataCell(InfoPill(label: 'JSON asset')),
                     ],
                   ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReadinessPanel extends StatelessWidget {
+  const _ReadinessPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return const TerminalCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Team Data Readiness', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+          SizedBox(height: 12),
+          Text('Connected now: current team identity, abbreviation, city, conference, and division. Still pending: historical aliases, relocation continuity, arena history, team-season stats, standings rows, playoff series, rosters, transactions, contracts, media references, and franchise narrative timelines.', style: TextStyle(color: terminalTextSoft, height: 1.45)),
         ],
       ),
     );
@@ -275,9 +426,7 @@ class _LoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const TerminalCard(
-      child: Text('Loading team directory...', style: TextStyle(color: terminalTextSoft)),
-    );
+    return const TerminalCard(child: Text('Loading team directory...', style: TextStyle(color: terminalTextSoft)));
   }
 }
 
@@ -288,8 +437,6 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TerminalCard(
-      child: Text('Unable to load team directory: $message', style: const TextStyle(color: terminalTextSoft)),
-    );
+    return TerminalCard(child: Text('Unable to load team directory: $message', style: const TextStyle(color: terminalTextSoft)));
   }
 }
