@@ -5,6 +5,7 @@ import '../screens/compare_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/data_model_screen.dart';
 import '../screens/data_roadmap_screen.dart';
+import '../screens/dataset_registry_screen.dart';
 import '../screens/era_context_screen.dart';
 import '../screens/franchise_history_screen.dart';
 import '../screens/g_league_roadmap_screen.dart';
@@ -17,6 +18,7 @@ import '../screens/player_schema_screen.dart';
 import '../screens/players_screen.dart';
 import '../screens/quality_controls_screen.dart';
 import '../screens/screen_depth_plan_screen.dart';
+import '../screens/search_screen.dart';
 import '../screens/seasons_screen.dart';
 import '../screens/source_policy_screen.dart';
 import '../screens/teams_screen.dart';
@@ -33,6 +35,7 @@ class _TerminalShellState extends State<TerminalShell> {
 
   final tabs = const [
     _TerminalTab(label: 'Dashboard', icon: Icons.dashboard_outlined),
+    _TerminalTab(label: 'Search', icon: Icons.search),
     _TerminalTab(label: 'Build Milestones', icon: Icons.flag_outlined),
     _TerminalTab(label: 'Navigation Strategy', icon: Icons.route_outlined),
     _TerminalTab(label: 'Module Inventory', icon: Icons.view_module_outlined),
@@ -46,6 +49,7 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Franchise History', icon: Icons.history_edu_outlined),
     _TerminalTab(label: 'Era Context', icon: Icons.timeline_outlined),
     _TerminalTab(label: 'Player Schema', icon: Icons.badge_outlined),
+    _TerminalTab(label: 'Dataset Registry', icon: Icons.dataset_outlined),
     _TerminalTab(label: 'Data Roadmap', icon: Icons.storage_outlined),
     _TerminalTab(label: 'Quality Controls', icon: Icons.verified_outlined),
     _TerminalTab(label: 'Source Policy', icon: Icons.policy_outlined),
@@ -98,7 +102,10 @@ class _TerminalShellState extends State<TerminalShell> {
             child: SafeArea(
               child: Column(
                 children: [
-                  _TopBar(title: tabs[selectedIndex].label),
+                  _TopBar(
+                    title: tabs[selectedIndex].label,
+                    onSearchTap: () => setState(() => selectedIndex = 1),
+                  ),
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(24),
@@ -242,9 +249,10 @@ class _NavButton extends StatelessWidget {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title});
+  const _TopBar({required this.title, required this.onSearchTap});
 
   final String title;
+  final VoidCallback onSearchTap;
 
   @override
   Widget build(BuildContext context) {
@@ -268,26 +276,30 @@ class _TopBar extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-            width: 360,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF121A23),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF263241)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.search, color: Color(0xFF8794A5), size: 18),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Search players, teams, seasons, reports...',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Color(0xFF8794A5), fontSize: 13),
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onSearchTap,
+            child: Container(
+              width: 360,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF121A23),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF263241)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.search, color: Color(0xFF8794A5), size: 18),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Search players, teams, seasons, reports...',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Color(0xFF8794A5), fontSize: 13),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -325,42 +337,46 @@ class _ScreenBody extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (index) {
       case 1:
-        return const BuildMilestonesScreen();
+        return const SearchScreen();
       case 2:
-        return const NavigationStrategyScreen();
+        return const BuildMilestonesScreen();
       case 3:
-        return const ModuleInventoryScreen();
+        return const NavigationStrategyScreen();
       case 4:
-        return const ScreenDepthPlanScreen();
+        return const ModuleInventoryScreen();
       case 5:
-        return const LeagueEcosystemScreen();
+        return const ScreenDepthPlanScreen();
       case 6:
-        return const InformationArchitectureScreen();
+        return const LeagueEcosystemScreen();
       case 7:
-        return const DataModelScreen();
+        return const InformationArchitectureScreen();
       case 8:
-        return const PlayersScreen();
+        return const DataModelScreen();
       case 9:
-        return const TeamsScreen();
+        return const PlayersScreen();
       case 10:
-        return const SeasonsScreen();
+        return const TeamsScreen();
       case 11:
-        return const FranchiseHistoryScreen();
+        return const SeasonsScreen();
       case 12:
-        return const EraContextScreen();
+        return const FranchiseHistoryScreen();
       case 13:
-        return const PlayerSchemaScreen();
+        return const EraContextScreen();
       case 14:
-        return const DataRoadmapScreen();
+        return const PlayerSchemaScreen();
       case 15:
-        return const QualityControlsScreen();
+        return const DatasetRegistryScreen();
       case 16:
-        return const SourcePolicyScreen();
+        return const DataRoadmapScreen();
       case 17:
-        return const IngestionPipelineScreen();
+        return const QualityControlsScreen();
       case 18:
-        return const GLeagueRoadmapScreen();
+        return const SourcePolicyScreen();
       case 19:
+        return const IngestionPipelineScreen();
+      case 20:
+        return const GLeagueRoadmapScreen();
+      case 21:
         return const CompareScreen();
       default:
         return const DashboardScreen();
