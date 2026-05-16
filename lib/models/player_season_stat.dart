@@ -13,6 +13,16 @@ class PlayerSeasonStat {
     this.stealsPerGame,
     this.blocksPerGame,
     this.turnoversPerGame,
+    this.personalFoulsPerGame,
+    this.fieldGoalPercentage,
+    this.threePointPercentage,
+    this.freeThrowPercentage,
+    this.effectiveFieldGoalPercentage,
+    this.trueShootingPercentage,
+    this.usagePercentage,
+    this.offensiveRating,
+    this.defensiveRating,
+    this.netRating,
     this.sourceId,
     this.asOf,
   });
@@ -32,6 +42,16 @@ class PlayerSeasonStat {
       stealsPerGame: (json['stealsPerGame'] as num?)?.toDouble(),
       blocksPerGame: (json['blocksPerGame'] as num?)?.toDouble(),
       turnoversPerGame: (json['turnoversPerGame'] as num?)?.toDouble(),
+      personalFoulsPerGame: (json['personalFoulsPerGame'] as num?)?.toDouble(),
+      fieldGoalPercentage: (json['fieldGoalPercentage'] as num?)?.toDouble(),
+      threePointPercentage: (json['threePointPercentage'] as num?)?.toDouble(),
+      freeThrowPercentage: (json['freeThrowPercentage'] as num?)?.toDouble(),
+      effectiveFieldGoalPercentage: (json['effectiveFieldGoalPercentage'] as num?)?.toDouble(),
+      trueShootingPercentage: (json['trueShootingPercentage'] as num?)?.toDouble(),
+      usagePercentage: (json['usagePercentage'] as num?)?.toDouble(),
+      offensiveRating: (json['offensiveRating'] as num?)?.toDouble(),
+      defensiveRating: (json['defensiveRating'] as num?)?.toDouble(),
+      netRating: (json['netRating'] as num?)?.toDouble(),
       sourceId: json['sourceId'] as String?,
       asOf: json['asOf'] as String?,
     );
@@ -50,6 +70,16 @@ class PlayerSeasonStat {
   final double? stealsPerGame;
   final double? blocksPerGame;
   final double? turnoversPerGame;
+  final double? personalFoulsPerGame;
+  final double? fieldGoalPercentage;
+  final double? threePointPercentage;
+  final double? freeThrowPercentage;
+  final double? effectiveFieldGoalPercentage;
+  final double? trueShootingPercentage;
+  final double? usagePercentage;
+  final double? offensiveRating;
+  final double? defensiveRating;
+  final double? netRating;
   final String? sourceId;
   final String? asOf;
 
@@ -67,6 +97,16 @@ class PlayerSeasonStat {
         'stealsPerGame': stealsPerGame,
         'blocksPerGame': blocksPerGame,
         'turnoversPerGame': turnoversPerGame,
+        'personalFoulsPerGame': personalFoulsPerGame,
+        'fieldGoalPercentage': fieldGoalPercentage,
+        'threePointPercentage': threePointPercentage,
+        'freeThrowPercentage': freeThrowPercentage,
+        'effectiveFieldGoalPercentage': effectiveFieldGoalPercentage,
+        'trueShootingPercentage': trueShootingPercentage,
+        'usagePercentage': usagePercentage,
+        'offensiveRating': offensiveRating,
+        'defensiveRating': defensiveRating,
+        'netRating': netRating,
         'sourceId': sourceId,
         'asOf': asOf,
       };
