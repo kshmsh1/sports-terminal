@@ -14,6 +14,7 @@ import '../screens/field_dictionary_screen.dart';
 import '../screens/franchise_history_screen.dart';
 import '../screens/g_league_roadmap_screen.dart';
 import '../screens/games_screen.dart';
+import '../screens/import_jobs_screen.dart';
 import '../screens/information_architecture_screen.dart';
 import '../screens/ingestion_pipeline_screen.dart';
 import '../screens/league_ecosystem_screen.dart';
@@ -28,6 +29,7 @@ import '../screens/screen_depth_plan_screen.dart';
 import '../screens/search_screen.dart';
 import '../screens/seasons_screen.dart';
 import '../screens/source_policy_screen.dart';
+import '../screens/source_registry_screen.dart';
 import '../screens/teams_screen.dart';
 
 class TerminalShell extends StatefulWidget {
@@ -70,6 +72,8 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Era Context', icon: Icons.timeline_outlined),
     _TerminalTab(label: 'Player Schema', icon: Icons.badge_outlined),
     _TerminalTab(label: 'Dataset Registry', icon: Icons.dataset_outlined),
+    _TerminalTab(label: 'Source Registry', icon: Icons.source_outlined),
+    _TerminalTab(label: 'Import Jobs', icon: Icons.cloud_upload_outlined),
     _TerminalTab(label: 'Data Roadmap', icon: Icons.storage_outlined),
     _TerminalTab(label: 'Data Health', icon: Icons.health_and_safety_outlined),
     _TerminalTab(label: 'Quality Controls', icon: Icons.verified_outlined),
@@ -314,16 +318,20 @@ class _ScreenBody extends StatelessWidget {
       case 28:
         return const DatasetRegistryScreen();
       case 29:
-        return const DataRoadmapScreen();
+        return const SourceRegistryScreen();
       case 30:
-        return const DataHealthScreen();
+        return const ImportJobsScreen();
       case 31:
-        return const QualityControlsScreen();
+        return const DataRoadmapScreen();
       case 32:
-        return const SourcePolicyScreen();
+        return const DataHealthScreen();
       case 33:
-        return const IngestionPipelineScreen();
+        return const QualityControlsScreen();
       case 34:
+        return const SourcePolicyScreen();
+      case 35:
+        return const IngestionPipelineScreen();
+      case 36:
         return const GLeagueRoadmapScreen();
       default:
         return const DashboardScreen();
