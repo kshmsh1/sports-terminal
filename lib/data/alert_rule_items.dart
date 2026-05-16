@@ -1,0 +1,58 @@
+import '../models/alert_rule.dart';
+
+const alertRuleItems = <AlertRule>[
+  AlertRule(
+    id: 'new-dataset-connected',
+    name: 'New Dataset Connected',
+    category: 'Data Operations',
+    status: 'Planned',
+    trigger: 'A dataset changes from Planned or Source Needed to Connected.',
+    description: 'Notify the workspace that a new data layer can be used across screens and reports.',
+    requiredData: 'Dataset registry and ingestion job metadata',
+  ),
+  AlertRule(
+    id: 'data-quality-failure',
+    name: 'Data Quality Failure',
+    category: 'Data Health',
+    status: 'Planned',
+    trigger: 'Critical quality control check fails after import or validation.',
+    description: 'Flags missing identifiers, duplicate records, broken joins, impossible values, and source metadata gaps.',
+    requiredData: 'Quality controls and validation result logs',
+  ),
+  AlertRule(
+    id: 'player-record-updated',
+    name: 'Player Record Updated',
+    category: 'Player Intelligence',
+    status: 'Future',
+    trigger: 'Player profile, roster, stat, injury, transaction, or contract record changes.',
+    description: 'Future player-follow alert for research workflows and saved player lists.',
+    requiredData: 'Player identity, roster history, stats, injuries, transactions, contracts',
+  ),
+  AlertRule(
+    id: 'team-context-updated',
+    name: 'Team Context Updated',
+    category: 'Team Intelligence',
+    status: 'Future',
+    trigger: 'Team roster, transaction, draft, game, or salary context changes.',
+    description: 'Future team-follow alert for front-office-style monitoring.',
+    requiredData: 'Teams, rosters, transactions, games, draft, salary/cap records',
+  ),
+  AlertRule(
+    id: 'source-rights-risk',
+    name: 'Source Rights Risk',
+    category: 'Governance',
+    status: 'Planned',
+    trigger: 'A dataset has unclear source rights, restricted use, missing attribution, or commercial-use uncertainty.',
+    description: 'Prevents a prototype dataset from silently becoming production-facing without usage review.',
+    requiredData: 'Source policy, dataset registry, source metadata',
+  ),
+  AlertRule(
+    id: 'g-league-movement',
+    name: 'G League Movement',
+    category: 'Development',
+    status: 'Future',
+    trigger: 'Assignment, recall, two-way conversion, or call-up event is recorded.',
+    description: 'Future development-path alert connecting NBA and G League player movement.',
+    requiredData: 'G League assignments, transactions, rosters, contracts',
+  ),
+];
