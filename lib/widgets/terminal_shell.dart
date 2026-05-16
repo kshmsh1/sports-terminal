@@ -9,6 +9,7 @@ import '../screens/dataset_registry_screen.dart';
 import '../screens/era_context_screen.dart';
 import '../screens/franchise_history_screen.dart';
 import '../screens/g_league_roadmap_screen.dart';
+import '../screens/games_screen.dart';
 import '../screens/information_architecture_screen.dart';
 import '../screens/ingestion_pipeline_screen.dart';
 import '../screens/league_ecosystem_screen.dart';
@@ -36,6 +37,15 @@ class _TerminalShellState extends State<TerminalShell> {
   final tabs = const [
     _TerminalTab(label: 'Dashboard', icon: Icons.dashboard_outlined),
     _TerminalTab(label: 'Search', icon: Icons.search),
+    _TerminalTab(label: 'Players', icon: Icons.person_search_outlined),
+    _TerminalTab(label: 'Teams', icon: Icons.groups_outlined),
+    _TerminalTab(label: 'Seasons', icon: Icons.calendar_month_outlined),
+    _TerminalTab(label: 'Games', icon: Icons.sports_basketball_outlined),
+    _TerminalTab(label: 'Rosters', icon: Icons.assignment_ind_outlined),
+    _TerminalTab(label: 'Awards', icon: Icons.emoji_events_outlined),
+    _TerminalTab(label: 'Draft', icon: Icons.school_outlined),
+    _TerminalTab(label: 'Transactions', icon: Icons.swap_horiz_outlined),
+    _TerminalTab(label: 'Compare', icon: Icons.compare_arrows_outlined),
     _TerminalTab(label: 'Build Milestones', icon: Icons.flag_outlined),
     _TerminalTab(label: 'Navigation Strategy', icon: Icons.route_outlined),
     _TerminalTab(label: 'Module Inventory', icon: Icons.view_module_outlined),
@@ -43,9 +53,6 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Basketball Ecosystem', icon: Icons.hub_outlined),
     _TerminalTab(label: 'Information Architecture', icon: Icons.account_tree_outlined),
     _TerminalTab(label: 'Data Model', icon: Icons.data_object_outlined),
-    _TerminalTab(label: 'Players', icon: Icons.person_search_outlined),
-    _TerminalTab(label: 'Teams', icon: Icons.groups_outlined),
-    _TerminalTab(label: 'Seasons', icon: Icons.calendar_month_outlined),
     _TerminalTab(label: 'Franchise History', icon: Icons.history_edu_outlined),
     _TerminalTab(label: 'Era Context', icon: Icons.timeline_outlined),
     _TerminalTab(label: 'Player Schema', icon: Icons.badge_outlined),
@@ -55,8 +62,9 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Source Policy', icon: Icons.policy_outlined),
     _TerminalTab(label: 'Ingestion Pipeline', icon: Icons.schema_outlined),
     _TerminalTab(label: 'G League Roadmap', icon: Icons.sports_basketball_outlined),
-    _TerminalTab(label: 'Compare', icon: Icons.compare_arrows_outlined),
   ];
+
+  bool get _isCoreTab => selectedIndex <= 10;
 
   @override
   Widget build(BuildContext context) {
@@ -78,17 +86,32 @@ class _TerminalShellState extends State<TerminalShell> {
                   children: [
                     const _BrandHeader(),
                     const SizedBox(height: 20),
-                    const _SidebarSectionLabel(label: 'Temporary Build Lab'),
+                    _SidebarSectionLabel(label: _isCoreTab ? 'Core Terminal' : 'Temporary Build Lab'),
                     const SizedBox(height: 8),
                     Expanded(
                       child: ListView.builder(
                         itemCount: tabs.length,
-                        itemBuilder: (context, i) => _NavButton(
-                          label: tabs[i].label,
-                          icon: tabs[i].icon,
-                          isSelected: selectedIndex == i,
-                          onTap: () => setState(() => selectedIndex = i),
-                        ),
+                        itemBuilder: (context, i) {
+                          final showDivider = i == 11;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (showDivider) ...[
+                                const SizedBox(height: 8),
+                                const Divider(color: Color(0xFF263241)),
+                                const SizedBox(height: 8),
+                                const _SidebarSectionLabel(label: 'Build Lab'),
+                                const SizedBox(height: 8),
+                              ],
+                              _NavButton(
+                                label: tabs[i].label,
+                                icon: tabs[i].icon,
+                                isSelected: selectedIndex == i,
+                                onTap: () => setState(() => selectedIndex = i),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -321,7 +344,7 @@ class _SidebarFooter extends StatelessWidget {
         border: Border.all(color: const Color(0xFF263241)),
       ),
       child: const Text(
-        'This expanded nav is temporary while we design the product. Later, architecture pages move into Build Lab.',
+        'Core tabs are the future user product. Build Lab tabs are temporary architecture surfaces.',
         style: TextStyle(color: Color(0xFF8794A5), fontSize: 12, height: 1.35),
       ),
     );
@@ -339,45 +362,55 @@ class _ScreenBody extends StatelessWidget {
       case 1:
         return const SearchScreen();
       case 2:
-        return const BuildMilestonesScreen();
-      case 3:
-        return const NavigationStrategyScreen();
-      case 4:
-        return const ModuleInventoryScreen();
-      case 5:
-        return const ScreenDepthPlanScreen();
-      case 6:
-        return const LeagueEcosystemScreen();
-      case 7:
-        return const InformationArchitectureScreen();
-      case 8:
-        return const DataModelScreen();
-      case 9:
         return const PlayersScreen();
-      case 10:
+      case 3:
         return const TeamsScreen();
-      case 11:
+      case 4:
         return const SeasonsScreen();
-      case 12:
-        return const FranchiseHistoryScreen();
-      case 13:
-        return const EraContextScreen();
-      case 14:
-        return const PlayerSchemaScreen();
-      case 15:
-        return const DatasetRegistryScreen();
-      case 16:
-        return const DataRoadmapScreen();
-      case 17:
-        return const QualityControlsScreen();
-      case 18:
-        return const SourcePolicyScreen();
-      case 19:
-        return const IngestionPipelineScreen();
-      case 20:
-        return const GLeagueRoadmapScreen();
-      case 21:
+      case 5:
+        return const GamesScreen();
+      case 6:
+        return const RostersScreen();
+      case 7:
+        return const AwardsScreen();
+      case 8:
+        return const DraftScreen();
+      case 9:
+        return const TransactionsScreen();
+      case 10:
         return const CompareScreen();
+      case 11:
+        return const BuildMilestonesScreen();
+      case 12:
+        return const NavigationStrategyScreen();
+      case 13:
+        return const ModuleInventoryScreen();
+      case 14:
+        return const ScreenDepthPlanScreen();
+      case 15:
+        return const LeagueEcosystemScreen();
+      case 16:
+        return const InformationArchitectureScreen();
+      case 17:
+        return const DataModelScreen();
+      case 18:
+        return const FranchiseHistoryScreen();
+      case 19:
+        return const EraContextScreen();
+      case 20:
+        return const PlayerSchemaScreen();
+      case 21:
+        return const DatasetRegistryScreen();
+      case 22:
+        return const DataRoadmapScreen();
+      case 23:
+        return const QualityControlsScreen();
+      case 24:
+        return const SourcePolicyScreen();
+      case 25:
+        return const IngestionPipelineScreen();
+      case 26:
+        return const GLeagueRoadmapScreen();
       default:
         return const DashboardScreen();
     }
