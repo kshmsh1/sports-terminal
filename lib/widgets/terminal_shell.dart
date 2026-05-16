@@ -8,6 +8,7 @@ import '../screens/build_milestones_screen.dart';
 import '../screens/column_library_screen.dart';
 import '../screens/compare_screen.dart';
 import '../screens/contracts_screen.dart';
+import '../screens/core_mvp_gaps_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/data_coverage_screen.dart';
 import '../screens/data_health_screen.dart';
@@ -36,6 +37,7 @@ import '../screens/module_inventory_screen.dart';
 import '../screens/navigation_strategy_screen.dart';
 import '../screens/performance_budget_screen.dart';
 import '../screens/personas_screen.dart';
+import '../screens/player_identity_import_screen.dart';
 import '../screens/player_schema_screen.dart';
 import '../screens/players_screen.dart';
 import '../screens/privacy_controls_screen.dart';
@@ -50,6 +52,7 @@ import '../screens/saved_view_lifecycle_screen.dart';
 import '../screens/saved_views_screen.dart';
 import '../screens/screen_depth_plan_screen.dart';
 import '../screens/search_screen.dart';
+import '../screens/season_command_screen.dart';
 import '../screens/seasons_screen.dart';
 import '../screens/source_policy_screen.dart';
 import '../screens/source_registry_screen.dart';
@@ -94,6 +97,9 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Alerts', icon: Icons.notifications_none_outlined, screen: AlertsScreen(), section: _TabSection.core),
     _TerminalTab(label: 'Compare', icon: Icons.compare_arrows_outlined, screen: CompareScreen(), section: _TabSection.core),
     _TerminalTab(label: 'Build Milestones', icon: Icons.flag_outlined, screen: BuildMilestonesScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Core MVP Gaps', icon: Icons.track_changes_outlined, screen: CoreMvpGapsScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Player Identity Import', icon: Icons.person_add_alt_1_outlined, screen: PlayerIdentityImportScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Season Command Plan', icon: Icons.calendar_view_month_outlined, screen: SeasonCommandScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Release Plan', icon: Icons.rocket_launch_outlined, screen: ReleasePlanScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Product Backlog', icon: Icons.checklist_rtl_outlined, screen: ProductBacklogScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'QA Console', icon: Icons.bug_report_outlined, screen: QaConsoleScreen(), section: _TabSection.buildLab),
