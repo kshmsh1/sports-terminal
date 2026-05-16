@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 import '../screens/compare_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/data_roadmap_screen.dart';
+import '../screens/g_league_roadmap_screen.dart';
+import '../screens/information_architecture_screen.dart';
 import '../screens/ingestion_pipeline_screen.dart';
+import '../screens/league_ecosystem_screen.dart';
+import '../screens/module_inventory_screen.dart';
 import '../screens/player_schema_screen.dart';
 import '../screens/players_screen.dart';
 import '../screens/seasons_screen.dart';
@@ -22,13 +26,17 @@ class _TerminalShellState extends State<TerminalShell> {
 
   final tabs = const [
     _TerminalTab(label: 'Dashboard', icon: Icons.dashboard_outlined),
+    _TerminalTab(label: 'Module Inventory', icon: Icons.view_module_outlined),
+    _TerminalTab(label: 'Basketball Ecosystem', icon: Icons.hub_outlined),
+    _TerminalTab(label: 'Information Architecture', icon: Icons.account_tree_outlined),
     _TerminalTab(label: 'Players', icon: Icons.person_search_outlined),
     _TerminalTab(label: 'Teams', icon: Icons.groups_outlined),
     _TerminalTab(label: 'Seasons', icon: Icons.calendar_month_outlined),
-    _TerminalTab(label: 'Player Schema', icon: Icons.account_tree_outlined),
+    _TerminalTab(label: 'Player Schema', icon: Icons.badge_outlined),
     _TerminalTab(label: 'Data Roadmap', icon: Icons.storage_outlined),
     _TerminalTab(label: 'Source Policy', icon: Icons.policy_outlined),
     _TerminalTab(label: 'Ingestion Pipeline', icon: Icons.schema_outlined),
+    _TerminalTab(label: 'G League Roadmap', icon: Icons.sports_basketball_outlined),
     _TerminalTab(label: 'Compare', icon: Icons.compare_arrows_outlined),
   ];
 
@@ -39,7 +47,7 @@ class _TerminalShellState extends State<TerminalShell> {
       body: Row(
         children: [
           Container(
-            width: 248,
+            width: 268,
             decoration: const BoxDecoration(
               color: Color(0xFF111820),
               border: Border(right: BorderSide(color: Color(0xFF263241))),
@@ -51,7 +59,9 @@ class _TerminalShellState extends State<TerminalShell> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const _BrandHeader(),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+                    const _SidebarSectionLabel(label: 'Terminal'),
+                    const SizedBox(height: 8),
                     Expanded(
                       child: ListView.builder(
                         itemCount: tabs.length,
@@ -116,25 +126,48 @@ class _BrandHeader extends StatelessWidget {
           child: const Icon(Icons.sports_basketball, color: Color(0xFF8AB4F8)),
         ),
         const SizedBox(width: 12),
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Sports Terminal',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Sports Terminal',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            ),
-            SizedBox(height: 3),
-            Text(
-              'NBA Historical Build',
-              style: TextStyle(color: Color(0xFF8794A5), fontSize: 12),
-            ),
-          ],
+              SizedBox(height: 3),
+              Text(
+                'NBA Historical Build',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Color(0xFF8794A5), fontSize: 12),
+              ),
+            ],
+          ),
         ),
       ],
+    );
+  }
+}
+
+class _SidebarSectionLabel extends StatelessWidget {
+  const _SidebarSectionLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label.toUpperCase(),
+      style: const TextStyle(
+        color: Color(0xFF657386),
+        fontSize: 11,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 1.1,
+      ),
     );
   }
 }
@@ -155,12 +188,12 @@ class _NavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 7),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xFF1B2A3F) : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
@@ -210,17 +243,19 @@ class _TopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
+          Expanded(
+            child: Text(
+              title,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
-          const Spacer(),
           Container(
-            width: 340,
+            width: 360,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: const Color(0xFF121A23),
@@ -231,9 +266,12 @@ class _TopBar extends StatelessWidget {
               children: [
                 Icon(Icons.search, color: Color(0xFF8794A5), size: 18),
                 SizedBox(width: 10),
-                Text(
-                  'Search players, teams, seasons, reports...',
-                  style: TextStyle(color: Color(0xFF8794A5), fontSize: 13),
+                Expanded(
+                  child: Text(
+                    'Search players, teams, seasons, reports...',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Color(0xFF8794A5), fontSize: 13),
+                  ),
                 ),
               ],
             ),
@@ -257,7 +295,7 @@ class _SidebarFooter extends StatelessWidget {
         border: Border.all(color: const Color(0xFF263241)),
       ),
       child: const Text(
-        'Historical-first. NBA-first. Real data only; blanks until sources are connected.',
+        'NBA first. G League later. Real data only; blanks until sources are connected.',
         style: TextStyle(color: Color(0xFF8794A5), fontSize: 12, height: 1.35),
       ),
     );
@@ -273,20 +311,28 @@ class _ScreenBody extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (index) {
       case 1:
-        return const PlayersScreen();
+        return const ModuleInventoryScreen();
       case 2:
-        return const TeamsScreen();
+        return const LeagueEcosystemScreen();
       case 3:
-        return const SeasonsScreen();
+        return const InformationArchitectureScreen();
       case 4:
-        return const PlayerSchemaScreen();
+        return const PlayersScreen();
       case 5:
-        return const DataRoadmapScreen();
+        return const TeamsScreen();
       case 6:
-        return const SourcePolicyScreen();
+        return const SeasonsScreen();
       case 7:
-        return const IngestionPipelineScreen();
+        return const PlayerSchemaScreen();
       case 8:
+        return const DataRoadmapScreen();
+      case 9:
+        return const SourcePolicyScreen();
+      case 10:
+        return const IngestionPipelineScreen();
+      case 11:
+        return const GLeagueRoadmapScreen();
+      case 12:
         return const CompareScreen();
       default:
         return const DashboardScreen();
