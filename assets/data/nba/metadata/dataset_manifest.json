@@ -1,0 +1,38 @@
+{
+  "project": "Sports Terminal",
+  "sport": "basketball",
+  "primaryLeague": "NBA",
+  "dataPolicy": "real-data-only",
+  "missingValuePolicy": "null-not-zero",
+  "currentMode": "schema-first historical build",
+  "datasets": [
+    {
+      "id": "nba-team-directory",
+      "status": "connected",
+      "domain": "teams",
+      "sourcePosture": "stable reference data",
+      "normalizedTarget": "assets/data/nba/teams/teams.json"
+    },
+    {
+      "id": "nba-season-catalog",
+      "status": "connected",
+      "domain": "seasons",
+      "sourcePosture": "generated reference catalog",
+      "normalizedTarget": "assets/data/nba/seasons/seasons.json"
+    },
+    {
+      "id": "nba-player-identity-index",
+      "status": "next",
+      "domain": "players",
+      "sourcePosture": "official-source-preferred",
+      "normalizedTarget": "assets/data/nba/players/player_profiles.json"
+    },
+    {
+      "id": "nba-player-traditional-season-stats",
+      "status": "planned",
+      "domain": "stats",
+      "sourcePosture": "official-source-preferred",
+      "normalizedTarget": "assets/data/nba/stats/player_traditional_by_season.json"
+    }
+  ]
+}
