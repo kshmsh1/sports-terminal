@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../screens/accessibility_screen.dart';
 import '../screens/alerts_screen.dart';
+import '../screens/audit_trail_screen.dart';
 import '../screens/build_milestones_screen.dart';
 import '../screens/compare_screen.dart';
 import '../screens/contracts_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/data_coverage_screen.dart';
 import '../screens/data_health_screen.dart';
+import '../screens/data_lineage_screen.dart';
 import '../screens/data_model_screen.dart';
 import '../screens/data_roadmap_screen.dart';
 import '../screens/dataset_registry_screen.dart';
+import '../screens/entity_detail_plan_screen.dart';
 import '../screens/entity_graph_screen.dart';
 import '../screens/era_context_screen.dart';
 import '../screens/export_center_screen.dart';
@@ -24,8 +28,10 @@ import '../screens/ingestion_pipeline_screen.dart';
 import '../screens/integration_plan_screen.dart';
 import '../screens/keyboard_shortcuts_screen.dart';
 import '../screens/league_ecosystem_screen.dart';
+import '../screens/league_expansion_screen.dart';
 import '../screens/module_inventory_screen.dart';
 import '../screens/navigation_strategy_screen.dart';
+import '../screens/performance_budget_screen.dart';
 import '../screens/personas_screen.dart';
 import '../screens/player_schema_screen.dart';
 import '../screens/players_screen.dart';
@@ -36,6 +42,7 @@ import '../screens/quality_controls_screen.dart';
 import '../screens/release_plan_screen.dart';
 import '../screens/reports_screen.dart';
 import '../screens/research_source_screen.dart';
+import '../screens/risk_register_screen.dart';
 import '../screens/saved_views_screen.dart';
 import '../screens/screen_depth_plan_screen.dart';
 import '../screens/search_screen.dart';
@@ -85,6 +92,10 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Release Plan', icon: Icons.rocket_launch_outlined, screen: ReleasePlanScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Product Backlog', icon: Icons.checklist_rtl_outlined, screen: ProductBacklogScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'QA Console', icon: Icons.bug_report_outlined, screen: QaConsoleScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Risk Register', icon: Icons.warning_amber_outlined, screen: RiskRegisterScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Performance Budget', icon: Icons.speed_outlined, screen: PerformanceBudgetScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Accessibility', icon: Icons.accessibility_new_outlined, screen: AccessibilityScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Audit Trail', icon: Icons.manage_history_outlined, screen: AuditTrailScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Export Center', icon: Icons.ios_share_outlined, screen: ExportCenterScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Integration Plan', icon: Icons.integration_instructions_outlined, screen: IntegrationPlanScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Privacy Controls', icon: Icons.lock_outline, screen: PrivacyControlsScreen(), section: _TabSection.buildLab),
@@ -93,9 +104,11 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Navigation Strategy', icon: Icons.route_outlined, screen: NavigationStrategyScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Module Inventory', icon: Icons.view_module_outlined, screen: ModuleInventoryScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Screen Depth Plan', icon: Icons.layers_outlined, screen: ScreenDepthPlanScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Entity Detail Plan', icon: Icons.article_outlined, screen: EntityDetailPlanScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Personas', icon: Icons.supervised_user_circle_outlined, screen: PersonasScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Workflow Playbooks', icon: Icons.playlist_add_check_circle_outlined, screen: WorkflowPlaybookScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Basketball Ecosystem', icon: Icons.hub_outlined, screen: LeagueEcosystemScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'League Expansion', icon: Icons.public_outlined, screen: LeagueExpansionScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Information Architecture', icon: Icons.account_tree_outlined, screen: InformationArchitectureScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Data Model', icon: Icons.data_object_outlined, screen: DataModelScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Entity Graph', icon: Icons.account_tree, screen: EntityGraphScreen(), section: _TabSection.buildLab),
@@ -107,6 +120,7 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Player Schema', icon: Icons.badge_outlined, screen: PlayerSchemaScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Dataset Registry', icon: Icons.dataset_outlined, screen: DatasetRegistryScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Data Coverage', icon: Icons.fact_check_outlined, screen: DataCoverageScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Data Lineage', icon: Icons.route_outlined, screen: DataLineageScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Source Registry', icon: Icons.source_outlined, screen: SourceRegistryScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Research Sources', icon: Icons.manage_search_outlined, screen: ResearchSourceScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Import Jobs', icon: Icons.cloud_upload_outlined, screen: ImportJobsScreen(), section: _TabSection.buildLab),
