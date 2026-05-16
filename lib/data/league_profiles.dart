@@ -1,0 +1,48 @@
+import '../models/league_profile.dart';
+
+const leagueProfiles = <LeagueProfile>[
+  LeagueProfile(
+    id: 'nba',
+    name: 'National Basketball Association',
+    shortName: 'NBA',
+    level: 'Primary professional league',
+    priority: 0,
+    status: 'Active build focus',
+    description: 'The first and highest-priority league for Sports Terminal. All core architecture should be proven against NBA use cases before expanding outward.',
+    relationshipToNba: 'Core league',
+    dataPosture: 'Stable reference data connected. Historical statistics, player identity, awards, drafts, transactions, contracts, and game data are planned.',
+  ),
+  LeagueProfile(
+    id: 'g-league',
+    name: 'NBA G League',
+    shortName: 'G League',
+    level: 'Development league',
+    priority: 1,
+    status: 'Future expansion track',
+    description: 'NBA development ecosystem covering affiliated teams, assignments, call-ups, two-way players, prospects, coaching pipelines, and player development context.',
+    relationshipToNba: 'Directly connected to NBA franchises and player development paths',
+    dataPosture: 'Keep schema-ready after NBA core is stronger. Prioritize team affiliations, assignments, call-ups, rosters, and development outcomes later.',
+  ),
+  LeagueProfile(
+    id: 'summer-league',
+    name: 'NBA Summer League',
+    shortName: 'Summer League',
+    level: 'Offseason competition',
+    priority: 2,
+    status: 'Future context layer',
+    description: 'Offseason competition for rookies, young players, unsigned players, international prospects, and development evaluation.',
+    relationshipToNba: 'NBA-operated offseason evaluation layer',
+    dataPosture: 'Track as future event data after core NBA historical datasets are connected.',
+  ),
+  LeagueProfile(
+    id: 'draft-combine',
+    name: 'NBA Draft Combine',
+    shortName: 'Draft Combine',
+    level: 'Pre-draft evaluation event',
+    priority: 3,
+    status: 'Future context layer',
+    description: 'Prospect testing, measurements, interviews, scrimmages, and evaluation context for draft modeling and historical prospect profiles.',
+    relationshipToNba: 'Feeds NBA draft and prospect evaluation workflow',
+    dataPosture: 'Future source needed. Useful for player profile enrichment rather than core box score statistics.',
+  ),
+];
