@@ -1,0 +1,4 @@
+{
+  "source": {"id":"nba-injury-records-pending","asOf":null,"type":"pending-source","usage":"Schema-ready placeholder; no fake injury records"},
+  "injuries": []
+}
