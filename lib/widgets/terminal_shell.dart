@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../screens/compare_screen.dart';
 import '../screens/dashboard_screen.dart';
+import '../screens/data_roadmap_screen.dart';
 import '../screens/players_screen.dart';
+import '../screens/seasons_screen.dart';
 import '../screens/teams_screen.dart';
 
 class TerminalShell extends StatefulWidget {
@@ -19,6 +21,8 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Dashboard', icon: Icons.dashboard_outlined),
     _TerminalTab(label: 'Players', icon: Icons.person_search_outlined),
     _TerminalTab(label: 'Teams', icon: Icons.groups_outlined),
+    _TerminalTab(label: 'Seasons', icon: Icons.calendar_month_outlined),
+    _TerminalTab(label: 'Data Roadmap', icon: Icons.storage_outlined),
     _TerminalTab(label: 'Compare', icon: Icons.compare_arrows_outlined),
   ];
 
@@ -260,6 +264,10 @@ class _ScreenBody extends StatelessWidget {
       case 2:
         return const TeamsScreen();
       case 3:
+        return const SeasonsScreen();
+      case 4:
+        return const DataRoadmapScreen();
+      case 5:
         return const CompareScreen();
       default:
         return const DashboardScreen();
