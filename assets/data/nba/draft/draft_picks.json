@@ -1,0 +1,4 @@
+{
+  "source": {"id":"nba-draft-picks-pending","asOf":null,"type":"pending-source","usage":"Schema-ready placeholder; no fake draft records"},
+  "draftPicks": []
+}
