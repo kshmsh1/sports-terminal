@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
+import '../models/player_profile.dart';
 import '../models/season.dart';
 import '../models/team.dart';
 
@@ -25,6 +26,16 @@ class NbaAssetRepository {
 
     return records
         .map((record) => Season.fromJson(record as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<List<PlayerProfile>> loadPlayerProfiles() async {
+    final rawJson = await rootBundle.loadString('assets/data/nba/players/player_profiles.json');
+    final decoded = jsonDecode(rawJson) as Map<String, dynamic>;
+    final records = decoded['players'] as List<dynamic>;
+
+    return records
+        .map((record) => PlayerProfile.fromJson(record as Map<String, dynamic>))
         .toList(growable: false);
   }
 
