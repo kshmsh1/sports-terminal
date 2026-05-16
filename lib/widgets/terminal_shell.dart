@@ -18,6 +18,7 @@ import '../screens/navigation_strategy_screen.dart';
 import '../screens/player_schema_screen.dart';
 import '../screens/players_screen.dart';
 import '../screens/quality_controls_screen.dart';
+import '../screens/reports_screen.dart';
 import '../screens/screen_depth_plan_screen.dart';
 import '../screens/search_screen.dart';
 import '../screens/seasons_screen.dart';
@@ -45,6 +46,7 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Awards', icon: Icons.emoji_events_outlined),
     _TerminalTab(label: 'Draft', icon: Icons.school_outlined),
     _TerminalTab(label: 'Transactions', icon: Icons.swap_horiz_outlined),
+    _TerminalTab(label: 'Reports', icon: Icons.article_outlined),
     _TerminalTab(label: 'Compare', icon: Icons.compare_arrows_outlined),
     _TerminalTab(label: 'Build Milestones', icon: Icons.flag_outlined),
     _TerminalTab(label: 'Navigation Strategy', icon: Icons.route_outlined),
@@ -64,7 +66,7 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'G League Roadmap', icon: Icons.sports_basketball_outlined),
   ];
 
-  bool get _isCoreTab => selectedIndex <= 10;
+  bool get _isCoreTab => selectedIndex <= 11;
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +94,7 @@ class _TerminalShellState extends State<TerminalShell> {
                       child: ListView.builder(
                         itemCount: tabs.length,
                         itemBuilder: (context, i) {
-                          final showDivider = i == 11;
+                          final showDivider = i == 12;
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -125,10 +127,7 @@ class _TerminalShellState extends State<TerminalShell> {
             child: SafeArea(
               child: Column(
                 children: [
-                  _TopBar(
-                    title: tabs[selectedIndex].label,
-                    onSearchTap: () => setState(() => selectedIndex = 1),
-                  ),
+                  _TopBar(title: tabs[selectedIndex].label, onSearchTap: () => setState(() => selectedIndex = 1)),
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(24),
@@ -162,11 +161,7 @@ class _BrandHeader extends StatelessWidget {
         Container(
           width: 38,
           height: 38,
-          decoration: BoxDecoration(
-            color: const Color(0xFF152235),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF2B3B52)),
-          ),
+          decoration: BoxDecoration(color: const Color(0xFF152235), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF2B3B52))),
           child: const Icon(Icons.sports_basketball, color: Color(0xFF8AB4F8)),
         ),
         const SizedBox(width: 12),
@@ -174,21 +169,9 @@ class _BrandHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Sports Terminal',
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+              Text('Sports Terminal', overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
               SizedBox(height: 3),
-              Text(
-                'NBA Historical Build',
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Color(0xFF8794A5), fontSize: 12),
-              ),
+              Text('NBA Historical Build', overflow: TextOverflow.ellipsis, style: TextStyle(color: Color(0xFF8794A5), fontSize: 12)),
             ],
           ),
         ),
@@ -204,25 +187,12 @@ class _SidebarSectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label.toUpperCase(),
-      style: const TextStyle(
-        color: Color(0xFF657386),
-        fontSize: 11,
-        fontWeight: FontWeight.w900,
-        letterSpacing: 1.1,
-      ),
-    );
+    return Text(label.toUpperCase(), style: const TextStyle(color: Color(0xFF657386), fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.1));
   }
 }
 
 class _NavButton extends StatelessWidget {
-  const _NavButton({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _NavButton({required this.label, required this.icon, required this.isSelected, required this.onTap});
 
   final String label;
   final IconData icon;
@@ -241,26 +211,17 @@ class _NavButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xFF1B2A3F) : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected ? const Color(0xFF385A86) : Colors.transparent,
-            ),
+            border: Border.all(color: isSelected ? const Color(0xFF385A86) : Colors.transparent),
           ),
           child: Row(
             children: [
-              Icon(
-                icon,
-                color: isSelected ? const Color(0xFF8AB4F8) : const Color(0xFF8794A5),
-                size: 20,
-              ),
+              Icon(icon, color: isSelected ? const Color(0xFF8AB4F8) : const Color(0xFF8794A5), size: 20),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   label,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFFB6C0CC),
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  ),
+                  style: TextStyle(color: isSelected ? Colors.white : const Color(0xFFB6C0CC), fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500),
                 ),
               ),
             ],
@@ -282,22 +243,11 @@ class _TopBar extends StatelessWidget {
     return Container(
       height: 72,
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: const BoxDecoration(
-        color: Color(0xFF0D1218),
-        border: Border(bottom: BorderSide(color: Color(0xFF263241))),
-      ),
+      decoration: const BoxDecoration(color: Color(0xFF0D1218), border: Border(bottom: BorderSide(color: Color(0xFF263241)))),
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              title,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+            child: Text(title, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
           ),
           InkWell(
             borderRadius: BorderRadius.circular(12),
@@ -305,22 +255,12 @@ class _TopBar extends StatelessWidget {
             child: Container(
               width: 360,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF121A23),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF263241)),
-              ),
+              decoration: BoxDecoration(color: const Color(0xFF121A23), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF263241))),
               child: const Row(
                 children: [
                   Icon(Icons.search, color: Color(0xFF8794A5), size: 18),
                   SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Search players, teams, seasons, reports...',
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Color(0xFF8794A5), fontSize: 13),
-                    ),
-                  ),
+                  Expanded(child: Text('Search players, teams, seasons, reports...', overflow: TextOverflow.ellipsis, style: TextStyle(color: Color(0xFF8794A5), fontSize: 13))),
                 ],
               ),
             ),
@@ -338,15 +278,8 @@ class _SidebarFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0D1218),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF263241)),
-      ),
-      child: const Text(
-        'Core tabs are the future user product. Build Lab tabs are temporary architecture surfaces.',
-        style: TextStyle(color: Color(0xFF8794A5), fontSize: 12, height: 1.35),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFF0D1218), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFF263241))),
+      child: const Text('Core tabs are the future user product. Build Lab tabs are temporary architecture surfaces.', style: TextStyle(color: Color(0xFF8794A5), fontSize: 12, height: 1.35)),
     );
   }
 }
@@ -378,38 +311,40 @@ class _ScreenBody extends StatelessWidget {
       case 9:
         return const TransactionsScreen();
       case 10:
-        return const CompareScreen();
+        return const ReportsScreen();
       case 11:
-        return const BuildMilestonesScreen();
+        return const CompareScreen();
       case 12:
-        return const NavigationStrategyScreen();
+        return const BuildMilestonesScreen();
       case 13:
-        return const ModuleInventoryScreen();
+        return const NavigationStrategyScreen();
       case 14:
-        return const ScreenDepthPlanScreen();
+        return const ModuleInventoryScreen();
       case 15:
-        return const LeagueEcosystemScreen();
+        return const ScreenDepthPlanScreen();
       case 16:
-        return const InformationArchitectureScreen();
+        return const LeagueEcosystemScreen();
       case 17:
-        return const DataModelScreen();
+        return const InformationArchitectureScreen();
       case 18:
-        return const FranchiseHistoryScreen();
+        return const DataModelScreen();
       case 19:
-        return const EraContextScreen();
+        return const FranchiseHistoryScreen();
       case 20:
-        return const PlayerSchemaScreen();
+        return const EraContextScreen();
       case 21:
-        return const DatasetRegistryScreen();
+        return const PlayerSchemaScreen();
       case 22:
-        return const DataRoadmapScreen();
+        return const DatasetRegistryScreen();
       case 23:
-        return const QualityControlsScreen();
+        return const DataRoadmapScreen();
       case 24:
-        return const SourcePolicyScreen();
+        return const QualityControlsScreen();
       case 25:
-        return const IngestionPipelineScreen();
+        return const SourcePolicyScreen();
       case 26:
+        return const IngestionPipelineScreen();
+      case 27:
         return const GLeagueRoadmapScreen();
       default:
         return const DashboardScreen();
