@@ -22,10 +22,12 @@ import '../screens/ingestion_pipeline_screen.dart';
 import '../screens/league_ecosystem_screen.dart';
 import '../screens/module_inventory_screen.dart';
 import '../screens/navigation_strategy_screen.dart';
+import '../screens/personas_screen.dart';
 import '../screens/player_schema_screen.dart';
 import '../screens/players_screen.dart';
 import '../screens/quality_controls_screen.dart';
 import '../screens/reports_screen.dart';
+import '../screens/research_source_screen.dart';
 import '../screens/saved_views_screen.dart';
 import '../screens/screen_depth_plan_screen.dart';
 import '../screens/search_screen.dart';
@@ -36,6 +38,7 @@ import '../screens/standings_playoffs_screen.dart';
 import '../screens/stat_dictionary_screen.dart';
 import '../screens/stats_screen.dart';
 import '../screens/teams_screen.dart';
+import '../screens/workflow_playbook_screen.dart';
 
 class TerminalShell extends StatefulWidget {
   const TerminalShell({super.key});
@@ -72,6 +75,8 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Navigation Strategy', icon: Icons.route_outlined, screen: NavigationStrategyScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Module Inventory', icon: Icons.view_module_outlined, screen: ModuleInventoryScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Screen Depth Plan', icon: Icons.layers_outlined, screen: ScreenDepthPlanScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Personas', icon: Icons.supervised_user_circle_outlined, screen: PersonasScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Workflow Playbooks', icon: Icons.playlist_add_check_circle_outlined, screen: WorkflowPlaybookScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Basketball Ecosystem', icon: Icons.hub_outlined, screen: LeagueEcosystemScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Information Architecture', icon: Icons.account_tree_outlined, screen: InformationArchitectureScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Data Model', icon: Icons.data_object_outlined, screen: DataModelScreen(), section: _TabSection.buildLab),
@@ -84,6 +89,7 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Dataset Registry', icon: Icons.dataset_outlined, screen: DatasetRegistryScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Data Coverage', icon: Icons.fact_check_outlined, screen: DataCoverageScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Source Registry', icon: Icons.source_outlined, screen: SourceRegistryScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Research Sources', icon: Icons.manage_search_outlined, screen: ResearchSourceScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Import Jobs', icon: Icons.cloud_upload_outlined, screen: ImportJobsScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Data Roadmap', icon: Icons.storage_outlined, screen: DataRoadmapScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Data Health', icon: Icons.health_and_safety_outlined, screen: DataHealthScreen(), section: _TabSection.buildLab),
@@ -98,53 +104,20 @@ class _TerminalShellState extends State<TerminalShell> {
     final selected = tabs[selectedIndex];
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F14),
-      body: Row(
-        children: [
-          Container(
-            width: 268,
-            decoration: const BoxDecoration(color: Color(0xFF111820), border: Border(right: BorderSide(color: Color(0xFF263241)))),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const _BrandHeader(),
-                  const SizedBox(height: 20),
-                  _SidebarSectionLabel(label: selected.section == _TabSection.core ? 'Core Terminal' : 'Build Lab'),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: tabs.length,
-                      itemBuilder: (context, i) {
-                        final showDivider = i > 0 && tabs[i].section != tabs[i - 1].section;
-                        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          if (showDivider) ...[
-                            const SizedBox(height: 8),
-                            const Divider(color: Color(0xFF263241)),
-                            const SizedBox(height: 8),
-                            const _SidebarSectionLabel(label: 'Build Lab'),
-                            const SizedBox(height: 8),
-                          ],
-                          _NavButton(label: tabs[i].label, icon: tabs[i].icon, isSelected: selectedIndex == i, onTap: () => setState(() => selectedIndex = i)),
-                        ]);
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const _SidebarFooter(),
-                ]),
-              ),
-            ),
-          ),
-          Expanded(
-            child: SafeArea(
-              child: Column(children: [
-                _TopBar(title: selected.label, onSearchTap: () => setState(() => selectedIndex = 1)),
-                Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: selected.screen)),
-              ]),
-            ),
-          ),
-        ],
-      ),
+      body: Row(children: [
+        Container(width: 268, decoration: const BoxDecoration(color: Color(0xFF111820), border: Border(right: BorderSide(color: Color(0xFF263241)))), child: SafeArea(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const _BrandHeader(), const SizedBox(height: 20), _SidebarSectionLabel(label: selected.section == _TabSection.core ? 'Core Terminal' : 'Build Lab'), const SizedBox(height: 8),
+          Expanded(child: ListView.builder(itemCount: tabs.length, itemBuilder: (context, i) {
+            final showDivider = i > 0 && tabs[i].section != tabs[i - 1].section;
+            return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              if (showDivider) ...[const SizedBox(height: 8), const Divider(color: Color(0xFF263241)), const SizedBox(height: 8), const _SidebarSectionLabel(label: 'Build Lab'), const SizedBox(height: 8)],
+              _NavButton(label: tabs[i].label, icon: tabs[i].icon, isSelected: selectedIndex == i, onTap: () => setState(() => selectedIndex = i)),
+            ]);
+          })),
+          const SizedBox(height: 12), const _SidebarFooter(),
+        ])))),
+        Expanded(child: SafeArea(child: Column(children: [_TopBar(title: selected.label, onSearchTap: () => setState(() => selectedIndex = 1)), Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: selected.screen))]))),
+      ]),
     );
   }
 }
@@ -163,14 +136,10 @@ class _BrandHeader extends StatelessWidget {
   const _BrandHeader();
   @override
   Widget build(BuildContext context) => Row(children: [
-        Container(width: 38, height: 38, decoration: BoxDecoration(color: const Color(0xFF152235), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF2B3B52))), child: const Icon(Icons.sports_basketball, color: Color(0xFF8AB4F8))),
-        const SizedBox(width: 12),
-        const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Sports Terminal', overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-          SizedBox(height: 3),
-          Text('NBA Historical Build', overflow: TextOverflow.ellipsis, style: TextStyle(color: Color(0xFF8794A5), fontSize: 12)),
-        ])),
-      ]);
+    Container(width: 38, height: 38, decoration: BoxDecoration(color: const Color(0xFF152235), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF2B3B52))), child: const Icon(Icons.sports_basketball, color: Color(0xFF8AB4F8))),
+    const SizedBox(width: 12),
+    const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Sports Terminal', overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)), SizedBox(height: 3), Text('NBA Historical Build', overflow: TextOverflow.ellipsis, style: TextStyle(color: Color(0xFF8794A5), fontSize: 12))])),
+  ]);
 }
 
 class _SidebarSectionLabel extends StatelessWidget {
@@ -187,22 +156,7 @@ class _NavButton extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 7),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(color: isSelected ? const Color(0xFF1B2A3F) : Colors.transparent, borderRadius: BorderRadius.circular(12), border: Border.all(color: isSelected ? const Color(0xFF385A86) : Colors.transparent)),
-            child: Row(children: [
-              Icon(icon, color: isSelected ? const Color(0xFF8AB4F8) : const Color(0xFF8794A5), size: 20),
-              const SizedBox(width: 12),
-              Expanded(child: Text(label, overflow: TextOverflow.ellipsis, style: TextStyle(color: isSelected ? Colors.white : const Color(0xFFB6C0CC), fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500))),
-            ]),
-          ),
-        ),
-      );
+  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(bottom: 7), child: InkWell(borderRadius: BorderRadius.circular(12), onTap: onTap, child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), decoration: BoxDecoration(color: isSelected ? const Color(0xFF1B2A3F) : Colors.transparent, borderRadius: BorderRadius.circular(12), border: Border.all(color: isSelected ? const Color(0xFF385A86) : Colors.transparent)), child: Row(children: [Icon(icon, color: isSelected ? const Color(0xFF8AB4F8) : const Color(0xFF8794A5), size: 20), const SizedBox(width: 12), Expanded(child: Text(label, overflow: TextOverflow.ellipsis, style: TextStyle(color: isSelected ? Colors.white : const Color(0xFFB6C0CC), fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500)))]))));
 }
 
 class _TopBar extends StatelessWidget {
@@ -210,19 +164,7 @@ class _TopBar extends StatelessWidget {
   final String title;
   final VoidCallback onSearchTap;
   @override
-  Widget build(BuildContext context) => Container(
-        height: 72,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        decoration: const BoxDecoration(color: Color(0xFF0D1218), border: Border(bottom: BorderSide(color: Color(0xFF263241)))),
-        child: Row(children: [
-          Expanded(child: Text(title, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800))),
-          InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: onSearchTap,
-            child: Container(width: 360, padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), decoration: BoxDecoration(color: const Color(0xFF121A23), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF263241))), child: const Row(children: [Icon(Icons.search, color: Color(0xFF8794A5), size: 18), SizedBox(width: 10), Expanded(child: Text('Search players, teams, seasons, reports...', overflow: TextOverflow.ellipsis, style: TextStyle(color: Color(0xFF8794A5), fontSize: 13)))])),
-          ),
-        ]),
-      );
+  Widget build(BuildContext context) => Container(height: 72, padding: const EdgeInsets.symmetric(horizontal: 24), decoration: const BoxDecoration(color: Color(0xFF0D1218), border: Border(bottom: BorderSide(color: Color(0xFF263241)))), child: Row(children: [Expanded(child: Text(title, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800))), InkWell(borderRadius: BorderRadius.circular(12), onTap: onSearchTap, child: Container(width: 360, padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), decoration: BoxDecoration(color: const Color(0xFF121A23), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF263241))), child: const Row(children: [Icon(Icons.search, color: Color(0xFF8794A5), size: 18), SizedBox(width: 10), Expanded(child: Text('Search players, teams, seasons, reports...', overflow: TextOverflow.ellipsis, style: TextStyle(color: Color(0xFF8794A5), fontSize: 13)))])))]));
 }
 
 class _SidebarFooter extends StatelessWidget {
