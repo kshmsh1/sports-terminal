@@ -1,5 +1,5 @@
 name: sports_terminal
-description: "A zero-cost, NBA-first historical sports terminal built with Flutter."
+description: A zero-cost, NBA-first historical sports terminal built with Flutter.
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -23,3 +23,4 @@ flutter:
     - assets/data/nba/metadata/dataset_manifest.json
     - assets/data/nba/teams/teams.json
     - assets/data/nba/seasons/seasons.json
+    - assets/data/nba/players/player_profiles.json
