@@ -1,0 +1,58 @@
+import '../models/saved_view.dart';
+
+const savedViewItems = <SavedView>[
+  SavedView(
+    id: 'nba-player-season-leaders',
+    name: 'NBA Player Season Leaders',
+    workspace: 'Players',
+    status: 'Planned',
+    description: 'Reusable leaderboard for player season production once sourced player stats are connected.',
+    filters: 'Season, season type, team, minimum games, minimum minutes, position',
+    output: 'Sortable player table with source metadata and nullable stat handling',
+  ),
+  SavedView(
+    id: 'team-season-snapshot',
+    name: 'Team Season Snapshot',
+    workspace: 'Teams',
+    status: 'Planned',
+    description: 'Team-season dashboard with roster, record, leaders, awards, draft context, and playoff results.',
+    filters: 'Team, season, season type',
+    output: 'Team season summary and linked detail tables',
+  ),
+  SavedView(
+    id: 'draft-class-outcomes',
+    name: 'Draft Class Outcomes',
+    workspace: 'Draft',
+    status: 'Future',
+    description: 'Draft class tracking from draft slot to NBA production, awards, team value, and development path.',
+    filters: 'Draft year, round, team, college/international/G League path',
+    output: 'Draft pick table with linked player outcomes',
+  ),
+  SavedView(
+    id: 'award-race-history',
+    name: 'Award Race History',
+    workspace: 'Awards',
+    status: 'Future',
+    description: 'Historical awards view combining winners, finalists, voting shares, team context, and production.',
+    filters: 'Award, season, player, team',
+    output: 'Award history table and player comparison panels',
+  ),
+  SavedView(
+    id: 'g-league-callup-tracker',
+    name: 'G League Call-Up Tracker',
+    workspace: 'G League',
+    status: 'Future',
+    description: 'Tracks assignments, recalls, two-way movement, call-ups, and NBA outcomes.',
+    filters: 'NBA team, G League affiliate, player, season, transaction type',
+    output: 'Development-path table linked to player profiles',
+  ),
+  SavedView(
+    id: 'transaction-timeline',
+    name: 'Transaction Timeline',
+    workspace: 'Transactions',
+    status: 'Future',
+    description: 'Chronological transaction surface for trades, signings, waivers, assignments, recalls, and contract events.',
+    filters: 'Team, player, date range, transaction type, season',
+    output: 'Timeline table with linked teams and players',
+  ),
+];
