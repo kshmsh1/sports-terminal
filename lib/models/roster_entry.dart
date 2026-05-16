@@ -13,6 +13,22 @@ class RosterEntry {
     this.asOf,
   });
 
+  factory RosterEntry.fromJson(Map<String, dynamic> json) {
+    return RosterEntry(
+      playerId: json['playerId'] as String,
+      teamId: json['teamId'] as String,
+      seasonId: json['seasonId'] as String,
+      jerseyNumber: json['jerseyNumber'] as String?,
+      position: json['position'] as String?,
+      rosterStatus: json['rosterStatus'] as String?,
+      contractType: json['contractType'] as String?,
+      startDate: json['startDate'] as String?,
+      endDate: json['endDate'] as String?,
+      sourceId: json['sourceId'] as String?,
+      asOf: json['asOf'] as String?,
+    );
+  }
+
   final String playerId;
   final String teamId;
   final String seasonId;
