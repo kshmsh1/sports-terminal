@@ -12,6 +12,7 @@ import '../screens/data_roadmap_screen.dart';
 import '../screens/dataset_registry_screen.dart';
 import '../screens/entity_graph_screen.dart';
 import '../screens/era_context_screen.dart';
+import '../screens/export_center_screen.dart';
 import '../screens/field_dictionary_screen.dart';
 import '../screens/franchise_history_screen.dart';
 import '../screens/g_league_roadmap_screen.dart';
@@ -20,12 +21,15 @@ import '../screens/glossary_screen.dart';
 import '../screens/import_jobs_screen.dart';
 import '../screens/information_architecture_screen.dart';
 import '../screens/ingestion_pipeline_screen.dart';
+import '../screens/integration_plan_screen.dart';
+import '../screens/keyboard_shortcuts_screen.dart';
 import '../screens/league_ecosystem_screen.dart';
 import '../screens/module_inventory_screen.dart';
 import '../screens/navigation_strategy_screen.dart';
 import '../screens/personas_screen.dart';
 import '../screens/player_schema_screen.dart';
 import '../screens/players_screen.dart';
+import '../screens/privacy_controls_screen.dart';
 import '../screens/product_backlog_screen.dart';
 import '../screens/qa_console_screen.dart';
 import '../screens/quality_controls_screen.dart';
@@ -42,6 +46,7 @@ import '../screens/standings_playoffs_screen.dart';
 import '../screens/stat_dictionary_screen.dart';
 import '../screens/stats_screen.dart';
 import '../screens/teams_screen.dart';
+import '../screens/ui_patterns_screen.dart';
 import '../screens/workflow_playbook_screen.dart';
 
 class TerminalShell extends StatefulWidget {
@@ -80,6 +85,11 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Release Plan', icon: Icons.rocket_launch_outlined, screen: ReleasePlanScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Product Backlog', icon: Icons.checklist_rtl_outlined, screen: ProductBacklogScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'QA Console', icon: Icons.bug_report_outlined, screen: QaConsoleScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Export Center', icon: Icons.ios_share_outlined, screen: ExportCenterScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Integration Plan', icon: Icons.integration_instructions_outlined, screen: IntegrationPlanScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Privacy Controls', icon: Icons.lock_outline, screen: PrivacyControlsScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'UI Patterns', icon: Icons.dashboard_customize_outlined, screen: UiPatternsScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Keyboard Shortcuts', icon: Icons.keyboard_alt_outlined, screen: KeyboardShortcutsScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Navigation Strategy', icon: Icons.route_outlined, screen: NavigationStrategyScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Module Inventory', icon: Icons.view_module_outlined, screen: ModuleInventoryScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Screen Depth Plan', icon: Icons.layers_outlined, screen: ScreenDepthPlanScreen(), section: _TabSection.buildLab),
