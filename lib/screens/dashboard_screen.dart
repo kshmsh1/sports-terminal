@@ -1,30 +1,31 @@
 import 'package:flutter/material.dart';
 
-import '../data/nba_data_sources.dart';
-import '../data/nba_seasons.dart';
-import '../data/nba_teams.dart';
-import '../models/data_source.dart';
+import '../data/alert_rule_items.dart';
+import '../data/coverage_items.dart';
+import '../data/import_job_plans.dart';
+import '../data/report_library_items.dart';
+import '../data/saved_view_items.dart';
+import '../data/source_registry_entries.dart';
+import '../widgets/terminal_primitives.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final connectedSources = nbaDataSources
-        .where((source) => source.status == DataSourceStatus.connected)
-        .length;
+    final connectedDatasets = coverageItems.where((item) => item.status == 'Connected').length;
+    final pendingDatasets = coverageItems.where((item) => item.status.contains('pending')).length;
+    final knownRows = coverageItems.fold<int>(0, (sum, item) => sum + item.recordCount);
+    final connectedSources = sourceRegistryEntries.where((item) => item.status == 'Connected').length;
+    final targetSources = sourceRegistryEntries.where((item) => item.status == 'Target').length;
+    final startedJobs = importJobPlans.where((item) => item.status.contains('Started')).length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'NBA Command Center',
-          style: TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Historical-first architecture for organizing NBA teams, players, seasons, sources, and statistics.',
-          style: TextStyle(color: Color(0xFF9AA7B6), fontSize: 15),
+        const SectionHeader(
+          title: 'NBA Command Center',
+          subtitle: 'Historical-first operating system for NBA teams, players, seasons, statistics, sources, reports, saved views, alerts, and data operations.',
         ),
         const SizedBox(height: 24),
         LayoutBuilder(
@@ -36,29 +37,50 @@ class DashboardScreen extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 14,
               mainAxisSpacing: 14,
-              childAspectRatio: isWide ? 1.8 : 1.5,
+              childAspectRatio: isWide ? 1.8 : 1.45,
               children: [
-                _MetricCard(label: 'NBA Teams', value: '${nbaTeams.length}', detail: 'Real team directory'),
-                _MetricCard(label: 'NBA Seasons', value: '${nbaSeasons.length}', detail: '${nbaSeasons.last.label} to ${nbaSeasons.first.label}'),
-                const _MetricCard(label: 'Historical Data', value: 'Planned', detail: 'Official-source preferred'),
-                _MetricCard(label: 'Connected Sources', value: '$connectedSources', detail: 'No fake stat feeds'),
+                _MetricCard(label: 'Coverage Datasets', value: '${coverageItems.length}', detail: '$connectedDatasets connected / $pendingDatasets pending'),
+                _MetricCard(label: 'Known Records', value: '$knownRows', detail: 'Real rows only'),
+                _MetricCard(label: 'Source Registry', value: '${sourceRegistryEntries.length}', detail: '$connectedSources connected / $targetSources targets'),
+                _MetricCard(label: 'Import Jobs', value: '${importJobPlans.length}', detail: '$startedJobs started loaders'),
+                _MetricCard(label: 'Reports', value: '${reportLibraryItems.length}', detail: 'Reusable terminal templates'),
+                _MetricCard(label: 'Saved Views', value: '${savedViewItems.length}', detail: 'Workspace presets'),
+                _MetricCard(label: 'Alert Rules', value: '${alertRuleItems.length}', detail: 'Future monitoring layer'),
+                const _MetricCard(label: 'Data Policy', value: 'Real', detail: 'No fake sports records'),
               ],
             );
           },
         ),
         const SizedBox(height: 24),
         const _TerminalPanel(
-          title: 'Current Build Direction',
+          title: 'Current Product Direction',
           lines: [
-            '1. Build the terminal around NBA first.',
-            '2. Store real stable reference data immediately.',
-            '3. Keep statistics nullable until a real source is connected.',
-            '4. Prefer historical NBA data before live/current data.',
-            '5. Add official or licensed sources behind a clean data layer later.',
+            '1. Build NBA first and treat every future sport as an extension of the same data operating model.',
+            '2. Use stable local JSON assets now, then replace or augment them with approved source imports later.',
+            '3. Keep missing values blank. Never convert unknown statistics into fake zeros.',
+            '4. Separate source data, user analysis, reports, saved views, alerts, and Build Lab governance.',
+            '5. Prioritize player identity, player season statistics, team season statistics, standings, games, rosters, awards, draft, and transactions before live feeds.',
           ],
         ),
         const SizedBox(height: 24),
-        _DataSourcePanel(sources: nbaDataSources),
+        _CoveragePanel(items: coverageItems),
+        const SizedBox(height: 24),
+        _OperationsPanel(
+          connectedSources: connectedSources,
+          targetSources: targetSources,
+          startedJobs: startedJobs,
+        ),
+        const SizedBox(height: 24),
+        const _TerminalPanel(
+          title: 'Near-Term Build Priority',
+          lines: [
+            '1. Connect the central Stats workspace and Data Coverage workspace into the sidebar navigation.',
+            '2. Keep converting static planning pages into asset-backed workspaces with loaders and empty source-pending states.',
+            '3. Add source-ready schemas for contracts, scouting notes, media references, and team/franchise relationships.',
+            '4. Build a compact navigation system so the sidebar does not become permanently overloaded.',
+            '5. Begin selecting lawful player identity and historical statistics sources before importing real player rows.',
+          ],
+        ),
       ],
     );
   }
@@ -73,20 +95,14 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111820),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF263241)),
-      ),
+    return TerminalCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Color(0xFF8794A5), fontSize: 13)),
+          Text(label, style: const TextStyle(color: terminalTextMuted, fontSize: 13)),
           Text(value, style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
-          Text(detail, style: const TextStyle(color: Color(0xFF8AB4F8), fontSize: 12)),
+          Text(detail, style: const TextStyle(color: terminalAccent, fontSize: 12)),
         ],
       ),
     );
@@ -101,14 +117,7 @@ class _TerminalPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111820),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF263241)),
-      ),
+    return TerminalCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -117,7 +126,7 @@ class _TerminalPanel extends StatelessWidget {
           for (final line in lines)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: Text(line, style: const TextStyle(color: Color(0xFFB6C0CC), height: 1.4)),
+              child: Text(line, style: const TextStyle(color: terminalTextSoft, height: 1.4)),
             ),
         ],
       ),
@@ -125,91 +134,83 @@ class _TerminalPanel extends StatelessWidget {
   }
 }
 
-class _DataSourcePanel extends StatelessWidget {
-  const _DataSourcePanel({required this.sources});
+class _CoveragePanel extends StatelessWidget {
+  const _CoveragePanel({required this.items});
 
-  final List<DataSource> sources;
+  final List<dynamic> items;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111820),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF263241)),
-      ),
+    return TerminalCard(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Data Source Registry',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+          const Padding(
+            padding: EdgeInsets.all(18),
+            child: Text('Data Coverage Snapshot', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
           ),
-          const SizedBox(height: 14),
-          for (final source in sources) _DataSourceRow(source: source),
-        ],
-      ),
-    );
-  }
-}
-
-class _DataSourceRow extends StatelessWidget {
-  const _DataSourceRow({required this.source});
-
-  final DataSource source;
-
-  @override
-  Widget build(BuildContext context) {
-    final statusLabel = switch (source.status) {
-      DataSourceStatus.connected => 'Connected',
-      DataSourceStatus.planned => 'Planned',
-      DataSourceStatus.restricted => 'Restricted',
-    };
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0D1218),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF263241)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 92,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF152235),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: const Color(0xFF385A86)),
-            ),
-            child: Text(
-              statusLabel,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF8AB4F8), fontSize: 12, fontWeight: FontWeight.w700),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(source.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 4),
-                Text(source.description, style: const TextStyle(color: Color(0xFFB6C0CC), height: 1.35)),
-                if (source.asOf != null) ...[
-                  const SizedBox(height: 4),
-                  Text('As of ${source.asOf}', style: const TextStyle(color: Color(0xFF8794A5), fontSize: 12)),
-                ],
+          const Divider(height: 1, color: terminalBorder),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(terminalPanelDark),
+              headingTextStyle: const TextStyle(color: terminalTextMuted, fontWeight: FontWeight.w700),
+              dataTextStyle: const TextStyle(color: Color(0xFFDDE6F1)),
+              columnSpacing: 30,
+              columns: const [
+                DataColumn(label: Text('Priority')),
+                DataColumn(label: Text('Dataset')),
+                DataColumn(label: Text('Domain')),
+                DataColumn(label: Text('Rows')),
+                DataColumn(label: Text('Status')),
+                DataColumn(label: Text('Next Step')),
+              ],
+              rows: [
+                for (final item in items)
+                  DataRow(cells: [
+                    DataCell(Text(item.priority, style: const TextStyle(fontWeight: FontWeight.w900))),
+                    DataCell(SizedBox(width: 220, child: Text(item.dataset, style: const TextStyle(fontWeight: FontWeight.w800)))),
+                    DataCell(Text(item.domain)),
+                    DataCell(Text('${item.recordCount}')),
+                    DataCell(InfoPill(label: item.status)),
+                    DataCell(SizedBox(width: 520, child: Text(item.nextStep))),
+                  ]),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _OperationsPanel extends StatelessWidget {
+  const _OperationsPanel({required this.connectedSources, required this.targetSources, required this.startedJobs});
+
+  final int connectedSources;
+  final int targetSources;
+  final int startedJobs;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 900;
+        return GridView.count(
+          crossAxisCount: isWide ? 3 : 1,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 14,
+          mainAxisSpacing: 14,
+          childAspectRatio: isWide ? 2.2 : 2.8,
+          children: [
+            _MetricCard(label: 'Connected Sources', value: '$connectedSources', detail: 'Reference layers live'),
+            _MetricCard(label: 'Target Sources', value: '$targetSources', detail: 'Near-term source work'),
+            _MetricCard(label: 'Started Jobs', value: '$startedJobs', detail: 'Repository loaders ready'),
+          ],
+        );
+      },
     );
   }
 }
