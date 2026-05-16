@@ -1,0 +1,40 @@
+{
+  "source": {
+    "id": "nba-team-directory-local",
+    "asOf": "2026-05-15",
+    "type": "stable-reference",
+    "usage": "Internal MVP reference data"
+  },
+  "teams": [
+    {"id":"atlanta-hawks","name":"Atlanta Hawks","abbreviation":"ATL","city":"Atlanta","conference":"East","division":"Southeast"},
+    {"id":"boston-celtics","name":"Boston Celtics","abbreviation":"BOS","city":"Boston","conference":"East","division":"Atlantic"},
+    {"id":"brooklyn-nets","name":"Brooklyn Nets","abbreviation":"BKN","city":"Brooklyn","conference":"East","division":"Atlantic"},
+    {"id":"charlotte-hornets","name":"Charlotte Hornets","abbreviation":"CHA","city":"Charlotte","conference":"East","division":"Southeast"},
+    {"id":"chicago-bulls","name":"Chicago Bulls","abbreviation":"CHI","city":"Chicago","conference":"East","division":"Central"},
+    {"id":"cleveland-cavaliers","name":"Cleveland Cavaliers","abbreviation":"CLE","city":"Cleveland","conference":"East","division":"Central"},
+    {"id":"dallas-mavericks","name":"Dallas Mavericks","abbreviation":"DAL","city":"Dallas","conference":"West","division":"Southwest"},
+    {"id":"denver-nuggets","name":"Denver Nuggets","abbreviation":"DEN","city":"Denver","conference":"West","division":"Northwest"},
+    {"id":"detroit-pistons","name":"Detroit Pistons","abbreviation":"DET","city":"Detroit","conference":"East","division":"Central"},
+    {"id":"golden-state-warriors","name":"Golden State Warriors","abbreviation":"GSW","city":"San Francisco","conference":"West","division":"Pacific"},
+    {"id":"houston-rockets","name":"Houston Rockets","abbreviation":"HOU","city":"Houston","conference":"West","division":"Southwest"},
+    {"id":"indiana-pacers","name":"Indiana Pacers","abbreviation":"IND","city":"Indianapolis","conference":"East","division":"Central"},
+    {"id":"la-clippers","name":"LA Clippers","abbreviation":"LAC","city":"Los Angeles","conference":"West","division":"Pacific"},
+    {"id":"los-angeles-lakers","name":"Los Angeles Lakers","abbreviation":"LAL","city":"Los Angeles","conference":"West","division":"Pacific"},
+    {"id":"memphis-grizzlies","name":"Memphis Grizzlies","abbreviation":"MEM","city":"Memphis","conference":"West","division":"Southwest"},
+    {"id":"miami-heat","name":"Miami Heat","abbreviation":"MIA","city":"Miami","conference":"East","division":"Southeast"},
+    {"id":"milwaukee-bucks","name":"Milwaukee Bucks","abbreviation":"MIL","city":"Milwaukee","conference":"East","division":"Central"},
+    {"id":"minnesota-timberwolves","name":"Minnesota Timberwolves","abbreviation":"MIN","city":"Minneapolis","conference":"West","division":"Northwest"},
+    {"id":"new-orleans-pelicans","name":"New Orleans Pelicans","abbreviation":"NOP","city":"New Orleans","conference":"West","division":"Southwest"},
+    {"id":"new-york-knicks","name":"New York Knicks","abbreviation":"NYK","city":"New York","conference":"East","division":"Atlantic"},
+    {"id":"oklahoma-city-thunder","name":"Oklahoma City Thunder","abbreviation":"OKC","city":"Oklahoma City","conference":"West","division":"Northwest"},
+    {"id":"orlando-magic","name":"Orlando Magic","abbreviation":"ORL","city":"Orlando","conference":"East","division":"Southeast"},
+    {"id":"philadelphia-76ers","name":"Philadelphia 76ers","abbreviation":"PHI","city":"Philadelphia","conference":"East","division":"Atlantic"},
+    {"id":"phoenix-suns","name":"Phoenix Suns","abbreviation":"PHX","city":"Phoenix","conference":"West","division":"Pacific"},
+    {"id":"portland-trail-blazers","name":"Portland Trail Blazers","abbreviation":"POR","city":"Portland","conference":"West","division":"Northwest"},
+    {"id":"sacramento-kings","name":"Sacramento Kings","abbreviation":"SAC","city":"Sacramento","conference":"West","division":"Pacific"},
+    {"id":"san-antonio-spurs","name":"San Antonio Spurs","abbreviation":"SAS","city":"San Antonio","conference":"West","division":"Southwest"},
+    {"id":"toronto-raptors","name":"Toronto Raptors","abbreviation":"TOR","city":"Toronto","conference":"East","division":"Atlantic"},
+    {"id":"utah-jazz","name":"Utah Jazz","abbreviation":"UTA","city":"Salt Lake City","conference":"West","division":"Northwest"},
+    {"id":"washington-wizards","name":"Washington Wizards","abbreviation":"WAS","city":"Washington","conference":"East","division":"Southeast"}
+  ]
+}
