@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../screens/build_milestones_screen.dart';
 import '../screens/compare_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/data_model_screen.dart';
@@ -11,6 +12,7 @@ import '../screens/information_architecture_screen.dart';
 import '../screens/ingestion_pipeline_screen.dart';
 import '../screens/league_ecosystem_screen.dart';
 import '../screens/module_inventory_screen.dart';
+import '../screens/navigation_strategy_screen.dart';
 import '../screens/player_schema_screen.dart';
 import '../screens/players_screen.dart';
 import '../screens/quality_controls_screen.dart';
@@ -31,6 +33,8 @@ class _TerminalShellState extends State<TerminalShell> {
 
   final tabs = const [
     _TerminalTab(label: 'Dashboard', icon: Icons.dashboard_outlined),
+    _TerminalTab(label: 'Build Milestones', icon: Icons.flag_outlined),
+    _TerminalTab(label: 'Navigation Strategy', icon: Icons.route_outlined),
     _TerminalTab(label: 'Module Inventory', icon: Icons.view_module_outlined),
     _TerminalTab(label: 'Screen Depth Plan', icon: Icons.layers_outlined),
     _TerminalTab(label: 'Basketball Ecosystem', icon: Icons.hub_outlined),
@@ -70,7 +74,7 @@ class _TerminalShellState extends State<TerminalShell> {
                   children: [
                     const _BrandHeader(),
                     const SizedBox(height: 20),
-                    const _SidebarSectionLabel(label: 'Terminal'),
+                    const _SidebarSectionLabel(label: 'Temporary Build Lab'),
                     const SizedBox(height: 8),
                     Expanded(
                       child: ListView.builder(
@@ -305,7 +309,7 @@ class _SidebarFooter extends StatelessWidget {
         border: Border.all(color: const Color(0xFF263241)),
       ),
       child: const Text(
-        'NBA first. G League later. Real data only; blanks until sources are connected.',
+        'This expanded nav is temporary while we design the product. Later, architecture pages move into Build Lab.',
         style: TextStyle(color: Color(0xFF8794A5), fontSize: 12, height: 1.35),
       ),
     );
@@ -318,41 +322,45 @@ class _ScreenBody extends StatelessWidget {
   final int index;
 
   @override
-  Widget build(BuildContext context) {
+n  Widget build(BuildContext context) {
     switch (index) {
       case 1:
-        return const ModuleInventoryScreen();
+        return const BuildMilestonesScreen();
       case 2:
-        return const ScreenDepthPlanScreen();
+        return const NavigationStrategyScreen();
       case 3:
-        return const LeagueEcosystemScreen();
+        return const ModuleInventoryScreen();
       case 4:
-        return const InformationArchitectureScreen();
+        return const ScreenDepthPlanScreen();
       case 5:
-        return const DataModelScreen();
+        return const LeagueEcosystemScreen();
       case 6:
-        return const PlayersScreen();
+        return const InformationArchitectureScreen();
       case 7:
-        return const TeamsScreen();
+        return const DataModelScreen();
       case 8:
-        return const SeasonsScreen();
+        return const PlayersScreen();
       case 9:
-        return const FranchiseHistoryScreen();
+        return const TeamsScreen();
       case 10:
-        return const EraContextScreen();
+        return const SeasonsScreen();
       case 11:
-        return const PlayerSchemaScreen();
+        return const FranchiseHistoryScreen();
       case 12:
-        return const DataRoadmapScreen();
+        return const EraContextScreen();
       case 13:
-        return const QualityControlsScreen();
+        return const PlayerSchemaScreen();
       case 14:
-        return const SourcePolicyScreen();
+        return const DataRoadmapScreen();
       case 15:
-        return const IngestionPipelineScreen();
+        return const QualityControlsScreen();
       case 16:
-        return const GLeagueRoadmapScreen();
+        return const SourcePolicyScreen();
       case 17:
+        return const IngestionPipelineScreen();
+      case 18:
+        return const GLeagueRoadmapScreen();
+      case 19:
         return const CompareScreen();
       default:
         return const DashboardScreen();
