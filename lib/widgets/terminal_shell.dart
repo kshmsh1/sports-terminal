@@ -8,6 +8,7 @@ import '../screens/audit_trail_screen.dart';
 import '../screens/award_races_screen.dart';
 import '../screens/build_milestones_screen.dart';
 import '../screens/column_library_screen.dart';
+import '../screens/community_hub_screen.dart';
 import '../screens/compare_screen.dart';
 import '../screens/contracts_screen.dart';
 import '../screens/core_mvp_gaps_screen.dart';
@@ -22,6 +23,7 @@ import '../screens/entity_detail_plan_screen.dart';
 import '../screens/entity_graph_screen.dart';
 import '../screens/era_context_screen.dart';
 import '../screens/export_center_screen.dart';
+import '../screens/fantasy_terminal_screen.dart';
 import '../screens/field_dictionary_screen.dart';
 import '../screens/franchise_history_screen.dart';
 import '../screens/g_league_roadmap_screen.dart';
@@ -40,6 +42,7 @@ import '../screens/navigation_strategy_screen.dart';
 import '../screens/nba_mvp_completion_screen.dart';
 import '../screens/performance_budget_screen.dart';
 import '../screens/personas_screen.dart';
+import '../screens/platform_endgame_screen.dart';
 import '../screens/player_identity_import_screen.dart';
 import '../screens/player_schema_screen.dart';
 import '../screens/players_screen.dart';
@@ -66,6 +69,7 @@ import '../screens/table_templates_screen.dart';
 import '../screens/teams_screen.dart';
 import '../screens/ui_patterns_screen.dart';
 import '../screens/workflow_playbook_screen.dart';
+import '../screens/workspace_studio_screen.dart';
 
 class TerminalShell extends StatefulWidget {
   const TerminalShell({super.key});
@@ -99,6 +103,10 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Saved Views', icon: Icons.bookmark_border_outlined, screen: SavedViewsScreen(), section: _TabSection.core),
     _TerminalTab(label: 'Alerts', icon: Icons.notifications_none_outlined, screen: AlertsScreen(), section: _TabSection.core),
     _TerminalTab(label: 'Compare', icon: Icons.compare_arrows_outlined, screen: CompareScreen(), section: _TabSection.core),
+    _TerminalTab(label: 'Workspace Studio', icon: Icons.grid_on_outlined, screen: WorkspaceStudioScreen(), section: _TabSection.core),
+    _TerminalTab(label: 'Fantasy Terminal', icon: Icons.sports_esports_outlined, screen: FantasyTerminalScreen(), section: _TabSection.core),
+    _TerminalTab(label: 'Community Hub', icon: Icons.forum_outlined, screen: CommunityHubScreen(), section: _TabSection.core),
+    _TerminalTab(label: 'Platform Endgame', icon: Icons.alt_route_outlined, screen: PlatformEndgameScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'NBA MVP Completion', icon: Icons.task_alt_outlined, screen: NbaMvpCompletionScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Core MVP Gaps', icon: Icons.track_changes_outlined, screen: CoreMvpGapsScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Player Identity Import', icon: Icons.person_add_alt_1_outlined, screen: PlayerIdentityImportScreen(), section: _TabSection.buildLab),
