@@ -1,0 +1,4 @@
+{
+  "source": {"id":"nba-transaction-records-pending","asOf":null,"type":"pending-source","usage":"Schema-ready placeholder; no fake transaction records"},
+  "transactions": []
+}
