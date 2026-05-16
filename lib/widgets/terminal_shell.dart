@@ -322,7 +322,7 @@ class _ScreenBody extends StatelessWidget {
   final int index;
 
   @override
-n  Widget build(BuildContext context) {
+  Widget build(BuildContext context) {
     switch (index) {
       case 1:
         return const BuildMilestonesScreen();
