@@ -16,6 +16,7 @@ import '../screens/field_dictionary_screen.dart';
 import '../screens/franchise_history_screen.dart';
 import '../screens/g_league_roadmap_screen.dart';
 import '../screens/games_screen.dart';
+import '../screens/glossary_screen.dart';
 import '../screens/import_jobs_screen.dart';
 import '../screens/information_architecture_screen.dart';
 import '../screens/ingestion_pipeline_screen.dart';
@@ -25,7 +26,10 @@ import '../screens/navigation_strategy_screen.dart';
 import '../screens/personas_screen.dart';
 import '../screens/player_schema_screen.dart';
 import '../screens/players_screen.dart';
+import '../screens/product_backlog_screen.dart';
+import '../screens/qa_console_screen.dart';
 import '../screens/quality_controls_screen.dart';
+import '../screens/release_plan_screen.dart';
 import '../screens/reports_screen.dart';
 import '../screens/research_source_screen.dart';
 import '../screens/saved_views_screen.dart';
@@ -49,6 +53,7 @@ class TerminalShell extends StatefulWidget {
 
 class _TerminalShellState extends State<TerminalShell> {
   int selectedIndex = 0;
+  String navQuery = '';
 
   final tabs = const [
     _TerminalTab(label: 'Dashboard', icon: Icons.dashboard_outlined, screen: DashboardScreen(), section: _TabSection.core),
@@ -72,6 +77,9 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Alerts', icon: Icons.notifications_none_outlined, screen: AlertsScreen(), section: _TabSection.core),
     _TerminalTab(label: 'Compare', icon: Icons.compare_arrows_outlined, screen: CompareScreen(), section: _TabSection.core),
     _TerminalTab(label: 'Build Milestones', icon: Icons.flag_outlined, screen: BuildMilestonesScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Release Plan', icon: Icons.rocket_launch_outlined, screen: ReleasePlanScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Product Backlog', icon: Icons.checklist_rtl_outlined, screen: ProductBacklogScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'QA Console', icon: Icons.bug_report_outlined, screen: QaConsoleScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Navigation Strategy', icon: Icons.route_outlined, screen: NavigationStrategyScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Module Inventory', icon: Icons.view_module_outlined, screen: ModuleInventoryScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Screen Depth Plan', icon: Icons.layers_outlined, screen: ScreenDepthPlanScreen(), section: _TabSection.buildLab),
@@ -83,6 +91,7 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Entity Graph', icon: Icons.account_tree, screen: EntityGraphScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Field Dictionary', icon: Icons.menu_book_outlined, screen: FieldDictionaryScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Stat Dictionary', icon: Icons.functions_outlined, screen: StatDictionaryScreen(), section: _TabSection.buildLab),
+    _TerminalTab(label: 'Glossary', icon: Icons.abc_outlined, screen: GlossaryScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Franchise History', icon: Icons.history_edu_outlined, screen: FranchiseHistoryScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Era Context', icon: Icons.timeline_outlined, screen: EraContextScreen(), section: _TabSection.buildLab),
     _TerminalTab(label: 'Player Schema', icon: Icons.badge_outlined, screen: PlayerSchemaScreen(), section: _TabSection.buildLab),
@@ -102,16 +111,22 @@ class _TerminalShellState extends State<TerminalShell> {
   @override
   Widget build(BuildContext context) {
     final selected = tabs[selectedIndex];
+    final filteredTabs = tabs.where((tab) => navQuery.trim().isEmpty || tab.label.toLowerCase().contains(navQuery.trim().toLowerCase())).toList();
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F14),
       body: Row(children: [
-        Container(width: 268, decoration: const BoxDecoration(color: Color(0xFF111820), border: Border(right: BorderSide(color: Color(0xFF263241)))), child: SafeArea(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const _BrandHeader(), const SizedBox(height: 20), _SidebarSectionLabel(label: selected.section == _TabSection.core ? 'Core Terminal' : 'Build Lab'), const SizedBox(height: 8),
-          Expanded(child: ListView.builder(itemCount: tabs.length, itemBuilder: (context, i) {
-            final showDivider = i > 0 && tabs[i].section != tabs[i - 1].section;
+        Container(width: 286, decoration: const BoxDecoration(color: Color(0xFF111820), border: Border(right: BorderSide(color: Color(0xFF263241)))), child: SafeArea(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const _BrandHeader(), const SizedBox(height: 16),
+          _NavSearch(value: navQuery, onChanged: (value) => setState(() => navQuery = value)),
+          const SizedBox(height: 14), _SidebarSectionLabel(label: selected.section == _TabSection.core ? 'Core Terminal' : 'Build Lab'), const SizedBox(height: 8),
+          Expanded(child: ListView.builder(itemCount: filteredTabs.length, itemBuilder: (context, i) {
+            final tab = filteredTabs[i];
+            final originalIndex = tabs.indexOf(tab);
+            final previous = i == 0 ? null : filteredTabs[i - 1];
+            final showDivider = previous != null && tab.section != previous.section;
             return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               if (showDivider) ...[const SizedBox(height: 8), const Divider(color: Color(0xFF263241)), const SizedBox(height: 8), const _SidebarSectionLabel(label: 'Build Lab'), const SizedBox(height: 8)],
-              _NavButton(label: tabs[i].label, icon: tabs[i].icon, isSelected: selectedIndex == i, onTap: () => setState(() => selectedIndex = i)),
+              _NavButton(label: tab.label, icon: tab.icon, isSelected: selectedIndex == originalIndex, onTap: () => setState(() => selectedIndex = originalIndex)),
             ]);
           })),
           const SizedBox(height: 12), const _SidebarFooter(),
@@ -142,6 +157,14 @@ class _BrandHeader extends StatelessWidget {
   ]);
 }
 
+class _NavSearch extends StatelessWidget {
+  const _NavSearch({required this.value, required this.onChanged});
+  final String value;
+  final ValueChanged<String> onChanged;
+  @override
+  Widget build(BuildContext context) => TextField(onChanged: onChanged, style: const TextStyle(color: Colors.white, fontSize: 13), cursorColor: Color(0xFF8AB4F8), decoration: InputDecoration(isDense: true, hintText: 'Filter tabs...', hintStyle: const TextStyle(color: Color(0xFF657386)), prefixIcon: const Icon(Icons.search, color: Color(0xFF657386), size: 17), filled: true, fillColor: const Color(0xFF0D1218), contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF263241))), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF8AB4F8)))));
+}
+
 class _SidebarSectionLabel extends StatelessWidget {
   const _SidebarSectionLabel({required this.label});
   final String label;
@@ -170,5 +193,5 @@ class _TopBar extends StatelessWidget {
 class _SidebarFooter extends StatelessWidget {
   const _SidebarFooter();
   @override
-  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: const Color(0xFF0D1218), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFF263241))), child: const Text('Core tabs are the future user product. Build Lab tabs are temporary architecture surfaces.', style: TextStyle(color: Color(0xFF8794A5), fontSize: 12, height: 1.35)));
+  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: const Color(0xFF0D1218), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFF263241))), child: const Text('Use tab filter to jump quickly. Core tabs are product surfaces; Build Lab is internal architecture.', style: TextStyle(color: Color(0xFF8794A5), fontSize: 12, height: 1.35)));
 }
