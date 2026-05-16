@@ -1,0 +1,10 @@
+import '../models/registry_item.dart';
+
+const savedViewLifecycleItems = <RegistryItem>[
+  RegistryItem(id: 'preset-view', title: 'Preset Saved View', category: 'Lifecycle', priority: 'P0', status: 'Connected', description: 'Static saved-view presets are currently represented as build-time registry records.', inputs: 'Saved view registry', nextStep: 'Keep presets as examples until persistence exists.'),
+  RegistryItem(id: 'user-created-view', title: 'User-Created Saved View', category: 'Lifecycle', priority: 'P1', status: 'Future', description: 'User creates a saved view from filters, selected columns, entity scope, and sorting.', inputs: 'Local persistence, filter state, column state, selected workspace', nextStep: 'Define local saved view schema before adding create buttons.'),
+  RegistryItem(id: 'view-validation', title: 'Saved View Validation', category: 'Quality', priority: 'P1', status: 'Future', description: 'Validate that a saved view still points to existing screens, fields, filters, and source-backed datasets.', inputs: 'Field dictionary, coverage registry, screen registry', nextStep: 'Add validation when saved views become editable.'),
+  RegistryItem(id: 'view-sharing', title: 'Saved View Sharing', category: 'Collaboration', priority: 'P4', status: 'Future', description: 'Potential future ability to share saved views across users or organizations.', inputs: 'Accounts, permissions, cloud sync, export controls', nextStep: 'Do not build until account model and privacy boundaries exist.'),
+  RegistryItem(id: 'view-export', title: 'Saved View Export', category: 'Exports', priority: 'P2', status: 'Future', description: 'Export a saved view definition or output table with source metadata.', inputs: 'Export center, saved views, source metadata', nextStep: 'Design export format after local persistence.'),
+  RegistryItem(id: 'view-alert-binding', title: 'Saved View Alert Binding', category: 'Alerts', priority: 'P2', status: 'Future', description: 'Use a saved view as the entity scope for a future alert rule.', inputs: 'Saved views, alert evaluation, entity graph', nextStep: 'Define alert-scope model after saved view persistence.'),
+];
