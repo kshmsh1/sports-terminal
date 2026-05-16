@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/nba_data_sources.dart';
+import '../data/nba_seasons.dart';
 import '../data/nba_teams.dart';
 import '../models/data_source.dart';
 
@@ -38,7 +39,7 @@ class DashboardScreen extends StatelessWidget {
               childAspectRatio: isWide ? 1.8 : 1.5,
               children: [
                 _MetricCard(label: 'NBA Teams', value: '${nbaTeams.length}', detail: 'Real team directory'),
-                const _MetricCard(label: 'Primary Sport', value: 'NBA', detail: 'Build focus'),
+                _MetricCard(label: 'NBA Seasons', value: '${nbaSeasons.length}', detail: '${nbaSeasons.last.label} to ${nbaSeasons.first.label}'),
                 const _MetricCard(label: 'Historical Data', value: 'Planned', detail: 'Official-source preferred'),
                 _MetricCard(label: 'Connected Sources', value: '$connectedSources', detail: 'No fake stat feeds'),
               ],
