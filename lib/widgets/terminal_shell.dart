@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import '../screens/compare_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/data_roadmap_screen.dart';
+import '../screens/ingestion_pipeline_screen.dart';
+import '../screens/player_schema_screen.dart';
 import '../screens/players_screen.dart';
 import '../screens/seasons_screen.dart';
+import '../screens/source_policy_screen.dart';
 import '../screens/teams_screen.dart';
 
 class TerminalShell extends StatefulWidget {
@@ -22,7 +25,10 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Players', icon: Icons.person_search_outlined),
     _TerminalTab(label: 'Teams', icon: Icons.groups_outlined),
     _TerminalTab(label: 'Seasons', icon: Icons.calendar_month_outlined),
+    _TerminalTab(label: 'Player Schema', icon: Icons.account_tree_outlined),
     _TerminalTab(label: 'Data Roadmap', icon: Icons.storage_outlined),
+    _TerminalTab(label: 'Source Policy', icon: Icons.policy_outlined),
+    _TerminalTab(label: 'Ingestion Pipeline', icon: Icons.schema_outlined),
     _TerminalTab(label: 'Compare', icon: Icons.compare_arrows_outlined),
   ];
 
@@ -45,15 +51,19 @@ class _TerminalShellState extends State<TerminalShell> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const _BrandHeader(),
-                    const SizedBox(height: 28),
-                    for (var i = 0; i < tabs.length; i++)
-                      _NavButton(
-                        label: tabs[i].label,
-                        icon: tabs[i].icon,
-                        isSelected: selectedIndex == i,
-                        onTap: () => setState(() => selectedIndex = i),
+                    const SizedBox(height: 24),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: tabs.length,
+                        itemBuilder: (context, i) => _NavButton(
+                          label: tabs[i].label,
+                          icon: tabs[i].icon,
+                          isSelected: selectedIndex == i,
+                          onTap: () => setState(() => selectedIndex = i),
+                        ),
                       ),
-                    const Spacer(),
+                    ),
+                    const SizedBox(height: 12),
                     const _SidebarFooter(),
                   ],
                 ),
@@ -150,7 +160,7 @@ class _NavButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xFF1B2A3F) : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
@@ -166,11 +176,14 @@ class _NavButton extends StatelessWidget {
                 size: 20,
               ),
               const SizedBox(width: 12),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFFB6C0CC),
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              Expanded(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : const Color(0xFFB6C0CC),
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  ),
                 ),
               ),
             ],
@@ -266,8 +279,14 @@ class _ScreenBody extends StatelessWidget {
       case 3:
         return const SeasonsScreen();
       case 4:
-        return const DataRoadmapScreen();
+        return const PlayerSchemaScreen();
       case 5:
+        return const DataRoadmapScreen();
+      case 6:
+        return const SourcePolicyScreen();
+      case 7:
+        return const IngestionPipelineScreen();
+      case 8:
         return const CompareScreen();
       default:
         return const DashboardScreen();
