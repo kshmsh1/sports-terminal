@@ -1,0 +1,4 @@
+{
+  "source": {"id":"nba-team-season-stats-pending","asOf":null,"type":"pending-source","usage":"Schema-ready placeholder; no fake team stat records"},
+  "teamSeasonStats": []
+}
