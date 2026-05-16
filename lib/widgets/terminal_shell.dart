@@ -30,6 +30,7 @@ import '../screens/search_screen.dart';
 import '../screens/seasons_screen.dart';
 import '../screens/source_policy_screen.dart';
 import '../screens/source_registry_screen.dart';
+import '../screens/standings_playoffs_screen.dart';
 import '../screens/teams_screen.dart';
 
 class TerminalShell extends StatefulWidget {
@@ -48,6 +49,8 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Players', icon: Icons.person_search_outlined),
     _TerminalTab(label: 'Teams', icon: Icons.groups_outlined),
     _TerminalTab(label: 'Seasons', icon: Icons.calendar_month_outlined),
+    _TerminalTab(label: 'Standings', icon: Icons.leaderboard_outlined),
+    _TerminalTab(label: 'Playoffs', icon: Icons.military_tech_outlined),
     _TerminalTab(label: 'Games', icon: Icons.sports_basketball_outlined),
     _TerminalTab(label: 'Rosters', icon: Icons.assignment_ind_outlined),
     _TerminalTab(label: 'Awards', icon: Icons.emoji_events_outlined),
@@ -82,7 +85,7 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'G League Roadmap', icon: Icons.sports_basketball_outlined),
   ];
 
-  bool get _isCoreTab => selectedIndex <= 16;
+  bool get _isCoreTab => selectedIndex <= 18;
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +113,7 @@ class _TerminalShellState extends State<TerminalShell> {
                       child: ListView.builder(
                         itemCount: tabs.length,
                         itemBuilder: (context, i) {
-                          final showDivider = i == 17;
+                          final showDivider = i == 19;
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -270,68 +273,72 @@ class _ScreenBody extends StatelessWidget {
       case 4:
         return const SeasonsScreen();
       case 5:
-        return const GamesScreen();
+        return const StandingsScreen();
       case 6:
-        return const RostersScreen();
+        return const PlayoffsScreen();
       case 7:
-        return const AwardsScreen();
+        return const GamesScreen();
       case 8:
-        return const DraftScreen();
+        return const RostersScreen();
       case 9:
-        return const TransactionsScreen();
+        return const AwardsScreen();
       case 10:
-        return const ContractsScreen();
+        return const DraftScreen();
       case 11:
-        return const MediaResearchScreen();
+        return const TransactionsScreen();
       case 12:
-        return const ScoutingScreen();
+        return const ContractsScreen();
       case 13:
-        return const ReportsScreen();
+        return const MediaResearchScreen();
       case 14:
-        return const SavedViewsScreen();
+        return const ScoutingScreen();
       case 15:
-        return const AlertsScreen();
+        return const ReportsScreen();
       case 16:
-        return const CompareScreen();
+        return const SavedViewsScreen();
       case 17:
-        return const BuildMilestonesScreen();
+        return const AlertsScreen();
       case 18:
-        return const NavigationStrategyScreen();
+        return const CompareScreen();
       case 19:
-        return const ModuleInventoryScreen();
+        return const BuildMilestonesScreen();
       case 20:
-        return const ScreenDepthPlanScreen();
+        return const NavigationStrategyScreen();
       case 21:
-        return const LeagueEcosystemScreen();
+        return const ModuleInventoryScreen();
       case 22:
-        return const InformationArchitectureScreen();
+        return const ScreenDepthPlanScreen();
       case 23:
-        return const DataModelScreen();
+        return const LeagueEcosystemScreen();
       case 24:
-        return const FieldDictionaryScreen();
+        return const InformationArchitectureScreen();
       case 25:
-        return const FranchiseHistoryScreen();
+        return const DataModelScreen();
       case 26:
-        return const EraContextScreen();
+        return const FieldDictionaryScreen();
       case 27:
-        return const PlayerSchemaScreen();
+        return const FranchiseHistoryScreen();
       case 28:
-        return const DatasetRegistryScreen();
+        return const EraContextScreen();
       case 29:
-        return const SourceRegistryScreen();
+        return const PlayerSchemaScreen();
       case 30:
-        return const ImportJobsScreen();
+        return const DatasetRegistryScreen();
       case 31:
-        return const DataRoadmapScreen();
+        return const SourceRegistryScreen();
       case 32:
-        return const DataHealthScreen();
+        return const ImportJobsScreen();
       case 33:
-        return const QualityControlsScreen();
+        return const DataRoadmapScreen();
       case 34:
-        return const SourcePolicyScreen();
+        return const DataHealthScreen();
       case 35:
-        return const IngestionPipelineScreen();
+        return const QualityControlsScreen();
       case 36:
+        return const SourcePolicyScreen();
+      case 37:
+        return const IngestionPipelineScreen();
+      case 38:
         return const GLeagueRoadmapScreen();
       default:
         return const DashboardScreen();
