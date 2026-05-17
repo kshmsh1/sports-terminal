@@ -11,6 +11,7 @@ import '../screens/build_milestones_screen.dart';
 import '../screens/column_library_screen.dart';
 import '../screens/community_hub_screen.dart';
 import '../screens/compare_screen.dart';
+import '../screens/context_assets_overview_screen.dart';
 import '../screens/contracts_screen.dart';
 import '../screens/core_mvp_gaps_screen.dart';
 import '../screens/dashboard_screen.dart';
@@ -94,6 +95,7 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Standings', icon: Icons.leaderboard_outlined, screen: StandingsScreen(), section: _TabSection.core, group: 'NBA Core'),
     _TerminalTab(label: 'Playoffs', icon: Icons.military_tech_outlined, screen: PlayoffsScreen(), section: _TabSection.core, group: 'NBA Core'),
     _TerminalTab(label: 'Games', icon: Icons.sports_basketball_outlined, screen: GamesScreen(), section: _TabSection.core, group: 'NBA Core'),
+    _TerminalTab(label: 'Context Assets', icon: Icons.hub_outlined, screen: ContextAssetsOverviewScreen(), section: _TabSection.core, group: 'Context'),
     _TerminalTab(label: 'Rosters', icon: Icons.assignment_ind_outlined, screen: RostersScreen(), section: _TabSection.core, group: 'Context'),
     _TerminalTab(label: 'Awards', icon: Icons.emoji_events_outlined, screen: AwardsScreen(), section: _TabSection.core, group: 'Context'),
     _TerminalTab(label: 'Draft', icon: Icons.school_outlined, screen: DraftScreen(), section: _TabSection.core, group: 'Context'),
