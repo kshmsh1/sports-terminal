@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/action_execution_stage_items.dart';
 import '../data/action_surface_items.dart';
 import '../data/action_workflow_items.dart';
 import '../models/registry_item.dart';
@@ -15,39 +16,43 @@ class ActionCenterScreen extends StatefulWidget {
 class _ActionCenterScreenState extends State<ActionCenterScreen> {
   String selectedAction = 'Add to Workspace';
   String selectedRoute = 'Player Row to Compare';
+  String selectedStage = 'Capture Active Context';
   String selectedReadiness = 'Source Pending';
 
   @override
   Widget build(BuildContext context) {
     final action = actionSurfaceItems.firstWhere((item) => item.title == selectedAction, orElse: () => actionSurfaceItems.first);
     final route = actionWorkflowItems.firstWhere((item) => item.title == selectedRoute, orElse: () => actionWorkflowItems.first);
+    final stage = actionExecutionStageItems.firstWhere((item) => item.title == selectedStage, orElse: () => actionExecutionStageItems.first);
     final readiness = _readinessStates.firstWhere((item) => item.name == selectedReadiness);
-    final p0 = [...actionSurfaceItems, ...actionWorkflowItems].where((item) => item.priority == 'P0').length;
-    final p1 = [...actionSurfaceItems, ...actionWorkflowItems].where((item) => item.priority == 'P1').length;
-    final planned = [...actionSurfaceItems, ...actionWorkflowItems].where((item) => item.status == 'Planned').length;
-    final future = [...actionSurfaceItems, ...actionWorkflowItems].where((item) => item.status == 'Future').length;
+    final allItems = [...actionSurfaceItems, ...actionWorkflowItems, ...actionExecutionStageItems];
+    final p0 = allItems.where((item) => item.priority == 'P0').length;
+    final p1 = allItems.where((item) => item.priority == 'P1').length;
+    final planned = allItems.where((item) => item.status == 'Planned').length;
+    final future = allItems.where((item) => item.status == 'Future').length;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const SectionHeader(title: 'Action Center', subtitle: 'Universal action and route cockpit for turning terminal objects into workspaces, comparisons, reports, exports, alerts, fantasy workflows, scouting packets, community embeds, and source audits.'),
+      const SectionHeader(title: 'Action Center', subtitle: 'Universal action, route, readiness, and execution cockpit for turning terminal objects into workspaces, comparisons, reports, exports, alerts, fantasy workflows, scouting packets, community embeds, and source audits.'),
       const SizedBox(height: 22),
       LayoutBuilder(builder: (context, constraints) {
         final isWide = constraints.maxWidth > 900;
         return GridView.count(crossAxisCount: isWide ? 4 : 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisSpacing: 14, mainAxisSpacing: 14, childAspectRatio: isWide ? 2.0 : 1.5, children: [
           _Metric(label: 'Actions', value: '${actionSurfaceItems.length}', detail: 'Surface-level verbs'),
           _Metric(label: 'Routes', value: '${actionWorkflowItems.length}', detail: 'Object-to-workflow paths'),
-          _Metric(label: 'P0 / P1', value: '$p0 / $p1', detail: 'Implementation priority'),
-          _Metric(label: 'Planned / Future', value: '$planned / $future', detail: 'Readiness timing'),
+          _Metric(label: 'Execution Stages', value: '${actionExecutionStageItems.length}', detail: 'Implementation gates'),
+          _Metric(label: 'P0 / P1', value: '$p0 / $p1', detail: '$planned planned / $future future'),
         ]);
       }),
       const SizedBox(height: 22),
       TerminalCard(child: Wrap(spacing: 12, runSpacing: 12, children: [
         _Picker(label: 'Action', value: selectedAction, values: actionSurfaceItems.map((item) => item.title).toList(), onChanged: (value) => setState(() => selectedAction = value)),
         _Picker(label: 'Route', value: selectedRoute, values: actionWorkflowItems.map((item) => item.title).toList(), onChanged: (value) => setState(() => selectedRoute = value)),
+        _Picker(label: 'Stage', value: selectedStage, values: actionExecutionStageItems.map((item) => item.title).toList(), onChanged: (value) => setState(() => selectedStage = value)),
         _Picker(label: 'Readiness', value: selectedReadiness, values: _readinessStates.map((item) => item.name).toList(), onChanged: (value) => setState(() => selectedReadiness = value)),
       ])),
       const SizedBox(height: 22),
       LayoutBuilder(builder: (context, constraints) {
-        final left = _ActionTicket(action: action, route: route, readiness: readiness);
+        final left = _ActionTicket(action: action, route: route, stage: stage, readiness: readiness);
         final right = const _ActionArchitecturePanel();
         if (constraints.maxWidth < 1050) return Column(children: [left, const SizedBox(height: 14), right]);
         return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: left), const SizedBox(width: 14), Expanded(child: right)]);
@@ -58,6 +63,8 @@ class _ActionCenterScreenState extends State<ActionCenterScreen> {
       _RegistryTable(title: 'Action Surface Registry', items: actionSurfaceItems, selectedTitle: selectedAction),
       const SizedBox(height: 22),
       _RegistryTable(title: 'Action Route Registry', items: actionWorkflowItems, selectedTitle: selectedRoute),
+      const SizedBox(height: 22),
+      _RegistryTable(title: 'Execution Stage Registry', items: actionExecutionStageItems, selectedTitle: selectedStage),
       const SizedBox(height: 22),
       const _ReadinessTable(),
     ]);
@@ -82,22 +89,24 @@ const _readinessStates = <_ReadinessState>[
 ];
 
 class _ActionTicket extends StatelessWidget {
-  const _ActionTicket({required this.action, required this.route, required this.readiness});
+  const _ActionTicket({required this.action, required this.route, required this.stage, required this.readiness});
   final RegistryItem action;
   final RegistryItem route;
+  final RegistryItem stage;
   final _ReadinessState readiness;
 
   @override
   Widget build(BuildContext context) => TerminalCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     const Text('Action Route Ticket', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
     const SizedBox(height: 14),
-    Wrap(spacing: 10, runSpacing: 10, children: [InfoPill(label: action.priority), InfoPill(label: action.status), InfoPill(label: route.category), InfoPill(label: readiness.name)]),
+    Wrap(spacing: 10, runSpacing: 10, children: [InfoPill(label: action.priority), InfoPill(label: action.status), InfoPill(label: route.category), InfoPill(label: stage.category), InfoPill(label: readiness.name)]),
     const SizedBox(height: 16),
     _DetailLine(label: 'Action', value: '${action.title}: ${action.description}'),
     _DetailLine(label: 'Route', value: '${route.title}: ${route.description}'),
-    _DetailLine(label: 'Inputs', value: route.inputs),
+    _DetailLine(label: 'Stage', value: '${stage.title}: ${stage.description}'),
+    _DetailLine(label: 'Inputs', value: stage.inputs),
     _DetailLine(label: 'Readiness', value: '${readiness.status}: ${readiness.meaning}'),
-    _DetailLine(label: 'Next Step', value: readiness.nextStep),
+    _DetailLine(label: 'Next Step', value: stage.nextStep),
     _DetailLine(label: 'Action Step', value: action.nextStep),
     _DetailLine(label: 'Route Step', value: route.nextStep),
   ]));
@@ -110,7 +119,7 @@ class _ActionArchitecturePanel extends StatelessWidget {
   Widget build(BuildContext context) => const TerminalCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Text('Action Architecture', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
     SizedBox(height: 12),
-    Text('Action Center is the routing layer between information and work. It defines what users can do from tables, entity pages, selected records, workspaces, fantasy boards, reports, and community posts.', style: TextStyle(color: terminalTextSoft, height: 1.45)),
+    Text('Action Center is the routing layer between information and work. It defines what users can do from tables, entity pages, selected records, workspaces, fantasy boards, reports, and community posts. The execution stage registry turns that design into an implementation plan.', style: TextStyle(color: terminalTextSoft, height: 1.45)),
     SizedBox(height: 16),
     Wrap(spacing: 10, runSpacing: 10, children: [InfoPill(label: 'Source object'), InfoPill(label: 'Action verb'), InfoPill(label: 'Route payload'), InfoPill(label: 'Readiness gate'), InfoPill(label: 'Target workspace'), InfoPill(label: 'Audit event')]),
   ]));
@@ -121,7 +130,7 @@ class _ActionPipelinePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final steps = ['Select object', 'Choose action', 'Validate readiness', 'Build route payload', 'Open target module', 'Write audit event', 'Save or export'];
+    final steps = ['Capture context', 'Normalize selection', 'Choose action', 'Validate readiness', 'Build route payload', 'Open target module', 'Write audit event', 'Save or export'];
     return TerminalCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Text('Action Execution Pipeline', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
       const SizedBox(height: 14),
