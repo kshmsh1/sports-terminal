@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../screens/accessibility_screen.dart';
+import '../screens/action_center_screen.dart';
 import '../screens/advanced_stat_taxonomy_screen.dart';
 import '../screens/alert_evaluation_screen.dart';
 import '../screens/alerts_screen.dart';
@@ -103,6 +104,7 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Saved Views', icon: Icons.bookmark_border_outlined, screen: SavedViewsScreen(), section: _TabSection.core),
     _TerminalTab(label: 'Alerts', icon: Icons.notifications_none_outlined, screen: AlertsScreen(), section: _TabSection.core),
     _TerminalTab(label: 'Compare', icon: Icons.compare_arrows_outlined, screen: CompareScreen(), section: _TabSection.core),
+    _TerminalTab(label: 'Action Center', icon: Icons.bolt_outlined, screen: ActionCenterScreen(), section: _TabSection.core),
     _TerminalTab(label: 'Workspace Studio', icon: Icons.grid_on_outlined, screen: WorkspaceStudioScreen(), section: _TabSection.core),
     _TerminalTab(label: 'Fantasy Terminal', icon: Icons.sports_esports_outlined, screen: FantasyTerminalScreen(), section: _TabSection.core),
     _TerminalTab(label: 'Community Hub', icon: Icons.forum_outlined, screen: CommunityHubScreen(), section: _TabSection.core),
