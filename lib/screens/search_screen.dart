@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../data/action_execution_stage_items.dart';
+import '../data/action_surface_items.dart';
+import '../data/action_workflow_items.dart';
+import '../data/community_product_items.dart';
+import '../data/fantasy_product_items.dart';
+import '../data/platform_endgame_items.dart';
 import '../data/search_index_items.dart';
+import '../data/workspace_studio_items.dart';
 import '../models/player_profile.dart';
+import '../models/registry_item.dart';
 import '../models/season.dart';
 import '../models/team.dart';
 import '../services/nba_asset_repository.dart';
@@ -75,13 +83,15 @@ class _SearchScreenState extends State<SearchScreen> {
         final coreItems = items.where((item) => item.category.contains('Core')).length;
         final mvpItems = items.where((item) => item.category.contains('MVP')).length;
         final dataItems = items.where((item) => item.category.contains('Data') || item.category.contains('Team') || item.category.contains('Season') || item.category.contains('Player')).length;
+        final actionItems = items.where((item) => item.target == 'Action Center').length;
+        final workspaceNetworkItems = items.where((item) => item.target == 'Workspace Studio' || item.target == 'Fantasy Terminal' || item.target == 'Community Hub' || item.target == 'Platform Endgame').length;
         final connectedAssetCount = payload == null ? 0 : payload.connectedAssetCount;
 
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const SectionHeader(title: 'Search', subtitle: 'Command search across core NBA workspaces, entity modules, workflow tools, MVP gates, source-pending datasets, governance layers, and Build Lab surfaces.'),
+          const SectionHeader(title: 'Search', subtitle: 'Command search across NBA data, entity modules, action routes, workspaces, fantasy, community, source operations, MVP gates, and Build Lab surfaces.'),
           const SizedBox(height: 22),
           TerminalCard(child: Wrap(spacing: 12, runSpacing: 12, children: [
-            SizedBox(width: 420, child: TextField(autofocus: false, onChanged: (value) => setState(() => query = value), style: const TextStyle(color: Colors.white), cursorColor: terminalAccent, decoration: _inputDecoration('Search teams, seasons, players, stats, reports, sources...'))),
+            SizedBox(width: 420, child: TextField(autofocus: false, onChanged: (value) => setState(() => query = value), style: const TextStyle(color: Colors.white), cursorColor: terminalAccent, decoration: _inputDecoration('Search teams, seasons, actions, routes, workspaces...'))),
             _FilterDropdown(label: 'Category', value: category, values: categories, onChanged: (value) => setState(() => category = value)),
             _FilterDropdown(label: 'Status', value: status, values: statuses, onChanged: (value) => setState(() => status = value)),
           ])),
@@ -92,9 +102,11 @@ class _SearchScreenState extends State<SearchScreen> {
               _SearchMetric(label: 'Indexed Items', value: '${items.length}', detail: 'Static + asset-backed'),
               _SearchMetric(label: 'Results', value: '${results.length}', detail: normalizedQuery.isEmpty ? 'Current filters' : 'Query filtered'),
               _SearchMetric(label: 'Connected Assets', value: '$connectedAssetCount', detail: 'Rows loaded now'),
-              _SearchMetric(label: 'Core/Data Items', value: '${coreItems + dataItems + mvpItems}', detail: 'NBA MVP focus'),
+              _SearchMetric(label: 'Action / Network', value: '$actionItems / $workspaceNetworkItems', detail: 'Workflow index depth'),
             ]);
           }),
+          const SizedBox(height: 22),
+          _CommandPalettePanel(totalItems: items.length, actionItems: actionItems, workspaceNetworkItems: workspaceNetworkItems, coreDataItems: coreItems + dataItems + mvpItems),
           const SizedBox(height: 22),
           _MvpSearchReadiness(payload: payload),
           const SizedBox(height: 22),
@@ -109,6 +121,13 @@ class _SearchScreenState extends State<SearchScreen> {
   List<SearchIndexItem> _buildItems(_SearchPayload? payload) {
     final dynamicItems = <SearchIndexItem>[];
     dynamicItems.addAll(_broadCommandIndexItems);
+    dynamicItems.addAll(_registryToSearchItems(category: 'Action', target: 'Action Center', items: actionSurfaceItems));
+    dynamicItems.addAll(_registryToSearchItems(category: 'Action Route', target: 'Action Center', items: actionWorkflowItems));
+    dynamicItems.addAll(_registryToSearchItems(category: 'Execution Stage', target: 'Action Center', items: actionExecutionStageItems));
+    dynamicItems.addAll(_registryToSearchItems(category: 'Platform Endgame', target: 'Platform Endgame', items: platformEndgameItems));
+    dynamicItems.addAll(_registryToSearchItems(category: 'Workspace Studio', target: 'Workspace Studio', items: workspaceStudioItems));
+    dynamicItems.addAll(_registryToSearchItems(category: 'Fantasy Terminal', target: 'Fantasy Terminal', items: fantasyProductItems));
+    dynamicItems.addAll(_registryToSearchItems(category: 'Community Hub', target: 'Community Hub', items: communityProductItems));
     if (payload != null) {
       dynamicItems.add(SearchIndexItem(title: 'Asset-backed NBA team directory', category: 'Data Asset', target: 'Teams', status: '${payload.teams.length} rows', description: 'Current NBA team records loaded from local JSON and available for joins.'));
       dynamicItems.add(SearchIndexItem(title: 'Asset-backed season catalog', category: 'Data Asset', target: 'Seasons', status: '${payload.seasons.length} rows', description: 'Historical BAA/NBA season records loaded from local JSON and available for season joins.'));
@@ -134,9 +153,18 @@ class _SearchScreenState extends State<SearchScreen> {
     }
     return [...terminalSearchItems, ...dynamicItems];
   }
+
+  List<SearchIndexItem> _registryToSearchItems({required String category, required String target, required List<RegistryItem> items}) {
+    return [for (final item in items) SearchIndexItem(title: item.title, category: category, target: target, status: item.status, description: '${item.description} Next: ${item.nextStep}')];
+  }
 }
 
 const _broadCommandIndexItems = <SearchIndexItem>[
+  SearchIndexItem(title: 'Action Center', category: 'Core Workspace', target: 'Action Center', status: 'Route cockpit', description: 'Universal action layer for workspace, compare, report, save view, source audit, alerts, export, fantasy, scouting, and community routing.'),
+  SearchIndexItem(title: 'Workspace Studio', category: 'Core Workspace', target: 'Workspace Studio', status: 'Builder cockpit', description: 'Excel-like surface for datasets, columns, formulas, joins, charts, scenarios, exports, saved views, and report inputs.'),
+  SearchIndexItem(title: 'Fantasy Terminal', category: 'Core Workspace', target: 'Fantasy Terminal', status: 'Product cockpit', description: 'Fantasy layer for manual leagues, scoring rules, roster decisions, waivers, trades, matchup labs, projections, and alerts.'),
+  SearchIndexItem(title: 'Community Hub', category: 'Core Workspace', target: 'Community Hub', status: 'Publishing cockpit', description: 'Data-native community surface for entity-linked discussions, posts, private rooms, moderation, creator workspaces, and embedded terminal objects.'),
+  SearchIndexItem(title: 'Platform Endgame', category: 'Build Lab', target: 'Platform Endgame', status: 'North star', description: 'Three-layer architecture covering Core Terminal, Workspace Studio, and Network layer.'),
   SearchIndexItem(title: 'Game command center', category: 'Core Workspace', target: 'Games', status: 'Asset-backed', description: 'Schedule, result, matchup, box-score hooks, playoff game context, and future trend chart source rows.'),
   SearchIndexItem(title: 'Roster command center', category: 'Core Workspace', target: 'Rosters', status: 'Asset-backed', description: 'Team-season roster windows, player-team history, two-way status, assignments, recalls, and game eligibility.'),
   SearchIndexItem(title: 'Award race command center', category: 'Core Workspace', target: 'Awards', status: 'Race-ready model', description: 'Winners, runners-up, finalists, vote rank, first-place votes, voting points, vote share, and season/player context.'),
@@ -183,6 +211,22 @@ class _FilterDropdown extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(width: 240, child: DropdownButtonFormField<String>(value: values.contains(value) ? value : 'All', dropdownColor: terminalPanelDark, style: const TextStyle(color: Colors.white), decoration: InputDecoration(labelText: label, labelStyle: const TextStyle(color: terminalTextMuted), filled: true, fillColor: terminalPanelDark, enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: terminalBorder)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: terminalAccent))), items: values.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(), onChanged: (value) { if (value != null) onChanged(value); }));
 }
 
+class _CommandPalettePanel extends StatelessWidget {
+  const _CommandPalettePanel({required this.totalItems, required this.actionItems, required this.workspaceNetworkItems, required this.coreDataItems});
+  final int totalItems;
+  final int actionItems;
+  final int workspaceNetworkItems;
+  final int coreDataItems;
+  @override
+  Widget build(BuildContext context) => TerminalCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    const Text('Command Palette Direction', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+    const SizedBox(height: 10),
+    const Text('Search should evolve into a command palette, not only a lookup box. It should find data objects, route actions, open workspaces, launch fantasy workflows, surface community objects, and explain blocked actions.', style: TextStyle(color: terminalTextSoft, height: 1.45)),
+    const SizedBox(height: 16),
+    Wrap(spacing: 10, runSpacing: 10, children: [InfoPill(label: '$totalItems indexed'), InfoPill(label: '$actionItems action items'), InfoPill(label: '$workspaceNetworkItems workspace/network items'), InfoPill(label: '$coreDataItems core/data items'), const InfoPill(label: 'Future command palette')]),
+  ]));
+}
+
 class _MvpSearchReadiness extends StatelessWidget {
   const _MvpSearchReadiness({required this.payload});
   final _SearchPayload? payload;
@@ -192,7 +236,7 @@ class _MvpSearchReadiness extends StatelessWidget {
     return TerminalCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Text('NBA MVP Search Readiness', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
       const SizedBox(height: 10),
-      const Text('Search is becoming the command layer for the NBA MVP. The end state is one place to find players, teams, seasons, games, rosters, award races, draft classes, transactions, stats, reports, comparisons, datasets, sources, saved views, and operations surfaces.', style: TextStyle(color: terminalTextSoft, height: 1.45)),
+      const Text('Search is becoming the command layer for the NBA MVP. The end state is one place to find players, teams, seasons, games, rosters, award races, draft classes, transactions, stats, reports, comparisons, datasets, sources, saved views, actions, routes, workspaces, fantasy workflows, and operations surfaces.', style: TextStyle(color: terminalTextSoft, height: 1.45)),
       const SizedBox(height: 18),
       Wrap(spacing: 10, runSpacing: 10, children: [InfoPill(label: '${payload!.teams.length} teams'), InfoPill(label: '${payload!.seasons.length} seasons'), InfoPill(label: '${payload!.players.length} players'), InfoPill(label: '${payload!.playerStatRows} player stat rows'), InfoPill(label: '${payload!.teamStatRows} team stat rows'), InfoPill(label: '${payload!.gameRows} games'), InfoPill(label: '${payload!.awardRows} awards'), InfoPill(label: '${payload!.transactionRows} transactions')]),
     ]));
@@ -211,13 +255,15 @@ class _TerminalCommandCoveragePanel extends StatelessWidget {
       _CommandCoverageRow('Recognition Layer', 'Awards, Award Races, Draft', payload == null ? 'Loading' : '${payload!.awardRows + payload!.draftRows} rows', 'Award boards, voting context, draft classes, development paths'),
       _CommandCoverageRow('Performance Layer', 'Player Stats, Team Stats', payload == null ? 'Loading' : '${payload!.playerStatRows + payload!.teamStatRows} rows', 'Stats, comparisons, rankings, charts, reports'),
       _CommandCoverageRow('Postseason Layer', 'Standings, Playoffs', payload == null ? 'Loading' : '${payload!.standingsRows + payload!.playoffRows} rows', 'Seeds, records, playoff paths, season context'),
-      const _CommandCoverageRow('Workflow Layer', 'Compare, Reports, Saved Views, Alerts', 'Shell ready', 'Decision workflows, reusable output, monitoring, user workspaces'),
+      const _CommandCoverageRow('Action Layer', 'Action Center, Routes, Execution Stages', 'Route cockpit', 'Moves objects from lookup into workspace, compare, report, export, alerts, and source audit'),
+      const _CommandCoverageRow('Workspace Layer', 'Workspace Studio, Saved Views, Export Center', 'Builder cockpit', 'Excel-like tables, formulas, joins, charts, scenarios, snapshots, and outputs'),
+      const _CommandCoverageRow('Network Layer', 'Fantasy Terminal, Community Hub', 'Product cockpit', 'Fantasy workflows, entity-linked publishing, private rooms, creator spaces, and future collaboration'),
       const _CommandCoverageRow('Operations Layer', 'Sources, Imports, QA, Data Health', 'Build Lab', 'Lineage, validation, rights posture, data quality, import readiness'),
     ];
     return TerminalCard(padding: EdgeInsets.zero, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Padding(padding: EdgeInsets.all(18), child: Text('Terminal Command Coverage', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800))),
       const Divider(height: 1, color: terminalBorder),
-      SingleChildScrollView(scrollDirection: Axis.horizontal, child: DataTable(headingRowColor: WidgetStateProperty.all(terminalPanelDark), headingTextStyle: const TextStyle(color: terminalTextMuted, fontWeight: FontWeight.w700), dataTextStyle: const TextStyle(color: Color(0xFFDDE6F1)), columnSpacing: 34, columns: const [DataColumn(label: Text('Layer')), DataColumn(label: Text('Modules')), DataColumn(label: Text('Current State')), DataColumn(label: Text('Terminal Use'))], rows: [for (final row in rows) DataRow(cells: [DataCell(SizedBox(width: 180, child: Text(row.layer, style: const TextStyle(fontWeight: FontWeight.w800)))), DataCell(SizedBox(width: 320, child: Text(row.modules))), DataCell(InfoPill(label: row.state)), DataCell(SizedBox(width: 620, child: Text(row.use)))])])),
+      SingleChildScrollView(scrollDirection: Axis.horizontal, child: DataTable(headingRowColor: WidgetStateProperty.all(terminalPanelDark), headingTextStyle: const TextStyle(color: terminalTextMuted, fontWeight: FontWeight.w700), dataTextStyle: const TextStyle(color: Color(0xFFDDE6F1)), columnSpacing: 34, columns: const [DataColumn(label: Text('Layer')), DataColumn(label: Text('Modules')), DataColumn(label: Text('Current State')), DataColumn(label: Text('Terminal Use'))], rows: [for (final row in rows) DataRow(cells: [DataCell(SizedBox(width: 180, child: Text(row.layer, style: const TextStyle(fontWeight: FontWeight.w800)))), DataCell(SizedBox(width: 340, child: Text(row.modules))), DataCell(InfoPill(label: row.state)), DataCell(SizedBox(width: 680, child: Text(row.use)))])])),
     ]));
   }
 }
@@ -237,7 +283,7 @@ class _SearchResults extends StatelessWidget {
   Widget build(BuildContext context) => TerminalCard(padding: EdgeInsets.zero, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Padding(padding: const EdgeInsets.all(18), child: Row(children: [const Text('Search Results', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)), const Spacer(), Text('${results.length} results', style: const TextStyle(color: terminalTextMuted))])),
     const Divider(height: 1, color: terminalBorder),
-    SingleChildScrollView(scrollDirection: Axis.horizontal, child: DataTable(headingRowColor: WidgetStateProperty.all(terminalPanelDark), headingTextStyle: const TextStyle(color: terminalTextMuted, fontWeight: FontWeight.w700), dataTextStyle: const TextStyle(color: Color(0xFFDDE6F1)), columnSpacing: 30, columns: const [DataColumn(label: Text('Title')), DataColumn(label: Text('Category')), DataColumn(label: Text('Target')), DataColumn(label: Text('Status')), DataColumn(label: Text('Description'))], rows: [for (final item in results) DataRow(cells: [DataCell(SizedBox(width: 280, child: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w800)))), DataCell(SizedBox(width: 160, child: Text(item.category))), DataCell(Text(item.target)), DataCell(InfoPill(label: item.status)), DataCell(SizedBox(width: 700, child: Text(item.description)))])])),
+    SingleChildScrollView(scrollDirection: Axis.horizontal, child: DataTable(headingRowColor: WidgetStateProperty.all(terminalPanelDark), headingTextStyle: const TextStyle(color: terminalTextMuted, fontWeight: FontWeight.w700), dataTextStyle: const TextStyle(color: Color(0xFFDDE6F1)), columnSpacing: 30, columns: const [DataColumn(label: Text('Title')), DataColumn(label: Text('Category')), DataColumn(label: Text('Target')), DataColumn(label: Text('Status')), DataColumn(label: Text('Description'))], rows: [for (final item in results) DataRow(cells: [DataCell(SizedBox(width: 280, child: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w800)))), DataCell(SizedBox(width: 180, child: Text(item.category))), DataCell(SizedBox(width: 160, child: Text(item.target))), DataCell(InfoPill(label: item.status)), DataCell(SizedBox(width: 780, child: Text(item.description)))])])),
   ]));
 }
 
