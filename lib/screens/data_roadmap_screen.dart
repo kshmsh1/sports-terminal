@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/nba_data_roadmap.dart';
+import '../widgets/source_backed_data_wave_panel.dart';
 import '../widgets/terminal_primitives.dart';
 
 class DataRoadmapScreen extends StatelessWidget {
@@ -39,6 +40,8 @@ class DataRoadmapScreen extends StatelessWidget {
             );
           },
         ),
+        const SizedBox(height: 22),
+        const SourceBackedDataWavePanel(maxRows: 14),
         const SizedBox(height: 22),
         TerminalCard(
           padding: EdgeInsets.zero,
