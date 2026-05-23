@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/immediate_release_items.dart';
+import '../widgets/first_release_payload_preview.dart';
 import '../widgets/immediate_release_panel.dart';
 import '../widgets/terminal_primitives.dart';
 
@@ -41,6 +42,13 @@ class CoreMvpGapsScreen extends StatelessWidget {
       }),
       const SizedBox(height: 22),
       const _ReleasePrincipleCard(),
+      const SizedBox(height: 22),
+      const FirstReleasePayloadPreview(
+        title: 'Live First-Release Payload Preview',
+        subtitle: 'This section loads actual connected team and season assets plus live operations registry counts, then displays the first route payloads that should feed Workspace, Compare, Reports, Saved Views, Export, Alerts, Dashboard, Search, Action Center, and Source Audit.',
+        rowLimit: 8,
+        showImmediatePanel: false,
+      ),
       const SizedBox(height: 22),
       const ImmediateReleasePanel(
         title: 'All Immediate Workflow Payloads',
