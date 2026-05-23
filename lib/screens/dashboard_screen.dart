@@ -8,6 +8,8 @@ import '../data/report_library_items.dart';
 import '../data/saved_view_items.dart';
 import '../data/source_registry_entries.dart';
 import '../data/terminal_operating_layer_items.dart';
+import '../widgets/first_release_payload_preview.dart';
+import '../widgets/first_release_route_outputs.dart';
 import '../widgets/terminal_primitives.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -40,6 +42,15 @@ class DashboardScreen extends StatelessWidget {
       ]); }),
       const SizedBox(height: 24),
       const _MvpCockpitPanel(),
+      const SizedBox(height: 24),
+      const FirstReleasePayloadPreview(
+        title: 'Dashboard First-Release Payloads',
+        subtitle: 'Command-center view of the connected Teams, Seasons, and operational registries that can already power Workspace, Compare, Reports, Saved Views, Export previews, Alert previews, Dashboard cards, Search routes, and Action Center routes.',
+        rowLimit: 6,
+        showImmediatePanel: false,
+      ),
+      const SizedBox(height: 24),
+      const FirstReleaseRouteOutputs(),
       const SizedBox(height: 24),
       const _CoreModuleMatrix(),
       const SizedBox(height: 24),
