@@ -6,6 +6,7 @@ import '../widgets/first_release_route_engine.dart';
 import '../widgets/first_release_route_outputs.dart';
 import '../widgets/immediate_release_panel.dart';
 import '../widgets/terminal_primitives.dart';
+import 'source_backed_data_wave_screen.dart';
 
 class CoreMvpGapsScreen extends StatelessWidget {
   const CoreMvpGapsScreen({super.key});
@@ -62,6 +63,8 @@ class CoreMvpGapsScreen extends StatelessWidget {
       const ImmediateReleasePanel(target: 'Exports', title: 'Export Preview Targets'),
       const SizedBox(height: 22),
       const ImmediateReleasePanel(target: 'Alerts', title: 'Alert Preview Targets'),
+      const SizedBox(height: 28),
+      const SourceBackedDataWaveScreen(),
     ]);
   }
 }
