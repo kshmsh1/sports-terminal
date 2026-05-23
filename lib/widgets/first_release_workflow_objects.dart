@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'first_release_consumer_matrix.dart';
 import 'first_release_route_engine.dart';
 import 'first_release_route_outputs.dart';
 import 'terminal_primitives.dart';
@@ -32,6 +33,8 @@ class FirstReleaseWorkflowObjects extends StatelessWidget {
       ])),
       SizedBox(height: 18),
       _WorkflowObjectMilestones(),
+      SizedBox(height: 18),
+      FirstReleaseConsumerMatrix(),
       SizedBox(height: 18),
       FirstReleaseRouteEngine(),
       SizedBox(height: 18),
