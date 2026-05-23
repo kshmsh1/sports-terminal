@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/immediate_release_items.dart';
 import '../widgets/first_release_payload_preview.dart';
+import '../widgets/first_release_route_outputs.dart';
 import '../widgets/immediate_release_panel.dart';
 import '../widgets/terminal_primitives.dart';
 
@@ -49,6 +50,8 @@ class CoreMvpGapsScreen extends StatelessWidget {
         rowLimit: 8,
         showImmediatePanel: false,
       ),
+      const SizedBox(height: 22),
+      const FirstReleaseRouteOutputs(),
       const SizedBox(height: 22),
       const ImmediateReleasePanel(
         title: 'All Immediate Workflow Payloads',
