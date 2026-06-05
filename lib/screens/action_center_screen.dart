@@ -4,6 +4,7 @@ import '../data/action_execution_stage_items.dart';
 import '../data/action_surface_items.dart';
 import '../data/action_workflow_items.dart';
 import '../models/registry_item.dart';
+import '../widgets/active_route_payload_panel.dart';
 import '../widgets/terminal_primitives.dart';
 
 class ActionCenterScreen extends StatefulWidget {
@@ -43,6 +44,8 @@ class _ActionCenterScreenState extends State<ActionCenterScreen> {
           _Metric(label: 'P0 / P1', value: '$p0 / $p1', detail: '$planned planned / $future future'),
         ]);
       }),
+      const SizedBox(height: 22),
+      const ActiveRoutePayloadPanel(consumerName: 'Action Center', description: 'Action Center now reads the active shared RoutePayload as the current universal action ticket. It can retarget the selected object to open, workspace, compare, report, saved view, export, alert, dashboard, search, or source audit.', compact: true),
       const SizedBox(height: 22),
       TerminalCard(child: Wrap(spacing: 12, runSpacing: 12, children: [
         _Picker(label: 'Action', value: selectedAction, values: actionSurfaceItems.map((item) => item.title).toList(), onChanged: (value) => setState(() => selectedAction = value)),
