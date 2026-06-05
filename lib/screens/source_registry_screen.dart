@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/source_registry_entries.dart';
+import '../widgets/active_route_payload_panel.dart';
 import '../widgets/terminal_primitives.dart';
 
 class SourceRegistryScreen extends StatefulWidget {
@@ -52,6 +53,8 @@ class _SourceRegistryScreenState extends State<SourceRegistryScreen> {
             ],
           );
         }),
+        const SizedBox(height: 22),
+        const ActiveRoutePayloadPanel(consumerName: 'Source Audit', description: 'Source Registry now reads the active shared RoutePayload as a source-audit intake. Retarget any Team, Season, Operations, Report, Export, or Alert payload to Source Audit to inspect source snapshot, blockers, selected fields, and readiness state.', compact: true),
         const SizedBox(height: 22),
         TerminalCard(
           child: Wrap(spacing: 12, runSpacing: 12, children: [
