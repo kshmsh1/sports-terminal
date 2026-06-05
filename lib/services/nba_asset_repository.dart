@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../models/award_record.dart';
 import '../models/draft_pick.dart';
 import '../models/game_record.dart';
+import '../models/player_alias.dart';
 import '../models/player_profile.dart';
 import '../models/player_season_stat.dart';
 import '../models/playoff_series_record.dart';
@@ -34,6 +35,12 @@ class NbaAssetRepository {
     final decoded = await _loadObject('assets/data/nba/players/player_profiles.json');
     final records = decoded['players'] as List<dynamic>;
     return records.map((record) => PlayerProfile.fromJson(record as Map<String, dynamic>)).toList(growable: false);
+  }
+
+  Future<List<PlayerAlias>> loadPlayerAliases() async {
+    final decoded = await _loadObject('assets/data/nba/players/player_aliases.json');
+    final records = decoded['aliases'] as List<dynamic>;
+    return records.map((record) => PlayerAlias.fromJson(record as Map<String, dynamic>)).toList(growable: false);
   }
 
   Future<List<PlayerSeasonStat>> loadPlayerSeasonStats() async {
