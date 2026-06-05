@@ -9,6 +9,7 @@ import '../models/registry_item.dart';
 import '../models/report_section_template.dart';
 import '../models/terminal_report.dart';
 import '../services/nba_asset_repository.dart';
+import '../widgets/active_route_payload_panel.dart';
 import '../widgets/terminal_primitives.dart';
 
 class ReportsScreen extends StatefulWidget {
@@ -58,13 +59,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
       final selectedSections = _sectionsForReport(selectedReport, filteredSections);
       final templateReady = reportSectionTemplateItems.where((item) => item.status == 'Template ready').length;
       final dataPending = reportSectionTemplateItems.where((item) => item.status == 'Data pending').length;
-      final reportableNow = gates.values.where((gate) => gate.readyCount > 0).length;
       final p0Stages = reportBuilderStageItems.where((item) => item.priority == 'P0').length;
 
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const SectionHeader(title: 'Reports', subtitle: 'Report command center for reusable player, team, season, draft, award, transaction, fantasy, community, source-audit, workspace, and scouting outputs.'),
         const SizedBox(height: 22),
         LayoutBuilder(builder: (context, constraints) { final isWide = constraints.maxWidth > 900; return GridView.count(crossAxisCount: isWide ? 4 : 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisSpacing: 14, mainAxisSpacing: 14, childAspectRatio: isWide ? 2.0 : 1.5, children: [_ReportMetric(label: 'Reports', value: '${reportLibraryItems.length}', detail: 'Expanded library'), _ReportMetric(label: 'Sections', value: '${reportSectionTemplateItems.length}', detail: '$templateReady ready / $dataPending pending'), _ReportMetric(label: 'Builder Stages', value: '${reportBuilderStageItems.length}', detail: '$p0Stages P0 stages'), _ReportMetric(label: 'Hooks', value: '${savedViewItems.length + actionSurfaceItems.length}', detail: 'Saved views + actions')]); }),
+        const SizedBox(height: 22),
+        const ActiveRoutePayloadPanel(consumerName: 'Reports', description: 'Reports now read the active shared RoutePayload as a source-aware report-shell seed. Publish a Team, Season, or Operations object from the route engine and retarget it to Reports to preserve selected rows, fields, source snapshot, blockers, and output intent.', compact: true),
         const SizedBox(height: 22),
         TerminalCard(child: Wrap(spacing: 12, runSpacing: 12, crossAxisAlignment: WrapCrossAlignment.center, children: [
           SizedBox(width: 340, child: TextField(onChanged: (value) => setState(() => query = value), style: const TextStyle(color: Colors.white), cursorColor: terminalAccent, decoration: _inputDecoration('Search reports, sections, stages, datasets...'))),
