@@ -8,8 +8,10 @@ import '../data/report_library_items.dart';
 import '../data/saved_view_items.dart';
 import '../data/source_registry_entries.dart';
 import '../data/terminal_operating_layer_items.dart';
+import '../widgets/active_route_payload_panel.dart';
 import '../widgets/first_release_payload_preview.dart';
 import '../widgets/first_release_route_outputs.dart';
+import '../widgets/pre_data_readiness_gate_panel.dart';
 import '../widgets/terminal_primitives.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -41,6 +43,10 @@ class DashboardScreen extends StatelessWidget {
         const _MetricCard(label: 'Data Policy', value: 'Real', detail: 'No fake sports records'),
       ]); }),
       const SizedBox(height: 24),
+      const PreDataReadinessGatePanel(compact: true),
+      const SizedBox(height: 24),
+      const ActiveRoutePayloadPanel(consumerName: 'Dashboard', description: 'Dashboard now reads the active shared RoutePayload as a command-center card. Publish a Team, Season, or Operations object from the route engine and retarget it here to inspect readiness, source state, blockers, and next actions.', compact: true),
+      const SizedBox(height: 24),
       const _MvpCockpitPanel(),
       const SizedBox(height: 24),
       const FirstReleasePayloadPreview(
@@ -71,11 +77,11 @@ class DashboardScreen extends StatelessWidget {
       ]),
       const SizedBox(height: 24),
       const _TerminalPanel(title: 'Near-Term Build Priority', lines: [
-        '1. Convert more core product surfaces into selected-detail workspaces with joins into adjacent modules.',
-        '2. Make Dashboard, Search, Action Center, Saved Views, Alerts, Reports, Data Coverage, Data Health, QA, and Source Registry act like operating controls rather than static planning pages.',
-        '3. Begin the player identity source path before importing player stats, award races, rosters, draft links, or transactions.',
-        '4. Keep Stats important but not dominant: the terminal also needs games, rosters, awards, draft, transactions, contracts, scouting, media, saved views, alerts, reports, fantasy, and community.',
-        '5. Preserve the end-platform shape: source-backed data, joined entities, reusable workflows, trust controls, and future sport expansion.',
+        '1. Close the pre-data readiness gate instead of adding endless new architecture.',
+        '2. Finish active RoutePayload consumers for Compare, Reports, Search, and Source Audit.',
+        '3. Lock player identity schema, alias policy, first-wave source posture, and import acceptance checks.',
+        '4. Import player identity before player stats, award races, rosters, draft links, or transactions.',
+        '5. Preserve source-backed data, joined entities, reusable workflows, trust controls, and future sport expansion.',
       ]),
     ]);
   }
