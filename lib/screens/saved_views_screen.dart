@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/action_surface_items.dart';
 import '../data/saved_view_items.dart';
 import '../data/saved_view_state_items.dart';
+import '../widgets/active_route_payload_panel.dart';
 import '../widgets/terminal_primitives.dart';
 
 class SavedViewsScreen extends StatefulWidget {
@@ -48,6 +49,8 @@ class _SavedViewsScreenState extends State<SavedViewsScreen> {
           _SavedViewMetric(label: 'Actions', value: '${actionSurfaceItems.length}', detail: 'Action Center hooks'),
         ]);
       }),
+      const SizedBox(height: 22),
+      const ActiveRoutePayloadPanel(consumerName: 'Saved Views', description: 'Saved Views now read the active shared RoutePayload and can treat it as a non-persistent view-state preview with selected rows, selected columns, filters, source snapshot, blockers, and route intent.', compact: true),
       const SizedBox(height: 22),
       TerminalCard(child: Wrap(spacing: 12, runSpacing: 12, children: [
         SizedBox(width: 340, child: TextField(onChanged: (value) => setState(() => query = value), style: const TextStyle(color: Colors.white), cursorColor: terminalAccent, decoration: _inputDecoration('Search saved views, filters, outputs...'))),
