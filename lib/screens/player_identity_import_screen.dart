@@ -1,4 +1,7 @@
+import '../data/import_acceptance_gate_items.dart';
 import '../data/player_identity_import_items.dart';
+import '../data/player_identity_schema_gate_items.dart';
+import '../data/pre_data_readiness_items.dart';
 import '../data/source_backed_nba_data_wave_items.dart';
 import 'registry_screen_factory.dart';
 
@@ -6,11 +9,17 @@ class PlayerIdentityImportScreen extends RegistryScreenFactory {
   const PlayerIdentityImportScreen({
     super.key,
   }) : super(
-          title: 'Player Identity Import + NBA Data Wave',
-          subtitle: 'Execution plan for turning source-pending player identity into real validated NBA player rows, then unlocking traditional stats, team stats, standings, playoffs, MVP voting, games, rosters, draft, and transactions.',
-          items: const [...playerIdentityImportItems, ...sourceBackedNbaDataWaveItems],
-          searchHint: 'Search player import, source path, identity, aliases, stats, MVP, games...',
-          leadTitle: 'Player Identity and Data Wave Principle',
-          leadBody: 'Player identity should come before player statistics. Freeze the route payload layer first, then publish stable player IDs, then import traditional stats, then add standings, playoffs, MVP voting, games, rosters, draft, and transactions. Do not fake rows while sources are pending.',
+          title: 'Player Identity Import + Pre-Data Gate',
+          subtitle: 'Execution plan for finishing the pre-data phase, locking player identity, validating import acceptance, and then unlocking the first real NBA data wave.',
+          items: const [
+            ...preDataReadinessItems,
+            ...playerIdentitySchemaGateItems,
+            ...importAcceptanceGateItems,
+            ...playerIdentityImportItems,
+            ...sourceBackedNbaDataWaveItems,
+          ],
+          searchHint: 'Search pre-data gate, player schema, import acceptance, source path, aliases, stats, MVP, games...',
+          leadTitle: 'Pre-Data Finish Line Principle',
+          leadBody: 'The terminal should not endlessly add architecture. The pre-data phase ends when route payload consumers, player identity schema, source posture, and import acceptance checks are strong enough for player identity to become the first real source-backed NBA data unlock.',
         );
 }
