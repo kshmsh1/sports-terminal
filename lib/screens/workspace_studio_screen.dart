@@ -5,6 +5,7 @@ import '../data/saved_view_items.dart';
 import '../data/workspace_builder_stage_items.dart';
 import '../data/workspace_studio_items.dart';
 import '../models/registry_item.dart';
+import '../widgets/active_route_payload_panel.dart';
 import '../widgets/terminal_primitives.dart';
 
 class WorkspaceStudioScreen extends StatefulWidget {
@@ -49,6 +50,8 @@ class _WorkspaceStudioScreenState extends State<WorkspaceStudioScreen> {
           _Metric(label: 'Hooks', value: '${savedViewItems.length + actionSurfaceItems.length}', detail: 'Saved views + actions'),
         ]);
       }),
+      const SizedBox(height: 22),
+      const ActiveRoutePayloadPanel(consumerName: 'Workspace Studio', description: 'Workspace Studio now reads the active shared RoutePayload as a workspace seed. Publish a Team, Season, or Operations payload from the route engine, then retarget it to Workspace to inspect selected rows, columns, filters, source snapshot, blockers, and route actions.', compact: true),
       const SizedBox(height: 22),
       TerminalCard(child: Wrap(spacing: 12, runSpacing: 12, children: [
         _Picker(label: 'Dataset', value: selectedDataset, values: _datasets.map((item) => item.name).toList(), onChanged: (value) => setState(() => selectedDataset = value)),
