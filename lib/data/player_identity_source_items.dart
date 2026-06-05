@@ -1,0 +1,9 @@
+import '../models/registry_item.dart';
+
+const playerIdentitySourceItems = <RegistryItem>[
+  RegistryItem(id: 'player-source-before-import', title: 'Choose first source path before import', category: 'Source Decision', priority: 'P0', status: 'Required', description: 'Player identity rows should not be imported until one first-wave source path is documented.', inputs: 'Source Registry, source note, first export', nextStep: 'Pick one source path and write the first import plan.'),
+  RegistryItem(id: 'player-source-no-cost', title: 'No-cost source path', category: 'Source Decision', priority: 'P0', status: 'Required', description: 'The first player identity path must not create paid API, paid database, hosting, or storage requirements.', inputs: 'Project budget constraint', nextStep: 'Reject any paid path for the first import.'),
+  RegistryItem(id: 'player-source-field-map', title: 'Source field map', category: 'Source Decision', priority: 'P0', status: 'Required', description: 'The chosen source needs a map into PlayerProfile and PlayerAlias fields before import.', inputs: 'PlayerProfile, PlayerAlias, first export', nextStep: 'Map source columns to canonical fields.'),
+  RegistryItem(id: 'player-source-refresh', title: 'Manual refresh plan', category: 'Source Decision', priority: 'P1', status: 'Required', description: 'The first import needs an as-of date and a manual refresh plan.', inputs: 'Import Jobs, Data Lineage', nextStep: 'Document as-of date and refresh cadence.'),
+  RegistryItem(id: 'player-source-quarantine', title: 'Quarantine ambiguous rows', category: 'Source Decision', priority: 'P0', status: 'Required', description: 'Rows with unsafe IDs, duplicate names, missing source metadata, or uncertain joins should be held out of the connected asset.', inputs: 'PlayerIdentityValidator', nextStep: 'Create quarantine output during first import.'),
+];
