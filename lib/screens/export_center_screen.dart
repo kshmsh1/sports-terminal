@@ -6,6 +6,7 @@ import '../data/export_template_items.dart';
 import '../data/report_library_items.dart';
 import '../data/saved_view_items.dart';
 import '../models/registry_item.dart';
+import '../widgets/active_route_payload_panel.dart';
 import '../widgets/terminal_primitives.dart';
 
 class ExportCenterScreen extends StatefulWidget {
@@ -54,6 +55,8 @@ class _ExportCenterScreenState extends State<ExportCenterScreen> {
           _ExportMetric(label: 'Action Hooks', value: '${actionSurfaceItems.length}', detail: 'Action Center verbs'),
         ]);
       }),
+      const SizedBox(height: 22),
+      const ActiveRoutePayloadPanel(consumerName: 'Export Center', description: 'Export Center now reads the active shared RoutePayload as the seed for a governed export manifest. Retarget a payload to Export from any consumer or publish one directly from the route engine.', compact: true),
       const SizedBox(height: 22),
       TerminalCard(child: Wrap(spacing: 12, runSpacing: 12, crossAxisAlignment: WrapCrossAlignment.center, children: [
         SizedBox(width: 340, child: TextField(onChanged: (value) => setState(() => query = value), style: const TextStyle(color: Colors.white), cursorColor: terminalAccent, decoration: _inputDecoration('Search exports, inputs, outputs, source rules...'))),
