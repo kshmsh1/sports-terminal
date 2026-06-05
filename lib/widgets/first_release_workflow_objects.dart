@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'first_release_consumer_matrix.dart';
 import 'first_release_route_engine.dart';
 import 'first_release_route_outputs.dart';
+import 'route_payload_consumer_registry_panel.dart';
 import 'route_payload_contract_panel.dart';
 import 'terminal_primitives.dart';
 
@@ -15,13 +16,14 @@ class FirstReleaseWorkflowObjects extends StatelessWidget {
       TerminalCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('First-Release Workflow Objects', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
         SizedBox(height: 10),
-        Text('This panel consolidates the first working objects: selected Teams, selected Seasons, operations payloads, shared RoutePayload contracts, generated route outputs, report shells, saved-view previews, export manifests, alert previews, dashboard cards, search route objects, and Action Center payloads.', style: TextStyle(color: terminalTextSoft, height: 1.4)),
+        Text('This panel consolidates the first working objects: selected Teams, selected Seasons, operations payloads, shared RoutePayload contracts, consumer implementation requirements, generated route outputs, report shells, saved-view previews, export manifests, alert previews, dashboard cards, search route objects, and Action Center payloads.', style: TextStyle(color: terminalTextSoft, height: 1.4)),
         SizedBox(height: 16),
         Wrap(spacing: 10, runSpacing: 10, children: [
           InfoPill(label: 'Team rows selectable'),
           InfoPill(label: 'Season rows selectable'),
           InfoPill(label: 'Operations selectable'),
           InfoPill(label: 'RoutePayload contract'),
+          InfoPill(label: 'Consumer registry'),
           InfoPill(label: 'Workspace output'),
           InfoPill(label: 'Compare output'),
           InfoPill(label: 'Report shell'),
@@ -39,6 +41,8 @@ class FirstReleaseWorkflowObjects extends StatelessWidget {
       FirstReleaseConsumerMatrix(),
       SizedBox(height: 18),
       RoutePayloadContractPanel(),
+      SizedBox(height: 18),
+      RoutePayloadConsumerRegistryPanel(),
       SizedBox(height: 18),
       FirstReleaseRouteEngine(),
       SizedBox(height: 18),
@@ -69,9 +73,10 @@ class _WorkflowObjectMilestones extends StatelessWidget {
         DataRow(cells: [DataCell(Text('1')), DataCell(Text('Selectable reference rows')), DataCell(Text('Teams and Seasons are connected')), DataCell(Text('Promote selected payload state into target tabs'))]),
         DataRow(cells: [DataCell(Text('2')), DataCell(Text('Operations payloads')), DataCell(Text('Sources, imports, coverage, QA, backlog, and completion are visible')), DataCell(Text('Use these as command-center objects'))]),
         DataRow(cells: [DataCell(Text('3')), DataCell(Text('Shared RoutePayload contract')), DataCell(Text('Team, Season, Source Registry, Import Jobs, and Data Coverage now generate contract objects')), DataCell(Text('Make the interactive route engine emit these payloads directly'))]),
-        DataRow(cells: [DataCell(Text('4')), DataCell(Text('Generated route outputs')), DataCell(Text('Route engine produces Workspace, Compare, Report, Export, Alert, Search, and Action outputs')), DataCell(Text('Add global tab-to-tab navigation state'))]),
-        DataRow(cells: [DataCell(Text('5')), DataCell(Text('Workflow consumers')), DataCell(Text('Core MVP screen and Dashboard consume the route layer')), DataCell(Text('Embed same object layer into Workspace, Compare, Reports, Saved Views, Export, Alerts, Search, and Action Center'))]),
-        DataRow(cells: [DataCell(Text('6')), DataCell(Text('First sports-data unlock')), DataCell(Text('Player/stat data still source-pending')), DataCell(Text('Import player identity, traditional stats, standings, playoffs, and MVP voting'))]),
+        DataRow(cells: [DataCell(Text('4')), DataCell(Text('Consumer implementation registry')), DataCell(Text('Every major consumer has P0 payload inputs and next implementation steps')), DataCell(Text('Move the registry requirements into each target screen'))]),
+        DataRow(cells: [DataCell(Text('5')), DataCell(Text('Generated route outputs')), DataCell(Text('Route engine produces Workspace, Compare, Report, Export, Alert, Search, and Action outputs')), DataCell(Text('Add global tab-to-tab navigation state'))]),
+        DataRow(cells: [DataCell(Text('6')), DataCell(Text('Workflow consumers')), DataCell(Text('Core MVP screen and Dashboard consume the route layer')), DataCell(Text('Embed same object layer into Workspace, Compare, Reports, Saved Views, Export, Alerts, Search, and Action Center'))]),
+        DataRow(cells: [DataCell(Text('7')), DataCell(Text('First sports-data unlock')), DataCell(Text('Player/stat data still source-pending')), DataCell(Text('Import player identity, traditional stats, standings, playoffs, and MVP voting'))]),
       ],
     )),
   ]));
