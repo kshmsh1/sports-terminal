@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../controllers/route_payload_controller.dart';
 import '../data/coverage_items.dart';
 import '../data/import_job_plans.dart';
 import '../data/source_registry_entries.dart';
+import '../models/route_payload.dart';
 import '../models/season.dart';
 import '../models/team.dart';
 import '../services/nba_asset_repository.dart';
+import 'active_route_payload_panel.dart';
 import 'terminal_primitives.dart';
 
 class FirstReleaseRouteEngine extends StatefulWidget {
@@ -45,6 +48,7 @@ class _FirstReleaseRouteEngineState extends State<FirstReleaseRouteEngine> {
         final payload = snapshot.data!;
         final selection = _selection(payload);
         final outputs = _outputsFor(selection);
+        final routePayload = _routePayloadFrom(selection, _route);
 
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           TerminalCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -53,30 +57,26 @@ class _FirstReleaseRouteEngineState extends State<FirstReleaseRouteEngine> {
               InfoPill(label: selection.state),
             ]),
             const SizedBox(height: 10),
-            const Text('Select a live Team row, live Season row, or operations payload, then choose the route. The panel below generates the first working object that should flow into Workspace Studio, Compare, Reports, Saved Views, Export Center, Alerts, Dashboard, Search, Action Center, and Source Audit.', style: TextStyle(color: terminalTextSoft, height: 1.45)),
+            const Text('Select a live Team row, live Season row, or operations payload, then choose the route. This now generates a real RoutePayload object and can publish it into the shared app-level payload store for Workspace Studio, Compare, Reports, Saved Views, Export Center, Alerts, Dashboard, Search, and Action Center.', style: TextStyle(color: terminalTextSoft, height: 1.45)),
             const SizedBox(height: 16),
             Wrap(spacing: 10, runSpacing: 10, children: [
               for (final source in _sources)
-                ChoiceChip(
-                  label: Text(source),
-                  selected: _source == source,
-                  onSelected: (_) => setState(() => _source = source),
-                ),
+                ChoiceChip(label: Text(source), selected: _source == source, onSelected: (_) => setState(() => _source = source)),
             ]),
             const SizedBox(height: 12),
             Wrap(spacing: 10, runSpacing: 10, children: [
               for (final route in _routes)
-                ChoiceChip(
-                  label: Text(route),
-                  selected: _route == route,
-                  onSelected: (_) => setState(() => _route = route),
-                ),
+                ChoiceChip(label: Text(route), selected: _route == route, onSelected: (_) => setState(() => _route = route)),
             ]),
           ])),
           const SizedBox(height: 18),
           if (!widget.compact) _SelectionTable(source: _source, payload: payload, selectedTeamIndex: _teamIndex, selectedSeasonIndex: _seasonIndex, selectedOperationsIndex: _operationsIndex, onTeam: (index) => setState(() => _teamIndex = index), onSeason: (index) => setState(() => _seasonIndex = index), onOperations: (index) => setState(() => _operationsIndex = index)),
           if (!widget.compact) const SizedBox(height: 18),
-          _RouteOutputCard(selection: selection, route: _route, outputs: outputs),
+          _RouteOutputCard(selection: selection, route: _route, outputs: outputs, routePayload: routePayload),
+          const SizedBox(height: 18),
+          _GeneratedPayloadCard(payload: routePayload),
+          const SizedBox(height: 18),
+          const ActiveRoutePayloadPanel(consumerName: 'Route Engine', compact: true),
           const SizedBox(height: 18),
           _RouteStateTable(selection: selection, outputs: outputs),
         ]);
@@ -86,22 +86,22 @@ class _FirstReleaseRouteEngineState extends State<FirstReleaseRouteEngine> {
 
   _RouteSelection _selection(_RouteEnginePayload payload) {
     if (_source == 'Teams') {
-      final safeIndex = payload.teams.isEmpty ? 0 : _teamIndex.clamp(0, payload.teams.length - 1);
+      final safeIndex = _safeIndex(_teamIndex, payload.teams.length);
       final team = payload.teams.isEmpty ? null : payload.teams[safeIndex];
-      return _RouteSelection(source: 'Team Directory', objectId: team?.id ?? 'team-source-pending', label: team == null ? 'No team loaded' : '${team.city} ${team.name}', detail: team == null ? 'Team directory unavailable' : '${team.abbreviation} · ${team.conference} · ${team.division}', rowCount: payload.teams.length, state: 'Connected reference', fields: team == null ? const [] : ['teamId=${team.id}', 'city=${team.city}', 'name=${team.name}', 'abbr=${team.abbreviation}', 'conference=${team.conference}', 'division=${team.division}'], blockers: 'Stats, standings, rosters, games, transactions, franchise history still source-pending.');
+      return _RouteSelection(source: 'Team Directory', objectType: 'Team', objectId: team?.id ?? 'team-source-pending', label: team == null ? 'No team loaded' : '${team.city} ${team.name}', detail: team == null ? 'Team directory unavailable' : '${team.abbreviation} · ${team.conference} · ${team.division}', rowCount: payload.teams.length, state: 'Connected reference', fields: team == null ? const [] : ['teamId=${team.id}', 'city=${team.city}', 'name=${team.name}', 'abbr=${team.abbreviation}', 'conference=${team.conference}', 'division=${team.division}'], sourceSnapshot: 'Connected local reference asset: teams.json', blockers: const ['Team stats pending', 'Standings pending', 'Rosters pending', 'Games pending', 'Transactions pending', 'Franchise history pending']);
     }
     if (_source == 'Seasons') {
-      final safeIndex = payload.seasons.isEmpty ? 0 : _seasonIndex.clamp(0, payload.seasons.length - 1);
+      final safeIndex = _safeIndex(_seasonIndex, payload.seasons.length);
       final season = payload.seasons.isEmpty ? null : payload.seasons[safeIndex];
-      return _RouteSelection(source: 'Season Catalog', objectId: season?.id ?? 'season-source-pending', label: season == null ? 'No season loaded' : season.label, detail: season == null ? 'Season catalog unavailable' : '${season.startYear}-${season.endYear} · ${season.league}', rowCount: payload.seasons.length, state: 'Connected reference', fields: season == null ? const [] : ['seasonId=${season.id}', 'label=${season.label}', 'startYear=${season.startYear}', 'endYear=${season.endYear}', 'league=${season.league}'], blockers: 'Standings, playoffs, awards, games, draft, league averages, and era context still source-pending.');
+      return _RouteSelection(source: 'Season Catalog', objectType: 'Season', objectId: season?.id ?? 'season-source-pending', label: season == null ? 'No season loaded' : season.label, detail: season == null ? 'Season catalog unavailable' : '${season.startYear}-${season.endYear} · ${season.league}', rowCount: payload.seasons.length, state: 'Connected reference', fields: season == null ? const [] : ['seasonId=${season.id}', 'label=${season.label}', 'startYear=${season.startYear}', 'endYear=${season.endYear}', 'league=${season.league}'], sourceSnapshot: 'Connected local reference asset: seasons.json', blockers: const ['Standings pending', 'Playoffs pending', 'Awards pending', 'Games pending', 'Draft context pending', 'League averages pending']);
     }
-    final operations = _operationsRows[_operationsIndex.clamp(0, _operationsRows.length - 1)];
-    return _RouteSelection(source: 'Operations', objectId: operations.id, label: operations.title, detail: operations.detail, rowCount: operations.rows, state: operations.state, fields: operations.fields, blockers: operations.blockers);
+    final operations = _operationsRows[_safeIndex(_operationsIndex, _operationsRows.length)];
+    return _RouteSelection(source: 'Operations', objectType: 'Operations', objectId: operations.id, label: operations.title, detail: operations.detail, rowCount: operations.rows, state: operations.state, fields: operations.fields, sourceSnapshot: operations.sourceSnapshot, blockers: operations.blockers);
   }
 
   List<_RouteOutput> _outputsFor(_RouteSelection selection) => [
     _RouteOutput('Workspace', '${selection.source} Workspace', '${selection.rowCount} rows available', 'Columns: ${selection.fields.join(', ')}', 'Table payload with selectedRowKeys, filters, source snapshot, route actions, and blocker labels.'),
-    _RouteOutput('Compare', '${selection.source} Compare', selection.source == 'Teams' || selection.source == 'Seasons' ? 'Two-slot comparison ready' : 'Operational comparison ready', 'Compare identity fields, source state, row counts, priorities, and blockers.', 'Output table can route into Workspace, Reports, Export, Saved Views, and Alerts.'),
+    _RouteOutput('Compare', '${selection.source} Compare', selection.source == 'Team Directory' || selection.source == 'Season Catalog' ? 'Two-slot comparison ready' : 'Operational comparison ready', 'Compare identity fields, source state, row counts, priorities, and blockers.', 'Output table can route into Workspace, Reports, Export, Saved Views, and Alerts.'),
     _RouteOutput('Reports', '${selection.source} Report Shell', 'Previewable now', 'Populated identity/operations section plus blocked sports-data sections.', 'Report shell keeps missing data visible instead of inventing values.'),
     _RouteOutput('Saved View', '${selection.source} Saved View Preview', 'Non-persistent', 'Filters, selected columns, selected row, source snapshot, and route actions.', 'Preview only until local persistence is implemented.'),
     _RouteOutput('Export', '${selection.source} Export Manifest', 'Preview manifest', 'Row count, selected columns, filters, source notes, missing-data flags, and output format.', 'Download disabled until file generation exists.'),
@@ -112,15 +112,40 @@ class _FirstReleaseRouteEngineState extends State<FirstReleaseRouteEngine> {
   ];
 }
 
+int _safeIndex(int index, int length) {
+  if (length <= 0) return 0;
+  if (index < 0) return 0;
+  if (index >= length) return length - 1;
+  return index;
+}
+
+RoutePayload _routePayloadFrom(_RouteSelection selection, String route) {
+  return RoutePayload(
+    sourceObjectType: selection.objectType,
+    sourceObjectId: selection.objectId,
+    displayLabel: selection.label,
+    selectedColumns: selection.columnKeys,
+    selectedRows: [selection.objectId],
+    filterSummary: 'source=${selection.source}; selectedRow=${selection.objectId}; rowCount=${selection.rowCount}; targetRoute=$route',
+    sourceSnapshot: selection.sourceSnapshot,
+    readinessState: selection.state,
+    blockers: selection.blockers,
+    targetRoute: route,
+    availableActions: immediateRouteTargets,
+  );
+}
+
 class _RouteOutputCard extends StatelessWidget {
-  const _RouteOutputCard({required this.selection, required this.route, required this.outputs});
+  const _RouteOutputCard({required this.selection, required this.route, required this.outputs, required this.routePayload});
   final _RouteSelection selection;
   final String route;
   final List<_RouteOutput> outputs;
+  final RoutePayload routePayload;
 
   @override
   Widget build(BuildContext context) {
     final output = outputs.firstWhere((item) => item.target == route, orElse: () => outputs.first);
+    final controller = RoutePayloadScope.maybeOf(context);
     return TerminalCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(child: Text('${output.title}: ${selection.label}', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900))),
@@ -136,12 +161,54 @@ class _RouteOutputCard extends StatelessWidget {
       _DetailLine(label: 'Payload Size', value: output.size),
       _DetailLine(label: 'Preview Fields', value: output.fields),
       _DetailLine(label: 'Route Output', value: output.routeState),
-      _DetailLine(label: 'Current Blockers', value: selection.blockers),
+      _DetailLine(label: 'Current Blockers', value: routePayload.blockersLabel),
       const SizedBox(height: 10),
       Wrap(spacing: 8, runSpacing: 8, children: [for (final field in selection.fields) InfoPill(label: field)]),
+      const SizedBox(height: 16),
+      FilledButton.icon(
+        onPressed: controller == null ? null : () => controller.setActivePayload(routePayload, origin: 'Interactive First-Release Route Engine'),
+        icon: const Icon(Icons.send_outlined),
+        label: const Text('Publish active RoutePayload'),
+      ),
     ]));
   }
 }
+
+class _GeneratedPayloadCard extends StatelessWidget {
+  const _GeneratedPayloadCard({required this.payload});
+  final RoutePayload payload;
+
+  @override
+  Widget build(BuildContext context) => TerminalCard(padding: EdgeInsets.zero, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    const Padding(padding: EdgeInsets.all(18), child: Text('Generated Shared RoutePayload', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800))),
+    const Divider(height: 1, color: terminalBorder),
+    SingleChildScrollView(scrollDirection: Axis.horizontal, child: DataTable(
+      headingRowColor: WidgetStateProperty.all(terminalPanelDark),
+      headingTextStyle: const TextStyle(color: terminalTextMuted, fontWeight: FontWeight.w700),
+      dataTextStyle: const TextStyle(color: Color(0xFFDDE6F1)),
+      columnSpacing: 30,
+      columns: const [DataColumn(label: Text('Field')), DataColumn(label: Text('Value'))],
+      rows: [
+        _payloadRow('sourceObjectType', payload.sourceObjectType),
+        _payloadRow('sourceObjectId', payload.sourceObjectId),
+        _payloadRow('displayLabel', payload.displayLabel),
+        _payloadRow('targetRoute', payload.targetRoute),
+        _payloadRow('selectedColumns', payload.selectedColumnsLabel),
+        _payloadRow('selectedRows', payload.selectedRowsLabel),
+        _payloadRow('filterSummary', payload.filterSummary),
+        _payloadRow('sourceSnapshot', payload.sourceSnapshot),
+        _payloadRow('readinessState', payload.readinessState),
+        _payloadRow('blockers', payload.blockersLabel),
+        _payloadRow('availableActions', payload.actionsLabel),
+      ],
+    )),
+  ]));
+}
+
+DataRow _payloadRow(String field, String value) => DataRow(cells: [
+  DataCell(SizedBox(width: 210, child: Text(field, style: const TextStyle(fontWeight: FontWeight.w800)))),
+  DataCell(SizedBox(width: 900, child: Text(value))),
+]);
 
 class _RouteStateTable extends StatelessWidget {
   const _RouteStateTable({required this.selection, required this.outputs});
@@ -279,15 +346,18 @@ class _RouteEnginePayload {
 }
 
 class _RouteSelection {
-  const _RouteSelection({required this.source, required this.objectId, required this.label, required this.detail, required this.rowCount, required this.state, required this.fields, required this.blockers});
+  const _RouteSelection({required this.source, required this.objectType, required this.objectId, required this.label, required this.detail, required this.rowCount, required this.state, required this.fields, required this.sourceSnapshot, required this.blockers});
   final String source;
+  final String objectType;
   final String objectId;
   final String label;
   final String detail;
   final int rowCount;
   final String state;
   final List<String> fields;
-  final String blockers;
+  final String sourceSnapshot;
+  final List<String> blockers;
+  List<String> get columnKeys => fields.map((field) => field.contains('=') ? field.split('=').first : field).toList();
 }
 
 class _RouteOutput {
@@ -300,23 +370,24 @@ class _RouteOutput {
 }
 
 class _OperationsPayload {
-  const _OperationsPayload(this.id, this.title, this.rows, this.state, this.detail, this.fields, this.blockers);
+  const _OperationsPayload(this.id, this.title, this.rows, this.state, this.detail, this.fields, this.sourceSnapshot, this.blockers);
   final String id;
   final String title;
   final int rows;
   final String state;
   final String detail;
   final List<String> fields;
-  final String blockers;
+  final String sourceSnapshot;
+  final List<String> blockers;
 }
 
 final _operationsRows = <_OperationsPayload>[
-  _OperationsPayload('source-registry', 'Source Registry', sourceRegistryEntries.length, 'Connected operations', 'Acquisition control board for source posture, rights posture, source types, refresh cadence, targets, candidates, and gated layers.', const ['sourceId', 'domain', 'sourceType', 'status', 'rightsPosture', 'refreshCadence'], 'Needs source decisions for player identity, traditional stats, standings, playoffs, awards, games, and transactions.'),
-  _OperationsPayload('import-jobs', 'Import Jobs', importJobPlans.length, 'Connected operations', 'Two-track plan for immediate workflow activation and first source-backed NBA data import wave.', const ['jobId', 'domain', 'status', 'input', 'output', 'validation'], 'Needs real import scripts, raw snapshots, lineage manifests, and validation runs.'),
-  _OperationsPayload('data-coverage', 'Data Coverage', coverageItems.length, 'Connected operations', 'Coverage board for connected, connected-empty, source-pending, next, planned, source-needed, and future datasets.', const ['dataset', 'domain', 'recordCount', 'status', 'priority', 'nextStep'], 'Needs source-backed rows for players, stats, standings, playoffs, awards, games, rosters, draft, and transactions.'),
-  const _OperationsPayload('qa-readiness', 'QA Readiness', 1, 'Release gate ready', 'Release gate for Chrome launch, source-pending behavior, row counts, joins, route payloads, and export/report integrity.', ['checkId', 'area', 'priority', 'status', 'risk', 'nextAction'], 'Needs analyzer/smoke-test automation and route handoff tests.'),
-  const _OperationsPayload('product-backlog', 'Product Backlog', 1, 'Execution lanes active', 'Backlog board for Immediate, Stats Release, Context, Gated, and Future lanes.', ['module', 'stage', 'priority', 'status', 'releaseLane', 'acceptanceCriteria'], 'Needs continued status updates as actual route payloads become working features.'),
-  const _OperationsPayload('nba-mvp-completion', 'NBA MVP Completion', 1, 'Ship tracker active', 'Endgame tracker for shipped foundations, immediate workflow release, first stats release, and local MVP exit criteria.', ['category', 'priority', 'status', 'description', 'nextStep'], 'Needs first source-backed player identity and traditional stat imports after route payloads are stable.'),
+  _OperationsPayload('source-registry', 'Source Registry', sourceRegistryEntries.length, 'Connected operations', 'Acquisition control board for source posture, rights posture, source types, refresh cadence, targets, candidates, and gated layers.', const ['sourceId', 'domain', 'sourceType', 'status', 'rightsPosture', 'refreshCadence'], 'Connected operations registry: sourceRegistryEntries', const ['Needs source decisions for player identity', 'Needs source decisions for traditional stats', 'Needs rights review for gated layers']),
+  _OperationsPayload('import-jobs', 'Import Jobs', importJobPlans.length, 'Connected operations', 'Two-track plan for immediate workflow activation and first source-backed NBA data import wave.', const ['jobId', 'domain', 'status', 'input', 'output', 'validation'], 'Connected operations registry: importJobPlans', const ['Runtime scripts pending', 'Raw snapshots pending', 'Validation output pending']),
+  _OperationsPayload('data-coverage', 'Data Coverage', coverageItems.length, 'Connected operations', 'Coverage board for connected, connected-empty, source-pending, next, planned, source-needed, and future datasets.', const ['dataset', 'domain', 'recordCount', 'status', 'priority', 'nextStep'], 'Connected coverage registry: coverageItems', const ['Player rows pending', 'Stats rows pending', 'Standings rows pending', 'MVP voting pending']),
+  const _OperationsPayload('qa-readiness', 'QA Readiness', 1, 'Release gate ready', 'Release gate for Chrome launch, source-pending behavior, row counts, joins, route payloads, and export/report integrity.', ['checkId', 'area', 'priority', 'status', 'risk', 'nextAction'], 'Build Lab QA registry', ['Analyzer automation pending', 'Route handoff tests pending']),
+  const _OperationsPayload('product-backlog', 'Product Backlog', 1, 'Execution lanes active', 'Backlog board for Immediate, Stats Release, Context, Gated, and Future lanes.', ['module', 'stage', 'priority', 'status', 'releaseLane', 'acceptanceCriteria'], 'Build Lab backlog registry', ['Status must keep updating as route payloads become working features']),
+  const _OperationsPayload('nba-mvp-completion', 'NBA MVP Completion', 1, 'Ship tracker active', 'Endgame tracker for shipped foundations, immediate workflow release, first stats release, and local MVP exit criteria.', ['category', 'priority', 'status', 'description', 'nextStep'], 'Build Lab MVP completion registry', ['Player identity import pending', 'Traditional stat imports pending']),
 ];
 
 const _sources = ['Teams', 'Seasons', 'Operations'];
