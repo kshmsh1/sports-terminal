@@ -5,6 +5,7 @@ import '../widgets/first_release_payload_preview.dart';
 import '../widgets/first_release_route_engine.dart';
 import '../widgets/first_release_route_outputs.dart';
 import '../widgets/immediate_release_panel.dart';
+import '../widgets/pre_data_readiness_gate_panel.dart';
 import '../widgets/terminal_primitives.dart';
 import 'source_backed_data_wave_screen.dart';
 
@@ -43,6 +44,8 @@ class CoreMvpGapsScreen extends StatelessWidget {
           ],
         );
       }),
+      const SizedBox(height: 22),
+      const PreDataReadinessGatePanel(compact: true),
       const SizedBox(height: 22),
       const _ReleasePrincipleCard(),
       const SizedBox(height: 22),
