@@ -5,6 +5,7 @@ import '../data/alert_evaluator_stage_items.dart';
 import '../data/alert_rule_items.dart';
 import '../data/saved_view_items.dart';
 import '../models/registry_item.dart';
+import '../widgets/active_route_payload_panel.dart';
 import '../widgets/terminal_primitives.dart';
 
 class AlertsScreen extends StatefulWidget {
@@ -55,6 +56,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
           _AlertMetric(label: 'Hooks', value: '${savedViewItems.length + actionSurfaceItems.length}', detail: 'Saved views + actions'),
         ]);
       }),
+      const SizedBox(height: 22),
+      const ActiveRoutePayloadPanel(consumerName: 'Alerts', description: 'Alerts now read the active shared RoutePayload as a monitor-rule preview source. Retarget a Team, Season, or Operations object to Alerts to inspect row, source, field, and blocker monitoring inputs.', compact: true),
       const SizedBox(height: 22),
       TerminalCard(child: Wrap(spacing: 12, runSpacing: 12, children: [
         SizedBox(width: 340, child: TextField(onChanged: (value) => setState(() => query = value), style: const TextStyle(color: Colors.white), cursorColor: terminalAccent, decoration: _inputDecoration('Search alerts, triggers, required data...'))),
