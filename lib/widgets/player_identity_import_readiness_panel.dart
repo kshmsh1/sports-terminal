@@ -21,15 +21,16 @@ class PlayerIdentityImportReadinessPanel extends StatelessWidget {
         return TerminalCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Expanded(child: Text('Player Identity Import Readiness', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800))),
-            InfoPill(label: summary.canImportRealRows ? 'Ready to import' : summary.canBeginSourceSelection ? 'Choose source path' : 'Pre-source work left'),
+            InfoPill(label: summary.canImportRealRows ? 'Ready to import' : summary.canBeginSourceSelection ? 'Source selected, export next' : 'Pre-source work left'),
           ]),
           const SizedBox(height: 10),
-          const Text('This is the cutover signal for the first real NBA data unlock. The local asset is allowed to stay empty, but the contract, validator, source decision, and import plan must be explicit before real rows are connected.', style: TextStyle(color: terminalTextSoft, height: 1.4)),
+          const Text('This is the cutover signal for the first real NBA data unlock. Player profiles and player aliases now validate together, so canonical identity and alias/provider rows can be imported as one controlled identity package.', style: TextStyle(color: terminalTextSoft, height: 1.4)),
           const SizedBox(height: 16),
           LayoutBuilder(builder: (context, constraints) {
             final isWide = constraints.maxWidth > 900;
-            return GridView.count(crossAxisCount: isWide ? 6 : 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: isWide ? 2.05 : 1.45, children: [
+            return GridView.count(crossAxisCount: isWide ? 7 : 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: isWide ? 1.85 : 1.45, children: [
               _Metric(label: 'Player Rows', value: '${summary.currentPlayerRows}', detail: 'current asset'),
+              _Metric(label: 'Alias Rows', value: '${summary.currentAliasRows}', detail: 'current asset'),
               _Metric(label: 'Contract', value: '${summary.contractDone}/${playerIdentityContractItems.length}', detail: 'locked rows'),
               _Metric(label: 'Validator', value: '${summary.validationImplemented}/${playerIdentityValidationItems.length}', detail: 'implemented checks'),
               _Metric(label: 'Source Gates', value: '${summary.sourceRequired}/${playerIdentitySourceItems.length}', detail: 'still required'),
