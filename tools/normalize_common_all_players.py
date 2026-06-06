@@ -3,11 +3,14 @@
 
 This script does not fetch remote data. Save the source export locally first, then run:
 
-python tools/normalize_common_all_players.py \
+python3 tools/normalize_common_all_players.py \
   --input raw/common_all_players.json \
   --as-of 2026-06-05 \
   --profiles assets/data/nba/players/player_profiles.json \
   --aliases assets/data/nba/players/player_aliases.json
+
+If your shell has a `python` command, that may work too, but macOS often only exposes
+`python3` by default.
 """
 
 from __future__ import annotations
