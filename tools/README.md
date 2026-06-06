@@ -59,6 +59,10 @@ dart run tools/validate_team_season_stats.dart
 dart run tools/validate_standings.dart
 dart run tools/validate_playoff_series.dart
 dart run tools/validate_awards.dart
+dart run tools/validate_games.dart
+dart run tools/validate_rosters.dart
+dart run tools/validate_draft.dart
+dart run tools/validate_transactions.dart
 ```
 
 ## Restore placeholders
