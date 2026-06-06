@@ -24,6 +24,7 @@ flutter:
     - assets/data/nba/teams/teams.json
     - assets/data/nba/seasons/seasons.json
     - assets/data/nba/players/player_profiles.json
+    - assets/data/nba/players/player_aliases.json
     - assets/data/nba/stats/player_traditional_by_season.json
     - assets/data/nba/stats/team_by_season.json
     - assets/data/nba/games/game_records.json
