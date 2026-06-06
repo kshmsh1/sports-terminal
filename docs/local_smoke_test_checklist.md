@@ -13,18 +13,10 @@ flutter run -d chrome
 ## Test commands
 
 ```bash
-flutter test test/player_identity_validator_test.dart
-flutter test test/player_identity_normalizer_test.dart
-flutter test test/player_identity_import_readiness_service_test.dart
-flutter test test/search_route_payload_player_producer_test.dart
-flutter test test/player_season_stat_validator_test.dart
-flutter test test/team_season_stat_validator_test.dart
-flutter test test/early_data_wave_readiness_service_test.dart
+bash tools/run_pre_data_tests.sh
 ```
 
 ## Safe import smoke test
-
-To test the normalizer mechanics without modifying app assets:
 
 ```bash
 bash tools/smoke_test_common_all_players_import.sh 2026-06-05
@@ -32,35 +24,16 @@ bash tools/smoke_test_common_all_players_import.sh 2026-06-05
 
 This writes to `raw/smoke_test/` only.
 
-## Import utility commands
-
-If you have a saved CommonAllPlayers export, prefer the wrapper:
+## Import and validation commands
 
 ```bash
 bash tools/run_common_all_players_import.sh raw/common_all_players.json 2026-06-05
-```
-
-Validate imported identity assets:
-
-```bash
 dart run tools/validate_player_identity.dart
-```
-
-Validate player stat assets only after identity is connected:
-
-```bash
 dart run tools/validate_player_season_stats.dart
-```
-
-Validate team stat assets before standings depend on them:
-
-```bash
 dart run tools/validate_team_season_stats.dart
-```
-
-Restore placeholders after sample or failed imports:
-
-```bash
+dart run tools/validate_standings.dart
+dart run tools/validate_playoff_series.dart
+dart run tools/validate_awards.dart
 bash tools/restore_player_identity_placeholders.sh
 ```
 
@@ -74,14 +47,8 @@ bash tools/restore_player_identity_placeholders.sh
 
 ## Player identity and early wave checks
 
-1. Open Player Identity Import.
-2. Search for `cutover`.
-3. Search for `early wave`.
-4. Search for `source decision`.
-5. Search for `validation`.
-6. Search for `player stat validator`.
-7. Search for `team stat validator`.
+Open Player Identity Import and search for `cutover`, `early wave`, `source decision`, `validation`, `player stat validator`, `team stat validator`, `standings`, `playoffs`, and `awards`.
 
 ## Expected state before real data
 
-Teams and Seasons should be connected. Player profiles, player aliases, player stats, team stats, games, rosters, awards, draft, transactions, standings, and playoffs should remain source-pending until real validated imports exist.
+Teams and Seasons should be connected. Player profiles, player aliases, player stats, team stats, standings, playoffs, awards, games, rosters, draft, and transactions should remain source-pending until real validated imports exist.
