@@ -11,6 +11,12 @@ class RosterEntry {
     this.endDate,
     this.sourceId,
     this.asOf,
+    this.age,
+    this.height,
+    this.weightPounds,
+    this.college,
+    this.salaryUsd,
+    this.salaryDisplay,
   });
 
   factory RosterEntry.fromJson(Map<String, dynamic> json) {
@@ -26,6 +32,12 @@ class RosterEntry {
       endDate: json['endDate'] as String?,
       sourceId: json['sourceId'] as String?,
       asOf: json['asOf'] as String?,
+      age: json['age'] as int?,
+      height: json['height'] as String?,
+      weightPounds: json['weightPounds'] as int?,
+      college: json['college'] as String?,
+      salaryUsd: json['salaryUsd'] as int?,
+      salaryDisplay: json['salaryDisplay'] as String?,
     );
   }
 
@@ -40,4 +52,10 @@ class RosterEntry {
   final String? endDate;
   final String? sourceId;
   final String? asOf;
+  final int? age;
+  final String? height;
+  final int? weightPounds;
+  final String? college;
+  final int? salaryUsd;
+  final String? salaryDisplay;
 }
