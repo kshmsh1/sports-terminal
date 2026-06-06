@@ -1,3 +1,4 @@
+import '../data/early_wave_gate_items.dart';
 import '../data/import_acceptance_gate_items.dart';
 import '../data/player_identity_contract_items.dart';
 import '../data/player_identity_import_items.dart';
@@ -23,6 +24,7 @@ class PlayerIdentityImportScreen extends RegistryScreenFactory {
             ...preDataCutoverItems,
             ...preDataReadinessItems,
             ...sourceReviewGateItems,
+            ...earlyWaveGateItems,
             ...playerIdentitySourceItems,
             ...playerIdentityContractItems,
             ...playerIdentitySchemaGateItems,
@@ -34,7 +36,7 @@ class PlayerIdentityImportScreen extends RegistryScreenFactory {
             ...teamSeasonStatValidationItems,
             ...sourceBackedNbaDataWaveItems,
           ],
-          searchHint: 'Search cutover, source decision, validation, pre-data gate, source review, player contract, player schema, import acceptance, aliases, pre-stats, player stat validator, team stat validator, MVP, games...',
+          searchHint: 'Search cutover, early wave, source decision, validation, pre-data gate, source review, player contract, player schema, import acceptance, aliases, pre-stats, player stat validator, team stat validator, MVP, games...',
           leadTitle: 'Pre-Data Finish Line Principle',
           leadBody: 'The terminal should not endlessly add architecture. The pre-data phase ends when route payload consumers, player identity schema, source posture, and import acceptance checks are strong enough for player identity to become the first real source-backed NBA data unlock.',
         );
