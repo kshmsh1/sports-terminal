@@ -2,9 +2,19 @@
 
 These utilities are local-only helpers for moving from pre-data readiness into the first source-backed NBA data import.
 
-## CommonAllPlayers import wrapper
+## Safe smoke test
 
-Use this first. It detects `python3` or `python` and runs the Python normalizer.
+Use this to test the normalizer mechanics without touching app assets:
+
+```bash
+bash tools/smoke_test_common_all_players_import.sh 2026-06-05
+```
+
+This writes sample outputs to `raw/smoke_test/` and does not modify `assets/data/nba/players/player_profiles.json` or `assets/data/nba/players/player_aliases.json`.
+
+## CommonAllPlayers real import wrapper
+
+Use this only after saving the real source export at `raw/common_all_players.json`.
 
 ```bash
 bash tools/run_common_all_players_import.sh raw/common_all_players.json 2026-06-05
@@ -19,13 +29,7 @@ Arguments:
 
 The import utility expects a saved source export. If `raw/common_all_players.json` does not exist, the script should stop with a friendly message.
 
-To test the normalizer mechanics without the real export, run:
-
-```bash
-bash tools/run_common_all_players_import.sh tools/sample_common_all_players.json 2026-06-05
-```
-
-This writes sample-normalized rows into the app assets. Revert those sample outputs before committing real data.
+Do not run `raw/common_all_players.json` as a shell command. It is a file path where the source export should be saved.
 
 ## Direct Python utility
 
