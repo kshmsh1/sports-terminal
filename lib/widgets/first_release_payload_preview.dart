@@ -63,7 +63,7 @@ class FirstReleasePayloadPreview extends StatelessWidget {
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisSpacing: 14,
                 mainAxisSpacing: 14,
-                childAspectRatio: isWide ? 2.1 : 1.45,
+                childAspectRatio: isWide ? 1.75 : 1.2,
                 children: [
                   _Metric(label: 'Team Rows', value: '${teams.length}', detail: 'Connected reference payload'),
                   _Metric(label: 'Season Rows', value: '${seasons.length}', detail: 'Connected time-spine payload'),
@@ -102,11 +102,18 @@ class _Metric extends StatelessWidget {
   final String detail;
 
   @override
-  Widget build(BuildContext context) => TerminalCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-    Text(label, style: const TextStyle(color: terminalTextMuted, fontSize: 13)),
-    Text(value, style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
-    Text(detail, style: const TextStyle(color: terminalAccent, fontSize: 12)),
-  ]));
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(color: terminalPanel, borderRadius: BorderRadius.circular(16), border: Border.all(color: terminalBorder)),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: terminalTextMuted, fontSize: 11)),
+      const SizedBox(height: 6),
+      FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900))),
+      const Spacer(),
+      Text(detail, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: terminalAccent, fontSize: 10)),
+    ]),
+  );
 }
 
 class _RouteActivationTable extends StatelessWidget {
