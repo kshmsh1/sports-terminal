@@ -1,0 +1,36 @@
+{
+  "rows": [
+    {
+      "PERSON_ID": 2544,
+      "DISPLAY_FIRST_LAST": "LeBron James",
+      "DISPLAY_LAST_COMMA_FIRST": "James, LeBron",
+      "ROSTERSTATUS": 1,
+      "FROM_YEAR": 2003,
+      "TO_YEAR": 2025,
+      "PLAYERCODE": "lebron_james",
+      "TEAM_ID": 1610612747,
+      "TEAM_CITY": "Los Angeles",
+      "TEAM_NAME": "Lakers",
+      "TEAM_ABBREVIATION": "LAL",
+      "TEAM_CODE": "lakers",
+      "GAMES_PLAYED_FLAG": "Y",
+      "OTHERLEAGUE_EXPERIENCE_CH": "00"
+    },
+    {
+      "PERSON_ID": 203999,
+      "DISPLAY_FIRST_LAST": "Nikola Jokic",
+      "DISPLAY_LAST_COMMA_FIRST": "Jokic, Nikola",
+      "ROSTERSTATUS": 1,
+      "FROM_YEAR": 2015,
+      "TO_YEAR": 2025,
+      "PLAYERCODE": "nikola_jokic",
+      "TEAM_ID": 1610612743,
+      "TEAM_CITY": "Denver",
+      "TEAM_NAME": "Nuggets",
+      "TEAM_ABBREVIATION": "DEN",
+      "TEAM_CODE": "nuggets",
+      "GAMES_PLAYED_FLAG": "Y",
+      "OTHERLEAGUE_EXPERIENCE_CH": "00"
+    }
+  ]
+}
