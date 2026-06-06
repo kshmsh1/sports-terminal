@@ -8,6 +8,7 @@ import '../data/player_identity_schema_gate_items.dart';
 import '../data/player_identity_source_items.dart';
 import '../data/player_identity_validation_items.dart';
 import '../data/player_season_stat_validation_items.dart';
+import '../data/pre_data_completion_items.dart';
 import '../data/pre_data_cutover_items.dart';
 import '../data/pre_data_readiness_items.dart';
 import '../data/pre_player_stats_gate_items.dart';
@@ -21,6 +22,7 @@ class PlayerIdentityImportScreen extends RegistryScreenFactory {
     title: 'Player Identity Import + Pre-Data Gate',
     subtitle: 'Execution plan for finishing the pre-data phase, locking player identity, validating import acceptance, and then unlocking the first real NBA data wave.',
     items: const [
+      ...preDataCompletionItems,
       ...preDataCutoverItems,
       ...preDataReadinessItems,
       ...sourceReviewGateItems,
@@ -38,8 +40,8 @@ class PlayerIdentityImportScreen extends RegistryScreenFactory {
       ...detailDataValidationItems,
       ...sourceBackedNbaDataWaveItems,
     ],
-    searchHint: 'Search cutover, early wave, source decision, validation, standings, playoffs, awards, games, rosters, draft, transactions, pre-data gate, source review, player contract, import acceptance, aliases, player stat validator, team stat validator...',
+    searchHint: 'Search completion, cutover, early wave, source decision, validation, standings, playoffs, awards, games, rosters, draft, transactions, pre-data gate, source review, player contract, import acceptance, aliases...',
     leadTitle: 'Pre-Data Finish Line Principle',
-    leadBody: 'The terminal should not endlessly add architecture. The pre-data phase ends when route payload consumers, player identity schema, source posture, and import acceptance checks are strong enough for player identity to become the first real source-backed NBA data unlock.',
+    leadBody: 'The terminal should not endlessly add architecture. The pre-data phase ends when route payload consumers, player identity schema, source posture, validators, import tools, and no-fake-data gates are strong enough for real NBA source rows to become the main blocker.',
   );
 }
