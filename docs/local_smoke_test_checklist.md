@@ -34,6 +34,10 @@ dart run tools/validate_team_season_stats.dart
 dart run tools/validate_standings.dart
 dart run tools/validate_playoff_series.dart
 dart run tools/validate_awards.dart
+dart run tools/validate_games.dart
+dart run tools/validate_rosters.dart
+dart run tools/validate_draft.dart
+dart run tools/validate_transactions.dart
 bash tools/restore_player_identity_placeholders.sh
 ```
 
@@ -47,7 +51,7 @@ bash tools/restore_player_identity_placeholders.sh
 
 ## Player identity and early wave checks
 
-Open Player Identity Import and search for `cutover`, `early wave`, `source decision`, `validation`, `player stat validator`, `team stat validator`, `standings`, `playoffs`, and `awards`.
+Open Player Identity Import and search for `cutover`, `early wave`, `source decision`, `validation`, `player stat validator`, `team stat validator`, `standings`, `playoffs`, `awards`, `games`, `rosters`, `draft`, and `transactions`.
 
 ## Expected state before real data
 
