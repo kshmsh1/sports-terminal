@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -32,7 +33,14 @@ def main() -> None:
     parser.add_argument("--held", default="raw/player_identity_held_rows.json")
     args = parser.parse_args()
 
-    source = json.loads(Path(args.input).read_text())
+    input_path = Path(args.input)
+    if not input_path.exists():
+        print(f"Input file not found: {input_path}", file=sys.stderr)
+        print("Save a CommonAllPlayers export at that path before running the import.", file=sys.stderr)
+        print("For a no-real-data smoke test, use tools/sample_common_all_players.json as the input.", file=sys.stderr)
+        sys.exit(66)
+
+    source = json.loads(input_path.read_text())
     rows = extract_rows(source)
     profiles, aliases, held_rows = normalize_rows(rows, args.as_of)
 
