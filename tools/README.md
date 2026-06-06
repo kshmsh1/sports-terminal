@@ -1,10 +1,8 @@
 # Tools
 
-These utilities are local-only helpers for moving from pre-data readiness into the first source-backed NBA data import.
+Local helpers for moving from pre-data readiness into source-backed NBA imports.
 
 ## Pre-data test runner
-
-Run the current pre-data validation suite:
 
 ```bash
 bash tools/run_pre_data_tests.sh
@@ -12,15 +10,13 @@ bash tools/run_pre_data_tests.sh
 
 ## Safe smoke test
 
-Use this to test the normalizer mechanics without touching app assets:
-
 ```bash
 bash tools/smoke_test_common_all_players_import.sh 2026-06-05
 ```
 
 This writes sample outputs to `raw/smoke_test/` and does not modify app assets.
 
-## CommonAllPlayers real import wrapper
+## Real player identity import wrapper
 
 Use this only after saving the real source export at `raw/common_all_players.json`.
 
@@ -28,9 +24,7 @@ Use this only after saving the real source export at `raw/common_all_players.jso
 bash tools/run_common_all_players_import.sh raw/common_all_players.json 2026-06-05
 ```
 
-## If the input file is missing
-
-The import utility expects a saved source export. Do not run `raw/common_all_players.json` as a shell command. It is a file path where the source export should be saved.
+Do not run `raw/common_all_players.json` as a shell command. It is a file path.
 
 ## Direct Python utility
 
@@ -62,6 +56,9 @@ dart run tools/normalize_common_all_players.dart \
 dart run tools/validate_player_identity.dart
 dart run tools/validate_player_season_stats.dart
 dart run tools/validate_team_season_stats.dart
+dart run tools/validate_standings.dart
+dart run tools/validate_playoff_series.dart
+dart run tools/validate_awards.dart
 ```
 
 ## Restore placeholders
@@ -69,5 +66,3 @@ dart run tools/validate_team_season_stats.dart
 ```bash
 bash tools/restore_player_identity_placeholders.sh
 ```
-
-After identity normalization, run the tests and route imported player identity through Search, Workspace, Compare, Reports, Export, Alerts, Dashboard, and Source Registry before importing player stats.
