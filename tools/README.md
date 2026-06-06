@@ -16,9 +16,25 @@ bash tools/smoke_test_common_all_players_import.sh 2026-06-05
 
 This writes sample outputs to `raw/smoke_test/` and does not modify app assets.
 
-## Real player identity import wrapper
+## Stage 1 player identity candidate
 
 Use this only after saving the real source export at `raw/common_all_players.json`.
+
+```bash
+bash tools/import_player_identity_candidate.sh raw/common_all_players.json 2026-06-05
+```
+
+This inspects the raw export, normalizes player profiles and aliases, validates identity, requires non-empty connected player rows, writes an import report, and runs the post-import candidate check.
+
+## Inspect raw CommonAllPlayers export
+
+```bash
+dart run tools/inspect_common_all_players_export.dart raw/common_all_players.json
+```
+
+## Real player identity import wrapper
+
+This lower-level wrapper only normalizes and writes the player identity assets.
 
 ```bash
 bash tools/run_common_all_players_import.sh raw/common_all_players.json 2026-06-05
@@ -54,6 +70,7 @@ dart run tools/normalize_common_all_players.dart \
 
 ```bash
 dart run tools/validate_player_identity.dart
+dart run tools/validate_player_identity_connected.dart
 dart run tools/validate_player_season_stats.dart
 dart run tools/validate_team_season_stats.dart
 dart run tools/validate_standings.dart
@@ -63,7 +80,16 @@ dart run tools/validate_games.dart
 dart run tools/validate_rosters.dart
 dart run tools/validate_draft.dart
 dart run tools/validate_transactions.dart
+dart run tools/validate_all_nba_assets.dart
 ```
+
+## Import report
+
+```bash
+dart run tools/write_player_identity_import_report.dart 2026-06-05
+```
+
+The report is written to `raw/player_identity_import_report.json`.
 
 ## Restore placeholders
 
