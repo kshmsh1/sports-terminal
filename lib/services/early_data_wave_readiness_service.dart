@@ -1,6 +1,9 @@
+import 'award_record_validator.dart';
 import 'nba_asset_repository.dart';
 import 'player_identity_validator.dart';
 import 'player_season_stat_validator.dart';
+import 'playoff_series_validator.dart';
+import 'standings_record_validator.dart';
 import 'team_season_stat_validator.dart';
 
 class DataWaveReadinessRow {
@@ -37,17 +40,26 @@ class EarlyDataWaveReadinessService {
     final aliases = await repository.loadPlayerAliases();
     final playerStats = await repository.loadPlayerSeasonStats();
     final teamStats = await repository.loadTeamSeasonStats();
+    final standings = await repository.loadStandings();
+    final playoffs = await repository.loadPlayoffSeries();
+    final awards = await repository.loadAwards();
 
     final identity = const PlayerIdentityValidator().validate(players: players, aliases: aliases);
     final playerStatValidation = const PlayerSeasonStatValidator().validate(stats: playerStats, players: players, seasons: seasons, teams: teams);
     final teamStatValidation = const TeamSeasonStatValidator().validate(stats: teamStats, teams: teams, seasons: seasons);
+    final standingsValidation = const StandingsRecordValidator().validate(standings: standings, teams: teams, seasons: seasons);
+    final playoffValidation = const PlayoffSeriesValidator().validate(series: playoffs, teams: teams, seasons: seasons);
+    final awardValidation = const AwardRecordValidator().validate(awards: awards, players: players, teams: teams, seasons: seasons);
 
     return EarlyDataWaveReadinessSummary(rows: [
       DataWaveReadinessRow(wave: 'Reference teams', rows: teams.length, blockers: teams.length == 30 ? 0 : 1, warnings: 0, status: teams.length == 30 ? 'Connected' : 'Review', nextStep: 'Keep team directory stable before team stat imports.'),
       DataWaveReadinessRow(wave: 'Reference seasons', rows: seasons.length, blockers: seasons.isNotEmpty ? 0 : 1, warnings: 0, status: seasons.isNotEmpty ? 'Connected' : 'Review', nextStep: 'Keep season catalog stable before stat imports.'),
       DataWaveReadinessRow(wave: 'Player identity', rows: players.length, blockers: identity.blockers, warnings: identity.warnings, status: players.isEmpty ? 'Source pending' : identity.canConnect ? 'Connected' : 'Blocked', nextStep: players.isEmpty ? 'Import CommonAllPlayers identity first.' : 'Route imported players through Search and consumers.'),
       DataWaveReadinessRow(wave: 'Player season stats', rows: playerStats.length, blockers: playerStatValidation.blockers, warnings: playerStatValidation.warnings, status: playerStats.isEmpty ? 'Source pending' : playerStatValidation.canConnect ? 'Connected' : 'Blocked', nextStep: 'Import only after player identity is validated.'),
-      DataWaveReadinessRow(wave: 'Team season stats', rows: teamStats.length, blockers: teamStatValidation.blockers, warnings: teamStatValidation.warnings, status: teamStats.isEmpty ? 'Source pending' : teamStatValidation.canConnect ? 'Connected' : 'Blocked', nextStep: 'Import after player stats or alongside controlled team context.'),
+      DataWaveReadinessRow(wave: 'Team season stats', rows: teamStats.length, blockers: teamStatValidation.blockers, warnings: teamStatValidation.warnings, status: teamStats.isEmpty ? 'Source pending' : teamStatValidation.canConnect ? 'Connected' : 'Blocked', nextStep: 'Import before standings depend on team context.'),
+      DataWaveReadinessRow(wave: 'Standings', rows: standings.length, blockers: standingsValidation.blockers, warnings: standingsValidation.warnings, status: standings.isEmpty ? 'Source pending' : standingsValidation.canConnect ? 'Connected' : 'Blocked', nextStep: 'Import after team stats or with validated team-season context.'),
+      DataWaveReadinessRow(wave: 'Playoff series', rows: playoffs.length, blockers: playoffValidation.blockers, warnings: playoffValidation.warnings, status: playoffs.isEmpty ? 'Source pending' : playoffValidation.canConnect ? 'Connected' : 'Blocked', nextStep: 'Import after standings/team-season joins are stable.'),
+      DataWaveReadinessRow(wave: 'Awards and MVP voting', rows: awards.length, blockers: awardValidation.blockers, warnings: awardValidation.warnings, status: awards.isEmpty ? 'Source pending' : awardValidation.canConnect ? 'Connected' : 'Blocked', nextStep: 'Import after player identity joins are stable.'),
     ]);
   }
 }
