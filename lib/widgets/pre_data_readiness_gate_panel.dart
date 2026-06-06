@@ -31,7 +31,7 @@ class PreDataReadinessGatePanel extends StatelessWidget {
         const SizedBox(height: 16),
         LayoutBuilder(builder: (context, constraints) {
           final isWide = constraints.maxWidth > 900;
-          return GridView.count(crossAxisCount: isWide ? 6 : 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: isWide ? 2.25 : 1.45, children: [
+          return GridView.count(crossAxisCount: isWide ? 6 : 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: isWide ? 1.55 : 1.15, children: [
             _Metric(label: 'Checklist', value: '${preDataReadinessItems.length}', detail: 'definition of done'),
             _Metric(label: 'Done', value: '$done', detail: 'shipped gates'),
             _Metric(label: 'In Progress', value: '$inProgress', detail: 'active gates'),
@@ -124,9 +124,11 @@ class _Metric extends StatelessWidget {
   final String detail;
 
   @override
-  Widget build(BuildContext context) => TerminalCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-    Text(label, style: const TextStyle(color: terminalTextMuted, fontSize: 13)),
-    Text(value, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
-    Text(detail, style: const TextStyle(color: terminalAccent, fontSize: 12)),
+  Widget build(BuildContext context) => TerminalCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+    Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: terminalTextMuted, fontSize: 12)),
+    const SizedBox(height: 8),
+    FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900))),
+    const SizedBox(height: 6),
+    Text(detail, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: terminalAccent, fontSize: 11, height: 1.15)),
   ]));
 }
