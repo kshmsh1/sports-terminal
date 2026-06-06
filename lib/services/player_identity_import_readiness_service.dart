@@ -9,6 +9,7 @@ import 'player_identity_validator.dart';
 class PlayerIdentityImportReadinessSummary {
   const PlayerIdentityImportReadinessSummary({
     required this.currentPlayerRows,
+    required this.currentAliasRows,
     required this.contractDone,
     required this.validationImplemented,
     required this.sourceRequired,
@@ -18,6 +19,7 @@ class PlayerIdentityImportReadinessSummary {
   });
 
   final int currentPlayerRows;
+  final int currentAliasRows;
   final int contractDone;
   final int validationImplemented;
   final int sourceRequired;
@@ -42,9 +44,11 @@ class PlayerIdentityImportReadinessService {
 
   Future<PlayerIdentityImportReadinessSummary> evaluate() async {
     final players = await repository.loadPlayerProfiles();
-    final validation = validator.validate(players: players);
+    final aliases = await repository.loadPlayerAliases();
+    final validation = validator.validate(players: players, aliases: aliases);
     return PlayerIdentityImportReadinessSummary(
       currentPlayerRows: players.length,
+      currentAliasRows: aliases.length,
       contractDone: _countStatus(playerIdentityContractItems, 'Locked'),
       validationImplemented: _countStatus(playerIdentityValidationItems, 'Implemented'),
       sourceRequired: playerIdentitySourceItems.where((item) => item.status == 'Required').length,
