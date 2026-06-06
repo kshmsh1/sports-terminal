@@ -18,6 +18,16 @@ bash tools/check_pre_import_state.sh
 
 This expects Teams and Seasons to be connected while source-pending assets remain empty.
 
+## First real player identity import
+
+After saving the real CommonAllPlayers export to `raw/common_all_players.json`, run:
+
+```bash
+bash tools/import_player_identity_candidate.sh raw/common_all_players.json 2026-06-05
+```
+
+This imports player profiles and aliases, validates identity, requires non-empty connected player rows, then runs the post-import candidate check.
+
 ## After source imports
 
 ```bash
@@ -38,6 +48,7 @@ This writes to `raw/smoke_test/` only.
 
 ```bash
 bash tools/run_common_all_players_import.sh raw/common_all_players.json 2026-06-05
+dart run tools/validate_player_identity_connected.dart
 dart run tools/validate_all_nba_assets.dart
 bash tools/restore_player_identity_placeholders.sh
 ```
@@ -52,7 +63,7 @@ bash tools/restore_player_identity_placeholders.sh
 
 ## Player identity and early wave checks
 
-Open Player Identity Import and search for `completion`, `real data stage`, `cutover`, `early wave`, `source decision`, `validation`, `standings`, `playoffs`, `awards`, `games`, `rosters`, `draft`, and `transactions`.
+Open Player Identity Import and search for `completion`, `stage 1`, `player identity candidate`, `real data stage`, `cutover`, `early wave`, `source decision`, `validation`, `standings`, `playoffs`, `awards`, `games`, `rosters`, `draft`, and `transactions`.
 
 ## Expected state before real data
 
