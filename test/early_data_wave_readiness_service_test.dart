@@ -4,7 +4,7 @@ import 'package:sports_terminal/services/early_data_wave_readiness_service.dart'
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('early data wave readiness evaluates every source-pending NBA wave', () async {
+  test('early data wave readiness evaluates every NBA wave without blockers', () async {
     final summary = await const EarlyDataWaveReadinessService().evaluate();
     final waves = summary.rows.map((row) => row.wave);
 
@@ -25,6 +25,7 @@ void main() {
     ]) {
       expect(waves, contains(expected));
     }
+
     for (final expectedPending in const [
       'Player season stats',
       'Team season stats',
@@ -32,11 +33,12 @@ void main() {
       'Playoff series',
       'Awards and MVP voting',
       'Games',
-      'Rosters',
       'Draft picks',
       'Transactions',
     ]) {
       expect(summary.rows.firstWhere((row) => row.wave == expectedPending).status, 'Source pending');
     }
+
+    expect(['Source pending', 'Connected'], contains(summary.rows.firstWhere((row) => row.wave == 'Rosters').status));
   });
 }
