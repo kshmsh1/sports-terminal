@@ -33,6 +33,10 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Local source exports and generated import review files
+/raw/*.json
+!/raw/README.md
+
 # Symbolication related
 app.*.symbols
 
