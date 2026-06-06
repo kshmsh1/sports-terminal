@@ -10,13 +10,21 @@ git pull
 flutter run -d chrome
 ```
 
-## Full pre-data gate
+## Before source imports
 
 ```bash
-bash tools/run_pre_data_gate.sh
+bash tools/check_pre_import_state.sh
 ```
 
-This runs the pre-data tests and the all-asset validator.
+This expects Teams and Seasons to be connected while source-pending assets remain empty.
+
+## After source imports
+
+```bash
+bash tools/check_post_import_candidate.sh
+```
+
+This allows connected source rows but still runs tests and every asset validator.
 
 ## Safe import smoke test
 
@@ -44,7 +52,7 @@ bash tools/restore_player_identity_placeholders.sh
 
 ## Player identity and early wave checks
 
-Open Player Identity Import and search for `completion`, `cutover`, `early wave`, `source decision`, `validation`, `standings`, `playoffs`, `awards`, `games`, `rosters`, `draft`, and `transactions`.
+Open Player Identity Import and search for `completion`, `real data stage`, `cutover`, `early wave`, `source decision`, `validation`, `standings`, `playoffs`, `awards`, `games`, `rosters`, `draft`, and `transactions`.
 
 ## Expected state before real data
 
