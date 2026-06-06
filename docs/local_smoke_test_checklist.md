@@ -16,7 +16,18 @@ flutter run -d chrome
 flutter test test/player_identity_validator_test.dart
 flutter test test/player_identity_normalizer_test.dart
 flutter test test/player_identity_import_readiness_service_test.dart
+flutter test test/search_route_payload_player_producer_test.dart
 ```
+
+## Safe import smoke test
+
+To test the normalizer mechanics without modifying app assets:
+
+```bash
+bash tools/smoke_test_common_all_players_import.sh 2026-06-05
+```
+
+This writes to `raw/smoke_test/` only.
 
 ## Import utility commands
 
@@ -48,6 +59,18 @@ dart run tools/normalize_common_all_players.dart \
   --held raw/player_identity_held_rows.json
 ```
 
+Validate imported assets:
+
+```bash
+dart run tools/validate_player_identity.dart
+```
+
+Restore placeholders after sample or failed imports:
+
+```bash
+bash tools/restore_player_identity_placeholders.sh
+```
+
 ## RoutePayload loop
 
 1. Open the app.
@@ -66,6 +89,7 @@ dart run tools/normalize_common_all_players.dart \
 4. Retarget the active payload from another consumer.
 5. Publish a Season result.
 6. Confirm history and active state update.
+7. After a real player identity import, publish a Player result.
 
 ## Player identity pre-import checks
 
