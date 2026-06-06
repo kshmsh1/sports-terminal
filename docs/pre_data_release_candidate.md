@@ -2,6 +2,10 @@
 
 This document defines the finish line for the NBA pre-data build phase.
 
+## Current status
+
+The pre-import gate has passed locally after placeholder restoration. The app launches in Chrome without the prior RenderFlex overflow, and the asset validator reports zero blockers and zero warnings while source-pending datasets remain empty.
+
 ## Release candidate requirement
 
 Before importing source data:
@@ -28,7 +32,7 @@ Covered datasets: Teams, Seasons, Player Identity, Player Season Stats, Team Sea
 
 ## What remains before source import
 
-Run the local browser smoke test, run the pre-import check, save the CommonAllPlayers export to `raw/common_all_players.json`, normalize player identity, validate player identity, run the post-import check, and route imported players through Search and every major consumer.
+Save the CommonAllPlayers export to `raw/common_all_players.json`, run the player identity candidate command, review the import report, run the post-import check, and route imported players through Search and every major consumer.
 
 ## Rule
 
