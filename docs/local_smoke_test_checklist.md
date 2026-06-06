@@ -10,11 +10,13 @@ git pull
 flutter run -d chrome
 ```
 
-## Test commands
+## Full pre-data gate
 
 ```bash
-bash tools/run_pre_data_tests.sh
+bash tools/run_pre_data_gate.sh
 ```
+
+This runs the pre-data tests and the all-asset validator.
 
 ## Safe import smoke test
 
@@ -28,16 +30,7 @@ This writes to `raw/smoke_test/` only.
 
 ```bash
 bash tools/run_common_all_players_import.sh raw/common_all_players.json 2026-06-05
-dart run tools/validate_player_identity.dart
-dart run tools/validate_player_season_stats.dart
-dart run tools/validate_team_season_stats.dart
-dart run tools/validate_standings.dart
-dart run tools/validate_playoff_series.dart
-dart run tools/validate_awards.dart
-dart run tools/validate_games.dart
-dart run tools/validate_rosters.dart
-dart run tools/validate_draft.dart
-dart run tools/validate_transactions.dart
+dart run tools/validate_all_nba_assets.dart
 bash tools/restore_player_identity_placeholders.sh
 ```
 
@@ -51,7 +44,7 @@ bash tools/restore_player_identity_placeholders.sh
 
 ## Player identity and early wave checks
 
-Open Player Identity Import and search for `cutover`, `early wave`, `source decision`, `validation`, `player stat validator`, `team stat validator`, `standings`, `playoffs`, `awards`, `games`, `rosters`, `draft`, and `transactions`.
+Open Player Identity Import and search for `completion`, `cutover`, `early wave`, `source decision`, `validation`, `standings`, `playoffs`, `awards`, `games`, `rosters`, `draft`, and `transactions`.
 
 ## Expected state before real data
 
