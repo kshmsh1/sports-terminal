@@ -2,7 +2,7 @@
 
 This directory is for local source exports that should be reviewed before becoming connected app assets.
 
-The first expected file is:
+The first expected real source file is:
 
 ```text
 raw/common_all_players.json
@@ -14,15 +14,21 @@ That file is not committed by default because it should come from your local sou
 
 If the normalizer says this file does not exist, the import utility is working correctly but has no source export to read yet.
 
-## Test without the real export
+Do not run `raw/common_all_players.json` as a shell command. It is a file path where the export should be saved.
 
-To test the mechanics only, run:
+## Safe smoke test without the real export
+
+To test the mechanics only without touching app assets, run:
 
 ```bash
-bash tools/run_common_all_players_import.sh tools/sample_common_all_players.json 2026-06-05
+bash tools/smoke_test_common_all_players_import.sh 2026-06-05
 ```
 
-This writes sample-normalized rows into the app assets. Revert those files before committing real data.
+This writes sample-normalized rows into:
+
+```text
+raw/smoke_test/
+```
 
 ## Real import
 
