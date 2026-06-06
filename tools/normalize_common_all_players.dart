@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:sports_terminal/models/player_alias.dart';
 import 'package:sports_terminal/services/player_identity_normalizer.dart';
 
 const _sourceId = 'nba-api-common-all-players';
