@@ -15,6 +15,18 @@ Arguments:
 1. Input path. Defaults to `raw/common_all_players.json`.
 2. Source as-of date. Defaults to today's date.
 
+## If the input file is missing
+
+The import utility expects a saved source export. If `raw/common_all_players.json` does not exist, the script should stop with a friendly message.
+
+To test the normalizer mechanics without the real export, run:
+
+```bash
+bash tools/run_common_all_players_import.sh tools/sample_common_all_players.json 2026-06-05
+```
+
+This writes sample-normalized rows into the app assets. Revert those sample outputs before committing real data.
+
 ## Direct Python utility
 
 Use `python3` on macOS.
