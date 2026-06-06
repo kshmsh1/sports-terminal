@@ -10,6 +10,13 @@ git pull
 flutter run -d chrome
 ```
 
+## Test commands
+
+```bash
+flutter test test/player_identity_validator_test.dart
+flutter test test/player_identity_normalizer_test.dart
+```
+
 ## RoutePayload loop
 
 1. Open the app.
@@ -36,22 +43,26 @@ flutter run -d chrome
 3. Search for `source decision`.
 4. Search for `validation`.
 5. Search for `alias`.
-6. Confirm the import screen shows cutover, source, contract, validation, schema, acceptance, and wave items.
+6. Search for `mapping`.
+7. Confirm the import screen shows cutover, source, contract, validation, schema, acceptance, and wave items.
 
 ## Expected state before real data
 
 1. Teams should be connected.
 2. Seasons should be connected.
 3. Player profiles should be empty.
-4. Player stats should be empty.
-5. Team stats should be empty.
-6. Games, rosters, awards, draft, transactions, standings, and playoffs should be empty.
-7. Empty means source-pending, not broken.
+4. Player aliases should be empty.
+5. Player stats should be empty.
+6. Team stats should be empty.
+7. Games, rosters, awards, draft, transactions, standings, and playoffs should be empty.
+8. Empty means source-pending, not broken.
 
-## Known manual follow-up
+## Alias asset
 
-The `player_aliases.json` asset exists, and `NbaAssetRepository.loadPlayerAliases()` exists, but `pubspec.yaml` still needs the asset entry added locally if the connector blocks that write. Add this line under the other player asset entries if needed:
+The `player_aliases.json` asset now exists and is registered in `pubspec.yaml`.
 
-```yaml
-    - assets/data/nba/players/player_aliases.json
-```
+## First source path
+
+The first player identity import path is documented in `docs/player_identity_source_decision.md`.
+
+Do not import player stats until player identity rows pass validation and route cleanly through the terminal.
