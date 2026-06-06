@@ -19,7 +19,7 @@ void main() {
       sourceObjectId: player.id,
       displayLabel: player.displayName,
       selectedColumns: const ['playerId', 'displayName', 'firstName', 'lastName', 'sourceId', 'asOf'],
-      selectedRows: const [player.id],
+      selectedRows: [player.id],
       filterSummary: 'Search result: player=${player.displayName}; targetRoute=Workspace',
       sourceSnapshot: 'Connected local source-backed asset: player_profiles.json',
       readinessState: 'Player identity connected; player stats pending',
