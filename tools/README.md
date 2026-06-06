@@ -57,6 +57,24 @@ dart run tools/normalize_common_all_players.dart \
   --held raw/player_identity_held_rows.json
 ```
 
+## Validate player identity assets
+
+Run this after normalization and before treating player identity as connected:
+
+```bash
+dart run tools/validate_player_identity.dart
+```
+
+The command exits non-zero if blockers are present.
+
+## Restore placeholders
+
+If a sample import or failed import wrote into the app assets, restore the source-pending placeholders:
+
+```bash
+bash tools/restore_player_identity_placeholders.sh
+```
+
 ## After normalization
 
 Run:
