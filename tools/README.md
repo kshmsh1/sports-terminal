@@ -67,6 +67,16 @@ dart run tools/validate_player_identity.dart
 
 The command exits non-zero if blockers are present.
 
+## Validate player season stat assets
+
+Run this only after player identity is connected and before treating traditional player stat rows as connected:
+
+```bash
+dart run tools/validate_player_season_stats.dart
+```
+
+The command blocks missing player joins, missing season joins, missing team joins, missing source metadata, duplicate natural keys, and unsafe values.
+
 ## Restore placeholders
 
 If a sample import or failed import wrote into the app assets, restore the source-pending placeholders:
@@ -83,6 +93,8 @@ Run:
 flutter test test/player_identity_validator_test.dart
 flutter test test/player_identity_normalizer_test.dart
 flutter test test/player_identity_import_readiness_service_test.dart
+flutter test test/search_route_payload_player_producer_test.dart
+flutter test test/player_season_stat_validator_test.dart
 ```
 
 Then run the app and route a player identity import through Search, Workspace, Compare, Reports, Export, Alerts, Dashboard, and Source Registry before importing any player stats.
