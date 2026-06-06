@@ -6,6 +6,7 @@ import '../data/player_identity_contract_items.dart';
 import '../data/player_identity_import_items.dart';
 import '../data/player_identity_schema_gate_items.dart';
 import '../data/player_identity_source_items.dart';
+import '../data/player_identity_stage_one_items.dart';
 import '../data/player_identity_validation_items.dart';
 import '../data/player_season_stat_validation_items.dart';
 import '../data/pre_data_completion_items.dart';
@@ -27,6 +28,7 @@ class PlayerIdentityImportScreen extends RegistryScreenFactory {
       ...preDataRcItems,
       ...preDataCompletionItems,
       ...realDataImportStageItems,
+      ...playerIdentityStageOneItems,
       ...preDataCutoverItems,
       ...preDataReadinessItems,
       ...sourceReviewGateItems,
@@ -44,7 +46,7 @@ class PlayerIdentityImportScreen extends RegistryScreenFactory {
       ...detailDataValidationItems,
       ...sourceBackedNbaDataWaveItems,
     ],
-    searchHint: 'Search RC, completion, real data stage, cutover, early wave, source decision, validation, standings, playoffs, awards, games, rosters, draft, transactions, pre-data gate, source review, player contract, import acceptance, aliases...',
+    searchHint: 'Search RC, stage 1, player identity candidate, completion, real data stage, cutover, early wave, source decision, validation, standings, playoffs, awards, games, rosters, draft, transactions, pre-data gate, source review, player contract, import acceptance, aliases...',
     leadTitle: 'Pre-Data Finish Line Principle',
     leadBody: 'The terminal should not endlessly add architecture. The pre-data phase ends when route payload consumers, player identity schema, source posture, validators, import tools, and no-fake-data gates are strong enough for real NBA source rows to become the main blocker.',
   );
