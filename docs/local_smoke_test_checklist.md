@@ -17,6 +17,7 @@ flutter test test/player_identity_validator_test.dart
 flutter test test/player_identity_normalizer_test.dart
 flutter test test/player_identity_import_readiness_service_test.dart
 flutter test test/search_route_payload_player_producer_test.dart
+flutter test test/player_season_stat_validator_test.dart
 ```
 
 ## Safe import smoke test
@@ -59,10 +60,16 @@ dart run tools/normalize_common_all_players.dart \
   --held raw/player_identity_held_rows.json
 ```
 
-Validate imported assets:
+Validate imported identity assets:
 
 ```bash
 dart run tools/validate_player_identity.dart
+```
+
+Validate player stat assets only after identity is connected:
+
+```bash
+dart run tools/validate_player_season_stats.dart
 ```
 
 Restore placeholders after sample or failed imports:
@@ -99,7 +106,8 @@ bash tools/restore_player_identity_placeholders.sh
 4. Search for `validation`.
 5. Search for `alias`.
 6. Search for `mapping`.
-7. Confirm the import screen shows cutover, source, contract, validation, schema, acceptance, and wave items.
+7. Search for `player stat validator`.
+8. Confirm the import screen shows cutover, source, contract, validation, schema, acceptance, pre-stat, and wave items.
 
 ## Expected state before real data
 
