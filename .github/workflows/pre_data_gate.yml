@@ -12,14 +12,11 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-
       - name: Install dependencies
         run: flutter pub get
-
-      - name: Run pre-data gate
-        run: bash tools/run_pre_data_gate.sh
+      - name: Run pre import check
+        run: bash tools/check_pre_import_state.sh
