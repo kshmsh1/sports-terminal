@@ -8,6 +8,14 @@ Local helpers for moving from pre-data readiness into source-backed NBA imports.
 bash tools/run_pre_data_tests.sh
 ```
 
+## Manual roster seed from screenshots
+
+```bash
+bash tools/run_manual_roster_seed.sh
+```
+
+This applies the committed manual roster seed files, writes player profiles and roster entries, validates connected identity and rosters, and runs the post-import candidate check.
+
 ## Safe smoke test
 
 ```bash
