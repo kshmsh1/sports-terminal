@@ -31,7 +31,7 @@ class PreDataReadinessGatePanel extends StatelessWidget {
         const SizedBox(height: 16),
         LayoutBuilder(builder: (context, constraints) {
           final isWide = constraints.maxWidth > 900;
-          return GridView.count(crossAxisCount: isWide ? 6 : 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: isWide ? 1.55 : 1.15, children: [
+          return GridView.count(crossAxisCount: isWide ? 6 : 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: isWide ? 1.25 : 1.0, children: [
             _Metric(label: 'Checklist', value: '${preDataReadinessItems.length}', detail: 'definition of done'),
             _Metric(label: 'Done', value: '$done', detail: 'shipped gates'),
             _Metric(label: 'In Progress', value: '$inProgress', detail: 'active gates'),
@@ -124,11 +124,16 @@ class _Metric extends StatelessWidget {
   final String detail;
 
   @override
-  Widget build(BuildContext context) => TerminalCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-    Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: terminalTextMuted, fontSize: 12)),
-    const SizedBox(height: 8),
-    FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900))),
-    const SizedBox(height: 6),
-    Text(detail, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: terminalAccent, fontSize: 11, height: 1.15)),
-  ]));
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(color: terminalPanel, borderRadius: BorderRadius.circular(16), border: Border.all(color: terminalBorder)),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: terminalTextMuted, fontSize: 11)),
+      const SizedBox(height: 6),
+      FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900))),
+      const Spacer(),
+      Text(detail, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: terminalAccent, fontSize: 10)),
+    ]),
+  );
 }
