@@ -23,10 +23,11 @@ This expects Teams and Seasons to be connected while source-pending assets remai
 After saving the real CommonAllPlayers export to `raw/common_all_players.json`, run:
 
 ```bash
+dart run tools/inspect_common_all_players_export.dart raw/common_all_players.json
 bash tools/import_player_identity_candidate.sh raw/common_all_players.json 2026-06-05
 ```
 
-This imports player profiles and aliases, validates identity, requires non-empty connected player rows, then runs the post-import candidate check.
+The candidate command imports player profiles and aliases, validates identity, requires non-empty connected player rows, writes `raw/player_identity_import_report.json`, then runs the post-import candidate check.
 
 ## After source imports
 
@@ -49,6 +50,7 @@ This writes to `raw/smoke_test/` only.
 ```bash
 bash tools/run_common_all_players_import.sh raw/common_all_players.json 2026-06-05
 dart run tools/validate_player_identity_connected.dart
+dart run tools/write_player_identity_import_report.dart 2026-06-05
 dart run tools/validate_all_nba_assets.dart
 bash tools/restore_player_identity_placeholders.sh
 ```
