@@ -15,6 +15,37 @@ flutter run -d chrome
 ```bash
 flutter test test/player_identity_validator_test.dart
 flutter test test/player_identity_normalizer_test.dart
+flutter test test/player_identity_import_readiness_service_test.dart
+```
+
+## Import utility commands
+
+If you have a saved CommonAllPlayers export, prefer the wrapper:
+
+```bash
+bash tools/run_common_all_players_import.sh raw/common_all_players.json 2026-06-05
+```
+
+Direct Python command uses `python3`, not `python`:
+
+```bash
+python3 tools/normalize_common_all_players.py \
+  --input raw/common_all_players.json \
+  --as-of 2026-06-05 \
+  --profiles assets/data/nba/players/player_profiles.json \
+  --aliases assets/data/nba/players/player_aliases.json \
+  --held raw/player_identity_held_rows.json
+```
+
+Dart fallback:
+
+```bash
+dart run tools/normalize_common_all_players.dart \
+  --input raw/common_all_players.json \
+  --as-of 2026-06-05 \
+  --profiles assets/data/nba/players/player_profiles.json \
+  --aliases assets/data/nba/players/player_aliases.json \
+  --held raw/player_identity_held_rows.json
 ```
 
 ## RoutePayload loop
