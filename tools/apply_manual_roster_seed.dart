@@ -4,6 +4,7 @@ import 'dart:io';
 const _sourceId = 'manual-roster-screenshots-2026-06-06';
 const _asOf = '2026-06-06';
 const _seasonId = '2025-26';
+const _snapshotLabel = '2025-26 final roster snapshot';
 const _sourceDirs = <String>[
   'assets/data/nba/manual_sources/rosters',
   'docs/manual_roster_sources',
@@ -19,6 +20,7 @@ void main() {
   final rosters = <Map<String, dynamic>>[];
   final teams = <String, Map<String, dynamic>>{};
   final seenPlayers = <String>{};
+  final skippedDuplicatePlayers = <Map<String, String>>[];
 
   for (final path in seedPaths) {
     final text = _readSeed(path);
@@ -38,13 +40,14 @@ void main() {
       final age = int.parse(cells[7]);
       final height = cells[8];
       final weight = int.parse(cells[9]);
-      final college = _nullable(cells[10]);
+      final from = _nullable(cells[10]);
       final salary = _nullableInt(cells[11]);
       final playerId = 'manual-2026-${_slug(name)}';
       final parts = _splitName(name);
 
       if (!seenPlayers.add(playerId)) {
-        throw StateError('Duplicate manual playerId: $playerId from $path');
+        skippedDuplicatePlayers.add({'playerId': playerId, 'displayName': name, 'sourceFile': path});
+        continue;
       }
 
       teams[teamId] = {
@@ -63,7 +66,7 @@ void main() {
         'weightPounds': weight,
         'birthDate': null,
         'birthCountry': null,
-        'college': college,
+        'college': from,
         'draftYear': null,
         'draftRound': null,
         'draftPick': null,
@@ -79,16 +82,18 @@ void main() {
         'seasonId': _seasonId,
         'jerseyNumber': jersey,
         'position': position,
-        'rosterStatus': 'Active',
+        'rosterStatus': 'Final roster',
         'contractType': null,
         'startDate': null,
         'endDate': null,
         'sourceId': _sourceId,
         'asOf': _asOf,
+        'snapshotLabel': _snapshotLabel,
         'age': age,
         'height': height,
         'weightPounds': weight,
-        'college': college,
+        'college': from,
+        'from': from,
         'salaryUsd': salary,
         'salaryDisplay': salary == null ? '--' : '\$${_formatMoney(salary)}',
       });
@@ -100,7 +105,9 @@ void main() {
       'id': _sourceId,
       'asOf': _asOf,
       'type': 'manual-source-backed',
-      'usage': 'Manual player identity seed transcribed from user-provided roster screenshots',
+      'usage': 'Manual player identity seed transcribed from user-provided final 2025-26 roster screenshots',
+      'seasonId': _seasonId,
+      'snapshotLabel': _snapshotLabel,
     },
     'players': players,
   });
@@ -109,7 +116,9 @@ void main() {
       'id': _sourceId,
       'asOf': _asOf,
       'type': 'manual-source-backed',
-      'usage': 'Manual roster seed transcribed from user-provided roster screenshots',
+      'usage': 'Manual roster seed transcribed from user-provided final 2025-26 roster screenshots',
+      'seasonId': _seasonId,
+      'snapshotLabel': _snapshotLabel,
     },
     'teams': teams.values.toList(),
     'rosters': rosters,
@@ -118,15 +127,18 @@ void main() {
     'sourceId': _sourceId,
     'asOf': _asOf,
     'seasonId': _seasonId,
+    'snapshotLabel': _snapshotLabel,
     'seedFiles': seedPaths,
     'teamCount': teams.length,
     'playerRows': players.length,
     'rosterRows': rosters.length,
+    'skippedDuplicatePlayerRows': skippedDuplicatePlayers,
     'teams': teams.values.toList(),
   });
 
   print('Manual roster seed applied: ${players.length} players, ${rosters.length} roster entries, ${teams.length} teams.');
   print('Seed files: ${seedPaths.length}.');
+  print('Skipped duplicate player rows: ${skippedDuplicatePlayers.length}.');
   print('Report written to raw/manual_roster_seed_report.json');
 }
 
