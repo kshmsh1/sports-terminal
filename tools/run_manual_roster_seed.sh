@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+dart run tools/audit_manual_roster_sources.dart
 dart run tools/apply_manual_roster_seed.dart
 dart run tools/summarize_manual_roster_seed.dart
 dart run tools/validate_player_identity_connected.dart
