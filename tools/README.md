@@ -14,7 +14,28 @@ bash tools/run_pre_data_tests.sh
 bash tools/run_manual_roster_seed.sh
 ```
 
-This applies the committed manual roster seed files, writes player profiles and roster entries, validates connected identity and rosters, and runs the post-import candidate check.
+This audits the committed manual roster seed files, applies them into player profiles and roster entries, summarizes 30-team coverage, validates connected identity and rosters, and runs the post-import candidate check.
+
+The generated roster rows are explicitly treated as the final NBA rosters at the end of the 2025-2026 season:
+
+```text
+seasonId: 2025-26
+snapshotLabel: 2025-26 final roster snapshot
+rosterStatus: Final roster
+sourceId: manual-roster-screenshots-2026-06-06
+```
+
+To inspect only the raw source files without writing generated assets, run:
+
+```bash
+dart run tools/audit_manual_roster_sources.dart
+```
+
+To inspect only the generated coverage report after applying the seed, run:
+
+```bash
+dart run tools/summarize_manual_roster_seed.dart
+```
 
 ## Safe smoke test
 
