@@ -13,7 +13,8 @@ void main() {
   final canonicalTeamIds = (teamsJson['teams'] as List<dynamic>).map((row) => (row as Map<String, dynamic>)['id'] as String).toSet();
   final importedTeams = ((report['teams'] as List<dynamic>? ?? const [])).map((row) => (row as Map<String, dynamic>)['teamId'] as String).toSet();
   final missing = canonicalTeamIds.difference(importedTeams).toList()..sort();
-  final duplicateRows = report['skippedDuplicatePlayerRows'] as List<dynamic>? ?? const [];
+  final duplicatePlayers = report['skippedDuplicatePlayerRows'] as List<dynamic>? ?? const [];
+  final duplicateRosters = report['skippedDuplicateRosterRows'] as List<dynamic>? ?? const [];
 
   print('Manual roster seed coverage');
   print('Snapshot: ${report['snapshotLabel'] ?? '2025-26 final roster snapshot'}');
@@ -21,7 +22,8 @@ void main() {
   print('Player rows: ${report['playerRows']}');
   print('Roster rows: ${report['rosterRows']}');
   print('Seed files: ${(report['seedFiles'] as List<dynamic>? ?? const []).length}');
-  print('Skipped duplicate player rows: ${duplicateRows.length}');
+  print('Skipped duplicate player rows: ${duplicatePlayers.length}');
+  print('Skipped duplicate roster rows: ${duplicateRosters.length}');
 
   if (missing.isEmpty) {
     print('All canonical NBA teams have manual roster rows.');
