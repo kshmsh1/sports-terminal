@@ -12,13 +12,21 @@ void main() {
   final teams = _loadTeams();
   final seasons = _loadSeasons();
   final rosters = _loadRosters();
-  final summary = const RosterEntryValidator().validate(rosters: rosters, players: players, teams: teams, seasons: seasons);
+  final enforceFinalSnapshot = rosters.isNotEmpty;
+  final summary = const RosterEntryValidator().validate(
+    rosters: rosters,
+    players: players,
+    teams: teams,
+    seasons: seasons,
+    requireFinalRosterSnapshot: enforceFinalSnapshot,
+  );
 
   print('Roster validation summary');
   print('Players: ${players.length}');
   print('Teams: ${teams.length}');
   print('Seasons: ${seasons.length}');
   print('Roster rows: ${rosters.length}');
+  print('Final snapshot contract: ${enforceFinalSnapshot ? 'enforced' : 'source pending'}');
   print('Blockers: ${summary.blockers}');
   print('Warnings: ${summary.warnings}');
 
