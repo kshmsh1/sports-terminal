@@ -8,7 +8,10 @@ import 'package:sports_terminal/services/roster_entry_validator.dart';
 void main() {
   const players = [PlayerProfile(id: 'nba-2544', displayName: 'LeBron James', sourceId: 'source', asOf: '2026-06-05')];
   const teams = [Team(id: 'lal', name: 'Lakers', abbreviation: 'LAL', city: 'Los Angeles', conference: 'West', division: 'Pacific')];
-  const seasons = [Season(id: 'season-2025', label: '2024-25', startYear: 2024, endYear: 2025, league: 'NBA')];
+  const seasons = [
+    Season(id: 'season-2025', label: '2024-25', startYear: 2024, endYear: 2025, league: 'NBA'),
+    Season(id: '2025-26', label: '2025-26', startYear: 2025, endYear: 2026, league: 'NBA'),
+  ];
 
   group('RosterEntryValidator', () {
     test('passes clean joined rows', () {
@@ -49,6 +52,62 @@ void main() {
       );
       expect(summary.issues.where((issue) => issue.code == 'duplicate-natural-key'), isNotEmpty);
       expect(summary.issues.where((issue) => issue.code == 'date-window-order'), isNotEmpty);
+      expect(summary.canConnect, isFalse);
+    });
+
+    test('passes complete final roster snapshot contract', () {
+      final summary = const RosterEntryValidator().validate(
+        players: players,
+        teams: teams,
+        seasons: seasons,
+        requireFinalRosterSnapshot: true,
+        rosters: const [
+          RosterEntry(
+            playerId: 'nba-2544',
+            teamId: 'lal',
+            seasonId: '2025-26',
+            jerseyNumber: '23',
+            position: 'F',
+            rosterStatus: 'Final roster',
+            sourceId: 'manual-roster-screenshots-2026-06-06',
+            asOf: '2026-06-06',
+            snapshotLabel: '2025-26 final roster snapshot',
+            age: 41,
+            height: '6\' 9"',
+            weightPounds: 250,
+            college: '--',
+          ),
+        ],
+      );
+      expect(summary.blockers, 0);
+      expect(summary.canConnect, isTrue);
+    });
+
+    test('blocks incomplete final roster snapshot contract', () {
+      final summary = const RosterEntryValidator().validate(
+        players: players,
+        teams: teams,
+        seasons: seasons,
+        requireFinalRosterSnapshot: true,
+        rosters: const [
+          RosterEntry(
+            playerId: 'nba-2544',
+            teamId: 'lal',
+            seasonId: 'season-2025',
+            rosterStatus: 'Active',
+            sourceId: 'source',
+            asOf: '2026-06-05',
+            height: 'bad-height',
+            weightPounds: 99,
+          ),
+        ],
+      );
+      expect(summary.issues.where((issue) => issue.code == 'not-final-2025-26-season'), isNotEmpty);
+      expect(summary.issues.where((issue) => issue.code == 'not-final-roster-status'), isNotEmpty);
+      expect(summary.issues.where((issue) => issue.code == 'missing-final-snapshot-label'), isNotEmpty);
+      expect(summary.issues.where((issue) => issue.code == 'invalid-final-roster-age'), isNotEmpty);
+      expect(summary.issues.where((issue) => issue.code == 'invalid-final-roster-height'), isNotEmpty);
+      expect(summary.issues.where((issue) => issue.code == 'invalid-final-roster-weight'), isNotEmpty);
       expect(summary.canConnect, isFalse);
     });
   });
