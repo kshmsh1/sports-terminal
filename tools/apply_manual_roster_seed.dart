@@ -19,8 +19,10 @@ void main() {
   final players = <Map<String, dynamic>>[];
   final rosters = <Map<String, dynamic>>[];
   final teams = <String, Map<String, dynamic>>{};
-  final seenPlayers = <String>{};
+  final seenPlayerIds = <String>{};
+  final seenRosterKeys = <String>{};
   final skippedDuplicatePlayers = <Map<String, String>>[];
+  final skippedDuplicateRosters = <Map<String, String>>[];
 
   for (final path in seedPaths) {
     final text = _readSeed(path);
@@ -43,12 +45,8 @@ void main() {
       final from = _nullable(cells[10]);
       final salary = _nullableInt(cells[11]);
       final playerId = 'manual-2026-${_slug(name)}';
+      final rosterKey = '$playerId|$teamId|$_seasonId';
       final parts = _splitName(name);
-
-      if (!seenPlayers.add(playerId)) {
-        skippedDuplicatePlayers.add({'playerId': playerId, 'displayName': name, 'sourceFile': path});
-        continue;
-      }
 
       teams[teamId] = {
         'teamId': teamId,
@@ -56,26 +54,37 @@ void main() {
         'teamName': teamName,
         'headCoach': headCoach,
       };
-      players.add({
-        'id': playerId,
-        'displayName': name,
-        'firstName': parts.first,
-        'lastName': parts.last,
-        'position': position,
-        'height': height,
-        'weightPounds': weight,
-        'birthDate': null,
-        'birthCountry': null,
-        'college': from,
-        'draftYear': null,
-        'draftRound': null,
-        'draftPick': null,
-        'nbaDebutYear': null,
-        'isActive': true,
-        'primaryTeamAbbreviation': teamAbbr,
-        'sourceId': _sourceId,
-        'asOf': _asOf,
-      });
+
+      if (seenPlayerIds.add(playerId)) {
+        players.add({
+          'id': playerId,
+          'displayName': name,
+          'firstName': parts.first,
+          'lastName': parts.last,
+          'position': position,
+          'height': height,
+          'weightPounds': weight,
+          'birthDate': null,
+          'birthCountry': null,
+          'college': from,
+          'draftYear': null,
+          'draftRound': null,
+          'draftPick': null,
+          'nbaDebutYear': null,
+          'isActive': true,
+          'primaryTeamAbbreviation': teamAbbr,
+          'sourceId': _sourceId,
+          'asOf': _asOf,
+        });
+      } else {
+        skippedDuplicatePlayers.add({'playerId': playerId, 'displayName': name, 'sourceFile': path});
+      }
+
+      if (!seenRosterKeys.add(rosterKey)) {
+        skippedDuplicateRosters.add({'rosterKey': rosterKey, 'displayName': name, 'sourceFile': path});
+        continue;
+      }
+
       rosters.add({
         'playerId': playerId,
         'teamId': teamId,
@@ -133,12 +142,14 @@ void main() {
     'playerRows': players.length,
     'rosterRows': rosters.length,
     'skippedDuplicatePlayerRows': skippedDuplicatePlayers,
+    'skippedDuplicateRosterRows': skippedDuplicateRosters,
     'teams': teams.values.toList(),
   });
 
   print('Manual roster seed applied: ${players.length} players, ${rosters.length} roster entries, ${teams.length} teams.');
   print('Seed files: ${seedPaths.length}.');
   print('Skipped duplicate player rows: ${skippedDuplicatePlayers.length}.');
+  print('Skipped duplicate roster rows: ${skippedDuplicateRosters.length}.');
   print('Report written to raw/manual_roster_seed_report.json');
 }
 
@@ -174,7 +185,7 @@ int? _nullableInt(String value) => value == '--' ? null : int.parse(value);
   return (first: parts.first, last: parts.skip(1).join(' '));
 }
 
-String _slug(String value) => value.toLowerCase().replaceAll("'", '').replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-|-\$'), '');
+String _slug(String value) => value.toLowerCase().replaceAll("'", '').replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-+|-+\$'), '');
 String _formatMoney(int value) => value.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
 
 void _writeJson(String path, Map<String, dynamic> value) {
