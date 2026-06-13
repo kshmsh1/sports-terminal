@@ -44,7 +44,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--list-tables", choices=TABLE_PAGES)
     parser.add_argument("--output-root", default="raw/basketball_reference")
     parser.add_argument("--cache-dir", default=".cache/sports_reference")
-    parser.add_argument("--minimum-interval", type=float, default=3.5)
+    parser.add_argument(
+        "--minimum-interval",
+        type=float,
+        default=7.0,
+        help="Seconds between network requests; must remain between 6 and 8.",
+    )
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
     if bool(args.dataset) == bool(args.list_tables):
@@ -121,8 +126,6 @@ def main() -> int:
         "tableId": table_id,
         "rowCount": len(frame.index),
         "columns": list(frame.columns),
-        "linkedTableCount": len(linked_tables),
-        "linkedCellCount": sum(table.get("linkCount", 0) for table in linked_tables),
         "fetchedAt": fetch.fetched_at,
         "fromCache": fetch.from_cache,
         "sourceSha256": fetch.sha256,
@@ -130,17 +133,13 @@ def main() -> int:
         "status": "raw-review-only",
         "canonicalAssetsModified": False,
     }
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
     print("Basketball Reference raw candidate written")
     print(f"Dataset: {args.dataset}")
     print(f"Season: {season_label}")
     print(f"Rows: {len(frame.index)}")
     print(f"Table: {table_id}")
-    print(f"Linked cells: {manifest['linkedCellCount']}")
     print(f"CSV: {csv_path}")
     print(f"JSON: {json_path}")
     print(f"Linked JSON: {linked_path}")
