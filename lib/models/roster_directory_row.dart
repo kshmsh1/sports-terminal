@@ -21,5 +21,7 @@ class RosterDirectoryRow {
   String get position => entry.position ?? player?.position ?? '—';
   String get from => entry.fromDisplay ?? player?.college ?? player?.birthCountry ?? '—';
   String get sourceId => entry.sourceId ?? player?.sourceId ?? '—';
+  String? get height => entry.height ?? player?.height;
+  int? get weightPounds => entry.weightPounds ?? player?.weightPounds;
   bool get isActive => player?.isActive ?? true;
 }
