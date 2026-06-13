@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from sports_reference import BasketballReferenceNba, SportsReferenceClient
+from sports_reference.table_extractor import LinkedTableExtractor
 
 DATASETS = (
     "player_per_game",
@@ -37,6 +38,18 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+def extract_linked_tables(client, fetch, table_id: str) -> list[dict]:
+    soup = client.expanded_soup(fetch.html)
+    extractor = LinkedTableExtractor()
+    tables = []
+    for current_id in table_id.split(","):
+        current_id = current_id.strip()
+        table = soup.find("table", id=current_id)
+        if table is not None:
+            tables.append(extractor.extract_table(table, fetch.url))
+    return tables
+
+
 def main() -> int:
     args = parse_args()
     client = SportsReferenceClient(
@@ -58,6 +71,7 @@ def main() -> int:
             args.season,
             force=args.force,
         )
+        linked_tables = extract_linked_tables(client, fetch, table_id)
     except Exception as exc:
         print(f"Ingestion stopped: {exc}", file=sys.stderr)
         return 1
@@ -67,12 +81,21 @@ def main() -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
     csv_path = output_dir / f"{args.dataset}.csv"
     json_path = output_dir / f"{args.dataset}.json"
+    linked_path = output_dir / f"{args.dataset}.linked.json"
     manifest_path = output_dir / f"{args.dataset}.manifest.json"
 
     frame.to_csv(csv_path, index=False)
     records = frame.where(frame.notna(), None).to_dict(orient="records")
     json_path.write_text(
         json.dumps(records, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+    linked_document = linked_tables[0] if len(linked_tables) == 1 else {
+        "tableCount": len(linked_tables),
+        "tables": linked_tables,
+    }
+    linked_path.write_text(
+        json.dumps(linked_document, indent=2, default=str) + "\n",
         encoding="utf-8",
     )
     manifest = {
@@ -84,6 +107,8 @@ def main() -> int:
         "tableId": table_id,
         "rowCount": len(frame.index),
         "columns": list(frame.columns),
+        "linkedTableCount": len(linked_tables),
+        "linkedCellCount": sum(table.get("linkCount", 0) for table in linked_tables),
         "fetchedAt": fetch.fetched_at,
         "fromCache": fetch.from_cache,
         "sourceSha256": fetch.sha256,
@@ -101,8 +126,10 @@ def main() -> int:
     print(f"Season: {season_label}")
     print(f"Rows: {len(frame.index)}")
     print(f"Table: {table_id}")
+    print(f"Linked cells: {manifest['linkedCellCount']}")
     print(f"CSV: {csv_path}")
     print(f"JSON: {json_path}")
+    print(f"Linked JSON: {linked_path}")
     print(f"Manifest: {manifest_path}")
     print("Canonical Flutter assets were not modified.")
     return 0
