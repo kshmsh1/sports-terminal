@@ -55,5 +55,6 @@ flutter build web --debug --no-pub
 echo "7/7 Confirm documentation"
 test -f docs/user_mode_and_workspaces.md
 test -f docs/basketball_reference_ingestion.md
+test -f docs/historical_basketball_reference_crawler.md
 
 echo "User product release gate passed."
