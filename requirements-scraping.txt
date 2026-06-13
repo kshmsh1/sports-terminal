@@ -1,0 +1,6 @@
+beautifulsoup4==4.13.4
+lxml==5.4.0
+pandas==2.3.0
+requests==2.32.4
+# Optional compatibility probe for the legacy package described on PyPI.
+# sportsreference==0.5.2
