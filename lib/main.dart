@@ -36,7 +36,14 @@ class _SportsTerminalAppState extends State<SportsTerminalApp> {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Sports Terminal',
-        theme: ThemeData.dark(useMaterial3: true),
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF8AB4F8),
+            brightness: Brightness.dark,
+          ),
+          fontFamily: 'SF Pro Display',
+          useMaterial3: true,
+        ),
         home: AppEntryGate(
           authController: authController,
           workspaceController: workspaceController,
