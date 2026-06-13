@@ -7,7 +7,9 @@ from pathlib import Path
 
 from sports_reference.client import SportsReferenceClient
 from sports_reference.crawler import BasketballReferenceCrawler
+from sports_reference.link_promoter import StoredLinkPromoter
 from sports_reference.page_store import SportsReferencePageStore
+from sports_reference.schema_review import SportsReferenceSchemaReview
 from sports_reference.url_scope import BasketballReferenceUrlScope
 
 DEFAULT_DATABASE = "raw/basketball_reference/catalog.sqlite"
@@ -20,19 +22,16 @@ DEFAULT_FAMILIES = ",".join(BasketballReferenceUrlScope().families)
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Plan, seed, resume, inspect, and export the Basketball Reference "
-            "historical table catalog."
+            "Plan, seed, expand, resume, inspect, and export the Basketball "
+            "Reference historical table catalog."
         )
     )
     parser.add_argument("--database", default=DEFAULT_DATABASE)
     parser.add_argument("--cache-dir", default=DEFAULT_CACHE)
     parser.add_argument("--snapshot-root", default=DEFAULT_SNAPSHOTS)
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    commands = parser.add_subparsers(dest="command", required=True)
 
-    plan = subparsers.add_parser(
-        "plan",
-        help="Preview deterministic season seeds without writing the queue or using the network.",
-    )
+    plan = commands.add_parser("plan")
     plan.add_argument("--from-season", type=int, required=True, dest="start_year")
     plan.add_argument("--to-season", type=int, required=True, dest="end_year")
     plan.add_argument(
@@ -44,14 +43,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--minimum-interval",
         type=float,
         default=DEFAULT_REQUEST_INTERVAL_SECONDS,
-        help="Seconds between requests; must remain between 6 and 8.",
     )
     plan.add_argument("--show-urls", action="store_true")
 
-    seed = subparsers.add_parser(
-        "seed",
-        help="Queue deterministic season hub pages without making network requests.",
-    )
+    seed = commands.add_parser("seed")
     seed.add_argument("--from-season", type=int, required=True, dest="start_year")
     seed.add_argument("--to-season", type=int, required=True, dest="end_year")
     seed.add_argument(
@@ -60,33 +55,37 @@ def build_parser() -> argparse.ArgumentParser:
         default="historical",
     )
 
-    crawl = subparsers.add_parser(
-        "crawl",
-        help="Fetch queued pages, normalize every table, and discover linked data pages.",
+    promote = commands.add_parser(
+        "promote-links",
+        help="Queue links already stored from completed pages without refetching them.",
     )
+    promote.add_argument("--families", required=True)
+    promote.add_argument("--from-season", type=int, dest="start_year")
+    promote.add_argument("--to-season", type=int, dest="end_year")
+    promote.add_argument("--source-depth", type=int, default=0)
+    promote.add_argument("--limit", type=int)
+    promote.add_argument("--dry-run", action="store_true")
+
+    crawl = commands.add_parser("crawl")
     crawl.add_argument("--max-pages", type=int, default=50)
     crawl.add_argument("--max-depth", type=int, default=2)
     crawl.add_argument(
         "--minimum-interval",
         type=float,
         default=DEFAULT_REQUEST_INTERVAL_SECONDS,
-        help="Seconds between requests; must remain between 6 and 8.",
     )
     crawl.add_argument("--families", default=DEFAULT_FAMILIES)
     crawl.add_argument("--from-season", type=int, dest="start_year")
     crawl.add_argument("--to-season", type=int, dest="end_year")
     crawl.add_argument("--force", action="store_true")
-    crawl.add_argument(
-        "--acknowledge-site-rules",
-        action="store_true",
-        help="Required before network requests. Confirms the operator reviewed current access rules.",
-    )
+    crawl.add_argument("--acknowledge-site-rules", action="store_true")
 
-    subparsers.add_parser("status", help="Print queue, run, entity, and raw-table counts.")
-    subparsers.add_parser("coverage", help="Print season coverage and the discovered table registry.")
-    subparsers.add_parser("schema-drift", help="List table IDs whose column schema changed across pages.")
+    commands.add_parser("status")
+    commands.add_parser("coverage")
+    commands.add_parser("schema-drift")
+    commands.add_parser("schema-review")
 
-    queue = subparsers.add_parser("queue", help="Inspect a bounded sample of queue records.")
+    queue = commands.add_parser("queue")
     queue.add_argument(
         "--status",
         choices=("queued", "fetching", "complete", "failed", "blocked", "skipped"),
@@ -94,16 +93,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     queue.add_argument("--limit", type=int, default=20)
 
-    reset = subparsers.add_parser("reset-failed", help="Return failed pages to the queue.")
-    reset.add_argument(
-        "--include-blocked",
-        action="store_true",
-        help="Also reset access-blocked pages after the operator has reviewed the cause.",
-    )
+    reset = commands.add_parser("reset-failed")
+    reset.add_argument("--include-blocked", action="store_true")
 
-    export = subparsers.add_parser("export", help="Export the SQLite catalog to JSONL files.")
+    export = commands.add_parser("export")
     export.add_argument("--output", default="raw/basketball_reference/catalog_export")
-
     return parser
 
 
@@ -123,6 +117,9 @@ def main() -> int:
         return 0
     if args.command == "schema-drift":
         print(json.dumps({"schemaDrift": store.schema_drift()}, indent=2))
+        return 0
+    if args.command == "schema-review":
+        print(json.dumps(SportsReferenceSchemaReview(store).build(), indent=2))
         return 0
     if args.command == "queue":
         print(
@@ -154,6 +151,35 @@ def main() -> int:
         counts = store.export_jsonl(Path(args.output))
         print(json.dumps({"output": args.output, "counts": counts}, indent=2))
         return 0
+    if args.command == "promote-links":
+        families = {
+            value.strip()
+            for value in args.families.split(",")
+            if value.strip()
+        }
+        unknown = families.difference(scope.families)
+        if unknown:
+            raise SystemExit(f"Unknown page families: {sorted(unknown)}")
+        summary = StoredLinkPromoter(store).promote(
+            families=families,
+            start_year=args.start_year,
+            end_year=args.end_year,
+            source_depth=args.source_depth,
+            limit=args.limit,
+            dry_run=args.dry_run,
+        )
+        print(
+            json.dumps(
+                {
+                    **summary.to_dict(),
+                    "dryRun": args.dry_run,
+                    "status": store.status(),
+                },
+                indent=2,
+                default=str,
+            )
+        )
+        return 0
 
     interval = getattr(
         args,
@@ -170,23 +196,23 @@ def main() -> int:
     )
 
     if args.command == "plan":
-        plan = crawler.plan_seasons(
+        document = crawler.plan_seasons(
             args.start_year,
             args.end_year,
             profile=args.profile,
         )
         if not args.show_urls:
-            plan.pop("seedUrls", None)
-        print(json.dumps(plan, indent=2))
+            document.pop("seedUrls", None)
+        print(json.dumps(document, indent=2))
         return 0
 
     if args.command == "seed":
-        plan = crawler.plan_seasons(
+        document = crawler.plan_seasons(
             args.start_year,
             args.end_year,
             profile=args.profile,
         )
-        inserted = crawler.seed_seasons(
+        queued = crawler.seed_seasons(
             args.start_year,
             args.end_year,
             profile=args.profile,
@@ -194,8 +220,12 @@ def main() -> int:
         print(
             json.dumps(
                 {
-                    "queued": inserted,
-                    "plan": {key: value for key, value in plan.items() if key != "seedUrls"},
+                    "queued": queued,
+                    "plan": {
+                        key: value
+                        for key, value in document.items()
+                        if key != "seedUrls"
+                    },
                     "status": store.status(),
                 },
                 indent=2,
@@ -209,11 +239,14 @@ def main() -> int:
     ) == "1"
     if not acknowledged:
         raise SystemExit(
-            "Network crawl blocked. Review current Basketball Reference access rules, then pass "
-            "--acknowledge-site-rules or set SPORTS_TERMINAL_BREF_NETWORK_ACK=1."
+            "Network crawl blocked. Pass --acknowledge-site-rules before requests."
         )
 
-    families = {value.strip() for value in args.families.split(",") if value.strip()}
+    families = {
+        value.strip()
+        for value in args.families.split(",")
+        if value.strip()
+    }
     unknown = families.difference(scope.families)
     if unknown:
         raise SystemExit(f"Unknown page families: {sorted(unknown)}")
