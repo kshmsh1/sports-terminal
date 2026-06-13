@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -98,7 +99,7 @@ class HistoricalUrlScopeTest(unittest.TestCase):
         self.assertEqual(team.season_end_year, 2025)
         self.assertEqual(
             team.source_key,
-            "basketball-reference:team_season:BOS:2025",
+            "basketball-reference:team-season:BOS:2025",
         )
 
         playoff = scope.classify(
@@ -158,12 +159,87 @@ class HistoricalTableParserTest(unittest.TestCase):
         self.assertEqual(table.rows[0]["display"]["win_pct"], "74.4%")
         self.assertEqual(
             table.rows[0]["links"][0]["sourceKey"],
-            "basketball-reference:team_season:BOS:2025",
+            "basketball-reference:team-season:BOS:2025",
         )
         self.assertEqual(len(table.schema_hash), 64)
 
 
 class HistoricalWarehouseTest(unittest.TestCase):
+    def test_migrates_the_original_catalog_schema_without_data_loss(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "legacy.sqlite"
+            db = sqlite3.connect(database)
+            db.executescript(
+                """
+                CREATE TABLE pages (
+                  url TEXT PRIMARY KEY,
+                  page_family TEXT NOT NULL,
+                  status TEXT NOT NULL DEFAULT 'queued',
+                  depth INTEGER NOT NULL DEFAULT 0,
+                  discovered_from TEXT,
+                  attempts INTEGER NOT NULL DEFAULT 0,
+                  title TEXT,
+                  fetched_at TEXT,
+                  source_sha256 TEXT,
+                  cache_path TEXT,
+                  table_count INTEGER NOT NULL DEFAULT 0,
+                  link_count INTEGER NOT NULL DEFAULT 0,
+                  last_error TEXT,
+                  updated_at TEXT NOT NULL
+                );
+                CREATE TABLE tables (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  page_url TEXT NOT NULL,
+                  table_id TEXT NOT NULL,
+                  ordinal INTEGER NOT NULL,
+                  caption TEXT,
+                  columns_json TEXT NOT NULL,
+                  row_count INTEGER NOT NULL
+                );
+                CREATE TABLE table_rows (
+                  table_pk INTEGER NOT NULL,
+                  row_index INTEGER NOT NULL,
+                  source_row_index INTEGER,
+                  row_class TEXT,
+                  values_json TEXT NOT NULL,
+                  links_json TEXT NOT NULL
+                );
+                CREATE TABLE discovered_links (
+                  source_url TEXT NOT NULL,
+                  target_url TEXT NOT NULL,
+                  page_family TEXT NOT NULL,
+                  anchor_text TEXT
+                );
+                CREATE TABLE runs (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  started_at TEXT NOT NULL,
+                  finished_at TEXT,
+                  mode TEXT NOT NULL,
+                  configuration_json TEXT NOT NULL,
+                  summary_json TEXT
+                );
+                INSERT INTO pages(
+                  url, page_family, status, updated_at
+                ) VALUES (
+                  'https://www.basketball-reference.com/leagues/NBA_2025.html',
+                  'league', 'queued', '2026-06-13T00:00:00+00:00'
+                );
+                """
+            )
+            db.commit()
+            db.close()
+
+            store = SportsReferencePageStore(database)
+            status = store.status()
+            self.assertEqual(status["pages"]["queued"], 1)
+            with store.connect() as migrated:
+                columns = {
+                    row["name"] for row in migrated.execute("PRAGMA table_info(pages)")
+                }
+            self.assertIn("priority", columns)
+            self.assertIn("source_key", columns)
+            self.assertIn("snapshot_path", columns)
+
     def test_crawler_persists_tables_entities_snapshots_and_resumable_queue(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -234,7 +310,7 @@ class HistoricalWarehouseTest(unittest.TestCase):
             ).replace(
                 '<td data-stat="win_pct">74.4%</td>',
                 '<td data-stat="losses">21</td>',
-            )
+            ).replace("NBA_2025.html", "NBA_2024.html")
             second_url = "https://www.basketball-reference.com/leagues/NBA_2024.html"
             second_scoped = scope.classify(second_url)
             store.enqueue(
