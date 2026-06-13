@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 const _sourceDirs = <String>[
-  'assets/data/nba/manual_sources/rosters',
   'docs/manual_roster_sources',
 ];
 
@@ -55,6 +54,7 @@ void main() {
   final duplicateSourceRows = totalRows - seenNaturalKeys.length;
 
   print('Manual roster source audit');
+  print('Authoritative source: docs/manual_roster_sources');
   print('Seed files: ${paths.length}');
   print('Source rows scanned: $totalRows');
   print('Unique player-team-season rows: ${seenNaturalKeys.length}');
@@ -72,7 +72,9 @@ void main() {
   }
 
   if (duplicateNaturalKeys.isNotEmpty) {
-    print('Duplicate source keys are tolerated because generation deterministically keeps the first player-team-season row. Consolidation remains a source-cleanup task.');
+    print('Duplicate keys remain inside the authoritative source set and should be consolidated. Generation deterministically keeps the first player-team-season row.');
+  } else {
+    print('Authoritative manual roster sources contain no duplicate player-team-season rows.');
   }
 
   if (missingTeams.isNotEmpty || unknownTeams.isNotEmpty) {
@@ -106,4 +108,4 @@ String _readSeed(String path) {
   return raw;
 }
 
-String _slug(String value) => value.toLowerCase().replaceAll("'", '').replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-+|-+\$'), '');
+String _slug(String value) => value.toLowerCase().replaceAll("'", '').replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-+|-+$'), '');
