@@ -57,7 +57,8 @@ class WorkspaceDataService {
     final whereValue = match.group(4)?.trim();
     final orderField = match.group(5);
     final orderDirection = match.group(6)?.toLowerCase() ?? 'asc';
-    final limit = int.tryParse(match.group(7) ?? '') ?? 100;
+    final requestedLimit = int.tryParse(match.group(7) ?? '') ?? 100;
+    final effectiveLimit = requestedLimit.clamp(1, 1000).toInt();
 
     var rows = sourceRows.where((row) {
       if (whereField == null) return true;
@@ -77,7 +78,7 @@ class WorkspaceDataService {
       });
     }
 
-    rows = rows.take(limit.clamp(1, 1000)).toList(growable: false);
+    rows = rows.take(effectiveLimit).toList(growable: false);
     return WorkspaceDataResult(
       columns: selectedColumns,
       dataset: datasetName,
