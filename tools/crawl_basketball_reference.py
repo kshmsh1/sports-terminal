@@ -14,10 +14,7 @@ DEFAULT_DATABASE = "raw/basketball_reference/catalog.sqlite"
 DEFAULT_CACHE = ".cache/sports_reference"
 DEFAULT_SNAPSHOTS = "raw/basketball_reference/snapshots"
 DEFAULT_REQUEST_INTERVAL_SECONDS = 7.0
-DEFAULT_FAMILIES = (
-    "league,team_season,team_history,player,playoff,draft,award,allstar,"
-    "coach,executive,franchise,boxscore,boxscore_detail"
-)
+DEFAULT_FAMILIES = ",".join(BasketballReferenceUrlScope().families)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -80,11 +77,6 @@ def build_parser() -> argparse.ArgumentParser:
     crawl.add_argument("--to-season", type=int, dest="end_year")
     crawl.add_argument("--force", action="store_true")
     crawl.add_argument(
-        "--continue-after-block",
-        action="store_true",
-        help="Not recommended. Continue to the next queued page after an access block.",
-    )
-    crawl.add_argument(
         "--acknowledge-site-rules",
         action="store_true",
         help="Required before network requests. Confirms the operator reviewed current access rules.",
@@ -106,7 +98,7 @@ def build_parser() -> argparse.ArgumentParser:
     reset.add_argument(
         "--include-blocked",
         action="store_true",
-        help="Also reset access-blocked pages. Reconfirm site rules before crawling them.",
+        help="Also reset access-blocked pages after the operator has reviewed the cause.",
     )
 
     export = subparsers.add_parser("export", help="Export the SQLite catalog to JSONL files.")
@@ -233,7 +225,7 @@ def main() -> int:
         force=args.force,
         start_year=args.start_year,
         end_year=args.end_year,
-        stop_on_block=not args.continue_after_block,
+        stop_on_block=True,
     )
     print(
         json.dumps(
