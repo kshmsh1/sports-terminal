@@ -8,6 +8,7 @@ python -m pip install -r requirements-scraping.txt
 python tools/test_sports_reference_parsers.py
 python tools/test_sports_reference_catalog.py
 python tools/test_sports_reference_scope.py
+python tools/test_sports_reference_link_promoter.py
 
 cat <<'EOF'
 Sports ingestion environment is ready and all offline scraper tests passed.
@@ -24,5 +25,5 @@ Prepare the local queue without fetching pages:
 Inspect the queue:
   python tools/crawl_basketball_reference.py status
 
-No live collection begins during setup, planning, or queue preparation.
+No live collection begins during setup, planning, queue preparation, or link promotion dry runs.
 EOF
