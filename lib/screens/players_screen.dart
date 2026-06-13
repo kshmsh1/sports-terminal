@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../data/player_command_stage_items.dart';
-import '../models/award_record.dart';
-import '../models/draft_pick.dart';
 import '../models/player_profile.dart';
 import '../models/player_season_stat.dart';
 import '../models/registry_item.dart';
+import '../models/roster_directory_row.dart';
 import '../models/roster_entry.dart';
-import '../models/season.dart';
 import '../models/team.dart';
-import '../models/transaction_record.dart';
 import '../services/nba_asset_repository.dart';
+import '../services/roster_completeness_service.dart';
+import '../services/roster_directory_service.dart';
+import '../services/roster_measurement_formatter.dart';
+import '../widgets/terminal_filter_dropdown.dart';
 import '../widgets/terminal_primitives.dart';
+import 'entity_profile_screens.dart';
 
 class PlayersScreen extends StatefulWidget {
   const PlayersScreen({super.key});
@@ -21,200 +23,326 @@ class PlayersScreen extends StatefulWidget {
 }
 
 class _PlayersScreenState extends State<PlayersScreen> {
-  final repository = const NbaAssetRepository();
-  late final Future<_PlayerPayload> payloadFuture = _loadPayload();
-  String query = '';
-  String selectedStatus = 'All';
-  String selectedStageCategory = 'All';
+  late final Future<_PlayersPayload> payloadFuture = _loadPayload();
 
-  Future<_PlayerPayload> _loadPayload() async {
+  String query = '';
+  String selectedTeam = 'All teams';
+  String selectedPosition = 'All positions';
+  String selectedCompleteness = 'All rows';
+  _PlayerSort sort = _PlayerSort.player;
+  bool sortAscending = true;
+
+  Future<_PlayersPayload> _loadPayload() async {
+    const repository = NbaAssetRepository();
     final results = await Future.wait<dynamic>([
       repository.loadPlayerProfiles(),
-      repository.loadPlayerSeasonStats(),
-      repository.loadTeams(),
-      repository.loadSeasons(),
       repository.loadRosters(),
-      repository.loadAwards(),
-      repository.loadDraftPicks(),
-      repository.loadTransactions(),
+      repository.loadTeams(),
+      repository.loadPlayerSeasonStats(),
     ]);
 
-    return _PlayerPayload(
-      players: results[0] as List<PlayerProfile>,
-      stats: results[1] as List<PlayerSeasonStat>,
-      teams: results[2] as List<Team>,
-      seasons: results[3] as List<Season>,
-      rosters: results[4] as List<RosterEntry>,
-      awards: results[5] as List<AwardRecord>,
-      draftPicks: results[6] as List<DraftPick>,
-      transactions: results[7] as List<TransactionRecord>,
+    final players = results[0] as List<PlayerProfile>;
+    final rosters = results[1] as List<RosterEntry>;
+    final teams = results[2] as List<Team>;
+    final rows = const RosterDirectoryService().join(
+      rosters: rosters,
+      players: players,
+      teams: teams,
+    );
+
+    return _PlayersPayload(
+      players: players,
+      rosters: rosters,
+      teams: teams,
+      stats: results[3] as List<PlayerSeasonStat>,
+      rows: rows,
+      completeness: const RosterCompletenessService().analyze(rows),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<_PlayerPayload>(
+    return FutureBuilder<_PlayersPayload>(
       future: payloadFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const TerminalCard(
-            child: Text('Loading player command workspace...', style: TextStyle(color: terminalTextSoft)),
+            child: Text('Loading player directory...', style: TextStyle(color: terminalTextSoft)),
           );
         }
         if (snapshot.hasError) {
           return TerminalCard(
-            child: Text('Unable to load player command workspace: ${snapshot.error}', style: const TextStyle(color: terminalTextSoft)),
+            child: Text('Unable to load player directory: ${snapshot.error}', style: const TextStyle(color: terminalTextSoft)),
           );
         }
 
-        final payload = snapshot.data ?? const _PlayerPayload(players: [], stats: [], teams: [], seasons: [], rosters: [], awards: [], draftPicks: [], transactions: []);
-        final categories = ['All', ...playerCommandStageItems.map((item) => item.category).toSet().toList()..sort()];
-        final filteredStages = playerCommandStageItems.where((item) => selectedStageCategory == 'All' || item.category == selectedStageCategory).toList();
-        final players = payload.players.where((player) {
-          final q = query.trim().toLowerCase();
-          final matchesQuery = q.isEmpty ||
-              player.id.toLowerCase().contains(q) ||
-              player.displayName.toLowerCase().contains(q) ||
-              (player.position ?? '').toLowerCase().contains(q) ||
-              (player.primaryTeamAbbreviation ?? '').toLowerCase().contains(q) ||
-              (player.college ?? '').toLowerCase().contains(q) ||
-              (player.birthCountry ?? '').toLowerCase().contains(q);
-          final matchesStatus = selectedStatus == 'All' ||
-              (selectedStatus == 'Active' && player.isActive == true) ||
-              (selectedStatus == 'Inactive' && player.isActive == false) ||
-              (selectedStatus == 'Unknown' && player.isActive == null);
-          return matchesQuery && matchesStatus;
-        }).toList()
-          ..sort((a, b) => a.displayName.compareTo(b.displayName));
+        final payload = snapshot.data ?? _PlayersPayload.empty();
+        final teamById = {for (final team in payload.teams) team.id: team};
+        final teamIds = payload.rows.map((row) => row.teamId).toSet().toList()
+          ..sort((a, b) => (teamById[a]?.name ?? a).compareTo(teamById[b]?.name ?? b));
+        final positions = payload.rows.map((row) => row.position).where((value) => value != '—').toSet().toList()..sort();
+        final rows = payload.rows.where(_matchesFilters).toList()..sort(_compareRows);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SectionHeader(
               title: 'Players',
-              subtitle: 'Player command workspace for identity, stat coverage, rosters, awards, draft links, transactions, action routes, and source-aware empty states.',
+              subtitle:
+                  'Source-backed player directory for the final 2025-26 NBA roster snapshot. Player and team names open shared profile pages, while every physical, roster, origin, and salary column is sortable.',
             ),
             const SizedBox(height: 22),
-            _MetricGrid(metrics: [
-              _MetricSpec('Player Profiles', '${payload.players.length}', payload.players.isEmpty ? 'Source pending' : 'Loaded'),
-              _MetricSpec('Season Stat Rows', '${payload.stats.length}', 'Player-season rows'),
-              _MetricSpec('Attachment Rows', '${payload.rosters.length + payload.awards.length + payload.draftPicks.length + payload.transactions.length}', 'Roster + awards + movement'),
-              _MetricSpec('Command Stages', '${playerCommandStageItems.length}', 'Player model'),
-            ]),
-            const SizedBox(height: 22),
-            TerminalCard(
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  SizedBox(
-                    width: 360,
-                    child: TextField(
-                      onChanged: (value) => setState(() => query = value),
-                      style: const TextStyle(color: Colors.white),
-                      cursorColor: terminalAccent,
-                      decoration: _inputDecoration('Search player, ID, team, college, country...'),
-                    ),
-                  ),
-                  _FilterDropdown(label: 'Status', value: selectedStatus, values: const ['All', 'Active', 'Inactive', 'Unknown'], onChanged: (value) => setState(() => selectedStatus = value)),
-                  _FilterDropdown(label: 'Stage Category', value: selectedStageCategory, values: categories, onChanged: (value) => setState(() => selectedStageCategory = value)),
-                ],
-              ),
+            _MetricGrid(
+              metrics: [
+                _MetricValue('Player Profiles', '${payload.players.length}', 'Connected identity rows'),
+                _MetricValue('Final Roster Rows', '${payload.rows.length}', '${payload.completeness.teamsCovered} teams covered'),
+                _MetricValue('Visible Players', '${rows.length}', 'After filters'),
+                _MetricValue(
+                  'Identity Complete',
+                  '${(payload.completeness.identityCompletionRate * 100).toStringAsFixed(1)}%',
+                  '${payload.completeness.identityIssueCount} open field issues',
+                ),
+              ],
             ),
             const SizedBox(height: 22),
-            _PlayerCommandTicket(payload: payload, visiblePlayers: players.length),
+            _PlayerFilterBar(
+              queryChanged: (value) => setState(() => query = value),
+              selectedTeam: selectedTeam,
+              teamIds: ['All teams', ...teamIds],
+              teamLabel: (value) => value == 'All teams' ? value : teamById[value]?.name ?? value,
+              teamChanged: (value) => setState(() => selectedTeam = value),
+              selectedPosition: selectedPosition,
+              positions: ['All positions', ...positions],
+              positionChanged: (value) => setState(() => selectedPosition = value),
+              selectedCompleteness: selectedCompleteness,
+              completenessChanged: (value) => setState(() => selectedCompleteness = value),
+            ),
             const SizedBox(height: 22),
-            payload.players.isEmpty ? _PendingPlayersPanel(payload: payload) : _PlayersTable(players: players, payload: payload),
+            _PlayerDirectoryTable(
+              rows: rows,
+              stats: payload.stats,
+              sort: sort,
+              sortAscending: sortAscending,
+              onSort: (nextSort, ascending) {
+                setState(() {
+                  sort = nextSort;
+                  sortAscending = ascending;
+                });
+              },
+            ),
             const SizedBox(height: 22),
-            _PlayerAttachmentMap(payload: payload),
+            _PlayerCoveragePanel(summary: payload.completeness),
             const SizedBox(height: 22),
-            _StatsReadinessTable(stats: payload.stats),
-            const SizedBox(height: 22),
-            _PlayerCommandStageTable(items: filteredStages),
+            _PlayerCommandStageTable(items: playerCommandStageItems),
           ],
         );
       },
     );
   }
+
+  bool _matchesFilters(RosterDirectoryRow row) {
+    final normalizedQuery = query.trim().toLowerCase();
+    final searchable = [
+      row.playerName,
+      row.playerId,
+      row.teamName,
+      row.teamAbbreviation,
+      row.entry.jerseyNumber ?? '',
+      row.position,
+      row.from,
+      row.entry.salaryDisplay ?? '',
+      row.sourceId,
+    ].join(' ').toLowerCase();
+
+    final teamMatch = selectedTeam == 'All teams' || row.teamId == selectedTeam;
+    final positionMatch = selectedPosition == 'All positions' || row.position == selectedPosition;
+    final completenessMatch = switch (selectedCompleteness) {
+      'Identity complete' => _isIdentityComplete(row),
+      'Missing From' => row.from == '—',
+      'Missing jersey' => row.entry.jerseyNumber == null || row.entry.jerseyNumber!.trim().isEmpty,
+      'Missing salary' => row.entry.salaryUsd == null,
+      _ => true,
+    };
+
+    return (normalizedQuery.isEmpty || searchable.contains(normalizedQuery)) &&
+        teamMatch &&
+        positionMatch &&
+        completenessMatch;
+  }
+
+  bool _isIdentityComplete(RosterDirectoryRow row) {
+    const measurements = RosterMeasurementFormatter();
+    return row.player != null &&
+        row.team != null &&
+        row.entry.jerseyNumber != null &&
+        row.entry.jerseyNumber!.trim().isNotEmpty &&
+        row.position != '—' &&
+        row.from != '—' &&
+        measurements.heightInches(row.entry.height ?? row.player?.height) >= 0 &&
+        (row.entry.weightPounds ?? row.player?.weightPounds) != null;
+  }
+
+  int _compareRows(RosterDirectoryRow a, RosterDirectoryRow b) {
+    const measurements = RosterMeasurementFormatter();
+    final result = switch (sort) {
+      _PlayerSort.player => a.playerName.compareTo(b.playerName),
+      _PlayerSort.team => a.teamName.compareTo(b.teamName),
+      _PlayerSort.jersey => measurements.jerseySortValue(a.entry.jerseyNumber).compareTo(measurements.jerseySortValue(b.entry.jerseyNumber)),
+      _PlayerSort.position => a.position.compareTo(b.position),
+      _PlayerSort.age => (a.entry.age ?? -1).compareTo(b.entry.age ?? -1),
+      _PlayerSort.height => measurements.heightInches(a.entry.height ?? a.player?.height).compareTo(measurements.heightInches(b.entry.height ?? b.player?.height)),
+      _PlayerSort.weight => (a.entry.weightPounds ?? a.player?.weightPounds ?? -1).compareTo(b.entry.weightPounds ?? b.player?.weightPounds ?? -1),
+      _PlayerSort.from => a.from.compareTo(b.from),
+      _PlayerSort.salary => (a.entry.salaryUsd ?? -1).compareTo(b.entry.salaryUsd ?? -1),
+    };
+    return sortAscending ? result : -result;
+  }
 }
 
-class _PlayerPayload {
-  const _PlayerPayload({required this.players, required this.stats, required this.teams, required this.seasons, required this.rosters, required this.awards, required this.draftPicks, required this.transactions});
+class _PlayersPayload {
+  const _PlayersPayload({
+    required this.players,
+    required this.rosters,
+    required this.teams,
+    required this.stats,
+    required this.rows,
+    required this.completeness,
+  });
+
+  factory _PlayersPayload.empty() {
+    return _PlayersPayload(
+      players: const [],
+      rosters: const [],
+      teams: const [],
+      stats: const [],
+      rows: const [],
+      completeness: const RosterCompletenessSummary(
+        totalRows: 0,
+        teamsCovered: 0,
+        identityCompleteRows: 0,
+        fullyPopulatedRows: 0,
+        missingFrom: 0,
+        missingJersey: 0,
+        missingSalary: 0,
+        missingPosition: 0,
+        invalidHeight: 0,
+        invalidWeight: 0,
+        missingPlayerJoins: 0,
+        missingTeamJoins: 0,
+        knownPayrollUsd: 0,
+        issues: [],
+        teams: [],
+      ),
+    );
+  }
 
   final List<PlayerProfile> players;
-  final List<PlayerSeasonStat> stats;
-  final List<Team> teams;
-  final List<Season> seasons;
   final List<RosterEntry> rosters;
-  final List<AwardRecord> awards;
-  final List<DraftPick> draftPicks;
-  final List<TransactionRecord> transactions;
+  final List<Team> teams;
+  final List<PlayerSeasonStat> stats;
+  final List<RosterDirectoryRow> rows;
+  final RosterCompletenessSummary completeness;
 }
 
-class _PlayerCommandTicket extends StatelessWidget {
-  const _PlayerCommandTicket({required this.payload, required this.visiblePlayers});
+class _PlayerFilterBar extends StatelessWidget {
+  const _PlayerFilterBar({
+    required this.queryChanged,
+    required this.selectedTeam,
+    required this.teamIds,
+    required this.teamLabel,
+    required this.teamChanged,
+    required this.selectedPosition,
+    required this.positions,
+    required this.positionChanged,
+    required this.selectedCompleteness,
+    required this.completenessChanged,
+  });
 
-  final _PlayerPayload payload;
-  final int visiblePlayers;
+  final ValueChanged<String> queryChanged;
+  final String selectedTeam;
+  final List<String> teamIds;
+  final String Function(String value) teamLabel;
+  final ValueChanged<String> teamChanged;
+  final String selectedPosition;
+  final List<String> positions;
+  final ValueChanged<String> positionChanged;
+  final String selectedCompleteness;
+  final ValueChanged<String> completenessChanged;
 
   @override
   Widget build(BuildContext context) {
     return TerminalCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Player Command Ticket', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 10),
-          const Text('This keeps Players focused on real identity records, linked stat coverage, source honesty, and future routes into compare, workspace, reports, fantasy, scouting, and source audit.', style: TextStyle(color: terminalTextSoft, height: 1.45)),
-          const SizedBox(height: 14),
-          Wrap(spacing: 10, runSpacing: 10, children: [
-            InfoPill(label: '$visiblePlayers visible'),
-            InfoPill(label: '${payload.teams.length} teams'),
-            InfoPill(label: '${payload.seasons.length} seasons'),
-            InfoPill(label: payload.players.isEmpty ? 'Identity source pending' : 'Identity connected'),
-          ]),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 560;
+          final fieldWidth = compact ? constraints.maxWidth : 240.0;
+          final searchWidth = compact ? constraints.maxWidth : 390.0;
+          return Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              SizedBox(
+                width: searchWidth,
+                child: TextField(
+                  onChanged: queryChanged,
+                  style: const TextStyle(color: Colors.white),
+                  cursorColor: terminalAccent,
+                  decoration: _inputDecoration('Search player, team, jersey, position, From...'),
+                ),
+              ),
+              TerminalFilterDropdown(
+                label: 'Team',
+                value: selectedTeam,
+                values: teamIds,
+                width: fieldWidth,
+                displayBuilder: teamLabel,
+                onChanged: teamChanged,
+              ),
+              TerminalFilterDropdown(
+                label: 'Position',
+                value: selectedPosition,
+                values: positions,
+                width: fieldWidth,
+                onChanged: positionChanged,
+              ),
+              TerminalFilterDropdown(
+                label: 'Completeness',
+                value: selectedCompleteness,
+                values: const ['All rows', 'Identity complete', 'Missing From', 'Missing jersey', 'Missing salary'],
+                width: fieldWidth,
+                onChanged: completenessChanged,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-class _PendingPlayersPanel extends StatelessWidget {
-  const _PendingPlayersPanel({required this.payload});
+class _PlayerDirectoryTable extends StatelessWidget {
+  const _PlayerDirectoryTable({
+    required this.rows,
+    required this.stats,
+    required this.sort,
+    required this.sortAscending,
+    required this.onSort,
+  });
 
-  final _PlayerPayload payload;
-
-  @override
-  Widget build(BuildContext context) {
-    return TerminalCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Player Identity Source Pending', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 10),
-          const Text('No fake players are displayed. Once a player identity source is approved, this screen can immediately attach stats, rosters, awards, draft rows, transactions, reports, comparisons, and workspace routes.', style: TextStyle(color: terminalTextSoft, height: 1.45)),
-          const SizedBox(height: 14),
-          Wrap(spacing: 10, runSpacing: 10, children: [
-            InfoPill(label: '${payload.stats.length} stat rows'),
-            InfoPill(label: '${payload.rosters.length} roster rows'),
-            InfoPill(label: '${payload.awards.length} award rows'),
-            InfoPill(label: '${payload.draftPicks.length} draft rows'),
-            InfoPill(label: '${payload.transactions.length} transaction rows'),
-          ]),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlayersTable extends StatelessWidget {
-  const _PlayersTable({required this.players, required this.payload});
-
-  final List<PlayerProfile> players;
-  final _PlayerPayload payload;
+  final List<RosterDirectoryRow> rows;
+  final List<PlayerSeasonStat> stats;
+  final _PlayerSort sort;
+  final bool sortAscending;
+  final void Function(_PlayerSort sort, bool ascending) onSort;
+  static const measurements = RosterMeasurementFormatter();
 
   @override
   Widget build(BuildContext context) {
+    final statsByPlayer = <String, int>{};
+    for (final stat in stats) {
+      statsByPlayer[stat.playerId] = (statsByPlayer[stat.playerId] ?? 0) + 1;
+    }
+
     return TerminalCard(
       padding: EdgeInsets.zero,
       child: Column(
@@ -222,119 +350,158 @@ class _PlayersTable extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.all(18),
-            child: Row(children: [
-              const Text('Player Directory', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-              const Spacer(),
-              Text('${players.length} players', style: const TextStyle(color: terminalTextMuted)),
-            ]),
-          ),
-          const Divider(height: 1, color: terminalBorder),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              headingRowColor: WidgetStateProperty.all(terminalPanelDark),
-              headingTextStyle: const TextStyle(color: terminalTextMuted, fontWeight: FontWeight.w700),
-              dataTextStyle: const TextStyle(color: Color(0xFFDDE6F1)),
-              columns: const [
-                DataColumn(label: Text('Player')),
-                DataColumn(label: Text('Position')),
-                DataColumn(label: Text('Team')),
-                DataColumn(label: Text('Stats')),
-                DataColumn(label: Text('Awards')),
-                DataColumn(label: Text('College')),
-                DataColumn(label: Text('Country')),
-                DataColumn(label: Text('Status')),
-                DataColumn(label: Text('Source')),
-              ],
-              rows: [
-                for (final player in players)
-                  DataRow(cells: [
-                    DataCell(SizedBox(width: 220, child: Text(player.displayName, style: const TextStyle(fontWeight: FontWeight.w800)))),
-                    DataCell(Text(player.position ?? '—')),
-                    DataCell(Text(player.primaryTeamAbbreviation ?? '—')),
-                    DataCell(Text('${payload.stats.where((row) => row.playerId == player.id).length}')),
-                    DataCell(Text('${payload.awards.where((row) => row.playerId == player.id).length}')),
-                    DataCell(SizedBox(width: 180, child: Text(player.college ?? '—'))),
-                    DataCell(Text(player.birthCountry ?? '—')),
-                    DataCell(InfoPill(label: player.isActive == true ? 'Active' : player.isActive == false ? 'Inactive' : 'Unknown')),
-                    DataCell(Text(player.sourceId ?? '—')),
-                  ]),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Final 2025-26 Player Directory',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text('${rows.length} players', style: const TextStyle(color: terminalTextMuted)),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlayerAttachmentMap extends StatelessWidget {
-  const _PlayerAttachmentMap({required this.payload});
-
-  final _PlayerPayload payload;
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = [
-      _AttachmentRow('Player Profiles', payload.players.length, 'playerId', payload.players.isEmpty ? 'Source pending' : 'Connected', 'Identity, detail pages, search, reports'),
-      _AttachmentRow('Player Season Stats', payload.stats.length, 'playerId + seasonId', payload.stats.isEmpty ? 'Source pending' : 'Connected', 'Stats, comparisons, rankings, reports'),
-      _AttachmentRow('Rosters', payload.rosters.length, 'playerId + teamId + seasonId', payload.rosters.isEmpty ? 'Source pending' : 'Connected', 'Team context and role'),
-      _AttachmentRow('Awards', payload.awards.length, 'playerId + seasonId', payload.awards.isEmpty ? 'Source pending' : 'Connected', 'Recognition and award races'),
-      _AttachmentRow('Draft Picks', payload.draftPicks.length, 'playerId or playerName', payload.draftPicks.isEmpty ? 'Source pending' : 'Connected', 'Draft class and development'),
-      _AttachmentRow('Transactions', payload.transactions.length, 'playerId or playerName', payload.transactions.isEmpty ? 'Source pending' : 'Connected', 'Movement timeline'),
-    ];
-
-    return _AttachmentTable(title: 'Player Data Attachment Map', rows: rows);
-  }
-}
-
-class _StatsReadinessTable extends StatelessWidget {
-  const _StatsReadinessTable({required this.stats});
-
-  final List<PlayerSeasonStat> stats;
-
-  @override
-  Widget build(BuildContext context) {
-    return TerminalCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Row(children: [
-              const Text('Player Season Stats Readiness', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-              const Spacer(),
-              Text('${stats.length} rows', style: const TextStyle(color: terminalTextMuted)),
-            ]),
-          ),
           const Divider(height: 1, color: terminalBorder),
-          if (stats.isEmpty)
-            const Padding(padding: EdgeInsets.all(18), child: Text('Player season stats source pending. No fake stat rows are displayed.', style: TextStyle(color: terminalTextSoft)))
+          if (rows.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(18),
+              child: Text('No players match the current filters.', style: TextStyle(color: terminalTextSoft)),
+            )
           else
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
+                sortColumnIndex: _sortColumnIndex(sort),
+                sortAscending: sortAscending,
                 headingRowColor: WidgetStateProperty.all(terminalPanelDark),
                 headingTextStyle: const TextStyle(color: terminalTextMuted, fontWeight: FontWeight.w700),
                 dataTextStyle: const TextStyle(color: Color(0xFFDDE6F1)),
-                columns: const [DataColumn(label: Text('Player')), DataColumn(label: Text('Team')), DataColumn(label: Text('Season')), DataColumn(label: Text('GP')), DataColumn(label: Text('PPG')), DataColumn(label: Text('RPG')), DataColumn(label: Text('APG')), DataColumn(label: Text('TS%')), DataColumn(label: Text('Source'))],
+                columnSpacing: 26,
+                columns: [
+                  _column('Player', _PlayerSort.player, 0),
+                  _column('Team', _PlayerSort.team, 1),
+                  _column('No.', _PlayerSort.jersey, 2, numeric: true),
+                  _column('Position(s)', _PlayerSort.position, 3),
+                  _column('Age', _PlayerSort.age, 4, numeric: true),
+                  _column('Height', _PlayerSort.height, 5),
+                  _column('Weight', _PlayerSort.weight, 6),
+                  _column('From', _PlayerSort.from, 7),
+                  _column('Salary', _PlayerSort.salary, 8, numeric: true),
+                  const DataColumn(label: Text('Stat Rows'), numeric: true),
+                  const DataColumn(label: Text('Source')),
+                ],
                 rows: [
-                  for (final stat in stats)
-                    DataRow(cells: [
-                      DataCell(Text(stat.playerId)),
-                      DataCell(Text(stat.teamId ?? '—')),
-                      DataCell(Text(stat.seasonId)),
-                      DataCell(Text(stat.gamesPlayed?.toString() ?? '—')),
-                      DataCell(Text(_number(stat.pointsPerGame))),
-                      DataCell(Text(_number(stat.reboundsPerGame))),
-                      DataCell(Text(_number(stat.assistsPerGame))),
-                      DataCell(Text(_percent(stat.trueShootingPercentage))),
-                      DataCell(Text(stat.sourceId ?? '—')),
-                    ]),
+                  for (final row in rows)
+                    DataRow(
+                      cells: [
+                        DataCell(
+                          SizedBox(
+                            width: 205,
+                            child: TextButton(
+                              style: _linkStyle(),
+                              onPressed: () => openPlayerProfile(context, row.playerId),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(row.playerName, overflow: TextOverflow.ellipsis),
+                              ),
+                            ),
+                          ),
+                        ),
+                        DataCell(
+                          SizedBox(
+                            width: 180,
+                            child: TextButton(
+                              style: _linkStyle(),
+                              onPressed: () => openTeamProfile(context, row.teamId),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(row.teamName, overflow: TextOverflow.ellipsis),
+                              ),
+                            ),
+                          ),
+                        ),
+                        DataCell(Text(row.entry.jerseyNumber ?? '—')),
+                        DataCell(Text(row.position)),
+                        DataCell(Text(row.entry.age?.toString() ?? '—')),
+                        DataCell(Text(measurements.heightLabel(row.entry.height ?? row.player?.height))),
+                        DataCell(Text(measurements.weightLabel(row.entry.weightPounds ?? row.player?.weightPounds))),
+                        DataCell(SizedBox(width: 160, child: Text(row.from, overflow: TextOverflow.ellipsis))),
+                        DataCell(Text(row.entry.salaryDisplay ?? '—')),
+                        DataCell(Text('${statsByPlayer[row.playerId] ?? 0}')),
+                        DataCell(SizedBox(width: 220, child: Text(row.sourceId, overflow: TextOverflow.ellipsis))),
+                      ],
+                    ),
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  DataColumn _column(String label, _PlayerSort columnSort, int index, {bool numeric = false}) {
+    return DataColumn(
+      label: Text(label),
+      numeric: numeric,
+      onSort: (_, ascending) => onSort(columnSort, ascending),
+    );
+  }
+
+  int _sortColumnIndex(_PlayerSort value) => switch (value) {
+        _PlayerSort.player => 0,
+        _PlayerSort.team => 1,
+        _PlayerSort.jersey => 2,
+        _PlayerSort.position => 3,
+        _PlayerSort.age => 4,
+        _PlayerSort.height => 5,
+        _PlayerSort.weight => 6,
+        _PlayerSort.from => 7,
+        _PlayerSort.salary => 8,
+      };
+
+  ButtonStyle _linkStyle() {
+    return TextButton.styleFrom(
+      foregroundColor: terminalAccent,
+      padding: EdgeInsets.zero,
+      alignment: Alignment.centerLeft,
+      textStyle: const TextStyle(fontWeight: FontWeight.w800),
+    );
+  }
+}
+
+class _PlayerCoveragePanel extends StatelessWidget {
+  const _PlayerCoveragePanel({required this.summary});
+
+  final RosterCompletenessSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return TerminalCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Roster Metadata Completion', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
+          const Text(
+            'These are completeness gaps, not failed joins. Missing From values should eventually be replaced with a verified college, prior club, or country. Missing salaries remain visibly unknown rather than being estimated.',
+            style: TextStyle(color: terminalTextSoft, height: 1.45),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              InfoPill(label: '${summary.missingFrom} missing From'),
+              InfoPill(label: '${summary.missingJersey} missing jersey'),
+              InfoPill(label: '${summary.missingSalary} missing salary'),
+              InfoPill(label: '${summary.invalidHeight} invalid height'),
+              InfoPill(label: '${summary.invalidWeight} invalid weight'),
+              InfoPill(label: '${summary.missingPlayerJoins + summary.missingTeamJoins} broken joins'),
+            ],
+          ),
         ],
       ),
     );
@@ -347,32 +514,16 @@ class _PlayerCommandStageTable extends StatelessWidget {
   final List<RegistryItem> items;
 
   @override
-  Widget build(BuildContext context) => _RegistryTable(title: 'Player Command Stage Model', items: items);
-}
-
-class _AttachmentRow {
-  const _AttachmentRow(this.layer, this.rows, this.joinKey, this.status, this.use);
-  final String layer;
-  final int rows;
-  final String joinKey;
-  final String status;
-  final String use;
-}
-
-class _AttachmentTable extends StatelessWidget {
-  const _AttachmentTable({required this.title, required this.rows});
-
-  final String title;
-  final List<_AttachmentRow> rows;
-
-  @override
   Widget build(BuildContext context) {
     return TerminalCard(
       padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(padding: const EdgeInsets.all(18), child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800))),
+          const Padding(
+            padding: EdgeInsets.all(18),
+            child: Text('Player Command Stage Model', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+          ),
           const Divider(height: 1, color: terminalBorder),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -380,64 +531,24 @@ class _AttachmentTable extends StatelessWidget {
               headingRowColor: WidgetStateProperty.all(terminalPanelDark),
               headingTextStyle: const TextStyle(color: terminalTextMuted, fontWeight: FontWeight.w700),
               dataTextStyle: const TextStyle(color: Color(0xFFDDE6F1)),
-              columns: const [DataColumn(label: Text('Layer')), DataColumn(label: Text('Rows')), DataColumn(label: Text('Join Key')), DataColumn(label: Text('Status')), DataColumn(label: Text('Use'))],
-              rows: [
-                for (final row in rows)
-                  DataRow(cells: [
-                    DataCell(SizedBox(width: 220, child: Text(row.layer, style: const TextStyle(fontWeight: FontWeight.w800)))),
-                    DataCell(Text('${row.rows}')),
-                    DataCell(SizedBox(width: 260, child: Text(row.joinKey))),
-                    DataCell(InfoPill(label: row.status)),
-                    DataCell(SizedBox(width: 560, child: Text(row.use))),
-                  ]),
+              columns: const [
+                DataColumn(label: Text('Priority')),
+                DataColumn(label: Text('Stage')),
+                DataColumn(label: Text('Category')),
+                DataColumn(label: Text('Status')),
+                DataColumn(label: Text('Next Step')),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RegistryTable extends StatelessWidget {
-  const _RegistryTable({required this.title, required this.items});
-
-  final String title;
-  final List<RegistryItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return TerminalCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Row(children: [
-              Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-              const Spacer(),
-              Text('${items.length} stages', style: const TextStyle(color: terminalTextMuted)),
-            ]),
-          ),
-          const Divider(height: 1, color: terminalBorder),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              headingRowColor: WidgetStateProperty.all(terminalPanelDark),
-              headingTextStyle: const TextStyle(color: terminalTextMuted, fontWeight: FontWeight.w700),
-              dataTextStyle: const TextStyle(color: Color(0xFFDDE6F1)),
-              columns: const [DataColumn(label: Text('Priority')), DataColumn(label: Text('Stage')), DataColumn(label: Text('Category')), DataColumn(label: Text('Status')), DataColumn(label: Text('Description')), DataColumn(label: Text('Next Step'))],
               rows: [
                 for (final item in items)
-                  DataRow(cells: [
-                    DataCell(Text(item.priority, style: const TextStyle(fontWeight: FontWeight.w900))),
-                    DataCell(SizedBox(width: 250, child: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w800)))),
-                    DataCell(SizedBox(width: 180, child: Text(item.category))),
-                    DataCell(InfoPill(label: item.status)),
-                    DataCell(SizedBox(width: 560, child: Text(item.description))),
-                    DataCell(SizedBox(width: 460, child: Text(item.nextStep))),
-                  ]),
+                  DataRow(
+                    cells: [
+                      DataCell(Text(item.priority)),
+                      DataCell(SizedBox(width: 220, child: Text(item.title))),
+                      DataCell(Text(item.category)),
+                      DataCell(InfoPill(label: item.status)),
+                      DataCell(SizedBox(width: 520, child: Text(item.nextStep))),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -447,41 +558,11 @@ class _RegistryTable extends StatelessWidget {
   }
 }
 
-class _FilterDropdown extends StatelessWidget {
-  const _FilterDropdown({required this.label, required this.value, required this.values, required this.onChanged});
+enum _PlayerSort { player, team, jersey, position, age, height, weight, from, salary }
 
-  final String label;
-  final String value;
-  final List<String> values;
-  final ValueChanged<String> onChanged;
+class _MetricValue {
+  const _MetricValue(this.label, this.value, this.detail);
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 235,
-      child: DropdownButtonFormField<String>(
-        initialValue: values.contains(value) ? value : values.first,
-        dropdownColor: terminalPanelDark,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: terminalTextMuted),
-          filled: true,
-          fillColor: terminalPanelDark,
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: terminalBorder)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: terminalAccent)),
-        ),
-        items: values.map((item) => DropdownMenuItem(value: item, child: Text(item, overflow: TextOverflow.ellipsis))).toList(),
-        onChanged: (value) {
-          if (value != null) onChanged(value);
-        },
-      ),
-    );
-  }
-}
-
-class _MetricSpec {
-  const _MetricSpec(this.label, this.value, this.detail);
   final String label;
   final String value;
   final String detail;
@@ -490,44 +571,36 @@ class _MetricSpec {
 class _MetricGrid extends StatelessWidget {
   const _MetricGrid({required this.metrics});
 
-  final List<_MetricSpec> metrics;
+  final List<_MetricValue> metrics;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final isWide = constraints.maxWidth > 900;
-      return GridView.count(
-        crossAxisCount: isWide ? 4 : 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 14,
-        mainAxisSpacing: 14,
-        childAspectRatio: isWide ? 2.0 : 1.5,
-        children: [for (final metric in metrics) _Metric(label: metric.label, value: metric.value, detail: metric.detail)],
-      );
-    });
-  }
-}
-
-class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value, required this.detail});
-
-  final String label;
-  final String value;
-  final String detail;
-
-  @override
-  Widget build(BuildContext context) {
-    return TerminalCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: terminalTextMuted, fontSize: 13)),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
-          Text(detail, style: const TextStyle(color: terminalAccent, fontSize: 12)),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth > 950 ? 4 : constraints.maxWidth > 520 ? 2 : 1;
+        return GridView.count(
+          crossAxisCount: columns,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 14,
+          mainAxisSpacing: 14,
+          childAspectRatio: columns == 1 ? 3.0 : columns == 2 ? 1.8 : 1.8,
+          children: [
+            for (final metric in metrics)
+              TerminalCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(metric.label, style: const TextStyle(color: terminalTextMuted, fontSize: 12)),
+                    Text(metric.value, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
+                    Text(metric.detail, style: const TextStyle(color: terminalAccent, fontSize: 11)),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -539,10 +612,13 @@ InputDecoration _inputDecoration(String hintText) {
     prefixIcon: const Icon(Icons.search, color: terminalTextMuted),
     filled: true,
     fillColor: terminalPanelDark,
-    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: terminalBorder)),
-    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: terminalAccent)),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: terminalBorder),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: terminalAccent),
+    ),
   );
 }
-
-String _number(double? value) => value == null ? '—' : value.toStringAsFixed(1);
-String _percent(double? value) => value == null ? '—' : value <= 1 ? '${(value * 100).toStringAsFixed(1)}%' : '${value.toStringAsFixed(1)}%';
