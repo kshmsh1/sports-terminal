@@ -13,6 +13,7 @@ from sports_reference.url_scope import BasketballReferenceUrlScope
 DEFAULT_DATABASE = "raw/basketball_reference/catalog.sqlite"
 DEFAULT_CACHE = ".cache/sports_reference"
 DEFAULT_SNAPSHOTS = "raw/basketball_reference/snapshots"
+DEFAULT_REQUEST_INTERVAL_SECONDS = 7.0
 DEFAULT_FAMILIES = (
     "league,team_season,team_history,player,playoff,draft,award,allstar,"
     "coach,executive,franchise,boxscore,boxscore_detail"
@@ -42,7 +43,12 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("core", "extended", "historical"),
         default="historical",
     )
-    plan.add_argument("--minimum-interval", type=float, default=4.0)
+    plan.add_argument(
+        "--minimum-interval",
+        type=float,
+        default=DEFAULT_REQUEST_INTERVAL_SECONDS,
+        help="Seconds between requests; must remain between 6 and 8.",
+    )
     plan.add_argument("--show-urls", action="store_true")
 
     seed = subparsers.add_parser(
@@ -63,7 +69,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     crawl.add_argument("--max-pages", type=int, default=50)
     crawl.add_argument("--max-depth", type=int, default=2)
-    crawl.add_argument("--minimum-interval", type=float, default=4.0)
+    crawl.add_argument(
+        "--minimum-interval",
+        type=float,
+        default=DEFAULT_REQUEST_INTERVAL_SECONDS,
+        help="Seconds between requests; must remain between 6 and 8.",
+    )
     crawl.add_argument("--families", default=DEFAULT_FAMILIES)
     crawl.add_argument("--from-season", type=int, dest="start_year")
     crawl.add_argument("--to-season", type=int, dest="end_year")
@@ -152,7 +163,11 @@ def main() -> int:
         print(json.dumps({"output": args.output, "counts": counts}, indent=2))
         return 0
 
-    interval = getattr(args, "minimum_interval", 4.0)
+    interval = getattr(
+        args,
+        "minimum_interval",
+        DEFAULT_REQUEST_INTERVAL_SECONDS,
+    )
     crawler = BasketballReferenceCrawler(
         client=SportsReferenceClient(
             cache_dir=args.cache_dir,
