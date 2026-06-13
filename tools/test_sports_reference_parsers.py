@@ -90,10 +90,15 @@ class SportsReferenceParserTest(unittest.TestCase):
         stats = build_stats(team_row, "boston-celtics", "2025-26", "source", "2026-06-13")
         self.assertEqual(stats["pointsPerGame"], 114.9)
 
-        partial = {"cells": {"team": {"value": "BOS"}, "g": {"value": 20}}}
+        partial = {
+            "cells": {
+                "team": {"text": "BOS", "value": "BOS"},
+                "g": {"value": 20},
+            }
+        }
         total = {
             "cells": {
-                "team": {"value": "TOT"},
+                "team": {"text": "TOT", "value": "TOT"},
                 "g": {"value": 50},
                 "pts_per_g": {"value": 15.5},
             }
