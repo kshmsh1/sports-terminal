@@ -15,16 +15,16 @@ class SportsReferenceSchemaReview:
                 dict(row)
                 for row in db.execute(
                     """
-                    SELECT table.table_id AS tableId,
-                           page.page_family AS pageFamily,
+                    SELECT tbl.table_id AS tableId,
+                           pg.page_family AS pageFamily,
                            COUNT(*) AS pageCount,
-                           COUNT(DISTINCT table.schema_hash) AS schemaVariants,
-                           GROUP_CONCAT(DISTINCT table.schema_hash) AS schemaHashes
-                    FROM tables AS table
-                    JOIN pages AS page ON page.url = table.page_url
-                    WHERE table.table_id NOT LIKE 'anonymous_%'
-                    GROUP BY table.table_id, page.page_family
-                    HAVING COUNT(DISTINCT table.schema_hash) > 1
+                           COUNT(DISTINCT tbl.schema_hash) AS schemaVariants,
+                           GROUP_CONCAT(DISTINCT tbl.schema_hash) AS schemaHashes
+                    FROM tables AS tbl
+                    JOIN pages AS pg ON pg.url = tbl.page_url
+                    WHERE tbl.table_id NOT LIKE 'anonymous_%'
+                    GROUP BY tbl.table_id, pg.page_family
+                    HAVING COUNT(DISTINCT tbl.schema_hash) > 1
                     ORDER BY schemaVariants DESC, pageCount DESC, tableId
                     """
                 )
@@ -33,16 +33,16 @@ class SportsReferenceSchemaReview:
                 dict(row)
                 for row in db.execute(
                     """
-                    SELECT table.table_id AS tableId,
-                           COUNT(DISTINCT page.page_family) AS pageFamilies,
-                           COUNT(DISTINCT table.schema_hash) AS schemaVariants,
-                           GROUP_CONCAT(DISTINCT page.page_family) AS families
-                    FROM tables AS table
-                    JOIN pages AS page ON page.url = table.page_url
-                    WHERE table.table_id NOT LIKE 'anonymous_%'
-                    GROUP BY table.table_id
-                    HAVING COUNT(DISTINCT page.page_family) > 1
-                       AND COUNT(DISTINCT table.schema_hash) > 1
+                    SELECT tbl.table_id AS tableId,
+                           COUNT(DISTINCT pg.page_family) AS pageFamilies,
+                           COUNT(DISTINCT tbl.schema_hash) AS schemaVariants,
+                           GROUP_CONCAT(DISTINCT pg.page_family) AS families
+                    FROM tables AS tbl
+                    JOIN pages AS pg ON pg.url = tbl.page_url
+                    WHERE tbl.table_id NOT LIKE 'anonymous_%'
+                    GROUP BY tbl.table_id
+                    HAVING COUNT(DISTINCT pg.page_family) > 1
+                       AND COUNT(DISTINCT tbl.schema_hash) > 1
                     ORDER BY schemaVariants DESC, tableId
                     """
                 )
@@ -51,7 +51,7 @@ class SportsReferenceSchemaReview:
                 """
                 SELECT COUNT(*) AS tableInstances,
                        COUNT(DISTINCT table_id) AS ordinalLabels,
-                       SUM(row_count) AS rows
+                       COALESCE(SUM(row_count), 0) AS rows
                 FROM tables WHERE table_id LIKE 'anonymous_%'
                 """
             ).fetchone()
