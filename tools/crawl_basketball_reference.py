@@ -9,6 +9,7 @@ from sports_reference.client import SportsReferenceClient
 from sports_reference.crawler import BasketballReferenceCrawler
 from sports_reference.link_promoter import StoredLinkPromoter
 from sports_reference.page_store import SportsReferencePageStore
+from sports_reference.queue_maintenance import QueueMaintenance
 from sports_reference.schema_review import SportsReferenceSchemaReview
 from sports_reference.url_scope import BasketballReferenceUrlScope
 
@@ -66,6 +67,18 @@ def build_parser() -> argparse.ArgumentParser:
     promote.add_argument("--limit", type=int)
     promote.add_argument("--dry-run", action="store_true")
 
+    prune = commands.add_parser(
+        "prune-queue",
+        help=(
+            "Remove only unfetched queued, skipped, or failed pages whose known "
+            "target season is outside a requested range."
+        ),
+    )
+    prune.add_argument("--families", required=True)
+    prune.add_argument("--from-season", type=int, required=True, dest="start_year")
+    prune.add_argument("--to-season", type=int, required=True, dest="end_year")
+    prune.add_argument("--dry-run", action="store_true")
+
     crawl = commands.add_parser("crawl")
     crawl.add_argument("--max-pages", type=int, default=50)
     crawl.add_argument("--max-depth", type=int, default=2)
@@ -99,6 +112,14 @@ def build_parser() -> argparse.ArgumentParser:
     export = commands.add_parser("export")
     export.add_argument("--output", default="raw/basketball_reference/catalog_export")
     return parser
+
+
+def parse_families(raw: str, scope: BasketballReferenceUrlScope) -> set[str]:
+    families = {value.strip() for value in raw.split(",") if value.strip()}
+    unknown = families.difference(scope.families)
+    if unknown:
+        raise SystemExit(f"Unknown page families: {sorted(unknown)}")
+    return families
 
 
 def main() -> int:
@@ -152,14 +173,7 @@ def main() -> int:
         print(json.dumps({"output": args.output, "counts": counts}, indent=2))
         return 0
     if args.command == "promote-links":
-        families = {
-            value.strip()
-            for value in args.families.split(",")
-            if value.strip()
-        }
-        unknown = families.difference(scope.families)
-        if unknown:
-            raise SystemExit(f"Unknown page families: {sorted(unknown)}")
+        families = parse_families(args.families, scope)
         summary = StoredLinkPromoter(store).promote(
             families=families,
             start_year=args.start_year,
@@ -173,6 +187,25 @@ def main() -> int:
                 {
                     **summary.to_dict(),
                     "dryRun": args.dry_run,
+                    "status": store.status(),
+                },
+                indent=2,
+                default=str,
+            )
+        )
+        return 0
+    if args.command == "prune-queue":
+        families = parse_families(args.families, scope)
+        summary = QueueMaintenance(store).prune_outside_season_range(
+            families=families,
+            start_year=args.start_year,
+            end_year=args.end_year,
+            dry_run=args.dry_run,
+        )
+        print(
+            json.dumps(
+                {
+                    **summary.to_dict(),
                     "status": store.status(),
                 },
                 indent=2,
@@ -242,15 +275,7 @@ def main() -> int:
             "Network crawl blocked. Pass --acknowledge-site-rules before requests."
         )
 
-    families = {
-        value.strip()
-        for value in args.families.split(",")
-        if value.strip()
-    }
-    unknown = families.difference(scope.families)
-    if unknown:
-        raise SystemExit(f"Unknown page families: {sorted(unknown)}")
-
+    families = parse_families(args.families, scope)
     summary = crawler.crawl(
         max_pages=args.max_pages,
         max_depth=args.max_depth,
