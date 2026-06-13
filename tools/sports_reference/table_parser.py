@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from bs4 import BeautifulSoup
@@ -205,7 +206,10 @@ class BasketballReferenceTableParser:
         if normalized.endswith("%"):
             number = normalized[:-1].replace(",", "")
             if re.fullmatch(r"[-+]?(?:\d+\.?\d*|\.\d+)", number):
-                return float(number) / 100
+                try:
+                    return float(Decimal(number) / Decimal(100))
+                except InvalidOperation:
+                    return normalized
             return normalized
         number = normalized.replace(",", "")
         if re.fullmatch(r"[-+]?\d+", number):
