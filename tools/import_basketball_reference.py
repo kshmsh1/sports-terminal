@@ -13,8 +13,25 @@ DATASETS = (
     "player_per_game",
     "player_totals",
     "player_advanced",
+    "playoff_player_per_game",
+    "playoff_player_totals",
+    "playoff_player_advanced",
     "team_per_game",
+    "team_opponent_per_game",
+    "team_advanced",
     "standings",
+    "schedule",
+)
+
+TABLE_PAGES = (
+    "league",
+    "per_game",
+    "totals",
+    "advanced",
+    "schedule",
+    "playoff_per_game",
+    "playoff_totals",
+    "playoff_advanced",
 )
 
 
@@ -24,10 +41,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--season", type=int, required=True)
     parser.add_argument("--dataset", choices=DATASETS)
-    parser.add_argument(
-        "--list-tables",
-        choices=("league", "per_game", "totals", "advanced"),
-    )
+    parser.add_argument("--list-tables", choices=TABLE_PAGES)
     parser.add_argument("--output-root", default="raw/basketball_reference")
     parser.add_argument("--cache-dir", default=".cache/sports_reference")
     parser.add_argument("--minimum-interval", type=float, default=3.5)
