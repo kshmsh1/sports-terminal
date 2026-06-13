@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup, Tag
@@ -187,8 +188,8 @@ class LinkedTableExtractor:
             return None
         if normalized.endswith("%"):
             try:
-                return float(normalized[:-1]) / 100
-            except ValueError:
+                return float(Decimal(normalized[:-1]) / Decimal(100))
+            except (InvalidOperation, ValueError):
                 return text
         if re.fullmatch(r"[-+]?\d+", normalized):
             try:
