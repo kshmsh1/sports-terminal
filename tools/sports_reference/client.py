@@ -14,6 +14,11 @@ import requests
 from bs4 import BeautifulSoup, Comment
 
 
+DEFAULT_REQUEST_INTERVAL_SECONDS = 7.0
+MINIMUM_REQUEST_INTERVAL_SECONDS = 6.0
+MAXIMUM_REQUEST_INTERVAL_SECONDS = 8.0
+
+
 @dataclass(frozen=True)
 class FetchResult:
     url: str
@@ -27,11 +32,11 @@ class FetchResult:
 
 
 class SportsReferenceClient:
-    """Respectful HTTP client for public Basketball Reference pages.
+    """Single-worker cached HTTP client for public Basketball Reference pages.
 
-    It does not bypass access controls. Network requests use a descriptive user
-    agent, a strict host allowlist, robots.txt checks, a minimum interval,
-    bounded retries for transient server failures, and an on-disk cache.
+    Live traffic is deliberately simple: one HTML GET at a time, separated by
+    a fixed 6-to-8-second interval, with no parallelism and no automatic retry.
+    A cached robots.txt check is performed once per origin before page fetches.
     """
 
     allowed_hosts = {
@@ -43,30 +48,37 @@ class SportsReferenceClient:
         self,
         *,
         cache_dir: str | Path = ".cache/sports_reference",
-        minimum_interval_seconds: float = 3.5,
-        user_agent: str = "SportsTerminalResearch/0.2 (local research ingestion)",
+        minimum_interval_seconds: float = DEFAULT_REQUEST_INTERVAL_SECONDS,
+        user_agent: str = "SportsTerminalCrawler/1.0",
         timeout_seconds: float = 30.0,
         respect_robots: bool = True,
-        max_transient_retries: int = 2,
+        max_transient_retries: int = 0,
     ) -> None:
-        if minimum_interval_seconds < 3.0:
-            raise ValueError("minimum_interval_seconds must be at least 3.0")
-        if max_transient_retries < 0 or max_transient_retries > 3:
-            raise ValueError("max_transient_retries must be between 0 and 3")
+        if not (
+            MINIMUM_REQUEST_INTERVAL_SECONDS
+            <= minimum_interval_seconds
+            <= MAXIMUM_REQUEST_INTERVAL_SECONDS
+        ):
+            raise ValueError(
+                "minimum_interval_seconds must be between 6.0 and 8.0"
+            )
+        if max_transient_retries != 0:
+            raise ValueError(
+                "Automatic retries are disabled; max_transient_retries must be 0"
+            )
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.minimum_interval_seconds = minimum_interval_seconds
         self.user_agent = user_agent
         self.timeout_seconds = timeout_seconds
         self.respect_robots = respect_robots
-        self.max_transient_retries = max_transient_retries
+        self.max_transient_retries = 0
         self.session = requests.Session()
+        self.session.headers.clear()
         self.session.headers.update(
             {
                 "User-Agent": self.user_agent,
                 "Accept": "text/html,application/xhtml+xml",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Connection": "keep-alive",
             }
         )
         self._last_request_at = 0.0
@@ -95,7 +107,7 @@ class SportsReferenceClient:
                 f"robots.txt does not allow this client to fetch {normalized_url}"
             )
 
-        response = self._request_with_bounded_retry(normalized_url)
+        response = self._request_once(normalized_url)
         content_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip()
         if content_type and content_type not in {
             "text/html",
@@ -118,6 +130,7 @@ class SportsReferenceClient:
                     "statusCode": response.status_code,
                     "contentType": content_type or "text/html",
                     "userAgent": self.user_agent,
+                    "requestIntervalSeconds": self.minimum_interval_seconds,
                 },
                 indent=2,
             )
@@ -168,22 +181,17 @@ class SportsReferenceClient:
             if table.get("id")
         )
 
-    def _request_with_bounded_retry(self, url: str) -> requests.Response:
-        transient = {500, 502, 503, 504}
-        for attempt in range(self.max_transient_retries + 1):
-            self._wait_for_rate_limit()
-            response = self.session.get(url, timeout=self.timeout_seconds)
-            self._last_request_at = time.monotonic()
-            if response.status_code in {403, 429}:
-                raise RuntimeError(
-                    f"Sports Reference returned HTTP {response.status_code}. "
-                    "The run has stopped and should not be retried aggressively."
-                )
-            if response.status_code not in transient or attempt == self.max_transient_retries:
-                response.raise_for_status()
-                return response
-            time.sleep(min(2 ** attempt, 4))
-        raise RuntimeError(f"Unable to fetch {url}")
+    def _request_once(self, url: str) -> requests.Response:
+        self._wait_for_rate_limit()
+        response = self.session.get(url, timeout=self.timeout_seconds)
+        self._last_request_at = time.monotonic()
+        if response.status_code in {403, 429}:
+            raise RuntimeError(
+                f"Sports Reference returned HTTP {response.status_code}. "
+                "The run has stopped and will not retry automatically."
+            )
+        response.raise_for_status()
+        return response
 
     def _validate_url(self, url: str) -> str:
         parsed = urlparse(url)
