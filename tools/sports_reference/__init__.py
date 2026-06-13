@@ -2,5 +2,16 @@
 
 from .basketball_reference import BasketballReferenceNba
 from .client import SportsReferenceClient
+from .crawler import BasketballReferenceCrawler
+from .page_store import SportsReferencePageStore
+from .table_parser import BasketballReferenceTableParser
+from .url_scope import BasketballReferenceUrlScope
 
-__all__ = ["BasketballReferenceNba", "SportsReferenceClient"]
+__all__ = [
+    "BasketballReferenceCrawler",
+    "BasketballReferenceNba",
+    "BasketballReferenceTableParser",
+    "BasketballReferenceUrlScope",
+    "SportsReferenceClient",
+    "SportsReferencePageStore",
+]
