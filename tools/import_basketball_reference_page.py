@@ -24,7 +24,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--discover", action="store_true")
     parser.add_argument("--output-root", default="raw/basketball_reference/pages")
     parser.add_argument("--cache-dir", default=".cache/sports_reference")
-    parser.add_argument("--minimum-interval", type=float, default=3.5)
+    parser.add_argument(
+        "--minimum-interval",
+        type=float,
+        default=7.0,
+        help="Seconds between network requests; must remain between 6 and 8.",
+    )
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
     if not args.discover and not args.all_tables and not args.table_id:
@@ -120,66 +125,41 @@ def main() -> int:
         print(f"Page import stopped: {exc}", file=sys.stderr)
         return 1
 
-    extractor = LinkedTableExtractor()
-    discovered = []
-    for table in soup.find_all("table"):
-        extracted = extractor.extract_table(table, args.url)
-        discovered.append(extracted)
-
+    table_ids = sorted(
+        table.get("id")
+        for table in soup.find_all("table")
+        if table.get("id")
+    )
     if args.discover:
-        summary = [
-            {
-                "tableId": table["tableId"],
-                "caption": table.get("caption"),
-                "rowCount": table["rowCount"],
-                "linkCount": table["linkCount"],
-                "columns": table["columns"],
-            }
-            for table in discovered
-        ]
-        print(json.dumps({"url": args.url, "tables": summary}, indent=2))
+        print(json.dumps({"url": fetch.url, "tableIds": table_ids}, indent=2))
         return 0
 
-    selected_ids = set(args.table_id)
-    selected = discovered if args.all_tables else [
-        table for table in discovered if table["tableId"] in selected_ids
-    ]
-    missing = selected_ids.difference(table["tableId"] for table in selected)
-    if missing:
-        print(
-            f"Requested table IDs were not found: {sorted(missing)}. "
-            "Run with --discover to inspect the page.",
-            file=sys.stderr,
-        )
-        return 1
+    selected_tables = []
+    extractor = LinkedTableExtractor()
+    requested_ids = set(args.table_id)
+    for table in soup.find_all("table"):
+        table_id = table.get("id")
+        if args.all_tables or table_id in requested_ids:
+            selected_tables.append(extractor.extract_table(table, fetch.url))
 
-    output_dir = Path(args.output_root) / slug_for_url(args.url)
+    output_dir = Path(args.output_root) / slug_for_url(fetch.url)
     output_dir.mkdir(parents=True, exist_ok=True)
-    table_manifests = [write_table(output_dir, table) for table in selected]
+    tables = [write_table(output_dir, table) for table in selected_tables]
     manifest = {
         "source": "Basketball Reference",
-        "sourceUrl": args.url,
+        "sourceUrl": fetch.url,
         "fetchedAt": fetch.fetched_at,
-        "fromCache": fetch.from_cache,
         "sourceSha256": fetch.sha256,
+        "fromCache": fetch.from_cache,
         "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "tableCount": len(tables),
+        "tables": tables,
         "status": "raw-review-only",
         "canonicalAssetsModified": False,
-        "tableCount": len(table_manifests),
-        "tables": table_manifests,
     }
-    manifest_path = output_dir / "page.manifest.json"
+    manifest_path = output_dir / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-
-    print(f"Extracted {len(table_manifests)} link-aware table(s)")
-    for table in table_manifests:
-        print(
-            f"- {table['tableId']}: {table['rowCount']} rows, "
-            f"{table['linkCount']} links"
-        )
-    print(f"Output: {output_dir}")
-    print(f"Manifest: {manifest_path}")
-    print("Canonical Flutter assets were not modified.")
+    print(json.dumps({"output": str(output_dir), "manifest": str(manifest_path)}, indent=2))
     return 0
 
 
