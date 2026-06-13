@@ -8,6 +8,42 @@ Local helpers for moving from pre-data readiness into source-backed NBA imports.
 bash tools/run_pre_data_tests.sh
 ```
 
+## Basketball Reference raw ingestion
+
+Create the local Python environment:
+
+```bash
+bash tools/setup_sports_ingestion.sh
+source .venv/bin/activate
+```
+
+Inspect current table identifiers before collecting a dataset:
+
+```bash
+python tools/import_basketball_reference.py --season 2026 --list-tables league
+```
+
+Fetch one raw candidate at a time:
+
+```bash
+python tools/import_basketball_reference.py --season 2026 --dataset player_per_game
+python tools/import_basketball_reference.py --season 2026 --dataset player_totals
+python tools/import_basketball_reference.py --season 2026 --dataset player_advanced
+python tools/import_basketball_reference.py --season 2026 --dataset team_per_game
+python tools/import_basketball_reference.py --season 2026 --dataset standings
+```
+
+The importer uses robots checks, a descriptive user agent, a minimum request interval, and local HTML caching. It writes review-only CSV, JSON, and manifest files beneath `raw/basketball_reference/` and does not modify canonical app assets.
+
+Full instructions are in `docs/basketball_reference_ingestion.md`.
+
+The legacy PyPI package can be checked separately:
+
+```bash
+python -m pip install sportsreference==0.5.2
+python tools/probe_sportsreference.py --season 2026
+```
+
 ## Manual roster seed from screenshots
 
 ```bash
