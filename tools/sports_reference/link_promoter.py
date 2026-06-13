@@ -27,8 +27,10 @@ class LinkPromotionSummary:
 class StoredLinkPromoter:
     """Promote links already captured from completed pages into the crawl queue.
 
-    This avoids requesting completed seed pages again merely to discover their
-    links at a greater crawl depth. Promotion is deterministic and idempotent.
+    Promotion is deterministic and idempotent. Season bounds apply to the
+    completed source page and, when the linked target exposes a season, to the
+    target page as well. Seasonless entities such as player profiles remain
+    eligible when discovered from an in-range source page.
     """
 
     def __init__(self, store: SportsReferencePageStore) -> None:
@@ -60,11 +62,21 @@ class StoredLinkPromoter:
         ]
         params: list[object] = [*sorted(families)]
         if start_year is not None:
-            clauses.append("source.season_end_year >= ?")
-            params.append(start_year)
+            clauses.extend(
+                [
+                    "source.season_end_year >= ?",
+                    "(link.season_end_year IS NULL OR link.season_end_year >= ?)",
+                ]
+            )
+            params.extend([start_year, start_year])
         if end_year is not None:
-            clauses.append("source.season_end_year <= ?")
-            params.append(end_year)
+            clauses.extend(
+                [
+                    "source.season_end_year <= ?",
+                    "(link.season_end_year IS NULL OR link.season_end_year <= ?)",
+                ]
+            )
+            params.extend([end_year, end_year])
         if source_depth is not None:
             clauses.append("source.depth = ?")
             params.append(source_depth)
