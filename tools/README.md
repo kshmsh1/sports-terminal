@@ -33,9 +33,64 @@ python tools/import_basketball_reference.py --season 2026 --dataset team_per_gam
 python tools/import_basketball_reference.py --season 2026 --dataset standings
 ```
 
-The importer uses robots checks, a descriptive user agent, a minimum request interval, and local HTML caching. It writes review-only CSV, JSON, and manifest files beneath `raw/basketball_reference/` and does not modify canonical app assets.
+The importer uses robots checks, a descriptive user agent, a minimum request interval, and local HTML caching. It writes review-only CSV, JSON, linked JSON, and manifest files beneath `raw/basketball_reference/` and does not modify canonical app assets.
 
-Full instructions are in `docs/basketball_reference_ingestion.md`.
+Full single-page instructions are in `docs/basketball_reference_ingestion.md`.
+
+## Historical Basketball Reference catalog
+
+The historical crawler discovers and stores all tables and provider links from bounded page families rather than requiring a hand-written scraper for every table.
+
+Preview one completed season without using the network:
+
+```bash
+python tools/crawl_basketball_reference.py \
+  plan \
+  --from-season 2025 \
+  --to-season 2025 \
+  --profile historical
+```
+
+Queue that season without using the network:
+
+```bash
+python tools/crawl_basketball_reference.py \
+  seed \
+  --from-season 2025 \
+  --to-season 2025 \
+  --profile historical
+```
+
+Inspect the local raw backend:
+
+```bash
+python tools/crawl_basketball_reference.py status
+python tools/crawl_basketball_reference.py coverage
+python tools/crawl_basketball_reference.py schema-drift
+python tools/crawl_basketball_reference.py queue --status queued --limit 25
+```
+
+After reviewing the current site access rules, run a small bounded live batch:
+
+```bash
+python tools/crawl_basketball_reference.py \
+  crawl \
+  --max-pages 10 \
+  --max-depth 1 \
+  --from-season 2025 \
+  --to-season 2025 \
+  --minimum-interval 4.0 \
+  --acknowledge-site-rules
+```
+
+The historical backend is stored in:
+
+```text
+raw/basketball_reference/catalog.sqlite
+raw/basketball_reference/snapshots/
+```
+
+It is resumable, cached, page-budgeted, depth-bounded, schema-aware, link-aware, and separate from canonical Flutter assets. Full architecture and operating instructions are in `docs/historical_basketball_reference_crawler.md`.
 
 The legacy PyPI package can be checked separately:
 
