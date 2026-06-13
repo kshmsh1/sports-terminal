@@ -27,6 +27,7 @@ import '../screens/era_context_screen.dart';
 import '../screens/export_center_screen.dart';
 import '../screens/fantasy_terminal_screen.dart';
 import '../screens/field_dictionary_screen.dart';
+import '../screens/final_rosters_screen.dart';
 import '../screens/franchise_history_screen.dart';
 import '../screens/g_league_roadmap_screen.dart';
 import '../screens/games_screen.dart';
@@ -96,7 +97,7 @@ class _TerminalShellState extends State<TerminalShell> {
     _TerminalTab(label: 'Playoffs', icon: Icons.military_tech_outlined, screen: PlayoffsScreen(), section: _TabSection.core, group: 'NBA Core'),
     _TerminalTab(label: 'Games', icon: Icons.sports_basketball_outlined, screen: GamesScreen(), section: _TabSection.core, group: 'NBA Core'),
     _TerminalTab(label: 'Context Assets', icon: Icons.hub_outlined, screen: ContextAssetsOverviewScreen(), section: _TabSection.core, group: 'Context'),
-    _TerminalTab(label: 'Rosters', icon: Icons.assignment_ind_outlined, screen: RostersScreen(), section: _TabSection.core, group: 'Context'),
+    _TerminalTab(label: 'Rosters', icon: Icons.assignment_ind_outlined, screen: FinalRostersScreen(), section: _TabSection.core, group: 'Context'),
     _TerminalTab(label: 'Awards', icon: Icons.emoji_events_outlined, screen: AwardsScreen(), section: _TabSection.core, group: 'Context'),
     _TerminalTab(label: 'Draft', icon: Icons.school_outlined, screen: DraftScreen(), section: _TabSection.core, group: 'Context'),
     _TerminalTab(label: 'Transactions', icon: Icons.swap_horiz_outlined, screen: TransactionsScreen(), section: _TabSection.core, group: 'Context'),
