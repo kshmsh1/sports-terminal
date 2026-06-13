@@ -12,7 +12,7 @@ class SportsReferenceParserTest(unittest.TestCase):
     def setUp(self) -> None:
         self.client = SportsReferenceClient(
             cache_dir=".cache/test_sports_reference",
-            minimum_interval_seconds=3.0,
+            minimum_interval_seconds=7.0,
         )
 
     def test_finds_visible_table(self) -> None:
