@@ -29,21 +29,24 @@ python3 -m py_compile \
   tools/prepare_player_stats.py \
   tools/probe_sportsreference.py \
   tools/test_sports_reference_parsers.py \
-  tools/test_sports_reference_catalog.py
+  tools/test_sports_reference_catalog.py \
+  tools/test_sports_reference_scope.py
 
 echo "4/7 Run offline ingestion tests when the virtual environment exists"
 if [[ -x .venv/bin/python ]]; then
   .venv/bin/python tools/test_sports_reference_parsers.py
   .venv/bin/python tools/test_sports_reference_catalog.py
+  .venv/bin/python tools/test_sports_reference_scope.py
 fi
 
-echo "5/7 Smoke-test the no-network historical crawl planner"
+echo "5/7 Smoke-test the no-network catalog planner"
 temporary_dir="$(mktemp -d)"
 trap 'rm -rf "$temporary_dir"' EXIT
 python3 tools/crawl_basketball_reference.py \
   --database "$temporary_dir/catalog.sqlite" \
   --snapshot-root "$temporary_dir/snapshots" \
   plan --from-season 2025 --to-season 2025 --profile historical >/dev/null
+bash tools/prepare_historical_nba_catalog.sh plan 2025 2025 historical >/dev/null
 python3 tools/crawl_basketball_reference.py \
   --database "$temporary_dir/catalog.sqlite" \
   --snapshot-root "$temporary_dir/snapshots" \
