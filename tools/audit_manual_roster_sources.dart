@@ -11,7 +11,8 @@ void main() {
   final paths = _seedPaths();
   if (paths.isEmpty) throw StateError('No manual roster source files found.');
 
-  final rowCountsByTeam = <String, int>{};
+  final sourceRowCountsByTeam = <String, int>{};
+  final uniqueRowCountsByTeam = <String, int>{};
   final fileCountsByTeam = <String, int>{};
   final duplicateNaturalKeys = <String, List<String>>{};
   final seenNaturalKeys = <String, String>{};
@@ -33,11 +34,12 @@ void main() {
       final playerName = cells[4];
       final naturalKey = '${_slug(playerName)}|$teamId|2025-26';
       totalRows += 1;
-      rowCountsByTeam[teamId] = (rowCountsByTeam[teamId] ?? 0) + 1;
+      sourceRowCountsByTeam[teamId] = (sourceRowCountsByTeam[teamId] ?? 0) + 1;
       teamsInFile.add(teamId);
       final firstPath = seenNaturalKeys[naturalKey];
       if (firstPath == null) {
         seenNaturalKeys[naturalKey] = path;
+        uniqueRowCountsByTeam[teamId] = (uniqueRowCountsByTeam[teamId] ?? 0) + 1;
       } else {
         duplicateNaturalKeys.putIfAbsent(naturalKey, () => [firstPath]).add(path);
       }
@@ -47,21 +49,30 @@ void main() {
     }
   }
 
-  final coveredTeams = rowCountsByTeam.keys.toSet();
+  final coveredTeams = uniqueRowCountsByTeam.keys.toSet();
   final missingTeams = canonicalTeams.difference(coveredTeams).toList()..sort();
   final unknownTeams = coveredTeams.difference(canonicalTeams).toList()..sort();
+  final duplicateSourceRows = totalRows - seenNaturalKeys.length;
 
   print('Manual roster source audit');
   print('Seed files: ${paths.length}');
-  print('Source rows: $totalRows');
+  print('Source rows scanned: $totalRows');
+  print('Unique player-team-season rows: ${seenNaturalKeys.length}');
+  print('Duplicate source rows ignored: $duplicateSourceRows');
   print('Covered teams: ${coveredTeams.length} / ${canonicalTeams.length}');
-  print('Duplicate natural keys: ${duplicateNaturalKeys.length}');
   if (missingTeams.isNotEmpty) print('Missing teams: ${missingTeams.join(', ')}');
   if (unknownTeams.isNotEmpty) print('Unknown teams: ${unknownTeams.join(', ')}');
-  print('Rows by team:');
-  final teamIds = rowCountsByTeam.keys.toList()..sort();
+  print('Unique rows by team:');
+  final teamIds = uniqueRowCountsByTeam.keys.toList()..sort();
   for (final teamId in teamIds) {
-    print('- $teamId: ${rowCountsByTeam[teamId]} rows across ${fileCountsByTeam[teamId]} files');
+    final uniqueRows = uniqueRowCountsByTeam[teamId] ?? 0;
+    final sourceRows = sourceRowCountsByTeam[teamId] ?? 0;
+    final duplicates = sourceRows - uniqueRows;
+    print('- $teamId: $uniqueRows unique rows, $duplicates duplicate rows, ${fileCountsByTeam[teamId]} source files');
+  }
+
+  if (duplicateNaturalKeys.isNotEmpty) {
+    print('Duplicate source keys are tolerated because generation deterministically keeps the first player-team-season row. Consolidation remains a source-cleanup task.');
   }
 
   if (missingTeams.isNotEmpty || unknownTeams.isNotEmpty) {
