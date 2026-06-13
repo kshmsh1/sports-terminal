@@ -41,22 +41,92 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
   String navFilter = '';
 
   List<_UserTab> get tabs => [
-        const _UserTab('Dashboard', Icons.dashboard_outlined, DashboardScreen(), 'Command'),
+        const _UserTab(
+          'Dashboard',
+          Icons.dashboard_outlined,
+          DashboardScreen(),
+          'Command',
+        ),
         const _UserTab('Search', Icons.search, SearchScreen(), 'Command'),
-        const _UserTab('Players', Icons.person_search_outlined, PlayersScreen(), 'NBA'),
+        const _UserTab(
+          'Players',
+          Icons.person_search_outlined,
+          PlayersScreen(),
+          'NBA',
+        ),
         const _UserTab('Teams', Icons.groups_outlined, TeamsScreen(), 'NBA'),
-        const _UserTab('Seasons', Icons.calendar_month_outlined, SeasonsScreen(), 'NBA'),
-        const _UserTab('Stats', Icons.query_stats_outlined, StatsScreen(), 'NBA'),
-        const _UserTab('Standings', Icons.leaderboard_outlined, StandingsScreen(), 'NBA'),
-        const _UserTab('Playoffs', Icons.military_tech_outlined, PlayoffsScreen(), 'NBA'),
-        const _UserTab('Games', Icons.sports_basketball_outlined, GamesScreen(), 'NBA'),
-        const _UserTab('Rosters', Icons.assignment_ind_outlined, FinalRostersScreen(), 'NBA'),
-        const _UserTab('Context', Icons.hub_outlined, ContextAssetsOverviewScreen(), 'NBA'),
-        const _UserTab('Awards', Icons.emoji_events_outlined, AwardRacesScreen(), 'NBA'),
-        const _UserTab('Compare', Icons.compare_arrows_outlined, CompareScreen(), 'Research'),
-        const _UserTab('Reports', Icons.article_outlined, ReportsScreen(), 'Research'),
-        const _UserTab('Saved Views', Icons.bookmark_border_outlined, SavedViewsScreen(), 'Research'),
-        const _UserTab('Alerts', Icons.notifications_none_outlined, AlertsScreen(), 'Research'),
+        const _UserTab(
+          'Seasons',
+          Icons.calendar_month_outlined,
+          SeasonsScreen(),
+          'NBA',
+        ),
+        const _UserTab(
+          'Stats',
+          Icons.query_stats_outlined,
+          StatsScreen(),
+          'NBA',
+        ),
+        const _UserTab(
+          'Standings',
+          Icons.leaderboard_outlined,
+          StandingsScreen(),
+          'NBA',
+        ),
+        const _UserTab(
+          'Playoffs',
+          Icons.military_tech_outlined,
+          PlayoffsScreen(),
+          'NBA',
+        ),
+        const _UserTab(
+          'Games',
+          Icons.sports_basketball_outlined,
+          GamesScreen(),
+          'NBA',
+        ),
+        const _UserTab(
+          'Rosters',
+          Icons.assignment_ind_outlined,
+          FinalRostersScreen(),
+          'NBA',
+        ),
+        const _UserTab(
+          'Context',
+          Icons.hub_outlined,
+          ContextAssetsOverviewScreen(),
+          'NBA',
+        ),
+        const _UserTab(
+          'Awards',
+          Icons.emoji_events_outlined,
+          AwardRacesScreen(),
+          'NBA',
+        ),
+        const _UserTab(
+          'Compare',
+          Icons.compare_arrows_outlined,
+          CompareScreen(),
+          'Research',
+        ),
+        const _UserTab(
+          'Reports',
+          Icons.article_outlined,
+          ReportsScreen(),
+          'Research',
+        ),
+        const _UserTab(
+          'Saved Views',
+          Icons.bookmark_border_outlined,
+          SavedViewsScreen(),
+          'Research',
+        ),
+        const _UserTab(
+          'Alerts',
+          Icons.notifications_none_outlined,
+          AlertsScreen(),
+          'Research',
+        ),
         _UserTab(
           'Spreadsheet',
           Icons.grid_on_outlined,
@@ -66,13 +136,20 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
           ),
           'Workspace',
         ),
-        const _UserTab('Code Workspace', Icons.code_outlined, SafeSqlScreen(), 'Workspace'),
+        const _UserTab(
+          'Code Workspace',
+          Icons.code_outlined,
+          SafeSqlScreen(),
+          'Workspace',
+        ),
       ];
 
   @override
   Widget build(BuildContext context) {
     final currentTabs = tabs;
-    if (selectedIndex >= currentTabs.length) selectedIndex = 0;
+    if (selectedIndex >= currentTabs.length) {
+      selectedIndex = 0;
+    }
     final selected = currentTabs[selectedIndex];
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -83,25 +160,37 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
             appBar: AppBar(
               backgroundColor: const Color(0xFF0D1218),
               foregroundColor: Colors.white,
-              title: Text(selected.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+              title: Text(
+                selected.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               actions: [
-                IconButton(tooltip: 'Sign out', onPressed: widget.onSignOut, icon: const Icon(Icons.logout)),
+                IconButton(
+                  tooltip: 'Sign out',
+                  onPressed: widget.onSignOut,
+                  icon: const Icon(Icons.logout),
+                ),
               ],
             ),
             drawer: Drawer(
               backgroundColor: const Color(0xFF111820),
-              child: SafeArea(child: _NavigationPanel(
-                session: widget.session,
-                tabs: currentTabs,
-                selectedIndex: selectedIndex,
-                navFilter: navFilter,
-                onFilterChanged: (value) => setState(() => navFilter = value),
-                onSelected: (index) {
-                  setState(() => selectedIndex = index);
-                  Navigator.of(context).pop();
-                },
-                onSignOut: widget.onSignOut,
-              )),
+              child: SafeArea(
+                child: _NavigationPanel(
+                  session: widget.session,
+                  tabs: currentTabs,
+                  selectedIndex: selectedIndex,
+                  navFilter: navFilter,
+                  onFilterChanged: (value) {
+                    setState(() => navFilter = value);
+                  },
+                  onSelected: (index) {
+                    setState(() => selectedIndex = index);
+                    Navigator.of(context).pop();
+                  },
+                  onSignOut: widget.onSignOut,
+                ),
+              ),
             ),
             body: SingleChildScrollView(
               padding: const EdgeInsets.all(18),
@@ -121,8 +210,12 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
                   tabs: currentTabs,
                   selectedIndex: selectedIndex,
                   navFilter: navFilter,
-                  onFilterChanged: (value) => setState(() => navFilter = value),
-                  onSelected: (index) => setState(() => selectedIndex = index),
+                  onFilterChanged: (value) {
+                    setState(() => navFilter = value);
+                  },
+                  onSelected: (index) {
+                    setState(() => selectedIndex = index);
+                  },
                   onSignOut: widget.onSignOut,
                 ),
               ),
@@ -170,90 +263,202 @@ class _NavigationPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final normalizedFilter = navFilter.trim().toLowerCase();
     final filtered = <({int index, _UserTab tab})>[
       for (var i = 0; i < tabs.length; i++)
-        if (navFilter.trim().isEmpty ||
-            '${tabs[i].label} ${tabs[i].group}'.toLowerCase().contains(navFilter.trim().toLowerCase()))
+        if (normalizedFilter.isEmpty ||
+            '${tabs[i].label} ${tabs[i].group}'
+                .toLowerCase()
+                .contains(normalizedFilter))
           (index: i, tab: tabs[i]),
     ];
-    return Container(
+
+    return Material(
       color: const Color(0xFF111820),
-      padding: const EdgeInsets.all(16),
       child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.sports_basketball, color: Color(0xFF8AB4F8)),
-                SizedBox(width: 10),
-                Expanded(child: Text('Sports Terminal', overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900))),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0D1218),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF263241)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
                 children: [
-                  Text(session.organizationName, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 3),
-                  Text(session.role.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF8AB4F8), fontSize: 12)),
+                  Icon(
+                    Icons.sports_basketball,
+                    color: Color(0xFF8AB4F8),
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Sports Terminal',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              onChanged: onFilterChanged,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-              decoration: InputDecoration(
-                hintText: 'Filter navigation...',
-                hintStyle: const TextStyle(color: Color(0xFF657386)),
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF657386), size: 18),
-                filled: true,
-                fillColor: const Color(0xFF0D1218),
-                isDense: true,
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF263241))),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF8AB4F8))),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView.builder(
-                itemCount: filtered.length,
-                itemBuilder: (context, position) {
-                  final item = filtered[position];
-                  final selected = item.index == selectedIndex;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: ListTile(
-                      dense: true,
-                      selected: selected,
-                      selectedTileColor: const Color(0xFF1B2A3F),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      leading: Icon(item.tab.icon, color: selected ? const Color(0xFF8AB4F8) : const Color(0xFF8794A5), size: 20),
-                      title: Text(item.tab.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: selected ? Colors.white : const Color(0xFFB6C0CC), fontWeight: selected ? FontWeight.w800 : FontWeight.w500)),
-                      subtitle: Text(item.tab.group, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF657386), fontSize: 10)),
-                      onTap: () => onSelected(item.index),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D1218),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF263241)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      session.organizationName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  );
-                },
+                    const SizedBox(height: 3),
+                    Text(
+                      session.role.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF8AB4F8),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const Divider(color: Color(0xFF263241)),
-            ListTile(
-              dense: true,
-              leading: const Icon(Icons.logout, color: Color(0xFF8794A5)),
-              title: const Text('Sign out', style: TextStyle(color: Color(0xFFB6C0CC))),
-              onTap: onSignOut,
-            ),
-          ],
+              const SizedBox(height: 12),
+              TextField(
+                onChanged: onFilterChanged,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Filter navigation...',
+                  hintStyle: const TextStyle(color: Color(0xFF657386)),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: Color(0xFF657386),
+                    size: 18,
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF0D1218),
+                  isDense: true,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF263241)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF8AB4F8)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: filtered.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 6),
+                  itemBuilder: (context, position) {
+                    final item = filtered[position];
+                    return _NavigationEntry(
+                      icon: item.tab.icon,
+                      title: item.tab.label,
+                      subtitle: item.tab.group,
+                      selected: item.index == selectedIndex,
+                      onTap: () => onSelected(item.index),
+                    );
+                  },
+                ),
+              ),
+              const Divider(color: Color(0xFF263241)),
+              _NavigationEntry(
+                icon: Icons.logout,
+                title: 'Sign out',
+                onTap: onSignOut,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavigationEntry extends StatelessWidget {
+  const _NavigationEntry({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+    this.selected = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground =
+        selected ? Colors.white : const Color(0xFFB6C0CC);
+    final iconColor =
+        selected ? const Color(0xFF8AB4F8) : const Color(0xFF8794A5);
+
+    return Material(
+      color: selected ? const Color(0xFF1B2A3F) : Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Icon(icon, color: iconColor, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: foreground,
+                        fontWeight:
+                            selected ? FontWeight.w800 : FontWeight.w500,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF657386),
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -271,7 +476,10 @@ class _UserTopBar extends StatelessWidget {
     return Container(
       height: 72,
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: const BoxDecoration(color: Color(0xFF0D1218), border: Border(bottom: BorderSide(color: Color(0xFF263241)))),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0D1218),
+        border: Border(bottom: BorderSide(color: Color(0xFF263241))),
+      ),
       child: Row(
         children: [
           Expanded(
@@ -279,8 +487,25 @@ class _UserTopBar extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(tab.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900)),
-                Text('${tab.group} • ${session.organizationName}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF8794A5), fontSize: 12)),
+                Text(
+                  tab.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 23,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  '${tab.group} • ${session.organizationName}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF8794A5),
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),
@@ -288,8 +513,21 @@ class _UserTopBar extends StatelessWidget {
           Container(
             constraints: const BoxConstraints(maxWidth: 240),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(color: const Color(0xFF121A23), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF263241))),
-            child: Text(session.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFB6C0CC), fontSize: 12, fontWeight: FontWeight.w700)),
+            decoration: BoxDecoration(
+              color: const Color(0xFF121A23),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF263241)),
+            ),
+            child: Text(
+              session.displayName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFFB6C0CC),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -299,6 +537,7 @@ class _UserTopBar extends StatelessWidget {
 
 class _UserTab {
   const _UserTab(this.label, this.icon, this.screen, this.group);
+
   final String label;
   final IconData icon;
   final Widget screen;
