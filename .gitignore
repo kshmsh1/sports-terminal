@@ -33,8 +33,14 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Python ingestion environments and HTTP caches
+.venv/
+.cache/
+__pycache__/
+
 # Local source exports and generated import review files
 /raw/*.json
+/raw/basketball_reference/
 !/raw/README.md
 
 # Symbolication related
