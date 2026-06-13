@@ -6,7 +6,6 @@ const _asOf = '2026-06-06';
 const _seasonId = '2025-26';
 const _snapshotLabel = '2025-26 final roster snapshot';
 const _sourceDirs = <String>[
-  'assets/data/nba/manual_sources/rosters',
   'docs/manual_roster_sources',
 ];
 
@@ -185,7 +184,7 @@ int? _nullableInt(String value) => value == '--' ? null : int.parse(value);
   return (first: parts.first, last: parts.skip(1).join(' '));
 }
 
-String _slug(String value) => value.toLowerCase().replaceAll("'", '').replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-+|-+\$'), '');
+String _slug(String value) => value.toLowerCase().replaceAll("'", '').replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-+|-+$'), '');
 String _formatMoney(int value) => value.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
 
 void _writeJson(String path, Map<String, dynamic> value) {
