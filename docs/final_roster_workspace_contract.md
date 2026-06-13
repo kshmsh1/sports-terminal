@@ -2,6 +2,18 @@
 
 The manual roster seed represents the final NBA rosters at the end of the 2025-2026 season.
 
+## Authoritative source
+
+The committed authoritative manual source set is:
+
+```text
+docs/manual_roster_sources/
+```
+
+The older `assets/data/nba/manual_sources/rosters/` directory is retained only as legacy staging material and is no longer scanned by the audit or importer. This prevents mirrored files from being counted as duplicate source rows while preserving the original staging history.
+
+Generated player and roster JSON assets remain reproducible outputs of the committed PSV source set rather than a second hand-maintained source of truth.
+
 ## Asset identity
 
 The manual seed writes player identity and roster rows with:
@@ -62,6 +74,12 @@ dart run tools/apply_manual_roster_seed.dart
 dart run tools/summarize_manual_roster_seed.dart
 dart run tools/validate_rosters.dart
 dart run tools/write_roster_completeness_report.dart
+```
+
+The full product-surface release gate is:
+
+```bash
+bash tools/check_roster_product_release.sh
 ```
 
 The completeness report is written to:
