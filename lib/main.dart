@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'controllers/auth_controller.dart';
+import 'controllers/internal_workspace_controller.dart';
 import 'controllers/route_payload_controller.dart';
-import 'widgets/terminal_shell.dart';
+import 'widgets/app_entry_gate.dart';
 
 void main() {
   runApp(const SportsTerminalApp());
@@ -16,10 +18,14 @@ class SportsTerminalApp extends StatefulWidget {
 
 class _SportsTerminalAppState extends State<SportsTerminalApp> {
   final routePayloadController = RoutePayloadController();
+  final authController = AuthController();
+  final workspaceController = InternalWorkspaceController();
 
   @override
   void dispose() {
     routePayloadController.dispose();
+    authController.dispose();
+    workspaceController.dispose();
     super.dispose();
   }
 
@@ -30,15 +36,11 @@ class _SportsTerminalAppState extends State<SportsTerminalApp> {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Sports Terminal',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF8AB4F8),
-            brightness: Brightness.dark,
-          ),
-          fontFamily: 'SF Pro Display',
-          useMaterial3: true,
+        theme: ThemeData.dark(useMaterial3: true),
+        home: AppEntryGate(
+          authController: authController,
+          workspaceController: workspaceController,
         ),
-        home: const TerminalShell(),
       ),
     );
   }
