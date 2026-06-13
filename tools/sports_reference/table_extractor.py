@@ -83,9 +83,13 @@ class LinkedTableExtractor:
             if not isinstance(tr, Tag):
                 continue
             classes = set(tr.get("class") or [])
-            if "thead" in classes:
+            if tr.find_parent("thead") is not None or "thead" in classes:
                 continue
-            cells = [cell for cell in tr.find_all(["th", "td"], recursive=False) if isinstance(cell, Tag)]
+            cells = [
+                cell
+                for cell in tr.find_all(["th", "td"], recursive=False)
+                if isinstance(cell, Tag)
+            ]
             if not cells:
                 continue
             if len(cells) == 1 and cells[0].get("colspan"):
@@ -108,7 +112,11 @@ class LinkedTableExtractor:
                         continue
                     link_text = anchor.get_text(" ", strip=True) or text
                     links.append(
-                        self.classifier.classify(link_text, anchor["href"], source_url).to_dict()
+                        self.classifier.classify(
+                            link_text,
+                            anchor["href"],
+                            source_url,
+                        ).to_dict()
                     )
                 row_cells[key] = {
                     "text": text,
