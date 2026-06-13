@@ -36,9 +36,33 @@ class BasketballReferenceNba:
                 f"/leagues/NBA_{season_end_year}_advanced.html",
                 ("advanced", "advanced_stats"),
             ),
+            "playoff_player_per_game": (
+                f"/playoffs/NBA_{season_end_year}_per_game.html",
+                ("per_game_stats", "per_game"),
+            ),
+            "playoff_player_totals": (
+                f"/playoffs/NBA_{season_end_year}_totals.html",
+                ("totals_stats", "totals"),
+            ),
+            "playoff_player_advanced": (
+                f"/playoffs/NBA_{season_end_year}_advanced.html",
+                ("advanced", "advanced_stats"),
+            ),
             "team_per_game": (
                 f"/leagues/NBA_{season_end_year}.html",
                 ("per_game-team", "team-stats-per_game", "team_per_game"),
+            ),
+            "team_opponent_per_game": (
+                f"/leagues/NBA_{season_end_year}.html",
+                ("per_game-opponent", "opponent-stats-per_game", "opponent_per_game"),
+            ),
+            "team_advanced": (
+                f"/leagues/NBA_{season_end_year}.html",
+                ("advanced-team", "team-stats-advanced", "team_advanced"),
+            ),
+            "schedule": (
+                f"/leagues/NBA_{season_end_year}_games.html",
+                ("schedule",),
             ),
         }
         if dataset == "standings":
@@ -60,6 +84,10 @@ class BasketballReferenceNba:
             "per_game": f"/leagues/NBA_{season_end_year}_per_game.html",
             "totals": f"/leagues/NBA_{season_end_year}_totals.html",
             "advanced": f"/leagues/NBA_{season_end_year}_advanced.html",
+            "schedule": f"/leagues/NBA_{season_end_year}_games.html",
+            "playoff_per_game": f"/playoffs/NBA_{season_end_year}_per_game.html",
+            "playoff_totals": f"/playoffs/NBA_{season_end_year}_totals.html",
+            "playoff_advanced": f"/playoffs/NBA_{season_end_year}_advanced.html",
         }
         if page not in paths:
             raise ValueError(f"Unsupported page type: {page}")
