@@ -22,6 +22,7 @@ python3 -m py_compile \
   tools/sports_reference/page_store.py \
   tools/sports_reference/crawler.py \
   tools/sports_reference/link_promoter.py \
+  tools/sports_reference/queue_maintenance.py \
   tools/sports_reference/schema_review.py \
   tools/import_basketball_reference.py \
   tools/import_basketball_reference_page.py \
@@ -33,7 +34,8 @@ python3 -m py_compile \
   tools/test_sports_reference_parsers.py \
   tools/test_sports_reference_catalog.py \
   tools/test_sports_reference_scope.py \
-  tools/test_sports_reference_link_promoter.py
+  tools/test_sports_reference_link_promoter.py \
+  tools/test_sports_reference_queue_maintenance.py
 
 echo "4/7 Run offline ingestion tests when the virtual environment exists"
 if [[ -x .venv/bin/python ]]; then
@@ -41,6 +43,7 @@ if [[ -x .venv/bin/python ]]; then
   .venv/bin/python tools/test_sports_reference_catalog.py
   .venv/bin/python tools/test_sports_reference_scope.py
   .venv/bin/python tools/test_sports_reference_link_promoter.py
+  .venv/bin/python tools/test_sports_reference_queue_maintenance.py
 fi
 
 echo "5/7 Smoke-test the no-network catalog planner"
@@ -55,6 +58,10 @@ python3 tools/crawl_basketball_reference.py \
   --database "$temporary_dir/catalog.sqlite" \
   --snapshot-root "$temporary_dir/snapshots" \
   schema-review >/dev/null
+python3 tools/crawl_basketball_reference.py \
+  --database "$temporary_dir/catalog.sqlite" \
+  --snapshot-root "$temporary_dir/snapshots" \
+  prune-queue --families team_season --from-season 2025 --to-season 2025 --dry-run >/dev/null
 
 echo "6/7 Compile Flutter web application"
 flutter build web --debug --no-pub
