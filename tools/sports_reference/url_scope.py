@@ -19,34 +19,13 @@ class ScopedUrl:
 
 
 class BasketballReferenceUrlScope:
-    """Canonical URL catalog for bounded Basketball Reference collection.
-
-    The scope deliberately excludes search, Stathead, account, blog, and other
-    non-dataset surfaces. It also strips query strings and fragments so one
-    provider page maps to one queue record and one stable provider source key.
-    """
+    """Canonical URL catalog for bounded Basketball Reference collection."""
 
     _patterns = (
-        (
-            "league",
-            re.compile(r"^/leagues/NBA_(\d{4})(?:_([a-z0-9_-]+))?\.html$"),
-            10,
-        ),
-        (
-            "playoff",
-            re.compile(r"^/playoffs/NBA_(\d{4})(?:_([a-z0-9_-]+))?\.html$"),
-            20,
-        ),
-        (
-            "playoff",
-            re.compile(r"^/playoffs/(\d{4})-nba-([a-z0-9-]+)\.html$"),
-            25,
-        ),
-        (
-            "team_season",
-            re.compile(r"^/teams/([A-Z0-9]{2,3})/(\d{4})\.html$"),
-            30,
-        ),
+        ("league", re.compile(r"^/leagues/NBA_(\d{4})(?:_([a-z0-9_-]+))?\.html$"), 10),
+        ("playoff", re.compile(r"^/playoffs/NBA_(\d{4})(?:_([a-z0-9_-]+))?\.html$"), 20),
+        ("playoff", re.compile(r"^/playoffs/(\d{4})-nba-([a-z0-9-]+)\.html$"), 25),
+        ("team_season", re.compile(r"^/teams/([A-Z0-9]{2,3})/(\d{4})\.html$"), 30),
         (
             "boxscore_detail",
             re.compile(
@@ -55,54 +34,36 @@ class BasketballReferenceUrlScope:
             ),
             42,
         ),
-        (
-            "boxscore",
-            re.compile(r"^/boxscores/([0-9A-Z]+)\.html$", re.IGNORECASE),
-            40,
-        ),
-        (
-            "player",
-            re.compile(r"^/players/[a-z]/([a-z0-9]+)\.html$"),
-            50,
-        ),
-        (
-            "draft",
-            re.compile(r"^/draft/NBA_(\d{4})\.html$"),
-            35,
-        ),
-        (
-            "award",
-            re.compile(r"^/awards/(?:awards_)?([a-zA-Z0-9_-]+)\.html$"),
-            35,
-        ),
-        (
-            "allstar",
-            re.compile(r"^/allstar/NBA_(\d{4})\.html$"),
-            35,
-        ),
-        (
-            "team_history",
-            re.compile(r"^/teams/([A-Z0-9]{2,3})/?$"),
-            70,
-        ),
+        ("boxscore", re.compile(r"^/boxscores/([0-9A-Z]+)\.html$", re.IGNORECASE), 40),
+        ("player", re.compile(r"^/players/[a-z]/([a-z0-9]+)\.html$"), 50),
+        ("draft", re.compile(r"^/draft/NBA_(\d{4})\.html$"), 35),
+        ("award", re.compile(r"^/awards/(?:awards_)?([a-zA-Z0-9_-]+)\.html$"), 35),
+        ("allstar", re.compile(r"^/allstar/NBA_(\d{4})\.html$"), 35),
+        ("team_history", re.compile(r"^/teams/([A-Z0-9]{2,3})/?$"), 70),
         (
             "franchise",
-            re.compile(
-                r"^/teams/([A-Z0-9]{2,3})/(stats|players|draft|coaches|executives)\.html$"
-            ),
+            re.compile(r"^/teams/([A-Z0-9]{2,3})/(stats|players|draft|coaches|executives)\.html$"),
             75,
         ),
-        (
-            "coach",
-            re.compile(r"^/coaches/([a-z0-9]+)\.html$"),
-            80,
-        ),
-        (
-            "executive",
-            re.compile(r"^/executives/([a-z0-9]+)\.html$"),
-            85,
-        ),
+        ("coach", re.compile(r"^/coaches/([a-z0-9]+)\.html$"), 80),
+        ("executive", re.compile(r"^/executives/([a-z0-9]+)\.html$"), 85),
     )
+
+    _source_prefixes = {
+        "league": "season-page",
+        "playoff": "playoff",
+        "team_season": "team-season",
+        "team_history": "team",
+        "franchise": "franchise",
+        "player": "player",
+        "boxscore": "game",
+        "boxscore_detail": "game-detail",
+        "draft": "draft",
+        "award": "award",
+        "allstar": "allstar",
+        "coach": "coach",
+        "executive": "executive",
+    }
 
     _ignored_prefixes = (
         "/about/",
@@ -150,16 +111,7 @@ class BasketballReferenceUrlScope:
         path = re.sub(r"/{2,}", "/", parsed.path or "/")
         if path.startswith(self._ignored_prefixes):
             return None
-        return urlunparse(
-            (
-                "https",
-                "www.basketball-reference.com",
-                path,
-                "",
-                "",
-                "",
-            )
-        )
+        return urlunparse(("https", "www.basketball-reference.com", path, "", "", ""))
 
     def classify(self, url: str) -> ScopedUrl | None:
         canonical = self.canonicalize(url)
@@ -168,14 +120,13 @@ class BasketballReferenceUrlScope:
         path = urlparse(canonical).path
         for family, pattern, priority in self._patterns:
             match = pattern.fullmatch(path)
-            if match is None:
-                continue
-            return self._scoped_url(
-                canonical=canonical,
-                family=family,
-                groups=match.groups(),
-                priority=priority,
-            )
+            if match is not None:
+                return self._scoped_url(
+                    canonical=canonical,
+                    family=family,
+                    groups=match.groups(),
+                    priority=priority,
+                )
         return None
 
     def is_allowed(self, url: str, families: set[str] | None = None) -> bool:
@@ -284,9 +235,8 @@ class BasketballReferenceUrlScope:
         elif family in {"team_history", "franchise"}:
             team_abbreviation = groups[0]
 
-        source_key = (
-            f"basketball-reference:{family}:{entity_id}" if entity_id else None
-        )
+        prefix = self._source_prefixes[family]
+        source_key = f"basketball-reference:{prefix}:{entity_id}" if entity_id else None
         return ScopedUrl(
             url=canonical,
             page_family=family,
