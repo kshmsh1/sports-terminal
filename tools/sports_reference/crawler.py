@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from .client import SportsReferenceClient
 from .page_store import SportsReferencePageStore
 from .table_parser import BasketballReferenceTableParser
-from .url_scope import BasketballReferenceUrlScope
+from .url_scope import BasketballReferenceUrlScope, ScopedUrl
 
 
 @dataclass(frozen=True)
@@ -52,22 +52,39 @@ class BasketballReferenceCrawler:
             end_year,
             profile=profile,
         )
-        by_family: dict[str, int] = {}
-        for scoped in seeds:
-            by_family[scoped.page_family] = by_family.get(scoped.page_family, 0) + 1
-        return {
-            "fromSeason": start_year,
-            "toSeason": end_year,
-            "profile": profile,
-            "seasonCount": end_year - start_year + 1,
-            "seedCount": len(seeds),
-            "seedCountsByFamily": dict(sorted(by_family.items())),
-            "estimatedMinimumSeconds": round(
-                len(seeds) * self.client.minimum_interval_seconds,
-                1,
-            ),
-            "seedUrls": [scoped.url for scoped in seeds],
-        }
+        return self._plan_document(
+            seeds,
+            start_year=start_year,
+            end_year=end_year,
+            profile=profile,
+            mode="season-range",
+        )
+
+    def plan_site(
+        self,
+        start_year: int,
+        end_year: int,
+        *,
+        profile: str,
+    ) -> dict[str, object]:
+        seeds = self.scope.site_seeds(
+            start_year,
+            end_year,
+            profile=profile,
+        )
+        document = self._plan_document(
+            seeds,
+            start_year=start_year,
+            end_year=end_year,
+            profile=profile,
+            mode="site-wide",
+        )
+        document["siteIndexSeedCount"] = len(self.scope.site_index_seeds())
+        document["discoveryStrategy"] = (
+            "Seed public NBA data indexes and season hubs, then recursively "
+            "discover recognized and prefix-scoped linked data pages."
+        )
+        return document
 
     def seed_seasons(
         self,
@@ -76,12 +93,61 @@ class BasketballReferenceCrawler:
         *,
         profile: str,
     ) -> int:
+        return self._enqueue_many(
+            self.scope.season_range_seeds(
+                start_year,
+                end_year,
+                profile=profile,
+            )
+        )
+
+    def seed_site(
+        self,
+        start_year: int,
+        end_year: int,
+        *,
+        profile: str,
+    ) -> int:
+        return self._enqueue_many(
+            self.scope.site_seeds(
+                start_year,
+                end_year,
+                profile=profile,
+            )
+        )
+
+    def _plan_document(
+        self,
+        seeds: list[ScopedUrl],
+        *,
+        start_year: int,
+        end_year: int,
+        profile: str,
+        mode: str,
+    ) -> dict[str, object]:
+        by_family: dict[str, int] = {}
+        for scoped in seeds:
+            by_family[scoped.page_family] = by_family.get(scoped.page_family, 0) + 1
+        return {
+            "mode": mode,
+            "fromSeason": start_year,
+            "toSeason": end_year,
+            "profile": profile,
+            "seasonCount": end_year - start_year + 1,
+            "seedCount": len(seeds),
+            "seedCountsByFamily": dict(sorted(by_family.items())),
+            "supportedPageFamilies": list(self.scope.families),
+            "estimatedMinimumSeconds": round(
+                len(seeds) * self.client.minimum_interval_seconds,
+                1,
+            ),
+            "estimateScope": "deterministic seed requests only",
+            "seedUrls": [scoped.url for scoped in seeds],
+        }
+
+    def _enqueue_many(self, seeds: list[ScopedUrl]) -> int:
         inserted = 0
-        for scoped in self.scope.season_range_seeds(
-            start_year,
-            end_year,
-            profile=profile,
-        ):
+        for scoped in seeds:
             inserted += int(
                 self.store.enqueue(
                     scoped.url,
