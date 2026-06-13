@@ -3,7 +3,14 @@ class RosterMeasurementFormatter {
 
   int heightInches(String? height) {
     if (height == null) return -1;
-    final match = RegExp(r"^(\d+)'\s*(\d+)\"").firstMatch(height.trim());
+    final normalized = height
+        .trim()
+        .replaceAll('’', "'")
+        .replaceAll('′', "'")
+        .replaceAll('“', '"')
+        .replaceAll('”', '"')
+        .replaceAll('″', '"');
+    final match = RegExp(r'''^(\d+)\s*'\s*(\d+)\s*"$''').firstMatch(normalized);
     if (match == null) return -1;
     return int.parse(match.group(1)!) * 12 + int.parse(match.group(2)!);
   }
