@@ -1,0 +1,135 @@
+from __future__ import annotations
+
+import tempfile
+import unittest
+from pathlib import Path
+
+from sports_reference.link_promoter import StoredLinkPromoter
+from sports_reference.page_store import SportsReferencePageStore
+from sports_reference.schema_review import SportsReferenceSchemaReview
+
+
+class StoredLinkPromoterTest(unittest.TestCase):
+    def test_promotes_completed_page_links_without_refetching(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store = SportsReferencePageStore(Path(directory) / "catalog.sqlite")
+            source_url = "https://www.basketball-reference.com/leagues/NBA_2025.html"
+            store.enqueue(
+                source_url,
+                "league",
+                depth=0,
+                season_end_year=2025,
+                priority=10,
+            )
+            with store.connect() as db:
+                db.execute(
+                    "UPDATE pages SET status = 'complete' WHERE url = ?",
+                    (source_url,),
+                )
+                db.executemany(
+                    """
+                    INSERT INTO discovered_links(
+                      source_url, target_url, page_family, source_key,
+                      season_end_year, team_abbreviation, priority, anchor_text
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    [
+                        (
+                            source_url,
+                            "https://www.basketball-reference.com/teams/BOS/2025.html",
+                            "team_season",
+                            "basketball-reference:team-season:BOS:2025",
+                            2025,
+                            "BOS",
+                            30,
+                            "Boston Celtics",
+                        ),
+                        (
+                            source_url,
+                            "https://www.basketball-reference.com/players/t/tatumja01.html",
+                            "player",
+                            "basketball-reference:player:tatumja01",
+                            None,
+                            None,
+                            50,
+                            "Jayson Tatum",
+                        ),
+                    ],
+                )
+
+            promoter = StoredLinkPromoter(store)
+            dry_run = promoter.promote(
+                families={"team_season", "player"},
+                start_year=2025,
+                end_year=2025,
+                source_depth=0,
+                dry_run=True,
+            )
+            self.assertEqual(dry_run.candidate_count, 2)
+            self.assertEqual(dry_run.inserted_count, 0)
+            self.assertEqual(store.status()["pages"]["complete"], 1)
+
+            applied = promoter.promote(
+                families={"team_season", "player"},
+                start_year=2025,
+                end_year=2025,
+                source_depth=0,
+            )
+            self.assertEqual(applied.inserted_count, 2)
+            status = store.status()
+            self.assertEqual(status["pages"]["queued"], 2)
+
+            second = promoter.promote(
+                families={"team_season", "player"},
+                start_year=2025,
+                end_year=2025,
+                source_depth=0,
+            )
+            self.assertEqual(second.inserted_count, 0)
+            self.assertEqual(second.existing_count, 2)
+
+    def test_schema_review_ignores_anonymous_cross_page_collisions(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store = SportsReferencePageStore(Path(directory) / "catalog.sqlite")
+            with store.connect() as db:
+                db.executemany(
+                    """
+                    INSERT INTO pages(
+                      url, page_family, status, depth, attempts,
+                      table_count, link_count, html_bytes, updated_at
+                    ) VALUES (?, ?, 'complete', 0, 0, 1, 0, 0, 'now')
+                    """,
+                    [
+                        ("https://example.test/league", "league"),
+                        ("https://example.test/playoff", "playoff"),
+                    ],
+                )
+                db.executemany(
+                    """
+                    INSERT INTO tables(
+                      page_url, table_id, ordinal, caption, columns_json,
+                      schema_hash, link_count, row_count
+                    ) VALUES (?, ?, 1, NULL, '[]', ?, 0, 1)
+                    """,
+                    [
+                        ("https://example.test/league", "anonymous_1", "a"),
+                        ("https://example.test/playoff", "anonymous_1", "b"),
+                        ("https://example.test/league", "advanced-team", "c"),
+                        ("https://example.test/playoff", "advanced-team", "d"),
+                    ],
+                )
+
+            review = SportsReferenceSchemaReview(store).build()
+            self.assertEqual(review["actionableWithinFamily"], [])
+            self.assertEqual(
+                review["expectedCrossFamilyVariation"][0]["tableId"],
+                "advanced-team",
+            )
+            self.assertEqual(
+                review["anonymousTableSummary"]["tableInstances"],
+                2,
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()
