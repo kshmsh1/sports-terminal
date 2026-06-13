@@ -10,6 +10,18 @@ void main() {
     expect(formatter.heightLabel('6\' 9"'), '6\' 9" (2.06 m)');
   });
 
+  test('accepts compact and typographic height notation', () {
+    expect(formatter.heightInches('5\'11"'), 71);
+    expect(formatter.heightInches('7′ 1″'), 85);
+    expect(formatter.heightInches('6’ 4”'), 76);
+  });
+
+  test('rejects malformed height values', () {
+    expect(formatter.heightInches('6 feet 9 inches'), -1);
+    expect(formatter.heightInches('bad-height'), -1);
+    expect(formatter.heightInches(''), -1);
+  });
+
   test('formats pounds and kilograms', () {
     expect(formatter.weightKilograms(250).toStringAsFixed(1), '113.4');
     expect(formatter.weightLabel(250), '250 lbs (113.4 kg)');
