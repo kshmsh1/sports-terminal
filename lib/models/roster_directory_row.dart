@@ -16,7 +16,7 @@ class RosterDirectoryRow {
   String get playerId => entry.playerId;
   String get playerName => player?.displayName ?? entry.playerId;
   String get teamId => entry.teamId;
-  String get teamName => team == null ? entry.teamId : '${team!.city} ${team!.name}';
+  String get teamName => team?.name ?? entry.teamId;
   String get teamAbbreviation => team?.abbreviation ?? player?.primaryTeamAbbreviation ?? '—';
   String get position => entry.position ?? player?.position ?? '—';
   String get from => entry.fromDisplay ?? player?.college ?? player?.birthCountry ?? '—';
