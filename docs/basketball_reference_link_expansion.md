@@ -1,8 +1,8 @@
 # Basketball Reference Stored-Link Expansion
 
-Completed seed pages retain every recognized Basketball Reference link in the raw catalog. A depth-zero pilot intentionally stores those links without adding them to the fetch queue.
+Completed pages retain every recognized Basketball Reference link in the raw catalog. Use `promote-links` to move selected stored targets into the queue without requesting the completed source pages again.
 
-Use `promote-links` to move selected stored targets into the queue without requesting the completed source pages again.
+Promotion is deterministic and idempotent. Existing pages are not duplicated. When a linked target lacks explicit season metadata, it inherits the season of the completed source page. Re-running promotion can therefore repair missing metadata on existing pages without refetching them.
 
 ## Review schema variation
 
@@ -26,18 +26,38 @@ python tools/crawl_basketball_reference.py \
 
 The dry run makes no network requests and does not change the queue.
 
-## Queue team-season pages
+## Restrict promotion to a source family
+
+Use `--source-families` when the same target family is linked from several kinds of completed pages. For example, playoff box scores can be isolated from regular-season schedule links:
 
 ```bash
 python tools/crawl_basketball_reference.py \
   promote-links \
-  --families team_season \
+  --families boxscore \
+  --source-families playoff \
   --from-season 2025 \
   --to-season 2025 \
-  --source-depth 0
+  --source-depth 0 \
+  --dry-run
 ```
 
-Promotion is idempotent. Existing pages are not duplicated.
+Multiple source families may be supplied as a comma-separated value.
+
+## Repair missing season metadata
+
+Existing box-score pages originally promoted from team-season pages can inherit the correct season without being requeued or refetched:
+
+```bash
+python tools/crawl_basketball_reference.py \
+  promote-links \
+  --families boxscore \
+  --source-families team_season \
+  --from-season 2025 \
+  --to-season 2025 \
+  --source-depth 1
+```
+
+The output reports `metadataUpdateCount` separately from newly inserted pages.
 
 ## First linked-page pilot
 
@@ -53,4 +73,4 @@ python tools/crawl_basketball_reference.py \
   --acknowledge-site-rules
 ```
 
-Afterward, inspect `status`, `coverage`, `schema-review`, failed pages, and blocked pages before promoting player or box-score links.
+Afterward, inspect `status`, `coverage`, `schema-review`, failed pages, and blocked pages before expanding the next page family.
