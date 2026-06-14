@@ -10,6 +10,7 @@ python tools/test_sports_reference_catalog.py
 python tools/test_sports_reference_scope.py
 python tools/test_sports_reference_link_promoter.py
 python tools/test_sports_reference_queue_maintenance.py
+python tools/test_sports_reference_crawl_filters.py
 
 cat <<'EOF'
 Sports ingestion environment is ready and all offline scraper tests passed.
