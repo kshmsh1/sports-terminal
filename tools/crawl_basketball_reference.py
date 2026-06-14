@@ -65,6 +65,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--source-families",
         help="Optional comma-separated completed source page families to use.",
     )
+    promote.add_argument(
+        "--target-path-prefix",
+        help="Optional canonical target path prefix, such as /boxscores/pbp/.",
+    )
     promote.add_argument("--from-season", type=int, dest="start_year")
     promote.add_argument("--to-season", type=int, dest="end_year")
     promote.add_argument("--source-depth", type=int, default=0)
@@ -186,6 +190,7 @@ def main() -> int:
         summary = StoredLinkPromoter(store).promote(
             families=families,
             source_families=source_families,
+            target_path_prefix=args.target_path_prefix,
             start_year=args.start_year,
             end_year=args.end_year,
             source_depth=args.source_depth,
