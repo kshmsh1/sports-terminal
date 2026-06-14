@@ -61,6 +61,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Queue links already stored from completed pages without refetching them.",
     )
     promote.add_argument("--families", required=True)
+    promote.add_argument(
+        "--source-families",
+        help="Optional comma-separated completed source page families to use.",
+    )
     promote.add_argument("--from-season", type=int, dest="start_year")
     promote.add_argument("--to-season", type=int, dest="end_year")
     promote.add_argument("--source-depth", type=int, default=0)
@@ -174,8 +178,14 @@ def main() -> int:
         return 0
     if args.command == "promote-links":
         families = parse_families(args.families, scope)
+        source_families = (
+            parse_families(args.source_families, scope)
+            if args.source_families
+            else None
+        )
         summary = StoredLinkPromoter(store).promote(
             families=families,
+            source_families=source_families,
             start_year=args.start_year,
             end_year=args.end_year,
             source_depth=args.source_depth,
