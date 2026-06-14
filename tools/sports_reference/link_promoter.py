@@ -4,6 +4,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 from .page_store import SportsReferencePageStore
+from .url_scope import BASE_URL
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,7 @@ class StoredLinkPromoter:
         *,
         families: set[str],
         source_families: set[str] | None = None,
+        target_path_prefix: str | None = None,
         start_year: int | None = None,
         end_year: int | None = None,
         source_depth: int | None = None,
@@ -54,6 +56,8 @@ class StoredLinkPromoter:
             raise ValueError("At least one target page family is required")
         if source_families is not None and not source_families:
             raise ValueError("source_families must be omitted or non-empty")
+        if target_path_prefix is not None and not target_path_prefix.startswith("/"):
+            raise ValueError("target_path_prefix must begin with /")
         if start_year is not None and end_year is not None and start_year > end_year:
             raise ValueError("start_year must not exceed end_year")
         if source_depth is not None and source_depth < 0:
@@ -71,6 +75,9 @@ class StoredLinkPromoter:
             source_placeholders = ",".join("?" for _ in source_families)
             clauses.append(f"source.page_family IN ({source_placeholders})")
             params.extend(sorted(source_families))
+        if target_path_prefix is not None:
+            clauses.append("link.target_url LIKE ?")
+            params.append(f"{BASE_URL}{target_path_prefix}%")
         if start_year is not None:
             clauses.extend(
                 [
