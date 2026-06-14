@@ -43,9 +43,9 @@ python tools/crawl_basketball_reference.py \
 
 Multiple source families may be supplied as a comma-separated value.
 
-## Restrict promotion to a target path
+## Restrict promotion and crawling to a target path
 
-Use `--target-path-prefix` to expand one subtype at a time when several routes share a page family. For example, promote play-by-play pages without also queueing shot charts or plus/minus pages:
+Use `--target-path-prefix` when several routes share a page family. For example, promote play-by-play pages without also queueing shot charts or plus/minus pages:
 
 ```bash
 python tools/crawl_basketball_reference.py \
@@ -57,6 +57,21 @@ python tools/crawl_basketball_reference.py \
   --to-season 2025 \
   --source-depth 2 \
   --dry-run
+```
+
+Use the same prefix while crawling so only matching queued pages are processed and only matching links may be recursively queued:
+
+```bash
+python tools/crawl_basketball_reference.py \
+  crawl \
+  --max-pages 5 \
+  --max-depth 3 \
+  --families boxscore_detail \
+  --target-path-prefix /boxscores/pbp/ \
+  --from-season 2025 \
+  --to-season 2025 \
+  --minimum-interval 7 \
+  --acknowledge-site-rules
 ```
 
 The prefix must be a canonical path beginning with `/`. Other game-detail prefixes include `/boxscores/shot-chart/` and `/boxscores/plus-minus/`.
