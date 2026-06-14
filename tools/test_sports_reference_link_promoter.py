@@ -88,6 +88,85 @@ class StoredLinkPromoterTest(unittest.TestCase):
             self.assertEqual(second.inserted_count, 0)
             self.assertEqual(second.existing_count, 2)
 
+    def test_filters_source_family_and_repairs_inherited_season(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store = SportsReferencePageStore(Path(directory) / "catalog.sqlite")
+            league_url = "https://www.basketball-reference.com/leagues/NBA_2025_games.html"
+            playoff_url = "https://www.basketball-reference.com/playoffs/NBA_2025.html"
+            regular_game = "https://www.basketball-reference.com/boxscores/202410220BOS.html"
+            playoff_game = "https://www.basketball-reference.com/boxscores/202504190OKC.html"
+
+            for url, family in ((league_url, "league"), (playoff_url, "playoff")):
+                store.enqueue(
+                    url,
+                    family,
+                    depth=0,
+                    season_end_year=2025,
+                    priority=10,
+                )
+                with store.connect() as db:
+                    db.execute(
+                        "UPDATE pages SET status = 'complete' WHERE url = ?",
+                        (url,),
+                    )
+
+            store.enqueue(playoff_game, "boxscore", depth=1, priority=40)
+            with store.connect() as db:
+                db.execute(
+                    """
+                    INSERT INTO discovered_links(
+                      source_url, target_url, page_family, source_key,
+                      season_end_year, team_abbreviation, priority, anchor_text
+                    ) VALUES (?, ?, 'boxscore', ?, NULL, NULL, 40, 'Box Score')
+                    """,
+                    (
+                        league_url,
+                        regular_game,
+                        "basketball-reference:game:202410220BOS",
+                    ),
+                )
+                db.execute(
+                    """
+                    INSERT INTO discovered_links(
+                      source_url, target_url, page_family, source_key,
+                      season_end_year, team_abbreviation, priority, anchor_text
+                    ) VALUES (?, ?, 'boxscore', ?, NULL, NULL, 40, 'Box Score')
+                    """,
+                    (
+                        playoff_url,
+                        playoff_game,
+                        "basketball-reference:game:202504190OKC",
+                    ),
+                )
+
+            promoter = StoredLinkPromoter(store)
+            preview = promoter.promote(
+                families={"boxscore"},
+                source_families={"playoff"},
+                start_year=2025,
+                end_year=2025,
+                source_depth=0,
+                dry_run=True,
+            )
+            self.assertEqual(preview.candidate_count, 1)
+            self.assertEqual(preview.existing_count, 1)
+            self.assertEqual(preview.metadata_update_count, 1)
+
+            applied = promoter.promote(
+                families={"boxscore"},
+                source_families={"playoff"},
+                start_year=2025,
+                end_year=2025,
+                source_depth=0,
+            )
+            self.assertEqual(applied.inserted_count, 0)
+            with store.connect() as db:
+                page = db.execute(
+                    "SELECT season_end_year FROM pages WHERE url = ?",
+                    (playoff_game,),
+                ).fetchone()
+            self.assertEqual(page["season_end_year"], 2025)
+
     def test_schema_review_ignores_anonymous_cross_page_collisions(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             store = SportsReferencePageStore(Path(directory) / "catalog.sqlite")
