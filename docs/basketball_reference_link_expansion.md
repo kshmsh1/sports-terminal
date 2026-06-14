@@ -43,6 +43,24 @@ python tools/crawl_basketball_reference.py \
 
 Multiple source families may be supplied as a comma-separated value.
 
+## Restrict promotion to a target path
+
+Use `--target-path-prefix` to expand one subtype at a time when several routes share a page family. For example, promote play-by-play pages without also queueing shot charts or plus/minus pages:
+
+```bash
+python tools/crawl_basketball_reference.py \
+  promote-links \
+  --families boxscore_detail \
+  --source-families boxscore \
+  --target-path-prefix /boxscores/pbp/ \
+  --from-season 2025 \
+  --to-season 2025 \
+  --source-depth 2 \
+  --dry-run
+```
+
+The prefix must be a canonical path beginning with `/`. Other game-detail prefixes include `/boxscores/shot-chart/` and `/boxscores/plus-minus/`.
+
 ## Repair missing season metadata
 
 Existing box-score pages originally promoted from team-season pages can inherit the correct season without being requeued or refetched:
