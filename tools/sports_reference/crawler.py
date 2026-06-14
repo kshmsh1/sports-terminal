@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -7,7 +8,7 @@ from datetime import datetime, timezone
 from .client import SportsReferenceClient
 from .page_store import SportsReferencePageStore
 from .table_parser import BasketballReferenceTableParser
-from .url_scope import BasketballReferenceUrlScope, ScopedUrl
+from .url_scope import BASE_URL, BasketballReferenceUrlScope, ScopedUrl
 
 
 @dataclass(frozen=True)
@@ -162,6 +163,39 @@ class BasketballReferenceCrawler:
             )
         return inserted
 
+    def _next_page(
+        self,
+        *,
+        max_depth: int,
+        families: set[str],
+        target_path_prefix: str | None,
+    ) -> sqlite3.Row | None:
+        if target_path_prefix is None:
+            return self.store.next_page(max_depth=max_depth, families=families)
+        placeholders = ",".join("?" for _ in families)
+        target_url_prefix = f"{BASE_URL}{target_path_prefix}%"
+        with self.store.connect() as db:
+            row = db.execute(
+                f"""
+                SELECT * FROM pages
+                WHERE status = 'queued' AND depth <= ?
+                  AND page_family IN ({placeholders})
+                  AND url LIKE ?
+                ORDER BY priority, depth, url LIMIT 1
+                """,
+                (max_depth, *sorted(families), target_url_prefix),
+            ).fetchone()
+            if row is None:
+                return None
+            db.execute(
+                """
+                UPDATE pages SET status = 'fetching', attempts = attempts + 1,
+                  updated_at = ? WHERE url = ?
+                """,
+                (datetime.now(timezone.utc).isoformat(), row["url"]),
+            )
+            return row
+
     def crawl(
         self,
         *,
@@ -171,6 +205,7 @@ class BasketballReferenceCrawler:
         force: bool = False,
         start_year: int | None = None,
         end_year: int | None = None,
+        target_path_prefix: str | None = None,
         stop_on_block: bool = True,
     ) -> CrawlSummary:
         if max_pages < 1 or max_pages > 5000:
@@ -179,6 +214,8 @@ class BasketballReferenceCrawler:
             raise ValueError("max_depth must be between 0 and 8")
         if start_year is not None and end_year is not None and start_year > end_year:
             raise ValueError("start_year must not exceed end_year")
+        if target_path_prefix is not None and not target_path_prefix.startswith("/"):
+            raise ValueError("target_path_prefix must begin with /")
         unknown = families.difference(self.scope.families)
         if unknown:
             raise ValueError(f"Unknown page families: {sorted(unknown)}")
@@ -192,6 +229,7 @@ class BasketballReferenceCrawler:
             "maxPages": max_pages,
             "maxDepth": max_depth,
             "families": sorted(families),
+            "targetPathPrefix": target_path_prefix,
             "force": force,
             "fromSeason": start_year,
             "toSeason": end_year,
@@ -204,7 +242,11 @@ class BasketballReferenceCrawler:
         status = "completed"
         try:
             while processed < max_pages:
-                page = self.store.next_page(max_depth=max_depth, families=families)
+                page = self._next_page(
+                    max_depth=max_depth,
+                    families=families,
+                    target_path_prefix=target_path_prefix,
+                )
                 if page is None:
                     break
                 processed += 1
@@ -244,6 +286,11 @@ class BasketballReferenceCrawler:
                         for link in parsed.discovered_links:
                             scoped = self.scope.classify(str(link["url"]))
                             if scoped is None or scoped.page_family not in families:
+                                continue
+                            if (
+                                target_path_prefix is not None
+                                and not scoped.url.startswith(f"{BASE_URL}{target_path_prefix}")
+                            ):
                                 continue
                             if not self.scope.within_season_range(
                                 scoped,
