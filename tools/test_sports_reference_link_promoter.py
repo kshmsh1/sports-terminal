@@ -167,6 +167,63 @@ class StoredLinkPromoterTest(unittest.TestCase):
                 ).fetchone()
             self.assertEqual(page["season_end_year"], 2025)
 
+    def test_filters_detail_targets_by_path_prefix(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store = SportsReferencePageStore(Path(directory) / "catalog.sqlite")
+            source_url = "https://www.basketball-reference.com/boxscores/202504190OKC.html"
+            store.enqueue(
+                source_url,
+                "boxscore",
+                depth=1,
+                season_end_year=2025,
+                priority=40,
+            )
+            with store.connect() as db:
+                db.execute(
+                    "UPDATE pages SET status = 'complete' WHERE url = ?",
+                    (source_url,),
+                )
+                db.executemany(
+                    """
+                    INSERT INTO discovered_links(
+                      source_url, target_url, page_family, source_key,
+                      season_end_year, team_abbreviation, priority, anchor_text
+                    ) VALUES (?, ?, 'boxscore_detail', ?, NULL, NULL, 42, ?)
+                    """,
+                    [
+                        (
+                            source_url,
+                            "https://www.basketball-reference.com/boxscores/pbp/202504190OKC.html",
+                            "basketball-reference:game-detail:pbp:202504190OKC",
+                            "Play-by-Play",
+                        ),
+                        (
+                            source_url,
+                            "https://www.basketball-reference.com/boxscores/shot-chart/202504190OKC.html",
+                            "basketball-reference:game-detail:shot-chart:202504190OKC",
+                            "Shot Chart",
+                        ),
+                        (
+                            source_url,
+                            "https://www.basketball-reference.com/boxscores/plus-minus/202504190OKC.html",
+                            "basketball-reference:game-detail:plus-minus:202504190OKC",
+                            "Plus/Minus",
+                        ),
+                    ],
+                )
+
+            preview = StoredLinkPromoter(store).promote(
+                families={"boxscore_detail"},
+                source_families={"boxscore"},
+                target_path_prefix="/boxscores/pbp/",
+                start_year=2025,
+                end_year=2025,
+                source_depth=1,
+                dry_run=True,
+            )
+            self.assertEqual(preview.candidate_count, 1)
+            self.assertEqual(preview.families, {"boxscore_detail": 1})
+
     def test_schema_review_ignores_anonymous_cross_page_collisions(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             store = SportsReferencePageStore(Path(directory) / "catalog.sqlite")
