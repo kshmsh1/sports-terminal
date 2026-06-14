@@ -96,6 +96,10 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_REQUEST_INTERVAL_SECONDS,
     )
     crawl.add_argument("--families", default=DEFAULT_FAMILIES)
+    crawl.add_argument(
+        "--target-path-prefix",
+        help="Optional canonical path prefix restricting processed and discovered pages.",
+    )
     crawl.add_argument("--from-season", type=int, dest="start_year")
     crawl.add_argument("--to-season", type=int, dest="end_year")
     crawl.add_argument("--force", action="store_true")
@@ -298,6 +302,7 @@ def main() -> int:
         force=args.force,
         start_year=args.start_year,
         end_year=args.end_year,
+        target_path_prefix=args.target_path_prefix,
         stop_on_block=True,
     )
     print(
