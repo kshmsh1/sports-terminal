@@ -224,6 +224,58 @@ class StoredLinkPromoterTest(unittest.TestCase):
             self.assertEqual(preview.candidate_count, 1)
             self.assertEqual(preview.families, {"boxscore_detail": 1})
 
+    def test_promotes_season_detail_links_from_seasonless_player_profiles(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store = SportsReferencePageStore(Path(directory) / "catalog.sqlite")
+            source_url = "https://www.basketball-reference.com/players/t/tatumja01.html"
+            store.enqueue(
+                source_url,
+                "player",
+                depth=1,
+                source_key="basketball-reference:player:tatumja01",
+                priority=50,
+            )
+            with store.connect() as db:
+                db.execute(
+                    "UPDATE pages SET status = 'complete' WHERE url = ?",
+                    (source_url,),
+                )
+                db.executemany(
+                    """
+                    INSERT INTO discovered_links(
+                      source_url, target_url, page_family, source_key,
+                      season_end_year, team_abbreviation, priority, anchor_text
+                    ) VALUES (?, ?, 'player_detail', ?, ?, NULL, 54, ?)
+                    """,
+                    [
+                        (
+                            source_url,
+                            "https://www.basketball-reference.com/players/t/tatumja01/gamelog/2025/",
+                            "basketball-reference:player-detail:tatumja01:gamelog:2025",
+                            2025,
+                            "2024-25 Game Log",
+                        ),
+                        (
+                            source_url,
+                            "https://www.basketball-reference.com/players/t/tatumja01/gamelog/2024/",
+                            "basketball-reference:player-detail:tatumja01:gamelog:2024",
+                            2024,
+                            "2023-24 Game Log",
+                        ),
+                    ],
+                )
+
+            preview = StoredLinkPromoter(store).promote(
+                families={"player_detail"},
+                source_families={"player"},
+                start_year=2025,
+                end_year=2025,
+                source_depth=1,
+                dry_run=True,
+            )
+            self.assertEqual(preview.candidate_count, 1)
+            self.assertEqual(preview.families, {"player_detail": 1})
+
     def test_schema_review_ignores_anonymous_cross_page_collisions(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             store = SportsReferencePageStore(Path(directory) / "catalog.sqlite")
