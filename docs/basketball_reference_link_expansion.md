@@ -2,7 +2,7 @@
 
 Completed pages retain every recognized Basketball Reference link in the raw catalog. Use `promote-links` to move selected stored targets into the queue without requesting the completed source pages again.
 
-Promotion is deterministic and idempotent. Existing pages are not duplicated. When a linked target lacks explicit season metadata, it inherits the season of the completed source page. Re-running promotion can therefore repair missing metadata on existing pages without refetching them.
+Promotion is deterministic and idempotent. Existing pages are not duplicated. Season bounds apply to the effective linked-page season. When a linked target lacks explicit season metadata, it inherits the season of the completed source page. Re-running promotion can therefore repair missing metadata on existing pages without refetching them.
 
 ## Review schema variation
 
@@ -41,7 +41,18 @@ python tools/crawl_basketball_reference.py \
   --dry-run
 ```
 
-Multiple source families may be supplied as a comma-separated value.
+Multiple source families may be supplied as a comma-separated value. Seasonless source pages, such as player profiles, can still promote linked season-specific detail pages when the detail link itself carries season metadata:
+
+```bash
+python tools/crawl_basketball_reference.py \
+  promote-links \
+  --families player_detail \
+  --source-families player \
+  --from-season 2025 \
+  --to-season 2025 \
+  --source-depth 1 \
+  --dry-run
+```
 
 ## Restrict promotion and crawling to a target path
 
