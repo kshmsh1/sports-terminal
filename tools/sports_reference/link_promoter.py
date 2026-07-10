@@ -31,10 +31,9 @@ class StoredLinkPromoter:
     """Promote links already captured from completed pages into the crawl queue.
 
     Promotion is deterministic and idempotent. Season bounds apply to the
-    completed source page and, when the linked target exposes a season, to the
-    target page as well. When a target has no explicit season metadata, it
-    inherits the completed source page's season. Existing pages may therefore
-    receive missing metadata without being requeued or refetched.
+    effective linked-page season. When a linked target lacks explicit season
+    metadata, it inherits the completed source page's season. Existing pages may
+    therefore receive missing metadata without being requeued or refetched.
     """
 
     def __init__(self, store: SportsReferencePageStore) -> None:
@@ -65,6 +64,7 @@ class StoredLinkPromoter:
         if limit is not None and not 1 <= limit <= 100000:
             raise ValueError("limit must be between 1 and 100000")
 
+        inherited_season = "COALESCE(link.season_end_year, source.season_end_year)"
         target_placeholders = ",".join("?" for _ in families)
         clauses = [
             "source.status = 'complete'",
@@ -79,26 +79,15 @@ class StoredLinkPromoter:
             clauses.append("link.target_url LIKE ?")
             params.append(f"{BASE_URL}{target_path_prefix}%")
         if start_year is not None:
-            clauses.extend(
-                [
-                    "source.season_end_year >= ?",
-                    "(link.season_end_year IS NULL OR link.season_end_year >= ?)",
-                ]
-            )
-            params.extend([start_year, start_year])
+            clauses.append(f"({inherited_season} IS NULL OR {inherited_season} >= ?)")
+            params.append(start_year)
         if end_year is not None:
-            clauses.extend(
-                [
-                    "source.season_end_year <= ?",
-                    "(link.season_end_year IS NULL OR link.season_end_year <= ?)",
-                ]
-            )
-            params.extend([end_year, end_year])
+            clauses.append(f"({inherited_season} IS NULL OR {inherited_season} <= ?)")
+            params.append(end_year)
         if source_depth is not None:
             clauses.append("source.depth = ?")
             params.append(source_depth)
 
-        inherited_season = "COALESCE(link.season_end_year, source.season_end_year)"
         query = f"""
             SELECT
               link.target_url AS url,
