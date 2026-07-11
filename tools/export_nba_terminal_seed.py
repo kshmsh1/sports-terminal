@@ -22,6 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     parser.add_argument("--leader-limit", type=int, default=100)
     parser.add_argument("--high-limit", type=int, default=100)
+    parser.add_argument("--player-game-log-limit", type=int, default=500)
     return parser.parse_args()
 
 
@@ -160,6 +161,63 @@ def export_players(db: sqlite3.Connection) -> list[dict[str, Any]]:
     )
 
 
+def export_player_season_totals(db: sqlite3.Connection) -> list[dict[str, Any]]:
+    return rows(
+        db,
+        """
+        WITH player_totals AS (
+          SELECT player_id,
+                 player_label,
+                 GROUP_CONCAT(DISTINCT team_id) AS team_ids,
+                 COUNT(*) AS games,
+                 SUM(COALESCE(mp_seconds, 0)) AS seconds,
+                 SUM(COALESCE(pts, 0)) AS points,
+                 SUM(COALESCE(trb, 0)) AS rebounds,
+                 SUM(COALESCE(ast, 0)) AS assists,
+                 SUM(COALESCE(stl, 0)) AS steals,
+                 SUM(COALESCE(blk, 0)) AS blocks,
+                 SUM(COALESCE(tov, 0)) AS turnovers,
+                 SUM(COALESCE(fg, 0)) AS fg,
+                 SUM(COALESCE(fga, 0)) AS fga,
+                 SUM(COALESCE(fg3, 0)) AS fg3,
+                 SUM(COALESCE(fg3a, 0)) AS fg3a,
+                 SUM(COALESCE(ft, 0)) AS ft,
+                 SUM(COALESCE(fta, 0)) AS fta,
+                 AVG(CASE WHEN bpm IS NOT NULL THEN bpm END) AS avg_bpm,
+                 AVG(CASE WHEN ts_pct IS NOT NULL THEN ts_pct END) AS avg_ts_pct
+          FROM player_game_stats
+          WHERE player_id IS NOT NULL
+            AND COALESCE(mp_seconds, 0) > 0
+          GROUP BY player_id, player_label
+        )
+        SELECT player_id,
+               player_label,
+               team_ids,
+               games,
+               ROUND(seconds / 60.0, 1) AS minutes,
+               ROUND(seconds / 60.0 / NULLIF(games, 0), 1) AS minutes_per_game,
+               points,
+               rebounds,
+               assists,
+               steals,
+               blocks,
+               turnovers,
+               ROUND(points * 1.0 / NULLIF(games, 0), 3) AS points_per_game,
+               ROUND(rebounds * 1.0 / NULLIF(games, 0), 3) AS rebounds_per_game,
+               ROUND(assists * 1.0 / NULLIF(games, 0), 3) AS assists_per_game,
+               ROUND(steals * 1.0 / NULLIF(games, 0), 3) AS steals_per_game,
+               ROUND(blocks * 1.0 / NULLIF(games, 0), 3) AS blocks_per_game,
+               ROUND(fg * 1.0 / NULLIF(fga, 0), 4) AS fg_pct,
+               ROUND(fg3 * 1.0 / NULLIF(fg3a, 0), 4) AS fg3_pct,
+               ROUND(ft * 1.0 / NULLIF(fta, 0), 4) AS ft_pct,
+               ROUND(avg_ts_pct, 4) AS avg_ts_pct,
+               ROUND(avg_bpm, 3) AS avg_bpm
+        FROM player_totals
+        ORDER BY points DESC, player_label
+        """,
+    )
+
+
 def export_player_leaders(db: sqlite3.Connection, limit: int) -> dict[str, list[dict[str, Any]]]:
     base = """
         WITH player_totals AS (
@@ -222,19 +280,23 @@ def export_player_leaders(db: sqlite3.Connection, limit: int) -> dict[str, list[
 
 def export_player_game_highs(db: sqlite3.Connection, limit: int) -> dict[str, list[dict[str, Any]]]:
     select = """
-        SELECT game_id,
-               team_id,
-               player_id,
-               player_label,
-               pts,
-               trb,
-               ast,
-               stl,
-               blk,
-               plus_minus,
-               mp_text
-        FROM player_game_stats
-        WHERE COALESCE(mp_seconds, 0) > 0
+        SELECT pgs.game_id,
+               g.game_date,
+               pgs.team_id,
+               CASE WHEN g.home_team_id = pgs.team_id THEN g.away_team_id ELSE g.home_team_id END AS opponent_team_id,
+               CASE WHEN g.home_team_id = pgs.team_id THEN 1 ELSE 0 END AS is_home,
+               pgs.player_id,
+               pgs.player_label,
+               pgs.pts,
+               pgs.trb,
+               pgs.ast,
+               pgs.stl,
+               pgs.blk,
+               pgs.plus_minus,
+               pgs.mp_text
+        FROM player_game_stats AS pgs
+        LEFT JOIN games AS g ON g.game_id = pgs.game_id
+        WHERE COALESCE(pgs.mp_seconds, 0) > 0
     """
     specs = {
         "points": "pts DESC",
@@ -245,9 +307,42 @@ def export_player_game_highs(db: sqlite3.Connection, limit: int) -> dict[str, li
         "plus_minus": "plus_minus DESC",
     }
     return {
-        name: rows(db, f"{select} ORDER BY {order}, game_id LIMIT ?", (limit,))
+        name: rows(db, f"{select} ORDER BY {order}, pgs.game_id LIMIT ?", (limit,))
         for name, order in specs.items()
     }
+
+
+def export_player_game_logs_top(db: sqlite3.Connection, limit: int) -> list[dict[str, Any]]:
+    return rows(
+        db,
+        """
+        SELECT pgs.game_id,
+               g.game_date,
+               pgs.team_id,
+               CASE WHEN g.home_team_id = pgs.team_id THEN g.away_team_id ELSE g.home_team_id END AS opponent_team_id,
+               CASE WHEN g.home_team_id = pgs.team_id THEN 1 ELSE 0 END AS is_home,
+               pgs.player_id,
+               pgs.player_label,
+               pgs.mp_text,
+               pgs.pts,
+               pgs.trb,
+               pgs.ast,
+               pgs.stl,
+               pgs.blk,
+               pgs.tov,
+               pgs.plus_minus,
+               pgs.ts_pct,
+               pgs.efg_pct,
+               pgs.usg_pct,
+               pgs.bpm
+        FROM player_game_stats AS pgs
+        LEFT JOIN games AS g ON g.game_id = pgs.game_id
+        WHERE COALESCE(pgs.mp_seconds, 0) > 0
+        ORDER BY pgs.pts DESC, pgs.trb DESC, pgs.ast DESC, pgs.game_id
+        LIMIT ?
+        """,
+        (limit,),
+    )
 
 
 def export_team_records(db: sqlite3.Connection) -> list[dict[str, Any]]:
@@ -268,6 +363,34 @@ def export_team_records(db: sqlite3.Connection) -> list[dict[str, Any]]:
         FROM team_game_stats
         GROUP BY team_id
         ORDER BY wins DESC, losses ASC, team_id
+        """,
+    )
+
+
+def export_team_game_logs(db: sqlite3.Connection) -> list[dict[str, Any]]:
+    return rows(
+        db,
+        """
+        SELECT tgs.game_id,
+               g.game_date,
+               tgs.team_id,
+               tgs.opponent_team_id,
+               tgs.is_home,
+               tgs.result,
+               tgs.points,
+               tgs.opponent_points,
+               (tgs.points - tgs.opponent_points) AS margin,
+               tgs.q1,
+               tgs.q2,
+               tgs.q3,
+               tgs.q4,
+               tgs.ot1,
+               tgs.ot2,
+               tgs.ot3,
+               tgs.ot4
+        FROM team_game_stats AS tgs
+        LEFT JOIN games AS g ON g.game_id = tgs.game_id
+        ORDER BY g.game_date, tgs.game_id, tgs.team_id
         """,
     )
 
@@ -298,6 +421,31 @@ def export_search_index(db: sqlite3.Connection) -> list[dict[str, Any]]:
     return team_rows + player_rows
 
 
+def build_data_dictionary() -> dict[str, Any]:
+    return {
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "files": {
+            "teams.json": "One row per NBA team with loaded-record aggregates.",
+            "players.json": "One row per player identity with basic loaded-season totals.",
+            "games.json": "One row per loaded game with date, teams, scores, winner, and source URL.",
+            "team_records.json": "One row per team summarizing all loaded games.",
+            "team_game_logs.json": "One row per team-game with location, score, result, margin, and period scoring.",
+            "player_season_totals.json": "One row per player summary derived from materialized player game stats.",
+            "player_leaders.json": "Top player leaderboard slices for common counting, per-game, and BPM views.",
+            "player_game_highs.json": "Top single-game highs by statistical category.",
+            "player_game_logs_top.json": "Compact high-value player-game sample for early product screens.",
+            "search_index.json": "Searchable team and player identity rows.",
+            "manifest.json": "Build metadata, warehouse counts, and source notes.",
+            "validation_report.json": "Generated by the finalizer after validation and text repair.",
+        },
+        "policies": {
+            "missingValues": "Use null/blank display values instead of invented zeros.",
+            "scope": "2024-25 NBA warehouse generated locally from the completed raw catalog.",
+            "network": "Seed export makes no network requests.",
+        },
+    }
+
+
 def main() -> int:
     args = parse_args()
     database = Path(args.database)
@@ -313,9 +461,13 @@ def main() -> int:
             "players.json": export_players(db),
             "games.json": export_games(db),
             "team_records.json": export_team_records(db),
+            "team_game_logs.json": export_team_game_logs(db),
+            "player_season_totals.json": export_player_season_totals(db),
             "player_leaders.json": export_player_leaders(db, max(1, args.leader_limit)),
             "player_game_highs.json": export_player_game_highs(db, max(1, args.high_limit)),
+            "player_game_logs_top.json": export_player_game_logs_top(db, max(1, args.player_game_log_limit)),
             "search_index.json": export_search_index(db),
+            "data_dictionary.json": build_data_dictionary(),
         }
 
     for filename, document in documents.items():
