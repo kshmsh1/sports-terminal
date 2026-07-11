@@ -138,21 +138,32 @@ def table_count(db: sqlite3.Connection, table: str, where: str = "1 = 1") -> int
     return int(db.execute(f"SELECT COUNT(*) FROM {table} WHERE {where}").fetchone()[0])
 
 
+def exact_count_check(db: sqlite3.Connection, name: str, table: str, expected: int, where: str = "1 = 1") -> dict[str, Any]:
+    actual = table_count(db, table, where)
+    return check(name, actual == expected, actual, expected)
+
+
+def minimum_count_check(db: sqlite3.Connection, name: str, table: str, expected: int, where: str = "1 = 1") -> dict[str, Any]:
+    actual = table_count(db, table, where)
+    return check(name, actual >= expected, actual, f">= {expected}")
+
+
 def warehouse_checks(path: Path, season: int) -> list[dict[str, Any]]:
     if not path.exists():
         return [check("warehouse_exists", False, str(path), "existing SQLite warehouse")]
     db = sqlite3.connect(path)
+    db.row_factory = sqlite3.Row
     try:
         quality = [dict(row) for row in db.execute("SELECT check_name, status, expected, actual FROM warehouse_quality_checks ORDER BY check_name")]
         return [
             check("warehouse_exists", True, str(path), "existing SQLite warehouse"),
             check("warehouse_quality_checks_all_pass", all(row["status"] == "pass" for row in quality), quality, "all pass"),
-            check("warehouse_games", table_count(db, "games"), table_count(db, "games"), 1314),
-            check("warehouse_team_game_stats", table_count(db, "team_game_stats"), table_count(db, "team_game_stats"), 2628),
-            check("warehouse_line_score_totals_present", table_count(db, "game_line_scores", "total IS NOT NULL"), table_count(db, "game_line_scores", "total IS NOT NULL"), 2628),
-            check("warehouse_players", table_count(db, "players") >= 600, table_count(db, "players"), ">= 600"),
-            check("warehouse_player_game_stats", table_count(db, "player_game_stats") >= 30000, table_count(db, "player_game_stats"), ">= 30000"),
-            check("warehouse_normalized_pbp", table_count(db, "play_by_play_events_normalized") >= 100000, table_count(db, "play_by_play_events_normalized"), ">= 100000"),
+            exact_count_check(db, "warehouse_games", "games", 1314),
+            exact_count_check(db, "warehouse_team_game_stats", "team_game_stats", 2628),
+            exact_count_check(db, "warehouse_line_score_totals_present", "game_line_scores", 2628, "total IS NOT NULL"),
+            minimum_count_check(db, "warehouse_players", "players", 600),
+            minimum_count_check(db, "warehouse_player_game_stats", "player_game_stats", 30000),
+            minimum_count_check(db, "warehouse_normalized_pbp", "play_by_play_events_normalized", 100000),
         ]
     finally:
         db.close()
