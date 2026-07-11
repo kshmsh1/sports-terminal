@@ -14,9 +14,13 @@ REQUIRED_FILES = [
     "players.json",
     "games.json",
     "team_records.json",
+    "team_game_logs.json",
+    "player_season_totals.json",
     "player_leaders.json",
     "player_game_highs.json",
+    "player_game_logs_top.json",
     "search_index.json",
+    "data_dictionary.json",
     "validation_report.json",
 ]
 OPTIONAL_FILES = ["pipeline_report.json"]
