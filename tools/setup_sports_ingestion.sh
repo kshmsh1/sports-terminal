@@ -11,9 +11,10 @@ python tools/test_sports_reference_scope.py
 python tools/test_sports_reference_link_promoter.py
 python tools/test_sports_reference_queue_maintenance.py
 python tools/test_sports_reference_crawl_filters.py
+python tools/test_nba_terminal_pipeline.py
 
 cat <<'EOF'
-Sports ingestion environment is ready and all offline scraper tests passed.
+Sports ingestion environment is ready and all offline scraper and NBA terminal pipeline tests passed.
 
 Activate it with:
   source .venv/bin/activate
@@ -27,5 +28,5 @@ Prepare the local queue without fetching pages:
 Inspect the queue:
   python tools/crawl_basketball_reference.py status
 
-No live collection begins during setup, planning, queue preparation, link promotion, or queue-pruning dry runs.
+No live collection begins during setup, planning, queue preparation, link promotion, queue-pruning dry runs, or local terminal data pipeline tests.
 EOF
