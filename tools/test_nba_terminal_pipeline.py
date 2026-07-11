@@ -62,9 +62,13 @@ def make_seed(path: Path) -> None:
     write_json(path / "players.json", [{"player_id": f"p{i}", "player_name": "Nikola JokiÄ‡" if i == 0 else f"Player {i}"} for i in range(600)])
     write_json(path / "games.json", [{"game_id": f"G{i}"} for i in range(1314)])
     write_json(path / "team_records.json", [{"team_id": f"T{i:02d}"} for i in range(30)])
+    write_json(path / "team_game_logs.json", [{"game_id": f"G{i // 2}", "team_id": f"T{i % 30:02d}"} for i in range(2628)])
+    write_json(path / "player_season_totals.json", [{"player_id": f"p{i}", "player_label": f"Player {i}"} for i in range(600)])
     write_json(path / "player_leaders.json", {key: [{"player_label": "Example"}] for key in EXPECTED_LEADER_KEYS})
     write_json(path / "player_game_highs.json", {key: [{"player_label": "Example"}] for key in EXPECTED_HIGH_KEYS})
+    write_json(path / "player_game_logs_top.json", [{"player_id": f"p{i % 600}", "game_id": f"G{i}"} for i in range(100)])
     write_json(path / "search_index.json", [{"type": "team", "id": f"T{i:02d}"} for i in range(30)] + [{"type": "player", "id": f"p{i}"} for i in range(600)])
+    write_json(path / "data_dictionary.json", {"files": {"teams.json": "Teams"}})
 
 
 def test_scripts_compile() -> None:
@@ -124,6 +128,10 @@ def test_finalize_and_sync_seed() -> None:
         )
         assert sync.returncode == 0, sync.stderr or sync.stdout
         assert (assets / "players.json").exists()
+        assert (assets / "team_game_logs.json").exists()
+        assert (assets / "player_season_totals.json").exists()
+        assert (assets / "player_game_logs_top.json").exists()
+        assert (assets / "data_dictionary.json").exists()
         assert (assets / "validation_report.json").exists()
         assert (assets / "asset_manifest.json").exists()
 
