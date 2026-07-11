@@ -10,6 +10,7 @@ import '../screens/dashboard_screen.dart';
 import '../screens/final_rosters_screen.dart';
 import '../screens/games_screen.dart';
 import '../screens/internal_spreadsheet_screen.dart';
+import '../screens/nba_terminal_seed_screen.dart';
 import '../screens/players_screen.dart';
 import '../screens/reports_screen.dart';
 import '../screens/safe_sql_screen.dart';
@@ -48,6 +49,12 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
           'Command',
         ),
         const _UserTab('Search', Icons.search, SearchScreen(), 'Command'),
+        const _UserTab(
+          '2025 Data',
+          Icons.storage_outlined,
+          NbaTerminalSeedScreen(),
+          'NBA',
+        ),
         const _UserTab(
           'Players',
           Icons.person_search_outlined,
