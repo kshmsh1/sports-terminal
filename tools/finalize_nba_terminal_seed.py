@@ -16,9 +16,13 @@ EXPECTED_SEED_FILES = [
     "players.json",
     "games.json",
     "team_records.json",
+    "team_game_logs.json",
+    "player_season_totals.json",
     "player_leaders.json",
     "player_game_highs.json",
+    "player_game_logs_top.json",
     "search_index.json",
+    "data_dictionary.json",
 ]
 EXPECTED_LEADER_KEYS = {
     "points",
@@ -180,9 +184,13 @@ def validate_seed(seed: Path, documents: dict[str, Any], warehouse: Path, season
     players = documents.get("players.json", [])
     games = documents.get("games.json", [])
     team_records = documents.get("team_records.json", [])
+    team_game_logs = documents.get("team_game_logs.json", [])
+    player_season_totals = documents.get("player_season_totals.json", [])
     leaders = documents.get("player_leaders.json", {})
     highs = documents.get("player_game_highs.json", {})
+    player_game_logs_top = documents.get("player_game_logs_top.json", [])
     search_index = documents.get("search_index.json", [])
+    data_dictionary = documents.get("data_dictionary.json", {})
 
     checks.extend(
         [
@@ -190,11 +198,15 @@ def validate_seed(seed: Path, documents: dict[str, Any], warehouse: Path, season
             check("seed_players", len(players) >= 600, len(players), ">= 600"),
             check("seed_games", len(games) == 1314, len(games), 1314),
             check("seed_team_records", len(team_records) == 30, len(team_records), 30),
+            check("seed_team_game_logs", len(team_game_logs) == 2628, len(team_game_logs), 2628),
+            check("seed_player_season_totals", len(player_season_totals) >= 600, len(player_season_totals), ">= 600"),
+            check("seed_player_game_logs_top", len(player_game_logs_top) >= 100, len(player_game_logs_top), ">= 100"),
             check("seed_search_index", len(search_index) == len(teams) + len(players), len(search_index), len(teams) + len(players)),
             check("leaderboard_keys", set(leaders) == EXPECTED_LEADER_KEYS, sorted(leaders), sorted(EXPECTED_LEADER_KEYS)),
             check("game_high_keys", set(highs) == EXPECTED_HIGH_KEYS, sorted(highs), sorted(EXPECTED_HIGH_KEYS)),
             check("leaderboards_nonempty", all(isinstance(value, list) and value for value in leaders.values()), {key: len(value) for key, value in leaders.items()}, "every leaderboard nonempty"),
             check("game_highs_nonempty", all(isinstance(value, list) and value for value in highs.values()), {key: len(value) for key, value in highs.items()}, "every highs list nonempty"),
+            check("data_dictionary_present", isinstance(data_dictionary, dict) and "files" in data_dictionary, sorted(data_dictionary) if isinstance(data_dictionary, dict) else type(data_dictionary).__name__, "files map present"),
         ]
     )
 
