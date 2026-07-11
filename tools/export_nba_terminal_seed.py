@@ -104,7 +104,7 @@ def export_teams(db: sqlite3.Connection) -> list[dict[str, Any]]:
           FROM team_game_stats
           GROUP BY team_id
         ) AS r ON r.team_id = t.team_id
-        ORDER BY wins DESC, losses ASC, team_id
+        ORDER BY wins DESC, losses ASC, t.team_id
         """,
     )
 
