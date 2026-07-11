@@ -13,13 +13,21 @@ from inspect_basketball_reference_catalog import canonical_bucket
 DEFAULT_SOURCE_DATABASE = "raw/basketball_reference/catalog.sqlite"
 DEFAULT_OUTPUT_DATABASE = "data/warehouse/nba_2025.sqlite"
 
-GAME_ID_RE = re.compile(r"/boxscores/(?:pbp/|shot-chart/|plus-minus/)?([0-9A-Z]+)\.html$", re.I)
+GAME_ID_RE = re.compile(
+    r"/boxscores/(?:pbp/|shot-chart/|plus-minus/)?([0-9A-Z]+)\.html$",
+    re.I,
+)
 PLAYER_ID_RE = re.compile(r"/players/[a-z]/([a-z0-9]+)(?:\.html|/)", re.I)
 TEAM_BOX_RE = re.compile(r"^box-([A-Z0-9]{2,3})-game-(basic|advanced)$")
 
 
 class WarehouseBuilder:
-    def __init__(self, source_database: str | Path, output_database: str | Path, season: int) -> None:
+    def __init__(
+        self,
+        source_database: str | Path,
+        output_database: str | Path,
+        season: int,
+    ) -> None:
         self.source_database = Path(source_database)
         self.output_database = Path(output_database)
         self.season = season
@@ -77,7 +85,11 @@ class WarehouseBuilder:
     def _initialize_schema(self, db: sqlite3.Connection) -> None:
         db.executescript(
             """
-            CREATE TABLE warehouse_build_manifest(key TEXT PRIMARY KEY, value_json TEXT NOT NULL);
+            CREATE TABLE warehouse_build_manifest(
+              key TEXT PRIMARY KEY,
+              value_json TEXT NOT NULL
+            );
+
             CREATE TABLE warehouse_quality_checks(
               check_name TEXT PRIMARY KEY,
               status TEXT NOT NULL,
@@ -85,6 +97,7 @@ class WarehouseBuilder:
               actual INTEGER,
               details_json TEXT NOT NULL
             );
+
             CREATE TABLE source_pages(
               page_url TEXT PRIMARY KEY,
               canonical_url TEXT,
@@ -100,6 +113,7 @@ class WarehouseBuilder:
               html_bytes INTEGER,
               snapshot_path TEXT
             );
+
             CREATE TABLE source_tables(
               table_pk INTEGER PRIMARY KEY,
               page_url TEXT NOT NULL,
@@ -113,6 +127,7 @@ class WarehouseBuilder:
               page_family TEXT NOT NULL,
               season_end_year INTEGER
             );
+
             CREATE TABLE warehouse_rows(
               warehouse_row_id INTEGER PRIMARY KEY AUTOINCREMENT,
               table_pk INTEGER NOT NULL,
@@ -129,6 +144,7 @@ class WarehouseBuilder:
               display_json TEXT NOT NULL,
               links_json TEXT NOT NULL
             );
+
             CREATE TABLE canonical_bucket_summary(
               canonical_bucket TEXT PRIMARY KEY,
               table_instances INTEGER NOT NULL,
@@ -137,6 +153,7 @@ class WarehouseBuilder:
               page_families_json TEXT NOT NULL,
               sample_table_ids_json TEXT NOT NULL
             );
+
             CREATE TABLE game_line_scores(
               game_id TEXT,
               page_url TEXT NOT NULL,
@@ -156,6 +173,7 @@ class WarehouseBuilder:
               display_json TEXT NOT NULL,
               links_json TEXT NOT NULL
             );
+
             CREATE TABLE game_four_factors(
               game_id TEXT,
               page_url TEXT NOT NULL,
@@ -166,6 +184,7 @@ class WarehouseBuilder:
               display_json TEXT NOT NULL,
               links_json TEXT NOT NULL
             );
+
             CREATE TABLE player_box_scores(
               game_id TEXT,
               page_url TEXT NOT NULL,
@@ -179,6 +198,7 @@ class WarehouseBuilder:
               display_json TEXT NOT NULL,
               links_json TEXT NOT NULL
             );
+
             CREATE TABLE play_by_play_events(
               game_id TEXT,
               page_url TEXT NOT NULL,
@@ -226,25 +246,36 @@ class WarehouseBuilder:
         payload = []
         for row in source.execute(
             f"""
-            SELECT t.table_pk, t.page_url, t.table_id, t.ordinal, t.caption,
+            SELECT t.id AS table_pk, t.page_url, t.table_id, t.ordinal, t.caption,
                    t.columns_json, t.schema_hash, t.row_count, p.page_family,
                    p.season_end_year
             FROM tables AS t
             JOIN pages AS p ON p.url = t.page_url
             WHERE {self._page_filter()}
-            ORDER BY t.table_pk
+            ORDER BY t.id
             """,
             (self.season,),
         ):
             bucket = canonical_bucket(row["table_id"], row["page_family"])
             payload.append(
                 (
-                    row["table_pk"], row["page_url"], row["table_id"], bucket,
-                    row["ordinal"], row["caption"], row["columns_json"], row["schema_hash"],
-                    row["row_count"], row["page_family"], row["season_end_year"],
+                    row["table_pk"],
+                    row["page_url"],
+                    row["table_id"],
+                    bucket,
+                    row["ordinal"],
+                    row["caption"],
+                    row["columns_json"],
+                    row["schema_hash"],
+                    row["row_count"],
+                    row["page_family"],
+                    row["season_end_year"],
                 )
             )
-            current = bucket_index.setdefault(bucket, {"tables": 0, "rows": 0, "pages": set(), "families": set(), "ids": set()})
+            current = bucket_index.setdefault(
+                bucket,
+                {"tables": 0, "rows": 0, "pages": set(), "families": set(), "ids": set()},
+            )
             current["tables"] += 1
             current["rows"] += int(row["row_count"] or 0)
             current["pages"].add(row["page_url"])
@@ -288,7 +319,7 @@ class WarehouseBuilder:
                    tr.row_class, tr.section, tr.values_json, tr.display_json,
                    tr.links_json
             FROM table_rows AS tr
-            JOIN tables AS t ON t.table_pk = tr.table_pk
+            JOIN tables AS t ON t.id = tr.table_pk
             JOIN pages AS p ON p.url = t.page_url
             WHERE {self._page_filter()}
             ORDER BY tr.table_pk, tr.row_index
@@ -300,38 +331,40 @@ class WarehouseBuilder:
         for row in rows:
             batch.append(
                 (
-                    row["table_pk"], row["page_url"], row["page_family"], row["table_id"],
-                    canonical_bucket(row["table_id"], row["page_family"]), row["season_end_year"],
-                    row["row_index"], row["source_row_index"], row["row_class"], row["section"],
-                    row["values_json"], row["display_json"] or "{}", row["links_json"] or "{}",
+                    row["table_pk"],
+                    row["page_url"],
+                    row["page_family"],
+                    row["table_id"],
+                    canonical_bucket(row["table_id"], row["page_family"]),
+                    row["season_end_year"],
+                    row["row_index"],
+                    row["source_row_index"],
+                    row["row_class"],
+                    row["section"],
+                    row["values_json"],
+                    row["display_json"] or "{}",
+                    row["links_json"] or "{}",
                 )
             )
             if len(batch) >= 10000:
-                db.executemany(
-                    """
-                    INSERT INTO warehouse_rows(
-                      table_pk, page_url, page_family, table_id, canonical_bucket,
-                      season_end_year, row_index, source_row_index, row_class, section,
-                      values_json, display_json, links_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    batch,
-                )
-                count += len(batch)
+                count += self._insert_warehouse_rows(db, batch)
                 batch = []
         if batch:
-            db.executemany(
-                """
-                INSERT INTO warehouse_rows(
-                  table_pk, page_url, page_family, table_id, canonical_bucket,
-                  season_end_year, row_index, source_row_index, row_class, section,
-                  values_json, display_json, links_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                batch,
-            )
-            count += len(batch)
+            count += self._insert_warehouse_rows(db, batch)
         return count
+
+    def _insert_warehouse_rows(self, db: sqlite3.Connection, batch: list[tuple[Any, ...]]) -> int:
+        db.executemany(
+            """
+            INSERT INTO warehouse_rows(
+              table_pk, page_url, page_family, table_id, canonical_bucket,
+              season_end_year, row_index, source_row_index, row_class, section,
+              values_json, display_json, links_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            batch,
+        )
+        return len(batch)
 
     def _copy_line_scores(self, source: sqlite3.Connection, db: sqlite3.Connection) -> int:
         payload = []
@@ -342,15 +375,23 @@ class WarehouseBuilder:
             team_label, team_url, team_id = self._entity(values, display, links, "team")
             payload.append(
                 (
-                    self._game_id(row["page_url"]), row["page_url"], team_label, team_url, team_id,
+                    self._game_id(row["page_url"]),
+                    row["page_url"],
+                    team_label,
+                    team_url,
+                    team_id,
                     self._int(values.get("1") or values.get("q1")),
                     self._int(values.get("2") or values.get("q2")),
                     self._int(values.get("3") or values.get("q3")),
                     self._int(values.get("4") or values.get("q4")),
                     self._int(values.get("ot") or values.get("ot1")),
-                    self._int(values.get("ot2")), self._int(values.get("ot3")), self._int(values.get("ot4")),
+                    self._int(values.get("ot2")),
+                    self._int(values.get("ot3")),
+                    self._int(values.get("ot4")),
                     self._int(values.get("T") or values.get("pts") or values.get("total")),
-                    row["values_json"], row["display_json"] or "{}", row["links_json"] or "{}",
+                    row["values_json"],
+                    row["display_json"] or "{}",
+                    row["links_json"] or "{}",
                 )
             )
         db.executemany(
@@ -371,25 +412,43 @@ class WarehouseBuilder:
             display = self._json(row["display_json"])
             links = self._json(row["links_json"])
             team_label, team_url, team_id = self._entity(values, display, links, "team")
-            payload.append((self._game_id(row["page_url"]), row["page_url"], team_label, team_url, team_id, row["values_json"], row["display_json"] or "{}", row["links_json"] or "{}"))
+            payload.append(
+                (
+                    self._game_id(row["page_url"]),
+                    row["page_url"],
+                    team_label,
+                    team_url,
+                    team_id,
+                    row["values_json"],
+                    row["display_json"] or "{}",
+                    row["links_json"] or "{}",
+                )
+            )
         db.executemany(
             """
             INSERT INTO game_four_factors(
-              game_id, page_url, team_label, team_url, team_id, values_json, display_json, links_json
+              game_id, page_url, team_label, team_url, team_id,
+              values_json, display_json, links_json
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             payload,
         )
         return len(payload)
 
-    def _copy_player_box_scores(self, source: sqlite3.Connection, db: sqlite3.Connection, box_type: str) -> int:
+    def _copy_player_box_scores(
+        self,
+        source: sqlite3.Connection,
+        db: sqlite3.Connection,
+        box_type: str,
+    ) -> int:
         like = "%-game-basic" if box_type == "basic" else "%-game-advanced"
         payload = []
         for row in source.execute(
             """
-            SELECT tr.row_index, tr.values_json, tr.display_json, tr.links_json, t.table_id, t.page_url
+            SELECT tr.row_index, tr.values_json, tr.display_json, tr.links_json,
+                   t.table_id, t.page_url
             FROM table_rows AS tr
-            JOIN tables AS t ON t.table_pk = tr.table_pk
+            JOIN tables AS t ON t.id = tr.table_pk
             JOIN pages AS p ON p.url = t.page_url
             WHERE p.status = 'complete'
               AND p.season_end_year = ?
@@ -406,12 +465,26 @@ class WarehouseBuilder:
             display = self._json(row["display_json"])
             links = self._json(row["links_json"])
             player_label, player_url, player_id = self._entity(values, display, links, "player")
-            payload.append((self._game_id(row["page_url"]), row["page_url"], match.group(1), box_type, player_label, player_url, player_id, row["row_index"], row["values_json"], row["display_json"] or "{}", row["links_json"] or "{}"))
+            payload.append(
+                (
+                    self._game_id(row["page_url"]),
+                    row["page_url"],
+                    match.group(1),
+                    box_type,
+                    player_label,
+                    player_url,
+                    player_id,
+                    row["row_index"],
+                    row["values_json"],
+                    row["display_json"] or "{}",
+                    row["links_json"] or "{}",
+                )
+            )
         db.executemany(
             """
             INSERT INTO player_box_scores(
-              game_id, page_url, team_abbreviation, box_type, player_label, player_url,
-              player_id, row_index, values_json, display_json, links_json
+              game_id, page_url, team_abbreviation, box_type, player_label,
+              player_url, player_id, row_index, values_json, display_json, links_json
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             payload,
@@ -420,25 +493,39 @@ class WarehouseBuilder:
 
     def _copy_play_by_play(self, source: sqlite3.Connection, db: sqlite3.Connection) -> int:
         payload = [
-            (self._game_id(row["page_url"]), row["page_url"], row["row_index"], row["values_json"], row["display_json"] or "{}", row["links_json"] or "{}")
+            (
+                self._game_id(row["page_url"]),
+                row["page_url"],
+                row["row_index"],
+                row["values_json"],
+                row["display_json"] or "{}",
+                row["links_json"] or "{}",
+            )
             for row in self._rows_for(source, "boxscore_detail", "pbp")
         ]
         db.executemany(
             """
-            INSERT INTO play_by_play_events(game_id, page_url, row_index, values_json, display_json, links_json)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO play_by_play_events(
+              game_id, page_url, row_index, values_json, display_json, links_json
+            ) VALUES (?, ?, ?, ?, ?, ?)
             """,
             payload,
         )
         return len(payload)
 
-    def _rows_for(self, source: sqlite3.Connection, page_family: str, table_id: str) -> list[sqlite3.Row]:
+    def _rows_for(
+        self,
+        source: sqlite3.Connection,
+        page_family: str,
+        table_id: str,
+    ) -> list[sqlite3.Row]:
         return list(
             source.execute(
                 """
-                SELECT tr.row_index, tr.values_json, tr.display_json, tr.links_json, t.page_url
+                SELECT tr.row_index, tr.values_json, tr.display_json,
+                       tr.links_json, t.page_url
                 FROM table_rows AS tr
-                JOIN tables AS t ON t.table_pk = tr.table_pk
+                JOIN tables AS t ON t.id = tr.table_pk
                 JOIN pages AS p ON p.url = t.page_url
                 WHERE p.status = 'complete'
                   AND p.season_end_year = ?
@@ -455,31 +542,66 @@ class WarehouseBuilder:
             self._check(db, "boxscore_pages", "source_pages", "page_family = 'boxscore'", 1314),
             self._check(db, "line_score_rows", "game_line_scores", "1 = 1", 2628),
             self._check(db, "four_factor_rows", "game_four_factors", "1 = 1", 2628),
-            self._check(db, "play_by_play_events", "play_by_play_events", "1 = 1", 1, minimum=True),
+            self._check(
+                db,
+                "play_by_play_events",
+                "play_by_play_events",
+                "1 = 1",
+                1,
+                minimum=True,
+            ),
         ]
         db.executemany(
             """
-            INSERT INTO warehouse_quality_checks(check_name, status, expected, actual, details_json)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO warehouse_quality_checks(
+              check_name, status, expected, actual, details_json
+            ) VALUES (?, ?, ?, ?, ?)
             """,
-            [(c["checkName"], c["status"], c["expected"], c["actual"], json.dumps(c["details"])) for c in checks],
+            [
+                (
+                    check["checkName"],
+                    check["status"],
+                    check["expected"],
+                    check["actual"],
+                    json.dumps(check["details"]),
+                )
+                for check in checks
+            ],
         )
         return checks
 
-    def _check(self, db: sqlite3.Connection, name: str, table: str, where: str, expected: int, *, minimum: bool = False) -> dict[str, Any]:
+    def _check(
+        self,
+        db: sqlite3.Connection,
+        name: str,
+        table: str,
+        where: str,
+        expected: int,
+        *,
+        minimum: bool = False,
+    ) -> dict[str, Any]:
         actual = int(db.execute(f"SELECT COUNT(*) FROM {table} WHERE {where}").fetchone()[0])
         passed = actual >= expected if minimum else actual == expected
-        return {"checkName": name, "status": "pass" if passed else "warn", "expected": expected, "actual": actual, "details": {"mode": "minimum" if minimum else "exact"}}
+        return {
+            "checkName": name,
+            "status": "pass" if passed else "warn",
+            "expected": expected,
+            "actual": actual,
+            "details": {"mode": "minimum" if minimum else "exact"},
+        }
 
     def _create_indexes(self, db: sqlite3.Connection) -> None:
         db.executescript(
             """
-            CREATE INDEX idx_source_tables_bucket ON source_tables(canonical_bucket, table_id);
-            CREATE INDEX idx_warehouse_rows_bucket ON warehouse_rows(canonical_bucket, table_id);
+            CREATE INDEX idx_source_tables_bucket
+              ON source_tables(canonical_bucket, table_id);
+            CREATE INDEX idx_warehouse_rows_bucket
+              ON warehouse_rows(canonical_bucket, table_id);
             CREATE INDEX idx_warehouse_rows_page ON warehouse_rows(page_url);
             CREATE INDEX idx_line_scores_game ON game_line_scores(game_id);
             CREATE INDEX idx_four_factors_game ON game_four_factors(game_id);
-            CREATE INDEX idx_player_box_scores_game ON player_box_scores(game_id, team_abbreviation, box_type);
+            CREATE INDEX idx_player_box_scores_game
+              ON player_box_scores(game_id, team_abbreviation, box_type);
             CREATE INDEX idx_player_box_scores_player ON player_box_scores(player_id);
             CREATE INDEX idx_pbp_game ON play_by_play_events(game_id, row_index);
             """
@@ -489,7 +611,13 @@ class WarehouseBuilder:
         match = GAME_ID_RE.search(url)
         return match.group(1).upper() if match else None
 
-    def _entity(self, values: dict[str, Any], display: dict[str, Any], links: dict[str, Any], key: str) -> tuple[str | None, str | None, str | None]:
+    def _entity(
+        self,
+        values: dict[str, Any],
+        display: dict[str, Any],
+        links: dict[str, Any],
+        key: str,
+    ) -> tuple[str | None, str | None, str | None]:
         label = self._text(values.get(key) or display.get(key))
         raw_link = links.get(key)
         url = None
@@ -538,7 +666,9 @@ class WarehouseBuilder:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Build a first-pass NBA warehouse from the raw Basketball Reference catalog.")
+    parser = argparse.ArgumentParser(
+        description="Build a first-pass NBA warehouse from the raw Basketball Reference catalog."
+    )
     parser.add_argument("--database", default=DEFAULT_SOURCE_DATABASE)
     parser.add_argument("--season", type=int, default=2025)
     parser.add_argument("--output", default=DEFAULT_OUTPUT_DATABASE)
