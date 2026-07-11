@@ -171,8 +171,10 @@ def warehouse_checks(path: Path, season: int) -> list[dict[str, Any]]:
 
 def validate_seed(seed: Path, documents: dict[str, Any], warehouse: Path, season: int) -> list[dict[str, Any]]:
     checks: list[dict[str, Any]] = []
+    expected_files = sorted(EXPECTED_SEED_FILES)
+    actual_files = sorted(documents)
     checks.append(check("seed_directory_exists", seed.exists(), str(seed), "existing directory"))
-    checks.append(check("seed_files_present", sorted(documents), sorted(EXPECTED_SEED_FILES)))
+    checks.append(check("seed_files_present", actual_files == expected_files, actual_files, expected_files))
 
     teams = documents.get("teams.json", [])
     players = documents.get("players.json", [])
