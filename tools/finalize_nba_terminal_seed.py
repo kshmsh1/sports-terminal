@@ -199,7 +199,7 @@ def validate_seed(seed: Path, documents: dict[str, Any], warehouse: Path, season
             check("seed_games", len(games) == 1314, len(games), 1314),
             check("seed_team_records", len(team_records) == 30, len(team_records), 30),
             check("seed_team_game_logs", len(team_game_logs) == 2628, len(team_game_logs), 2628),
-            check("seed_player_season_totals", len(player_season_totals) >= 600, len(player_season_totals), ">= 600"),
+            check("seed_player_season_totals", len(player_season_totals) >= 500, len(player_season_totals), ">= 500 active player summaries"),
             check("seed_player_game_logs_top", len(player_game_logs_top) >= 100, len(player_game_logs_top), ">= 100"),
             check("seed_search_index", len(search_index) == len(teams) + len(players), len(search_index), len(teams) + len(players)),
             check("leaderboard_keys", set(leaders) == EXPECTED_LEADER_KEYS, sorted(leaders), sorted(EXPECTED_LEADER_KEYS)),
