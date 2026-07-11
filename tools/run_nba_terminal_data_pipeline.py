@@ -11,6 +11,7 @@ from typing import Any
 DEFAULT_RAW_DATABASE = "raw/basketball_reference/catalog.sqlite"
 DEFAULT_WAREHOUSE = "data/warehouse/nba_2025.sqlite"
 DEFAULT_SEED = "data/terminal_seed/nba_2025"
+DEFAULT_ASSET_OUTPUT = "assets/data/nba/terminal_seed/nba_2025"
 DEFAULT_REPORT = "data/terminal_seed/nba_2025/pipeline_report.json"
 
 
@@ -18,16 +19,19 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Run the local NBA data pipeline end-to-end: build warehouse, export terminal seed, "
-            "repair text, and validate outputs. This makes no network requests."
+            "repair text, validate outputs, and mirror validated JSON into Flutter assets. "
+            "This makes no network requests."
         )
     )
     parser.add_argument("--season", type=int, default=2025)
     parser.add_argument("--raw-database", default=DEFAULT_RAW_DATABASE)
     parser.add_argument("--warehouse", default=DEFAULT_WAREHOUSE)
     parser.add_argument("--seed", default=DEFAULT_SEED)
+    parser.add_argument("--asset-output", default=DEFAULT_ASSET_OUTPUT)
     parser.add_argument("--report", default=DEFAULT_REPORT)
     parser.add_argument("--skip-warehouse-build", action="store_true")
     parser.add_argument("--skip-seed-export", action="store_true")
+    parser.add_argument("--skip-asset-sync", action="store_true")
     return parser.parse_args()
 
 
@@ -116,6 +120,21 @@ def main() -> int:
             ],
         )
     )
+    if not args.skip_asset_sync:
+        commands.append(
+            (
+                "sync_flutter_assets",
+                [
+                    python,
+                    str(root / "tools" / "sync_nba_terminal_assets.py"),
+                    "--seed",
+                    args.seed,
+                    "--asset-output",
+                    args.asset_output,
+                    "--clean",
+                ],
+            )
+        )
 
     try:
         for name, command in commands:
@@ -132,6 +151,7 @@ def main() -> int:
         "rawDatabase": args.raw_database,
         "warehouse": args.warehouse,
         "seed": args.seed,
+        "assetOutput": args.asset_output,
         "steps": steps,
         "failure": failure,
     }
