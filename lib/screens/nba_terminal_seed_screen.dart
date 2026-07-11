@@ -12,6 +12,7 @@ class NbaTerminalSeedScreen extends StatefulWidget {
 
 class _NbaTerminalSeedScreenState extends State<NbaTerminalSeedScreen> {
   late final Future<NbaTerminalSeedSnapshot> snapshotFuture = const NbaTerminalSeedRepository().load();
+  String query = '';
 
   @override
   Widget build(BuildContext context) {
@@ -34,8 +35,21 @@ class _NbaTerminalSeedScreenState extends State<NbaTerminalSeedScreen> {
         }
 
         final data = snapshot.data!;
-        final pointsLeaders = _asMapList(data.playerLeaders['points_per_game']);
-        final gameHighs = _asMapList(data.playerGameHighs['points']);
+        final normalizedQuery = query.trim().toLowerCase();
+        bool rowMatches(Map<String, dynamic> row, Iterable<String> fields) {
+          if (normalizedQuery.isEmpty) return true;
+          return fields.any((field) => _text(row[field]).toLowerCase().contains(normalizedQuery));
+        }
+
+        final filteredSearchIndex = data.searchIndex.where((row) => rowMatches(row, const ['type', 'id', 'label', 'subtitle'])).toList();
+        final filteredTeamRecords = data.teamRecords.where((row) => rowMatches(row, const ['team_id'])).toList();
+        final filteredTeamGameLogs = data.teamGameLogs.where((row) => rowMatches(row, const ['game_date', 'game_id', 'team_id', 'opponent_team_id', 'result'])).toList();
+        final filteredPlayerTotals = data.playerSeasonTotals.where((row) => rowMatches(row, const ['player_label', 'player_id', 'team_ids'])).toList();
+        final pointsLeaders = _asMapList(data.playerLeaders['points_per_game']).where((row) => rowMatches(row, const ['player_label', 'player_id'])).toList();
+        final gameHighs = _asMapList(data.playerGameHighs['points']).where((row) => rowMatches(row, const ['game_date', 'game_id', 'player_label', 'player_id', 'team_id', 'opponent_team_id'])).toList();
+        final filteredTopGameLogs = data.playerGameLogsTop.where((row) => rowMatches(row, const ['game_date', 'game_id', 'player_label', 'player_id', 'team_id', 'opponent_team_id'])).toList();
+        final filteredGames = data.games.where((row) => rowMatches(row, const ['game_date', 'game_id', 'away_team_id', 'home_team_id', 'winner_team_id'])).toList();
+        final visibleMatches = filteredSearchIndex.length + filteredTeamRecords.length + filteredTeamGameLogs.length + filteredPlayerTotals.length + filteredTopGameLogs.length + filteredGames.length;
         final validationPass = data.validationStatus == 'pass';
 
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -62,22 +76,34 @@ class _NbaTerminalSeedScreenState extends State<NbaTerminalSeedScreen> {
                 _MetricCard(label: 'Player Summaries', value: '${data.playerSeasonTotals.length}', detail: 'Loaded-season totals'),
                 _MetricCard(label: 'Top Game Logs', value: '${data.playerGameLogsTop.length}', detail: 'High-value player games'),
                 _MetricCard(label: 'Search Index', value: '${data.searchIndex.length}', detail: 'Teams + players'),
+                _MetricCard(label: 'Visible Matches', value: '$visibleMatches', detail: normalizedQuery.isEmpty ? 'All seed rows' : 'Current query'),
                 _MetricCard(label: 'Normalized PBP', value: _compactNumber(data.playByPlayEvents), detail: 'Event rows'),
-                _MetricCard(label: 'Leaderboards', value: '${data.playerLeaders.length}', detail: 'Seeded stat boards'),
                 _MetricCard(label: 'Asset Files', value: '${data.copiedAssetFiles}', detail: 'Synced into Flutter'),
                 _MetricCard(label: 'Generated', value: _shortDate(data.warehouseGeneratedAt), detail: 'Warehouse build'),
               ],
             );
           }),
           const SizedBox(height: 22),
+          _SeedSearchPanel(query: query, onChanged: (value) => setState(() => query = value)),
+          const SizedBox(height: 22),
           _SeedHealthPanel(data: data),
+          const SizedBox(height: 22),
+          _TablePanel(
+            title: 'Generated Search Results',
+            subtitle: normalizedQuery.isEmpty ? 'Top searchable teams and players from the generated seed.' : 'Search results matching the current query across generated team and player identities.',
+            columns: const ['Type', 'ID', 'Label', 'Subtitle'],
+            rows: [
+              for (final row in filteredSearchIndex.take(18))
+                [_text(row['type']), _text(row['id']), _text(row['label']), _shortText(row['subtitle'], 54)],
+            ],
+          ),
           const SizedBox(height: 22),
           _TablePanel(
             title: 'Team Records',
             subtitle: 'All loaded games, including postseason games.',
             columns: const ['Team', 'Games', 'W', 'L', 'PPG', 'Opp PPG', 'Margin'],
             rows: [
-              for (final row in data.teamRecords.take(12))
+              for (final row in filteredTeamRecords.take(12))
                 [
                   _text(row['team_id']),
                   _text(row['games']),
@@ -95,7 +121,7 @@ class _NbaTerminalSeedScreenState extends State<NbaTerminalSeedScreen> {
             subtitle: 'Team-game rows with opponent, location, result, margin, and period scoring.',
             columns: const ['Date', 'Team', 'Opp', 'H/A', 'Result', 'PTS', 'Opp PTS', 'Margin', 'Q1', 'Q2', 'Q3', 'Q4'],
             rows: [
-              for (final row in data.teamGameLogs.take(12))
+              for (final row in filteredTeamGameLogs.take(12))
                 [
                   _text(row['game_date']),
                   _text(row['team_id']),
@@ -118,7 +144,7 @@ class _NbaTerminalSeedScreenState extends State<NbaTerminalSeedScreen> {
             subtitle: 'One row per player summary derived from materialized player game stats.',
             columns: const ['Player', 'Teams', 'GP', 'MPG', 'PTS', 'PPG', 'REB', 'AST', 'TS%', 'BPM'],
             rows: [
-              for (final row in data.playerSeasonTotals.take(12))
+              for (final row in filteredPlayerTotals.take(12))
                 [
                   _text(row['player_label']),
                   _shortText(row['team_ids'], 16),
@@ -176,7 +202,7 @@ class _NbaTerminalSeedScreenState extends State<NbaTerminalSeedScreen> {
             subtitle: 'Compact high-value player-game rows exported for early player and game pages.',
             columns: const ['Date', 'Player', 'Team', 'Opp', 'MIN', 'PTS', 'REB', 'AST', 'TS%', 'BPM'],
             rows: [
-              for (final row in data.playerGameLogsTop.take(12))
+              for (final row in filteredTopGameLogs.take(12))
                 [
                   _text(row['game_date']),
                   _text(row['player_label']),
@@ -197,7 +223,7 @@ class _NbaTerminalSeedScreenState extends State<NbaTerminalSeedScreen> {
             subtitle: 'Game rows generated from the line-score warehouse table.',
             columns: const ['Date', 'Away', 'Away PTS', 'Home', 'Home PTS', 'Winner'],
             rows: [
-              for (final row in data.games.take(12))
+              for (final row in filteredGames.take(12))
                 [
                   _text(row['game_date']),
                   _text(row['away_team_id']),
@@ -212,6 +238,43 @@ class _NbaTerminalSeedScreenState extends State<NbaTerminalSeedScreen> {
           _DataDictionaryPanel(data: data),
         ]);
       },
+    );
+  }
+}
+
+class _SeedSearchPanel extends StatelessWidget {
+  const _SeedSearchPanel({required this.query, required this.onChanged});
+
+  final String query;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TerminalCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Generated Data Explorer', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 10),
+        const Text('Search across generated team/player identities, player summaries, game logs, team logs, and game rows without touching the raw warehouse.', style: TextStyle(color: terminalTextSoft, height: 1.45)),
+        const SizedBox(height: 14),
+        TextField(
+          onChanged: onChanged,
+          style: const TextStyle(color: Colors.white),
+          cursorColor: terminalAccent,
+          decoration: InputDecoration(
+            hintText: 'Try Shai, Celtics, OKC, 202410220BOS, BOS, NYK...',
+            hintStyle: const TextStyle(color: Color(0xFF657386)),
+            prefixIcon: const Icon(Icons.search, color: Color(0xFF657386)),
+            filled: true,
+            fillColor: const Color(0xFF0D1218),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: terminalBorder)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: terminalAccent)),
+          ),
+        ),
+        if (query.trim().isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text('Current query: ${query.trim()}', style: const TextStyle(color: terminalAccent, fontSize: 12, fontWeight: FontWeight.w700)),
+        ],
+      ]),
     );
   }
 }
@@ -301,10 +364,16 @@ class _TablePanel extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(
           padding: const EdgeInsets.all(18),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 4),
-            Text(subtitle, style: const TextStyle(color: terminalTextMuted)),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                Text(subtitle, style: const TextStyle(color: terminalTextMuted)),
+              ]),
+            ),
+            const SizedBox(width: 12),
+            Text('${rows.length} rows', style: const TextStyle(color: terminalTextMuted)),
           ]),
         ),
         const Divider(height: 1, color: terminalBorder),
