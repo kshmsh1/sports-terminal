@@ -34,3 +34,4 @@ flutter:
     - assets/data/nba/transactions/transaction_records.json
     - assets/data/nba/standings/standings_records.json
     - assets/data/nba/playoffs/playoff_series_records.json
+    - assets/data/nba/terminal_seed/nba_2025/
