@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/nba_terminal_seed_repository.dart';
+import '../services/product_local_store.dart';
 
 const _navy = Color(0xFF071A33);
 const _blue = Color(0xFF2563EB);
@@ -18,15 +19,46 @@ class ProductFantasyWarRoomScreen extends StatefulWidget {
 }
 
 class _ProductFantasyWarRoomScreenState extends State<ProductFantasyWarRoomScreen> {
+  final ProductLocalStore localStore = const ProductLocalStore();
   String query = '';
-  final Set<String> watchlist = {'gilgesh01', 'jokicni01'};
+  Set<String> watchlist = {'gilgesh01', 'jokicni01'};
+  bool loadedPreferences = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final storedWatchlist = await localStore.loadStringSet(ProductLocalStore.playerWatchlistKey, fallback: {'gilgesh01', 'jokicni01'});
+    final storedQuery = await localStore.loadString(ProductLocalStore.fantasyQueryKey);
+    if (!mounted) return;
+    setState(() {
+      watchlist = storedWatchlist;
+      query = storedQuery;
+      loadedPreferences = true;
+    });
+  }
+
+  Future<void> _setQuery(String value) async {
+    setState(() => query = value);
+    await localStore.saveString(ProductLocalStore.fantasyQueryKey, value);
+  }
+
+  Future<void> _toggleWatchlist(String playerId) async {
+    setState(() => watchlist.contains(playerId) ? watchlist.remove(playerId) : watchlist.add(playerId));
+    await localStore.saveStringSet(ProductLocalStore.playerWatchlistKey, watchlist);
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<NbaTerminalSeedSnapshot>(
       future: const NbaTerminalSeedRepository().load(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) return const _Surface(child: Text('Loading fantasy board...', style: TextStyle(color: _muted)));
+        if (snapshot.connectionState != ConnectionState.done || !loadedPreferences) {
+          return const _Surface(child: Text('Loading fantasy board...', style: TextStyle(color: _muted)));
+        }
         if (snapshot.hasError) return _Surface(child: Text('Fantasy data unavailable: ${snapshot.error}', style: const TextStyle(color: _muted)));
         final data = snapshot.data!;
         final rows = data.playerSeasonTotals.where((row) {
@@ -34,25 +66,26 @@ class _ProductFantasyWarRoomScreenState extends State<ProductFantasyWarRoomScree
           return query.trim().isEmpty || text.contains(query.trim().toLowerCase());
         }).toList()
           ..sort((a, b) => _fantasyScore(b).compareTo(_fantasyScore(a)));
-        final watched = rows.where((row) => watchlist.contains(_txt(row['player_id']))).toList();
+        final watched = data.playerSeasonTotals.where((row) => watchlist.contains(_txt(row['player_id']))).toList()
+          ..sort((a, b) => _fantasyScore(b).compareTo(_fantasyScore(a)));
         final top = rows.isEmpty ? null : rows.first;
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const _Hero('Fantasy War Room', 'Build a watchlist, triage players by simple fantasy score, and turn raw NBA data into a user-friendly fantasy workflow.'),
+          const _Hero('Fantasy War Room', 'Build a persistent watchlist, triage players by simple fantasy score, and turn raw NBA data into a user-friendly fantasy workflow.'),
           const SizedBox(height: 18),
           _MetricGrid(items: [
-            _Metric('Watchlist', '${watchlist.length}', 'local prototype'),
+            _Metric('Watchlist', '${watchlist.length}', 'saved locally'),
             _Metric('Visible players', '${rows.length}', query.trim().isEmpty ? 'all active summaries' : 'query filtered'),
             _Metric('Top target', _txt(top?['player_label']), top == null ? 'No rows' : '${_d(_fantasyScore(top))} score'),
-            _Metric('Backend need', 'High', 'save rosters + leagues'),
+            const _Metric('Backend need', 'High', 'league import + alerts'),
           ]),
           const SizedBox(height: 18),
-          _Search(value: query, hint: 'Search fantasy targets by player or team...', onChanged: (value) => setState(() => query = value)),
+          _Search(value: query, hint: 'Search fantasy targets by player or team...', onChanged: _setQuery),
           const SizedBox(height: 18),
           _TwoColumn(
             left: _Surface(
               padding: EdgeInsets.zero,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const _Header('Fantasy target board', 'Click the bookmark to add/remove a player from the local watchlist.'),
+                const _Header('Fantasy target board', 'Click the bookmark to add/remove a player. Watchlist survives refresh on this device.'),
                 for (final row in rows.take(80))
                   _PlayerTargetRow(
                     player: _txt(row['player_label']),
@@ -60,31 +93,31 @@ class _ProductFantasyWarRoomScreenState extends State<ProductFantasyWarRoomScree
                     score: _fantasyScore(row),
                     line: '${_d(row['points_per_game'])} PPG • ${_d(row['rebounds_per_game'])} RPG • ${_d(row['assists_per_game'])} APG',
                     watched: watchlist.contains(_txt(row['player_id'])),
-                    onTap: () => setState(() => watchlist.contains(_txt(row['player_id'])) ? watchlist.remove(_txt(row['player_id'])) : watchlist.add(_txt(row['player_id']))),
+                    onTap: () => _toggleWatchlist(_txt(row['player_id'])),
                   ),
               ]),
             ),
             right: _Surface(
               padding: EdgeInsets.zero,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const _Header('My watchlist', 'Local state only for now; this should become backend-backed favorites/watchlists.'),
+                const _Header('My watchlist', 'Persisted locally now; backend-backed rosters, leagues, and alerts come next.'),
                 if (watched.isEmpty)
-                  const Padding(padding: EdgeInsets.all(18), child: Text('No watched players match the current search.', style: TextStyle(color: _muted)))
+                  const Padding(padding: EdgeInsets.all(18), child: Text('No players saved yet.', style: TextStyle(color: _muted)))
                 else
-                  for (final row in watched)
+                  for (final row in watched.take(24))
                     _PlayerTargetRow(
                       player: _txt(row['player_label']),
                       team: _txt(row['team_ids']),
                       score: _fantasyScore(row),
                       line: '${_d(row['minutes_per_game'])} MPG • ${_d(row['avg_bpm'])} BPM',
                       watched: true,
-                      onTap: () => setState(() => watchlist.remove(_txt(row['player_id']))),
+                      onTap: () => _toggleWatchlist(_txt(row['player_id'])),
                     ),
                 const _LaunchChecklist(title: 'Fantasy launch needs', rows: [
                   ['League import', 'Connect ESPN/Yahoo/Sleeper or upload rosters.'],
                   ['Scoring settings', 'Custom points, categories, or roto profiles.'],
                   ['Alerts', 'Notify on injuries, role changes, and stat thresholds.'],
-                  ['Persistence', 'Save watchlists, rosters, notes, and templates.'],
+                  ['Backend', 'Sync watchlists, rosters, notes, and templates across devices.'],
                 ]),
               ]),
             ),
@@ -103,13 +136,44 @@ class ProductCommunityArenaScreen extends StatefulWidget {
 }
 
 class _ProductCommunityArenaScreenState extends State<ProductCommunityArenaScreen> {
+  final ProductLocalStore localStore = const ProductLocalStore();
   String board = 'All';
-  final List<_Post> posts = [
-    _Post('NBA General', 'OKC looks like the cleanest title profile in the loaded data', 'Margin, depth, and top-end creation all show up in the terminal pages.', 128, 34),
-    _Post('Fantasy', 'Who are the safest first-round fantasy anchors?', 'SGA and Jokic are the obvious starting point, but the role board can surface second-tier value.', 84, 19),
-    _Post('Product Feedback', 'The NBA hub should link directly from every player row into a full player URL', 'This is the next product step after the current in-page entity hub.', 47, 12),
-    _Post('Team Rooms', 'Boston roster changes need a dedicated team page thread', 'Team pages should combine data, articles, and fan discussion in one place.', 62, 21),
+  Set<String> likedPosts = {};
+  bool loadedPreferences = false;
+
+  final List<_Post> posts = const [
+    _Post('okc-title-profile', 'NBA General', 'OKC looks like the cleanest title profile in the loaded data', 'Margin, depth, and top-end creation all show up in the terminal pages.', 128, 34),
+    _Post('safe-fantasy-anchors', 'Fantasy', 'Who are the safest first-round fantasy anchors?', 'SGA and Jokic are the obvious starting point, but the role board can surface second-tier value.', 84, 19),
+    _Post('nba-hub-links', 'Product Feedback', 'The NBA hub should link directly from every player row into a full player URL', 'This is the next product step after the current in-page entity hub.', 47, 12),
+    _Post('boston-team-thread', 'Team Rooms', 'Boston roster changes need a dedicated team page thread', 'Team pages should combine data, articles, and fan discussion in one place.', 62, 21),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final storedLikes = await localStore.loadStringSet(ProductLocalStore.communityLikesKey);
+    final storedBoard = await localStore.loadString(ProductLocalStore.communityBoardKey, fallback: 'All');
+    if (!mounted) return;
+    setState(() {
+      likedPosts = storedLikes;
+      board = _boards.contains(storedBoard) ? storedBoard : 'All';
+      loadedPreferences = true;
+    });
+  }
+
+  Future<void> _setBoard(String value) async {
+    setState(() => board = value);
+    await localStore.saveString(ProductLocalStore.communityBoardKey, value);
+  }
+
+  Future<void> _toggleLike(String postId) async {
+    setState(() => likedPosts.contains(postId) ? likedPosts.remove(postId) : likedPosts.add(postId));
+    await localStore.saveStringSet(ProductLocalStore.communityLikesKey, likedPosts);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,20 +182,20 @@ class _ProductCommunityArenaScreenState extends State<ProductCommunityArenaScree
       const _Hero('Community Arena', 'A cleaner social surface for forums, team rooms, fantasy discussion, product feedback, and eventually comments under player/team/game pages.'),
       const SizedBox(height: 18),
       _MetricGrid(items: [
-        _Metric('Boards', '5', 'launch structure'),
+        const _Metric('Boards', '5', 'launch structure'),
         _Metric('Visible threads', '${visible.length}', board),
-        _Metric('Moderation', 'Needed', 'reports + bans'),
-        _Metric('Backend', 'Needed', 'posts + comments'),
+        _Metric('Liked posts', loadedPreferences ? '${likedPosts.length}' : 'Loading', 'saved locally'),
+        const _Metric('Backend', 'Needed', 'posts + comments'),
       ]),
       const SizedBox(height: 18),
-      _BoardTabs(board: board, onChanged: (value) => setState(() => board = value)),
+      _BoardTabs(board: board, onChanged: _setBoard),
       const SizedBox(height: 18),
       _TwoColumn(
         left: _Surface(
           padding: EdgeInsets.zero,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const _Header('Featured threads', 'Static prototype threads showing the final community shape.'),
-            for (final post in visible) _PostCard(post: post, onLike: () => setState(() => post.likes += 1)),
+            const _Header('Featured threads', 'Static prototype threads with persisted local likes. Real posting/replies require backend and moderation.'),
+            for (final post in visible) _PostCard(post: post, liked: likedPosts.contains(post.id), onLike: () => _toggleLike(post.id)),
           ]),
         ),
         right: const _Surface(
@@ -144,7 +208,7 @@ class _ProductCommunityArenaScreenState extends State<ProductCommunityArenaScree
             _ChecklistItem('Report queue and moderation console'),
             _ChecklistItem('Team/player/game page comment modules'),
             SizedBox(height: 16),
-            _Notice('This screen is intentionally frontend-only right now. The next major unlock is a backend for persistence and safety.'),
+            _Notice('Do not ship public community without reports, block/mute controls, moderation queue, and audit logs.'),
           ]),
         ),
       ),
@@ -152,12 +216,15 @@ class _ProductCommunityArenaScreenState extends State<ProductCommunityArenaScree
   }
 }
 
+const _boards = ['All', 'NBA General', 'Team Rooms', 'Fantasy', 'Product Feedback'];
+
 class _Post {
-  _Post(this.board, this.title, this.body, this.likes, this.replies);
+  const _Post(this.id, this.board, this.title, this.body, this.baseLikes, this.replies);
+  final String id;
   final String board;
   final String title;
   final String body;
-  int likes;
+  final int baseLikes;
   final int replies;
 }
 
@@ -187,7 +254,7 @@ class _BoardTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _Surface(
         child: Wrap(spacing: 10, runSpacing: 10, children: [
-          for (final item in const ['All', 'NBA General', 'Team Rooms', 'Fantasy', 'Product Feedback'])
+          for (final item in _boards)
             ChoiceChip(
               label: Text(item),
               selected: board == item,
@@ -200,8 +267,9 @@ class _BoardTabs extends StatelessWidget {
 }
 
 class _PostCard extends StatelessWidget {
-  const _PostCard({required this.post, required this.onLike});
+  const _PostCard({required this.post, required this.liked, required this.onLike});
   final _Post post;
+  final bool liked;
   final VoidCallback onLike;
 
   @override
@@ -219,7 +287,7 @@ class _PostCard extends StatelessWidget {
           Text(post.body, style: const TextStyle(color: _muted, height: 1.4, fontWeight: FontWeight.w600)),
           const SizedBox(height: 12),
           Wrap(spacing: 10, children: [
-            OutlinedButton.icon(onPressed: onLike, icon: const Icon(Icons.arrow_upward_rounded, size: 17), label: Text('${post.likes}')),
+            OutlinedButton.icon(onPressed: onLike, icon: Icon(liked ? Icons.arrow_circle_up_rounded : Icons.arrow_upward_rounded, size: 17), label: Text('${post.baseLikes + (liked ? 1 : 0)}')),
             OutlinedButton.icon(onPressed: () {}, icon: const Icon(Icons.mode_comment_outlined, size: 17), label: const Text('Reply soon')),
             OutlinedButton.icon(onPressed: () {}, icon: const Icon(Icons.bookmark_border_rounded, size: 17), label: const Text('Save soon')),
           ]),
@@ -270,7 +338,7 @@ class _ChecklistItem extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(bottom: 9), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.check_circle_rounded, color: _orange, size: 18), const SizedBox(width: 8), Expanded(child: Text(text, style: const TextStyle(color: _muted, height: 1.35, fontWeight: FontWeight.w700)))]));
+  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(bottom: 8), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.check_circle_rounded, color: _blue, size: 18), const SizedBox(width: 8), Expanded(child: Text(text, style: const TextStyle(color: _muted, height: 1.35, fontWeight: FontWeight.w600)))]));
 }
 
 class _Notice extends StatelessWidget {
@@ -281,6 +349,31 @@ class _Notice extends StatelessWidget {
   Widget build(BuildContext context) => Container(width: double.infinity, padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFFFD7A8))), child: Text(text, style: const TextStyle(color: Color(0xFF9A3412), height: 1.4, fontWeight: FontWeight.w700)));
 }
 
+class _Search extends StatelessWidget {
+  const _Search({required this.value, required this.hint, required this.onChanged});
+  final String value;
+  final String hint;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => _Surface(
+        child: TextField(
+          controller: TextEditingController(text: value)..selection = TextSelection.collapsed(offset: value.length),
+          onChanged: onChanged,
+          decoration: InputDecoration(prefixIcon: const Icon(Icons.search_rounded), hintText: hint, filled: true, fillColor: _soft, border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: _line)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: _line))),
+        ),
+      );
+}
+
+class _Header extends StatelessWidget {
+  const _Header(this.title, this.subtitle);
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: _ink, fontSize: 19, fontWeight: FontWeight.w900)), const SizedBox(height: 4), Text(subtitle, style: const TextStyle(color: _muted, height: 1.35, fontWeight: FontWeight.w600))]));
+}
+
 class _MetricGrid extends StatelessWidget {
   const _MetricGrid({required this.items});
   final List<_Metric> items;
@@ -288,7 +381,7 @@ class _MetricGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(builder: (context, constraints) {
         final wide = constraints.maxWidth > 900;
-        return GridView.count(crossAxisCount: wide ? 4 : 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisSpacing: 14, mainAxisSpacing: 14, childAspectRatio: wide ? 2.1 : 1.35, children: [for (final item in items) _MetricTile(item)]);
+        return GridView.count(crossAxisCount: wide ? 4 : 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisSpacing: 14, mainAxisSpacing: 14, childAspectRatio: wide ? 2.0 : 1.35, children: [for (final item in items) _MetricTile(item)]);
       });
 }
 
@@ -304,7 +397,7 @@ class _MetricTile extends StatelessWidget {
   final _Metric item;
 
   @override
-  Widget build(BuildContext context) => _Surface(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(item.label, style: const TextStyle(color: _muted, fontWeight: FontWeight.w800)), Text(item.value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _ink, fontSize: 25, fontWeight: FontWeight.w900)), Text(item.detail, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _blue, fontSize: 12, fontWeight: FontWeight.w800))]));
+  Widget build(BuildContext context) => _Surface(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(item.label, style: const TextStyle(color: _muted, fontWeight: FontWeight.w800)), Text(item.value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _ink, fontSize: 24, fontWeight: FontWeight.w900)), Text(item.detail, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _blue, fontSize: 12, fontWeight: FontWeight.w800))]));
 }
 
 class _TwoColumn extends StatelessWidget {
@@ -325,26 +418,7 @@ class _Surface extends StatelessWidget {
   final EdgeInsetsGeometry padding;
 
   @override
-  Widget build(BuildContext context) => Container(width: double.infinity, padding: padding, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(26), border: Border.all(color: _line), boxShadow: const [BoxShadow(color: Color(0x0F071A33), blurRadius: 24, offset: Offset(0, 10))]), child: child);
-}
-
-class _Header extends StatelessWidget {
-  const _Header(this.title, this.subtitle);
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 19)), const SizedBox(height: 4), Text(subtitle, style: const TextStyle(color: _muted, fontWeight: FontWeight.w600))]));
-}
-
-class _Search extends StatelessWidget {
-  const _Search({required this.value, required this.hint, required this.onChanged});
-  final String value;
-  final String hint;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) => _Surface(child: TextField(controller: TextEditingController(text: value)..selection = TextSelection.collapsed(offset: value.length), onChanged: onChanged, decoration: InputDecoration(prefixIcon: const Icon(Icons.search_rounded), hintText: hint, filled: true, fillColor: _soft, border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: _line)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: _line)))));
+  Widget build(BuildContext context) => Container(width: double.infinity, padding: padding, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(26), border: Border.all(color: _line), boxShadow: const [BoxShadow(color: Color(0x0A071A33), blurRadius: 24, offset: Offset(0, 12))]), child: child);
 }
 
 String _txt(Object? value) => value?.toString() ?? '—';
@@ -356,7 +430,11 @@ double _num(Object? value) {
 
 String _d(Object? value) => _num(value).toStringAsFixed(1);
 
-double _fantasyScore(Map<String, dynamic>? row) {
-  if (row == null) return 0;
-  return _num(row['points_per_game']) + 1.2 * _num(row['rebounds_per_game']) + 1.5 * _num(row['assists_per_game']) + 3.0 * _num(row['steals_per_game']) + 3.0 * _num(row['blocks_per_game']) + 0.5 * _num(row['avg_bpm']);
+double _fantasyScore(Map<String, dynamic> row) {
+  return _num(row['points_per_game']) +
+      1.2 * _num(row['rebounds_per_game']) +
+      1.5 * _num(row['assists_per_game']) +
+      3.0 * _num(row['steals_per_game']) +
+      3.0 * _num(row['blocks_per_game']) +
+      0.6 * _num(row['avg_bpm']);
 }
