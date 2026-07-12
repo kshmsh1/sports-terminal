@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/nba_terminal_seed_repository.dart';
+import '../services/product_local_store.dart';
 
 const _navy = Color(0xFF102A56);
 const _blue = Color(0xFF2563EB);
@@ -18,20 +19,77 @@ class ProductNbaEntityHubScreen extends StatefulWidget {
 }
 
 class _ProductNbaEntityHubScreenState extends State<ProductNbaEntityHubScreen> {
+  final ProductLocalStore localStore = const ProductLocalStore();
   String mode = 'Players';
   String query = '';
   String? selectedPlayerId;
   String? selectedTeamId;
   String? selectedGameId;
-  final Set<String> favorites = {'OKC', 'BOS'};
-  final Set<String> watchlist = {};
+  Set<String> favorites = {'OKC', 'BOS'};
+  Set<String> watchlist = {};
+  bool loadedPreferences = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final storedFavorites = await localStore.loadStringSet(ProductLocalStore.favoriteTeamsKey, fallback: {'OKC', 'BOS'});
+    final storedWatchlist = await localStore.loadStringSet(ProductLocalStore.playerWatchlistKey);
+    final storedMode = await localStore.loadString(ProductLocalStore.nbaModeKey, fallback: 'Players');
+    final storedPlayer = await localStore.loadString(ProductLocalStore.nbaSelectedPlayerKey);
+    final storedTeam = await localStore.loadString(ProductLocalStore.nbaSelectedTeamKey);
+    final storedGame = await localStore.loadString(ProductLocalStore.nbaSelectedGameKey);
+    if (!mounted) return;
+    setState(() {
+      favorites = storedFavorites;
+      watchlist = storedWatchlist;
+      mode = {'Players', 'Teams', 'Games'}.contains(storedMode) ? storedMode : 'Players';
+      selectedPlayerId = storedPlayer.isEmpty ? null : storedPlayer;
+      selectedTeamId = storedTeam.isEmpty ? null : storedTeam;
+      selectedGameId = storedGame.isEmpty ? null : storedGame;
+      loadedPreferences = true;
+    });
+  }
+
+  Future<void> _setMode(String value) async {
+    setState(() => mode = value);
+    await localStore.saveString(ProductLocalStore.nbaModeKey, value);
+  }
+
+  Future<void> _selectPlayer(String id) async {
+    setState(() => selectedPlayerId = id);
+    await localStore.saveString(ProductLocalStore.nbaSelectedPlayerKey, id);
+  }
+
+  Future<void> _selectTeam(String id) async {
+    setState(() => selectedTeamId = id);
+    await localStore.saveString(ProductLocalStore.nbaSelectedTeamKey, id);
+  }
+
+  Future<void> _selectGame(String id) async {
+    setState(() => selectedGameId = id);
+    await localStore.saveString(ProductLocalStore.nbaSelectedGameKey, id);
+  }
+
+  Future<void> _toggleWatchlist(String id) async {
+    setState(() => watchlist.contains(id) ? watchlist.remove(id) : watchlist.add(id));
+    await localStore.saveStringSet(ProductLocalStore.playerWatchlistKey, watchlist);
+  }
+
+  Future<void> _toggleFavorite(String id) async {
+    setState(() => favorites.contains(id) ? favorites.remove(id) : favorites.add(id));
+    await localStore.saveStringSet(ProductLocalStore.favoriteTeamsKey, favorites);
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<NbaTerminalSeedSnapshot>(
       future: const NbaTerminalSeedRepository().load(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
+        if (snapshot.connectionState != ConnectionState.done || !loadedPreferences) {
           return const _Surface(child: Text('Loading NBA hub...', style: TextStyle(color: _muted)));
         }
         if (snapshot.hasError) {
@@ -48,11 +106,13 @@ class _ProductNbaEntityHubScreenState extends State<ProductNbaEntityHubScreen> {
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _Hero(
             title: 'NBA Hub',
-            body: 'A friendly league experience with real player, team, and game pages powered by the generated 2024-25 warehouse. The raw terminal tools now feed these pages instead of taking over the navigation.',
+            body: 'A friendly league experience with persisted player watchlists, favorite teams, and last-opened NBA pages. The raw terminal tools now feed these pages instead of taking over the navigation.',
             chips: ['${data.teams.length} teams', '${data.playerSeasonTotals.length} player summaries', '${data.games.length} games', '${_compact(data.playByPlayEvents)} PBP events'],
           ),
           const SizedBox(height: 18),
-          _ModeTabs(mode: mode, onChanged: (value) => setState(() => mode = value)),
+          _PersonalizationBar(favoriteTeams: favorites, watchlistCount: watchlist.length, selectedMode: mode),
+          const SizedBox(height: 14),
+          _ModeTabs(mode: mode, onChanged: _setMode),
           const SizedBox(height: 14),
           _Search(value: query, hint: 'Search players, teams, dates, or game IDs...', onChanged: (value) => setState(() => query = value)),
           const SizedBox(height: 18),
@@ -61,8 +121,8 @@ class _ProductNbaEntityHubScreenState extends State<ProductNbaEntityHubScreen> {
               rows: playerRows,
               selectedId: selectedPlayerId,
               watchlist: watchlist,
-              onSelected: (id) => setState(() => selectedPlayerId = id),
-              onWatch: (id) => setState(() => watchlist.contains(id) ? watchlist.remove(id) : watchlist.add(id)),
+              onSelected: _selectPlayer,
+              onWatch: _toggleWatchlist,
             )
           else if (mode == 'Teams')
             _TeamsView(
@@ -71,8 +131,8 @@ class _ProductNbaEntityHubScreenState extends State<ProductNbaEntityHubScreen> {
               games: data.teamGameLogs,
               favorites: favorites,
               selectedId: selectedTeamId,
-              onSelected: (id) => setState(() => selectedTeamId = id),
-              onFavorite: (id) => setState(() => favorites.contains(id) ? favorites.remove(id) : favorites.add(id)),
+              onSelected: _selectTeam,
+              onFavorite: _toggleFavorite,
             )
           else
             _GamesView(
@@ -80,7 +140,7 @@ class _ProductNbaEntityHubScreenState extends State<ProductNbaEntityHubScreen> {
               teamLogs: data.teamGameLogs,
               playerLogs: data.playerGameLogsTop,
               selectedId: selectedGameId,
-              onSelected: (id) => setState(() => selectedGameId = id),
+              onSelected: _selectGame,
             ),
         ]);
       },
@@ -99,10 +159,11 @@ class _PlayersView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = rows.firstWhere((row) => _txt(row['player_id']) == selectedId, orElse: () => rows.isEmpty ? <String, dynamic>{} : rows.first);
+    final selectedIsWatched = watchlist.contains(_txt(selected['player_id']));
     return _TwoColumn(
       left: _ListPanel(
         title: 'Players',
-        subtitle: 'Search and open a real player page.',
+        subtitle: 'Search, open, and persist player watchlist state.',
         children: [
           for (final row in rows.take(60))
             _ListRow(
@@ -119,7 +180,11 @@ class _PlayersView extends StatelessWidget {
         child: selected.isEmpty
             ? const Text('No player selected.', style: TextStyle(color: _muted))
             : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                _EntityHeader(icon: Icons.person_rounded, title: _txt(selected['player_label']), subtitle: 'Player page • ${_txt(selected['team_ids'])}'),
+                _EntityHeader(
+                  icon: Icons.person_rounded,
+                  title: _txt(selected['player_label']),
+                  subtitle: selectedIsWatched ? 'Watched player • ${_txt(selected['team_ids'])}' : 'Player page • ${_txt(selected['team_ids'])}',
+                ),
                 const SizedBox(height: 16),
                 _MetricGrid(items: [
                   _Metric('Games', _txt(selected['games']), 'played'),
@@ -138,7 +203,7 @@ class _PlayersView extends StatelessWidget {
                   ['True shooting proxy', _decimal(selected['avg_ts_pct'])],
                 ]),
                 const SizedBox(height: 12),
-                const _Note('Next: add routed player URLs, bio/headshot fields, full game logs, articles, discussion, fantasy watchlists, and comparison workbooks.'),
+                _Note(selectedIsWatched ? 'Saved locally: this player will stay on the watchlist after refresh. Next step is backend-backed watchlists, alerts, notes, and routed player URLs.' : 'Next: add routed player URLs, bio/headshot fields, full game logs, articles, discussion, fantasy watchlists, and comparison workbooks.'),
               ]),
       ),
     );
@@ -165,7 +230,7 @@ class _TeamsView extends StatelessWidget {
     return _TwoColumn(
       left: _ListPanel(
         title: 'Teams',
-        subtitle: 'Open team pages and favorite teams locally.',
+        subtitle: 'Open team pages and persist favorite teams.',
         children: [
           for (final row in teams)
             _ListRow(
@@ -182,7 +247,7 @@ class _TeamsView extends StatelessWidget {
         child: selected.isEmpty
             ? const Text('No team selected.', style: TextStyle(color: _muted))
             : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                _EntityHeader(icon: Icons.groups_rounded, title: id, subtitle: favorites.contains(id) ? 'Favorited team page' : 'Team page'),
+                _EntityHeader(icon: Icons.groups_rounded, title: id, subtitle: favorites.contains(id) ? 'Favorited team page • saved locally' : 'Team page'),
                 const SizedBox(height: 16),
                 _MetricGrid(items: [
                   _Metric('Record', '${_txt(selected['wins'])}-${_txt(selected['losses'])}', 'loaded games'),
@@ -223,7 +288,7 @@ class _GamesView extends StatelessWidget {
     return _TwoColumn(
       left: _ListPanel(
         title: 'Games',
-        subtitle: 'Open game pages from schedule/results.',
+        subtitle: 'Open game pages from schedule/results. Last opened game persists locally.',
         children: [
           for (final row in rows.take(80))
             _ListRow(
@@ -279,6 +344,42 @@ class _Hero extends StatelessWidget {
           ConstrainedBox(constraints: const BoxConstraints(maxWidth: 820), child: Text(body, style: const TextStyle(color: Color(0xFFE8F0FF), fontSize: 16, height: 1.5))),
           const SizedBox(height: 18),
           Wrap(spacing: 10, runSpacing: 10, children: [for (final chip in chips) _Pill(chip)]),
+        ]),
+      );
+}
+
+class _PersonalizationBar extends StatelessWidget {
+  const _PersonalizationBar({required this.favoriteTeams, required this.watchlistCount, required this.selectedMode});
+  final Set<String> favoriteTeams;
+  final int watchlistCount;
+  final String selectedMode;
+
+  @override
+  Widget build(BuildContext context) => _Surface(
+        child: Wrap(spacing: 12, runSpacing: 12, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          _StatusChip(Icons.star_rounded, 'Favorite teams', favoriteTeams.isEmpty ? 'None yet' : favoriteTeams.take(5).join(', ')),
+          _StatusChip(Icons.bookmark_rounded, 'Player watchlist', '$watchlistCount saved'),
+          _StatusChip(Icons.history_rounded, 'Last section', selectedMode),
+          const _StatusChip(Icons.save_rounded, 'Storage', 'Saved on this device'),
+        ]),
+      );
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip(this.icon, this.label, this.value);
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(color: _soft, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: _blue, size: 18),
+          const SizedBox(width: 8),
+          Text('$label: ', style: const TextStyle(color: _muted, fontWeight: FontWeight.w800, fontSize: 12)),
+          Text(value, style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 12)),
         ]),
       );
 }
@@ -443,7 +544,12 @@ class _Table extends StatelessWidget {
                 headingTextStyle: const TextStyle(color: _muted, fontWeight: FontWeight.w900),
                 dataTextStyle: const TextStyle(color: _ink),
                 columns: [for (final column in columns) DataColumn(label: Text(column))],
-                rows: [for (final row in rows) DataRow(cells: [for (final cell in row) DataCell(SizedBox(width: cell.length > 26 ? 210 : 96, child: Text(cell, overflow: TextOverflow.ellipsis)))]),],
+                rows: [
+                  for (final row in rows)
+                    DataRow(cells: [
+                      for (final cell in row) DataCell(SizedBox(width: cell.length > 26 ? 210 : 96, child: Text(cell, overflow: TextOverflow.ellipsis))),
+                    ]),
+                ],
               ),
             ),
         ]),
