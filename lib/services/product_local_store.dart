@@ -18,6 +18,11 @@ class ProductLocalStore {
   static const nbaSelectedGameKey = 'sports_terminal.nba.selected_game';
   static const fantasyQueryKey = 'sports_terminal.fantasy.query';
   static const communityBoardKey = 'sports_terminal.community.board';
+  static const backendUserIdKey = 'sports_terminal.backend.user_id';
+  static const backendLastSyncKey = 'sports_terminal.backend.last_sync';
+  static const backendBaseUrlKey = 'sports_terminal.backend.base_url';
+  static const backendWorkbookIdKey = 'sports_terminal.backend.workbook_id';
+  static const backendConversationIdKey = 'sports_terminal.backend.conversation_id';
 
   Future<bool> loadBool(String key, {bool fallback = false}) async {
     final preferences = await SharedPreferences.getInstance();
