@@ -17,7 +17,7 @@ class _Nba2025TeamPowerScreenState extends State<Nba2025TeamPowerScreen> {
   Widget build(BuildContext context) {
     return _SeedFuture(builder: (data) {
       final rows = _filter(data.teamRecords, query, const ['team_id']);
-      final ranked = [_for (final row in rows) _teamPowerRow(row)]..sort((a, b) => b.rating.compareTo(a.rating));
+      final ranked = [for (final row in rows) _teamPowerRow(row)]..sort((a, b) => b.rating.compareTo(a.rating));
       final top = ranked.isEmpty ? null : ranked.first;
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const SectionHeader(
@@ -124,7 +124,7 @@ class _Nba2025GameScreenerScreenState extends State<Nba2025GameScreenerScreen> {
   Widget build(BuildContext context) {
     return _SeedFuture(builder: (data) {
       final games = _filter(data.games, query, const ['game_id', 'game_date', 'away_team_id', 'home_team_id', 'winner_team_id', 'loser_team_id']);
-      final enriched = [_for (final game in games) _gameScreenRow(game)]..sort((a, b) => a.margin.compareTo(b.margin));
+      final enriched = [for (final game in games) _gameScreenRow(game)]..sort((a, b) => a.margin.compareTo(b.margin));
       final closeLimit = _num(maxCloseMargin);
       final closeGames = enriched.where((row) => row.margin <= closeLimit).toList();
       final biggestMargins = [...enriched]..sort((a, b) => b.margin.compareTo(a.margin));
