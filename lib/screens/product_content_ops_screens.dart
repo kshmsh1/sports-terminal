@@ -22,14 +22,15 @@ class ProductArticlesArenaScreen extends StatelessWidget {
       future: const NbaTerminalSeedRepository().load(),
       builder: (context, snapshot) {
         final data = snapshot.data;
-        final leader = _rows(data?.playerLeaders['points_per_game']).isEmpty ? null : _rows(data?.playerLeaders['points_per_game']).first;
+        final leaders = data == null ? const <Map<String, dynamic>>[] : _rows(data.playerLeaders['points_per_game']);
+        final leader = leaders.isEmpty ? null : leaders.first;
         final game = data == null || data.games.isEmpty ? null : data.games.last;
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _HeroBand(
+          const _HeroBand(
             eyebrow: 'Articles / Blogs',
             title: 'Sports writing that feels attached to the data, not bolted on later.',
             body: 'Editorial, user posts, release notes, fantasy explainers, team breakdowns, and player-page analysis should all live inside the same product system.',
-            chips: const ['Editorial', 'User blogs', 'CMS planned', 'Comments planned'],
+            chips: ['Editorial', 'User blogs', 'CMS planned', 'Comments planned'],
           ),
           const SizedBox(height: 18),
           _TwoColumn(
@@ -43,9 +44,9 @@ class ProductArticlesArenaScreen extends StatelessWidget {
               padding: EdgeInsets.zero,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const _PanelHeader('Editorial queue', 'Static prototype of the CMS pipeline.'),
-                _ArticleRow('Platform', 'What is Sports Terminal?', 'Founder post', 'Draft'),
-                _ArticleRow('NBA', 'How to use player pages without drowning in tables', 'Explainer', 'Ready'),
-                _ArticleRow('Fantasy', 'Building a first watchlist from 2024-25 data', 'Fantasy', 'Draft'),
+                const _ArticleRow('Platform', 'What is Sports Terminal?', 'Founder post', 'Draft'),
+                const _ArticleRow('NBA', 'How to use player pages without drowning in tables', 'Explainer', 'Ready'),
+                const _ArticleRow('Fantasy', 'Building a first watchlist from 2024-25 data', 'Fantasy', 'Draft'),
                 _ArticleRow('Game', 'What a game page should show after final buzzer', 'Product', game == null ? 'Planned' : _txt(game['game_id'])),
               ]),
             ),
@@ -473,11 +474,6 @@ List<Map<String, dynamic>> _rows(Object? value) {
 
 String _txt(Object? value) => value?.toString() ?? '—';
 String _initial(String value) => value.trim().isEmpty ? 'U' : value.trim()[0].toUpperCase();
-
-double _num(Object? value) {
-  if (value is num) return value.toDouble();
-  return double.tryParse(value?.toString() ?? '') ?? 0;
-}
 
 String _compact(int value) {
   if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
