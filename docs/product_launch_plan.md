@@ -10,8 +10,8 @@ Sports Terminal is now being shaped as an NBA-first consumer product with an int
 | Generated NBA asset layer | Strong MVP | Flutter can load teams, players, games, player season totals, team game logs, leaderboards, highs, search index, validation, and source metadata. |
 | Internal analytics lab | Strong prototype | NBA 2025 analytical surfaces validate workflows: leaders, screeners, splits, trends, matchups, details, QA, source maps, and front-office boards. |
 | Consumer shell | Stronger first version | Main navigation is product-oriented: Home, NBA, Fantasy, Community, Articles, Workspace, Messages, Profile, Admin, Internal Lab. |
-| Visual identity | Improving | The shell now uses a more distinctive navy/orange/blue sports identity, floating nav, gradient backdrops, glass pills, and less generic card layout. |
-| Local persistence | Expanded first version | The product now has a shared local persistence service for theme, workbook cells, selected workbook sheet, NBA mode, last-opened NBA player/team/game, favorite teams, player watchlist, fantasy query, community board, liked posts, and profile settings. This is not a backend replacement, but it makes the prototype feel less temporary. |
+| Visual identity | Improving | The shell uses a navy/orange/blue sports identity, floating nav, gradient backdrops, glass pills, and less generic card layout. |
+| Local persistence | Expanded first version | The product has a shared local persistence service for theme, workbook cells, selected workbook sheet, NBA mode, last-opened NBA player/team/game, favorite teams, player watchlist, fantasy query, community board, liked posts, and profile settings. This is not a backend replacement, but it makes the prototype feel less temporary. |
 | NBA hub | Persisted first version | NBA hub supports player, team, and game page modes powered by generated data, with locally persisted favorites, watchlists, last-opened pages, and selected mode. |
 | Fantasy | Persisted first version | Fantasy War Room includes target board, simple fantasy scoring proxy, local search persistence, and shared player watchlist persistence. |
 | Community | Persisted first version | Community Arena includes boards, demo threads, persisted local likes, selected board persistence, replies roadmap, and moderation checklist. |
@@ -21,6 +21,8 @@ Sports Terminal is now being shaped as an NBA-first consumer product with an int
 | Admin | First real version | Admin Ops Center introduces pipeline metrics, operator lanes, CMS/moderation/billing/data ops roadmap. |
 | Workspace | Stronger first version | Excel-inspired workbook UI has a title bar, ribbon, formula bar, editable grid cells, active cell, basic formulas, local autosave, templates, sheet tabs, and status bar. |
 | Theme system | First persisted version | Light/dark toggle exists and persists locally. Light mode uses the navy Sports Terminal identity. |
+| Backend schema | First draft | `backend/schema_v1.sql` maps product domains into launch database tables. |
+| Backend API skeleton | First executable version | `backend/app/main.py` exposes in-memory FastAPI endpoints for users, profiles, settings, personalization, workspaces, community, moderation, messaging, CMS, billing, feature flags, and pipeline runs. |
 | Legal footer | First version | About, Contact, Privacy Policy, and Terms & Conditions are footer-linked pages. |
 | Analyzer hygiene | Improved | Legacy internal helper warnings are no longer allowed to interrupt product build loops, while runtime/compiler errors still remain blocking. |
 
@@ -38,35 +40,40 @@ Sports Terminal is now being shaped as an NBA-first consumer product with an int
 | Profile | User identity and settings | Persisted Profile Clubhouse with session identity, local settings switches, and favorite-team chips. |
 | Admin | Operator console | Admin Ops Center with data health metrics, kanban-style operator lanes, and launch checklist. |
 | Internal Lab | Analyst/operator tooling | Consolidated destination for the raw NBA 2025 analytics surfaces. |
+| Backend | API and data control plane | In-memory FastAPI skeleton and SQL schema draft exist; production persistence/auth/deployment are not complete. |
 
 ## Launch-critical gaps
 
 | Area | What remains |
 | --- | --- |
-| Backend | Persistent users, profiles, favorites, watchlists, workspaces, posts, comments, messages, notifications, billing, admin actions, and moderation. |
-| Auth | Real sign-up, login, provider/password handling, email verification, account recovery, deletion/export, and role management. |
+| Backend | Replace in-memory skeleton with durable Postgres persistence, migrations, repositories, environment config, logging, rate limits, and deployment. |
+| Auth | Real sign-up, login, provider/password handling, sessions/JWTs, email verification, account recovery, deletion/export, and role management. |
 | NBA routes | Proper URLs and routing for player pages, team pages, game pages, standings, schedules, and leaders. |
-| Workspace engine | Better formula coverage, copy/paste, keyboard navigation refinement, resizing, saved multi-sheet workbooks, import/export, and sharing. |
-| Community backend | Create posts, comments, likes, saves, follows, reports, moderation queue, bans, and content safety. |
-| Messaging backend | DMs, group rooms, unread counts, blocking, reporting, and notification delivery. |
+| Player pages | Bio/headshots, full game logs, trends, fantasy notes, articles, comments, cross-device watchlist persistence, comparison modules. |
+| Team pages | Names/logos/colors, roster page, schedule/results, standings context, splits, team articles, fan discussion. |
+| Game pages | Full box score, recap, source links, player logs, team stats, comments/discussion. |
+| Workspace engine | Better formula coverage, copy/paste, keyboard navigation refinement, resizing, saved multi-sheet workbooks, import/export, sharing, and backend sync. |
+| Community backend | The API skeleton exists, but real posts, comments, likes, saves, follows, reports, moderation queue, bans, and content safety need durable persistence and UI wiring. |
+| Messaging backend | The API skeleton exists, but DMs, group rooms, unread counts, blocking, reporting, and notification delivery need durable persistence and UI wiring. |
 | Fantasy features | Backend-synced watchlists, league imports, roster management, scoring settings, waiver boards, matchup tools, and alerts. |
-| CMS | Admin article editor, drafts, publish/unpublish, featured cards, tags, author pages, and moderation. |
-| Billing | Plans, trials, Stripe or equivalent, invoices, cancellation, entitlements, and usage limits. |
+| CMS | Admin article editor, drafts, publish/unpublish, featured cards, tags, author pages, moderation, and audit history. |
+| Billing | Plans exist as skeleton data, but paid tiers, trials, Stripe or equivalent, invoices, cancellation, entitlements, and usage limits need implementation. |
 | Live data | Current-season refreshes, live scores, injury feeds, scheduled jobs, and eventually official/commercial data agreements. |
 | Twitter/X feed | API access, allowed accounts, caching, compliance, and admin configuration. |
-| Production readiness | Hosting, analytics, error tracking, monitoring, backups, security review, privacy review, and legal review. |
+| Production readiness | Hosting, analytics, error tracking, monitoring, backups, security review, privacy review, legal review, and launch process. |
 
 ## Near-term build sequence
 
-1. Validate the expanded local persistence pass in Flutter.
-2. Persist remaining local prototype state: message draft text, article queue filters, and last-opened admin lane.
-3. Make NBA player/team/game pages feel like real routed pages, then add actual URLs/routing.
-4. Improve the workspace engine: copy/paste, drag fill, column resizing, more formulas, and import/export.
-5. Create initial backend schema for users, profiles, favorites, posts, comments, workspaces, messages, and admin roles.
-6. Build community primitives with moderation hooks.
-7. Build admin data-ops/CMS/moderation views that can eventually control the platform.
-8. Add billing/subscription scaffolding once account persistence exists.
-9. Add live/current-season data only after the product shell and persistence model are stable.
+1. Validate Flutter after the expanded local persistence and backend skeleton pass.
+2. Add a real backend persistence layer under the FastAPI skeleton: database connection, migrations, repository functions, and environment configuration.
+3. Wire the Flutter app to an API client while keeping local storage as offline fallback.
+4. Make NBA player/team/game pages feel like real routed pages, then add actual URLs/routing.
+5. Improve the workspace engine: copy/paste, drag fill, column resizing, more formulas, import/export, and backend sync.
+6. Build community primitives with moderation hooks and API persistence.
+7. Build messaging after block/report/mute controls and moderation audit events are real.
+8. Build admin data-ops/CMS/moderation views that can control the platform.
+9. Add billing/subscription scaffolding once account persistence exists.
+10. Add live/current-season data only after the product shell and persistence model are stable.
 
 ## Design direction
 
