@@ -12,23 +12,21 @@ class Nba2025TeamSplitsScreen extends StatefulWidget {
 class _Nba2025TeamSplitsScreenState extends State<Nba2025TeamSplitsScreen> {
   String query = '';
   @override
-  Widget build(BuildContext context) => _SeedFuture(builder: (data) {
-        final rows = _teamSplits(data.teamGameLogs).where((row) => row.team.toLowerCase().contains(query.trim().toLowerCase())).toList()..sort((a, b) => b.margin.compareTo(a.margin));
+  Widget build(BuildContext context) => _Seed(builder: (data) {
+        final rows = _teamSplits(data.teamGameLogs).where((row) => _txt(row['team']).toLowerCase().contains(query.trim().toLowerCase())).toList()..sort((a, b) => _num(b['margin']).compareTo(_num(a['margin'])));
         final best = rows.isEmpty ? null : rows.first;
-        return _Page(title: '2025 Team Splits', subtitle: 'Home/away split terminal built from generated team-game logs.', children: [
-          _Metrics([
+        return _Page('2025 Team Splits', 'Home/away split terminal built from generated team-game logs.', [
+          _MetricGrid([
             _Metric('Teams', '${rows.length}', query.trim().isEmpty ? 'All loaded teams' : 'Query filtered'),
-            _Metric('Best Margin', best?.team ?? '—', best == null ? 'No rows' : best.margin.toStringAsFixed(2)),
-            _Metric('Avg Home Win%', rows.isEmpty ? '—' : _avg(rows.map((row) => row.homeWinRate)).toStringAsFixed(3), 'Visible teams'),
-            _Metric('Avg Away Win%', rows.isEmpty ? '—' : _avg(rows.map((row) => row.awayWinRate)).toStringAsFixed(3), 'Visible teams'),
+            _Metric('Best Margin', _txt(best?['team']), best == null ? 'No rows' : _decimal(best['margin'])),
+            _Metric('Avg Home Win%', rows.isEmpty ? '—' : _avg(rows.map((row) => _num(row['homeWinRate']))).toStringAsFixed(3), 'Visible teams'),
+            _Metric('Avg Away Win%', rows.isEmpty ? '—' : _avg(rows.map((row) => _num(row['awayWinRate']))).toStringAsFixed(3), 'Visible teams'),
           ]),
-          _Search(value: query, hint: 'Search team code...', onChanged: (value) => setState(() => query = value)),
-          _Table(
-            title: 'Team Home/Away Splits',
-            subtitle: 'Sorted by overall average margin.',
-            columns: const ['Team', 'Games', 'Win%', 'PPG', 'Opp PPG', 'Margin', 'Home W-L', 'Home Margin', 'Away W-L', 'Away Margin'],
-            rows: [for (final row in rows) [row.team, '${row.games}', row.winRate.toStringAsFixed(3), row.ppg.toStringAsFixed(1), row.oppPpg.toStringAsFixed(1), row.margin.toStringAsFixed(2), '${row.homeWins}-${row.homeLosses}', row.homeMargin.toStringAsFixed(2), '${row.awayWins}-${row.awayLosses}', row.awayMargin.toStringAsFixed(2)]],
-          ),
+          _Search(query, 'Search team code...', (value) => setState(() => query = value)),
+          _Table('Team Home/Away Splits', 'Sorted by overall average margin.', const ['Team', 'Games', 'Win%', 'PPG', 'Opp PPG', 'Margin', 'Home W-L', 'Home Margin', 'Away W-L', 'Away Margin'], [
+            for (final row in rows)
+              [_txt(row['team']), _txt(row['games']), _decimal(row['winRate'], decimals: 3), _decimal(row['ppg'], decimals: 1), _decimal(row['oppPpg'], decimals: 1), _decimal(row['margin']), '${_txt(row['homeWins'])}-${_txt(row['homeLosses'])}', _decimal(row['homeMargin']), '${_txt(row['awayWins'])}-${_txt(row['awayLosses'])}', _decimal(row['awayMargin'])],
+          ]),
         ]);
       });
 }
@@ -42,27 +40,25 @@ class Nba2025OpponentMatrixScreen extends StatefulWidget {
 class _Nba2025OpponentMatrixScreenState extends State<Nba2025OpponentMatrixScreen> {
   String team = 'OKC';
   @override
-  Widget build(BuildContext context) => _SeedFuture(builder: (data) {
+  Widget build(BuildContext context) => _Seed(builder: (data) {
         final teamId = team.trim().isEmpty ? 'OKC' : team.trim().toUpperCase();
-        final rows = _opponents(data.teamGameLogs, teamId);
-        final bestRows = List<_OpponentRow>.from(rows)..sort((a, b) => b.margin.compareTo(a.margin));
-        final worstRows = List<_OpponentRow>.from(rows)..sort((a, b) => a.margin.compareTo(b.margin));
-        final best = bestRows.isEmpty ? null : bestRows.first;
-        final worst = worstRows.isEmpty ? null : worstRows.first;
-        return _Page(title: '2025 Opponent Matrix', subtitle: 'Team-vs-opponent matchup matrix from generated team-game logs.', children: [
-          _Metrics([
-            _Metric('Selected Team', teamId, '${rows.fold<int>(0, (sum, row) => sum + row.games)} games'),
+        final rows = _opponentRows(data.teamGameLogs, teamId);
+        final byBest = List<Map<String, dynamic>>.from(rows)..sort((a, b) => _num(b['margin']).compareTo(_num(a['margin'])));
+        final byWorst = List<Map<String, dynamic>>.from(rows)..sort((a, b) => _num(a['margin']).compareTo(_num(b['margin'])));
+        final best = byBest.isEmpty ? null : byBest.first;
+        final worst = byWorst.isEmpty ? null : byWorst.first;
+        return _Page('2025 Opponent Matrix', 'Team-vs-opponent matchup matrix from generated team-game logs.', [
+          _MetricGrid([
+            _Metric('Selected Team', teamId, '${rows.fold<int>(0, (sum, row) => sum + _num(row['games']).round())} games'),
             _Metric('Opponents', '${rows.length}', 'Unique opponents'),
-            _Metric('Best Matchup', best?.opponent ?? '—', best == null ? 'No rows' : best.margin.toStringAsFixed(1)),
-            _Metric('Worst Matchup', worst?.opponent ?? '—', worst == null ? 'No rows' : worst.margin.toStringAsFixed(1)),
+            _Metric('Best Matchup', _txt(best?['opponent']), best == null ? 'No rows' : _decimal(best['margin'], decimals: 1)),
+            _Metric('Worst Matchup', _txt(worst?['opponent']), worst == null ? 'No rows' : _decimal(worst['margin'], decimals: 1)),
           ]),
-          _Search(value: team, hint: 'Enter team code: OKC, BOS, NYK...', onChanged: (value) => setState(() => team = value)),
-          _Table(
-            title: '$teamId Opponent Matrix',
-            subtitle: 'Aggregated across all loaded meetings with each opponent.',
-            columns: const ['Opponent', 'Games', 'W-L', 'Win%', 'PPG', 'Opp PPG', 'Margin', 'Last Game', 'Last Result'],
-            rows: [for (final row in rows) [row.opponent, '${row.games}', '${row.wins}-${row.losses}', row.winRate.toStringAsFixed(3), row.ppg.toStringAsFixed(1), row.oppPpg.toStringAsFixed(1), row.margin.toStringAsFixed(1), row.lastGame, row.lastResult]],
-          ),
+          _Search(team, 'Enter team code: OKC, BOS, NYK...', (value) => setState(() => team = value)),
+          _Table('$teamId Opponent Matrix', 'Aggregated across every loaded meeting with each opponent.', const ['Opponent', 'Games', 'W-L', 'Win%', 'PPG', 'Opp PPG', 'Margin', 'Last Game', 'Last Result'], [
+            for (final row in rows)
+              [_txt(row['opponent']), _txt(row['games']), '${_txt(row['wins'])}-${_txt(row['losses'])}', _decimal(row['winRate'], decimals: 3), _decimal(row['ppg'], decimals: 1), _decimal(row['oppPpg'], decimals: 1), _decimal(row['margin'], decimals: 1), _txt(row['lastGame']), _txt(row['lastResult'])],
+          ]),
         ]);
       });
 }
@@ -76,26 +72,24 @@ class Nba2025PlayerRoleBoardScreen extends StatefulWidget {
 class _Nba2025PlayerRoleBoardScreenState extends State<Nba2025PlayerRoleBoardScreen> {
   String query = '';
   @override
-  Widget build(BuildContext context) => _SeedFuture(builder: (data) {
-        final rows = _filter(data.playerSeasonTotals, query, const ['player_label', 'player_id', 'team_ids']).map(_role).toList()..sort((a, b) => b.score.compareTo(a.score));
+  Widget build(BuildContext context) => _Seed(builder: (data) {
+        final rows = _filter(data.playerSeasonTotals, query, const ['player_label', 'player_id', 'team_ids']).map(_roleRow).toList()..sort((a, b) => _num(b['score']).compareTo(_num(a['score'])));
         final buckets = <String, int>{};
         for (final row in rows) {
-          buckets[row.role] = (buckets[row.role] ?? 0) + 1;
+          buckets[_txt(row['role'])] = (buckets[_txt(row['role'])] ?? 0) + 1;
         }
-        return _Page(title: '2025 Player Role Board', subtitle: 'Role classification from games, minutes, scoring, efficiency, and BPM.', children: [
-          _Metrics([
+        return _Page('2025 Player Role Board', 'Role classification from games, minutes, scoring, efficiency, and BPM.', [
+          _MetricGrid([
             _Metric('Players', '${rows.length}', query.trim().isEmpty ? 'All active summaries' : 'Query filtered'),
             _Metric('Stars', '${buckets['Star'] ?? 0}', 'High usage/scoring'),
             _Metric('Starters', '${buckets['Starter'] ?? 0}', 'High-minute profiles'),
             _Metric('Rotation+', '${(buckets['Rotation'] ?? 0) + (buckets['Specialist'] ?? 0)}', 'Rotation and specialist roles'),
           ]),
-          _Search(value: query, hint: 'Search player, team, or id...', onChanged: (value) => setState(() => query = value)),
-          _Table(
-            title: 'Role Board',
-            subtitle: 'Internal sorting heuristic for terminal triage, not a formal value model.',
-            columns: const ['Role', 'Score', 'Player', 'Teams', 'GP', 'MPG', 'PPG', 'REB', 'AST', 'TS%', 'BPM'],
-            rows: [for (final row in rows.take(150)) [row.role, row.score.toStringAsFixed(2), row.player, row.teams, row.games.round().toString(), row.mpg.toStringAsFixed(1), row.ppg.toStringAsFixed(1), row.rebounds.round().toString(), row.assists.round().toString(), row.ts.toStringAsFixed(3), row.bpm.toStringAsFixed(2)]],
-          ),
+          _Search(query, 'Search player, team, or id...', (value) => setState(() => query = value)),
+          _Table('Role Board', 'Internal sorting heuristic for terminal triage, not a formal value model.', const ['Role', 'Score', 'Player', 'Teams', 'GP', 'MPG', 'PPG', 'REB', 'AST', 'TS%', 'BPM'], [
+            for (final row in rows.take(150))
+              [_txt(row['role']), _decimal(row['score']), _txt(row['player']), _txt(row['teams']), _decimal(row['games'], decimals: 0), _decimal(row['mpg'], decimals: 1), _decimal(row['ppg'], decimals: 1), _decimal(row['rebounds'], decimals: 0), _decimal(row['assists'], decimals: 0), _decimal(row['ts'], decimals: 3), _decimal(row['bpm'])],
+          ]),
         ]);
       });
 }
@@ -111,30 +105,27 @@ class _Nba2025BoxScoreFinderScreenState extends State<Nba2025BoxScoreFinderScree
   String minPoints = '25';
   String minBpm = '0';
   @override
-  Widget build(BuildContext context) => _SeedFuture(builder: (data) {
-        final minPts = _num(minPoints);
+  Widget build(BuildContext context) => _Seed(builder: (data) {
+        final ptsGate = _num(minPoints);
         final bpmGate = _num(minBpm);
         final base = _filter(data.playerGameLogsTop, query, const ['game_id', 'game_date', 'player_label', 'team_id', 'opponent_team_id']);
-        final rows = base.where((row) => _num(row['pts']) >= minPts && _num(row['bpm']) >= bpmGate).toList()
+        final rows = base.where((row) => _num(row['pts']) >= ptsGate && _num(row['bpm']) >= bpmGate).toList()
           ..sort((a, b) {
-            final ptsCompare = _num(b['pts']).compareTo(_num(a['pts']));
-            if (ptsCompare != 0) return ptsCompare;
-            return _num(b['bpm']).compareTo(_num(a['bpm']));
+            final pts = _num(b['pts']).compareTo(_num(a['pts']));
+            return pts != 0 ? pts : _num(b['bpm']).compareTo(_num(a['bpm']));
           });
-        return _Page(title: '2025 Box Score Finder', subtitle: 'High-value player-game finder with point and BPM gates.', children: [
-          _Metrics([
+        return _Page('2025 Box Score Finder', 'High-value player-game finder with point and BPM gates.', [
+          _MetricGrid([
             _Metric('Matching Rows', '${rows.length}', '${base.length} before gates'),
-            _Metric('Min Points', minPts.toStringAsFixed(0), 'Editable gate'),
+            _Metric('Min Points', ptsGate.toStringAsFixed(0), 'Editable gate'),
             _Metric('Min BPM', bpmGate.toStringAsFixed(1), 'Editable gate'),
-            _Metric('Top Row', rows.isEmpty ? '—' : _text(rows.first['player_label']), rows.isEmpty ? 'No rows' : '${_decimal(rows.first['pts'], decimals: 0)} pts'),
+            _Metric('Top Row', _txt(rows.isEmpty ? null : rows.first['player_label']), rows.isEmpty ? 'No rows' : '${_decimal(rows.first['pts'], decimals: 0)} pts'),
           ]),
           _TripleSearch(query, minPoints, minBpm, (value) => setState(() => query = value), (value) => setState(() => minPoints = value), (value) => setState(() => minBpm = value)),
-          _Table(
-            title: 'Box Score Finder Results',
-            subtitle: 'Sorted by points, then BPM.',
-            columns: const ['Date', 'Game', 'Player', 'Team', 'Opp', 'MIN', 'PTS', 'REB', 'AST', 'STL', 'BLK', '+/-', 'TS%', 'BPM'],
-            rows: [for (final row in rows.take(150)) [_text(row['game_date']), _text(row['game_id']), _text(row['player_label']), _text(row['team_id']), _text(row['opponent_team_id']), _text(row['mp_text']), _decimal(row['pts'], decimals: 0), _decimal(row['trb'], decimals: 0), _decimal(row['ast'], decimals: 0), _decimal(row['stl'], decimals: 0), _decimal(row['blk'], decimals: 0), _decimal(row['plus_minus'], decimals: 0), _decimal(row['ts_pct'], decimals: 3), _decimal(row['bpm'])]],
-          ),
+          _Table('Box Score Finder Results', 'Sorted by points, then BPM.', const ['Date', 'Game', 'Player', 'Team', 'Opp', 'MIN', 'PTS', 'REB', 'AST', 'STL', 'BLK', '+/-', 'TS%', 'BPM'], [
+            for (final row in rows.take(150))
+              [_txt(row['game_date']), _txt(row['game_id']), _txt(row['player_label']), _txt(row['team_id']), _txt(row['opponent_team_id']), _txt(row['mp_text']), _decimal(row['pts'], decimals: 0), _decimal(row['trb'], decimals: 0), _decimal(row['ast'], decimals: 0), _decimal(row['stl'], decimals: 0), _decimal(row['blk'], decimals: 0), _decimal(row['plus_minus'], decimals: 0), _decimal(row['ts_pct'], decimals: 3), _decimal(row['bpm'])],
+          ]),
         ]);
       });
 }
@@ -148,25 +139,23 @@ class Nba2025MomentumBoardScreen extends StatefulWidget {
 class _Nba2025MomentumBoardScreenState extends State<Nba2025MomentumBoardScreen> {
   String window = '10';
   @override
-  Widget build(BuildContext context) => _SeedFuture(builder: (data) {
-        final size = _num(window).round().clamp(1, 40);
-        final rows = _momentum(data.teamGameLogs, size)..sort((a, b) => b.margin.compareTo(a.margin));
+  Widget build(BuildContext context) => _Seed(builder: (data) {
+        final windowSize = _clamp(_num(window).round(), 1, 40);
+        final rows = _momentumRows(data.teamGameLogs, windowSize)..sort((a, b) => _num(b['margin']).compareTo(_num(a['margin'])));
         final best = rows.isEmpty ? null : rows.first;
         final worst = rows.isEmpty ? null : rows.last;
-        return _Page(title: '2025 Momentum Board', subtitle: 'Recent-form board for every team using the last N generated team-game rows.', children: [
-          _Metrics([
-            _Metric('Window', '$size games', 'Editable lookback'),
-            _Metric('Best Form', best?.team ?? '—', best == null ? 'No rows' : '${best.wins}-${best.losses}, ${best.margin.toStringAsFixed(1)} margin'),
-            _Metric('Worst Form', worst?.team ?? '—', worst == null ? 'No rows' : '${worst.wins}-${worst.losses}, ${worst.margin.toStringAsFixed(1)} margin'),
+        return _Page('2025 Momentum Board', 'Recent-form board for every team using the last N generated team-game rows.', [
+          _MetricGrid([
+            _Metric('Window', '$windowSize games', 'Editable lookback'),
+            _Metric('Best Form', _txt(best?['team']), best == null ? 'No rows' : '${_txt(best['wins'])}-${_txt(best['losses'])}, ${_decimal(best['margin'], decimals: 1)} margin'),
+            _Metric('Worst Form', _txt(worst?['team']), worst == null ? 'No rows' : '${_txt(worst['wins'])}-${_txt(worst['losses'])}, ${_decimal(worst['margin'], decimals: 1)} margin'),
             _Metric('Teams', '${rows.length}', 'Momentum rows'),
           ]),
-          _Search(value: window, hint: 'Recent-game window: 5, 10, 20...', onChanged: (value) => setState(() => window = value)),
-          _Table(
-            title: 'Recent Momentum Ranking',
-            subtitle: 'Sorted by average margin over the selected window.',
-            columns: const ['Rank', 'Team', 'Games', 'W-L', 'Win%', 'PPG', 'Opp PPG', 'Margin', 'Last Game', 'Last Result'],
-            rows: [for (var i = 0; i < rows.length; i++) ['${i + 1}', rows[i].team, '${rows[i].games}', '${rows[i].wins}-${rows[i].losses}', rows[i].winRate.toStringAsFixed(3), rows[i].ppg.toStringAsFixed(1), rows[i].oppPpg.toStringAsFixed(1), rows[i].margin.toStringAsFixed(1), rows[i].lastGame, rows[i].lastResult]],
-          ),
+          _Search(window, 'Recent-game window: 5, 10, 20...', (value) => setState(() => window = value)),
+          _Table('Recent Momentum Ranking', 'Sorted by average margin over the selected window.', const ['Rank', 'Team', 'Games', 'W-L', 'Win%', 'PPG', 'Opp PPG', 'Margin', 'Last Game', 'Last Result'], [
+            for (var i = 0; i < rows.length; i++)
+              ['${i + 1}', _txt(rows[i]['team']), _txt(rows[i]['games']), '${_txt(rows[i]['wins'])}-${_txt(rows[i]['losses'])}', _decimal(rows[i]['winRate'], decimals: 3), _decimal(rows[i]['ppg'], decimals: 1), _decimal(rows[i]['oppPpg'], decimals: 1), _decimal(rows[i]['margin'], decimals: 1), _txt(rows[i]['lastGame']), _txt(rows[i]['lastResult'])],
+          ]),
         ]);
       });
 }
@@ -180,50 +169,43 @@ class Nba2025SeasonTimelineScreen extends StatefulWidget {
 class _Nba2025SeasonTimelineScreenState extends State<Nba2025SeasonTimelineScreen> {
   String query = '';
   @override
-  Widget build(BuildContext context) => _SeedFuture(builder: (data) {
-        final allMonths = _months(data.games);
-        final months = query.trim().isEmpty ? allMonths : allMonths.where((row) => row.month.contains(query.trim())).toList();
+  Widget build(BuildContext context) => _Seed(builder: (data) {
+        final allMonths = _monthRows(data.games);
+        final months = query.trim().isEmpty ? allMonths : allMonths.where((row) => _txt(row['month']).contains(query.trim())).toList();
         final selectedGames = _filter(data.games, query, const ['game_date', 'game_id', 'away_team_id', 'home_team_id', 'winner_team_id']);
-        final busyRows = List<_MonthRow>.from(months)..sort((a, b) => b.games.compareTo(a.games));
-        final busiest = busyRows.isEmpty ? null : busyRows.first;
-        return _Page(title: '2025 Season Timeline', subtitle: 'Month-by-month schedule/result terminal from generated games.json.', children: [
-          _Metrics([
+        final busy = List<Map<String, dynamic>>.from(months)..sort((a, b) => _num(b['games']).compareTo(_num(a['games'])));
+        final busiest = busy.isEmpty ? null : busy.first;
+        return _Page('2025 Season Timeline', 'Month-by-month schedule/result terminal from generated games.json.', [
+          _MetricGrid([
             _Metric('Months', '${months.length}', query.trim().isEmpty ? 'Full season' : 'Filtered'),
             _Metric('Matching Games', '${selectedGames.length}', 'Query drilldown'),
-            _Metric('Busiest Month', busiest?.month ?? '—', busiest == null ? 'No rows' : '${busiest.games} games'),
-            _Metric('Close Games', '${months.fold<int>(0, (sum, row) => sum + row.closeGames)}', 'Margin ≤ 5'),
+            _Metric('Busiest Month', _txt(busiest?['month']), busiest == null ? 'No rows' : '${_txt(busiest['games'])} games'),
+            _Metric('Close Games', '${months.fold<int>(0, (sum, row) => sum + _num(row['closeGames']).round())}', 'Margin ≤ 5'),
           ]),
-          _Search(value: query, hint: 'Filter by month/date/team/game, e.g. 2024-10, BOS...', onChanged: (value) => setState(() => query = value)),
-          _Table(
-            title: 'Season Timeline by Month',
-            subtitle: 'Aggregated by game_date month.',
-            columns: const ['Month', 'Games', 'Avg Total', 'Avg Margin', 'Close Games', 'Home Wins', 'Away Wins'],
-            rows: [for (final row in months) [row.month, '${row.games}', row.avgTotal.toStringAsFixed(1), row.avgMargin.toStringAsFixed(1), '${row.closeGames}', '${row.homeWins}', '${row.awayWins}']],
-          ),
-          _Table(
-            title: 'Selected Games',
-            subtitle: 'Games matching the current query.',
-            columns: const ['Date', 'Game', 'Away', 'Away PTS', 'Home', 'Home PTS', 'Winner', 'Margin'],
-            rows: [for (final row in selectedGames.take(100)) [_text(row['game_date']), _text(row['game_id']), _text(row['away_team_id']), _text(row['away_score']), _text(row['home_team_id']), _text(row['home_score']), _text(row['winner_team_id']), (_num(row['home_score']) - _num(row['away_score'])).abs().round().toString()]],
-          ),
+          _Search(query, 'Filter by month/date/team/game, e.g. 2024-10, BOS...', (value) => setState(() => query = value)),
+          _Table('Season Timeline by Month', 'Aggregated by game_date month.', const ['Month', 'Games', 'Avg Total', 'Avg Margin', 'Close Games', 'Home Wins', 'Away Wins'], [
+            for (final row in months)
+              [_txt(row['month']), _txt(row['games']), _decimal(row['avgTotal'], decimals: 1), _decimal(row['avgMargin'], decimals: 1), _txt(row['closeGames']), _txt(row['homeWins']), _txt(row['awayWins'])],
+          ]),
+          _Table('Selected Games', 'Games matching the current query.', const ['Date', 'Game', 'Away', 'Away PTS', 'Home', 'Home PTS', 'Winner', 'Margin'], [
+            for (final row in selectedGames.take(100))
+              [_txt(row['game_date']), _txt(row['game_id']), _txt(row['away_team_id']), _txt(row['away_score']), _txt(row['home_team_id']), _txt(row['home_score']), _txt(row['winner_team_id']), (_num(row['home_score']) - _num(row['away_score'])).abs().round().toString()],
+          ]),
         ]);
       });
 }
 
 class _Page extends StatelessWidget {
-  const _Page({required this.title, required this.subtitle, required this.children});
+  const _Page(this.title, this.subtitle, this.children);
   final String title;
   final String subtitle;
   final List<Widget> children;
   @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SectionHeader(title: title, subtitle: subtitle),
-        for (final child in children) ...[const SizedBox(height: 22), child],
-      ]);
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [SectionHeader(title: title, subtitle: subtitle), for (final child in children) ...[const SizedBox(height: 22), child]]);
 }
 
-class _SeedFuture extends StatelessWidget {
-  const _SeedFuture({required this.builder});
+class _Seed extends StatelessWidget {
+  const _Seed({required this.builder});
   final Widget Function(NbaTerminalSeedSnapshot data) builder;
   @override
   Widget build(BuildContext context) => FutureBuilder<NbaTerminalSeedSnapshot>(
@@ -237,7 +219,7 @@ class _SeedFuture extends StatelessWidget {
 }
 
 class _Search extends StatelessWidget {
-  const _Search({required this.value, required this.hint, required this.onChanged});
+  const _Search(this.value, this.hint, this.onChanged);
   final String value;
   final String hint;
   final ValueChanged<String> onChanged;
@@ -268,8 +250,8 @@ class _TripleSearch extends StatelessWidget {
       );
 }
 
-class _Metrics extends StatelessWidget {
-  const _Metrics(this.metrics);
+class _MetricGrid extends StatelessWidget {
+  const _MetricGrid(this.metrics);
   final List<_Metric> metrics;
   @override
   Widget build(BuildContext context) => LayoutBuilder(builder: (context, constraints) {
@@ -293,7 +275,7 @@ class _MetricCard extends StatelessWidget {
 }
 
 class _Table extends StatelessWidget {
-  const _Table({required this.title, required this.subtitle, required this.columns, required this.rows});
+  const _Table(this.title, this.subtitle, this.columns, this.rows);
   final String title;
   final String subtitle;
   final List<String> columns;
@@ -302,7 +284,7 @@ class _Table extends StatelessWidget {
   Widget build(BuildContext context) => TerminalCard(
         padding: EdgeInsets.zero,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Padding(padding: const EdgeInsets.all(18), child: Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)), const SizedBox(height: 4), Text(subtitle, style: const TextStyle(color: terminalTextMuted))])), const SizedBox(width: 12), InfoPill(label: '${rows.length} rows')])) ,
+          Padding(padding: const EdgeInsets.all(18), child: Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)), const SizedBox(height: 4), Text(subtitle, style: const TextStyle(color: terminalTextMuted))])), const SizedBox(width: 12), InfoPill(label: '${rows.length} rows')])),
           const Divider(height: 1, color: terminalBorder),
           if (rows.isEmpty)
             const Padding(padding: EdgeInsets.all(18), child: Text('No rows match this context.', style: TextStyle(color: terminalTextSoft)))
@@ -312,198 +294,83 @@ class _Table extends StatelessWidget {
       );
 }
 
-class _SplitRow {
-  const _SplitRow({required this.team, required this.games, required this.wins, required this.losses, required this.points, required this.oppPoints, required this.totalMargin, required this.homeGames, required this.homeWins, required this.homeLosses, required this.homeTotalMargin, required this.awayGames, required this.awayWins, required this.awayLosses, required this.awayTotalMargin});
-  final String team;
-  final int games;
-  final int wins;
-  final int losses;
-  final double points;
-  final double oppPoints;
-  final double totalMargin;
-  final int homeGames;
-  final int homeWins;
-  final int homeLosses;
-  final double homeTotalMargin;
-  final int awayGames;
-  final int awayWins;
-  final int awayLosses;
-  final double awayTotalMargin;
-  double get winRate => games == 0 ? 0 : wins / games;
-  double get homeWinRate => homeGames == 0 ? 0 : homeWins / homeGames;
-  double get awayWinRate => awayGames == 0 ? 0 : awayWins / awayGames;
-  double get ppg => games == 0 ? 0 : points / games;
-  double get oppPpg => games == 0 ? 0 : oppPoints / games;
-  double get margin => games == 0 ? 0 : totalMargin / games;
-  double get homeMargin => homeGames == 0 ? 0 : homeTotalMargin / homeGames;
-  double get awayMargin => awayGames == 0 ? 0 : awayTotalMargin / awayGames;
-}
-
-class _SplitBuilder {
-  _SplitBuilder(this.team);
-  final String team;
-  int games = 0;
-  int wins = 0;
-  int losses = 0;
-  double points = 0;
-  double oppPoints = 0;
-  double totalMargin = 0;
-  int homeGames = 0;
-  int homeWins = 0;
-  int homeLosses = 0;
-  double homeTotalMargin = 0;
-  int awayGames = 0;
-  int awayWins = 0;
-  int awayLosses = 0;
-  double awayTotalMargin = 0;
-}
-
-class _OpponentRow {
-  const _OpponentRow({required this.opponent, required this.games, required this.wins, required this.losses, required this.points, required this.oppPoints, required this.totalMargin, required this.lastGame, required this.lastResult});
-  final String opponent;
-  final int games;
-  final int wins;
-  final int losses;
-  final double points;
-  final double oppPoints;
-  final double totalMargin;
-  final String lastGame;
-  final String lastResult;
-  double get winRate => games == 0 ? 0 : wins / games;
-  double get ppg => games == 0 ? 0 : points / games;
-  double get oppPpg => games == 0 ? 0 : oppPoints / games;
-  double get margin => games == 0 ? 0 : totalMargin / games;
-}
-
-class _OpponentBuilder {
-  _OpponentBuilder(this.opponent);
-  final String opponent;
-  int games = 0;
-  int wins = 0;
-  int losses = 0;
-  double points = 0;
-  double oppPoints = 0;
-  double totalMargin = 0;
-  String lastGame = '—';
-  String lastResult = '—';
-}
-
-class _RoleRow {
-  const _RoleRow({required this.player, required this.teams, required this.role, required this.score, required this.games, required this.mpg, required this.ppg, required this.rebounds, required this.assists, required this.ts, required this.bpm});
-  final String player;
-  final String teams;
-  final String role;
-  final double score;
-  final double games;
-  final double mpg;
-  final double ppg;
-  final double rebounds;
-  final double assists;
-  final double ts;
-  final double bpm;
-}
-
-class _MomentumRow {
-  const _MomentumRow({required this.team, required this.games, required this.wins, required this.losses, required this.points, required this.oppPoints, required this.totalMargin, required this.lastGame, required this.lastResult});
-  final String team;
-  final int games;
-  final int wins;
-  final int losses;
-  final double points;
-  final double oppPoints;
-  final double totalMargin;
-  final String lastGame;
-  final String lastResult;
-  double get winRate => games == 0 ? 0 : wins / games;
-  double get ppg => games == 0 ? 0 : points / games;
-  double get oppPpg => games == 0 ? 0 : oppPoints / games;
-  double get margin => games == 0 ? 0 : totalMargin / games;
-}
-
-class _MonthRow {
-  const _MonthRow({required this.month, required this.games, required this.totalPoints, required this.totalMargin, required this.closeGames, required this.homeWins, required this.awayWins});
-  final String month;
-  final int games;
-  final double totalPoints;
-  final double totalMargin;
-  final int closeGames;
-  final int homeWins;
-  final int awayWins;
-  double get avgTotal => games == 0 ? 0 : totalPoints / games;
-  double get avgMargin => games == 0 ? 0 : totalMargin / games;
-}
-
-List<_SplitRow> _teamSplits(List<Map<String, dynamic>> logs) {
-  final builders = <String, _SplitBuilder>{};
+List<Map<String, dynamic>> _teamSplits(List<Map<String, dynamic>> logs) {
+  final out = <String, Map<String, dynamic>>{};
   for (final log in logs) {
-    final team = _text(log['team_id']);
-    final row = builders.putIfAbsent(team, () => _SplitBuilder(team));
-    final result = _text(log['result']).toUpperCase();
-    final margin = _num(log['margin']);
+    final team = _txt(log['team_id']);
+    final row = out.putIfAbsent(team, () => {'team': team, 'games': 0, 'wins': 0, 'losses': 0, 'points': 0.0, 'opp': 0.0, 'marginTotal': 0.0, 'homeGames': 0, 'homeWins': 0, 'homeLosses': 0, 'homeMarginTotal': 0.0, 'awayGames': 0, 'awayWins': 0, 'awayLosses': 0, 'awayMarginTotal': 0.0});
+    final result = _txt(log['result']).toUpperCase();
     final home = _isOne(log['is_home']);
-    row.games += 1;
-    row.points += _num(log['points']);
-    row.oppPoints += _num(log['opponent_points']);
-    row.totalMargin += margin;
-    if (result == 'W') row.wins += 1;
-    if (result == 'L') row.losses += 1;
+    final margin = _num(log['margin']);
+    row['games'] = _num(row['games']).round() + 1;
+    row['points'] = _num(row['points']) + _num(log['points']);
+    row['opp'] = _num(row['opp']) + _num(log['opponent_points']);
+    row['marginTotal'] = _num(row['marginTotal']) + margin;
+    if (result == 'W') row['wins'] = _num(row['wins']).round() + 1;
+    if (result == 'L') row['losses'] = _num(row['losses']).round() + 1;
     if (home) {
-      row.homeGames += 1;
-      row.homeTotalMargin += margin;
-      if (result == 'W') row.homeWins += 1;
-      if (result == 'L') row.homeLosses += 1;
+      row['homeGames'] = _num(row['homeGames']).round() + 1;
+      row['homeMarginTotal'] = _num(row['homeMarginTotal']) + margin;
+      if (result == 'W') row['homeWins'] = _num(row['homeWins']).round() + 1;
+      if (result == 'L') row['homeLosses'] = _num(row['homeLosses']).round() + 1;
     } else {
-      row.awayGames += 1;
-      row.awayTotalMargin += margin;
-      if (result == 'W') row.awayWins += 1;
-      if (result == 'L') row.awayLosses += 1;
+      row['awayGames'] = _num(row['awayGames']).round() + 1;
+      row['awayMarginTotal'] = _num(row['awayMarginTotal']) + margin;
+      if (result == 'W') row['awayWins'] = _num(row['awayWins']).round() + 1;
+      if (result == 'L') row['awayLosses'] = _num(row['awayLosses']).round() + 1;
     }
   }
-  return [for (final row in builders.values) _SplitRow(team: row.team, games: row.games, wins: row.wins, losses: row.losses, points: row.points, oppPoints: row.oppPoints, totalMargin: row.totalMargin, homeGames: row.homeGames, homeWins: row.homeWins, homeLosses: row.homeLosses, homeTotalMargin: row.homeTotalMargin, awayGames: row.awayGames, awayWins: row.awayWins, awayLosses: row.awayLosses, awayTotalMargin: row.awayTotalMargin)];
+  return [for (final row in out.values) _splitFinalize(row)];
 }
 
-List<_OpponentRow> _opponents(List<Map<String, dynamic>> logs, String teamId) {
-  final builders = <String, _OpponentBuilder>{};
+Map<String, dynamic> _splitFinalize(Map<String, dynamic> row) {
+  final games = _num(row['games']);
+  final homeGames = _num(row['homeGames']);
+  final awayGames = _num(row['awayGames']);
+  return {...row, 'winRate': games == 0 ? 0 : _num(row['wins']) / games, 'ppg': games == 0 ? 0 : _num(row['points']) / games, 'oppPpg': games == 0 ? 0 : _num(row['opp']) / games, 'margin': games == 0 ? 0 : _num(row['marginTotal']) / games, 'homeWinRate': homeGames == 0 ? 0 : _num(row['homeWins']) / homeGames, 'homeMargin': homeGames == 0 ? 0 : _num(row['homeMarginTotal']) / homeGames, 'awayWinRate': awayGames == 0 ? 0 : _num(row['awayWins']) / awayGames, 'awayMargin': awayGames == 0 ? 0 : _num(row['awayMarginTotal']) / awayGames};
+}
+
+List<Map<String, dynamic>> _opponentRows(List<Map<String, dynamic>> logs, String teamId) {
+  final out = <String, Map<String, dynamic>>{};
   for (final log in logs) {
-    if (_text(log['team_id']).toUpperCase() != teamId) continue;
-    final opponent = _text(log['opponent_team_id']);
-    final row = builders.putIfAbsent(opponent, () => _OpponentBuilder(opponent));
-    final result = _text(log['result']).toUpperCase();
-    row.games += 1;
-    row.points += _num(log['points']);
-    row.oppPoints += _num(log['opponent_points']);
-    row.totalMargin += _num(log['margin']);
-    if (result == 'W') row.wins += 1;
-    if (result == 'L') row.losses += 1;
-    row.lastGame = _text(log['game_id']);
-    row.lastResult = result;
+    if (_txt(log['team_id']).toUpperCase() != teamId) continue;
+    final opponent = _txt(log['opponent_team_id']);
+    final row = out.putIfAbsent(opponent, () => {'opponent': opponent, 'games': 0, 'wins': 0, 'losses': 0, 'points': 0.0, 'opp': 0.0, 'marginTotal': 0.0, 'lastGame': '—', 'lastResult': '—'});
+    final result = _txt(log['result']).toUpperCase();
+    row['games'] = _num(row['games']).round() + 1;
+    row['points'] = _num(row['points']) + _num(log['points']);
+    row['opp'] = _num(row['opp']) + _num(log['opponent_points']);
+    row['marginTotal'] = _num(row['marginTotal']) + _num(log['margin']);
+    if (result == 'W') row['wins'] = _num(row['wins']).round() + 1;
+    if (result == 'L') row['losses'] = _num(row['losses']).round() + 1;
+    row['lastGame'] = _txt(log['game_id']);
+    row['lastResult'] = result;
   }
-  final rows = [for (final row in builders.values) _OpponentRow(opponent: row.opponent, games: row.games, wins: row.wins, losses: row.losses, points: row.points, oppPoints: row.oppPoints, totalMargin: row.totalMargin, lastGame: row.lastGame, lastResult: row.lastResult)];
-  rows.sort((a, b) {
-    final gameCompare = b.games.compareTo(a.games);
-    if (gameCompare != 0) return gameCompare;
-    return b.margin.compareTo(a.margin);
-  });
+  final rows = [for (final row in out.values) _opponentFinalize(row)]..sort((a, b) => _num(b['games']).compareTo(_num(a['games'])));
   return rows;
 }
 
-_RoleRow _role(Map<String, dynamic> row) {
+Map<String, dynamic> _opponentFinalize(Map<String, dynamic> row) {
+  final games = _num(row['games']);
+  return {...row, 'winRate': games == 0 ? 0 : _num(row['wins']) / games, 'ppg': games == 0 ? 0 : _num(row['points']) / games, 'oppPpg': games == 0 ? 0 : _num(row['opp']) / games, 'margin': games == 0 ? 0 : _num(row['marginTotal']) / games};
+}
+
+Map<String, dynamic> _roleRow(Map<String, dynamic> row) {
   final games = _num(row['games']);
   final mpg = _num(row['minutes_per_game']);
   final ppg = _num(row['points_per_game']);
   final bpm = _num(row['avg_bpm']);
   final ts = _num(row['avg_ts_pct']);
   final role = ppg >= 25 && mpg >= 30 ? 'Star' : mpg >= 28 ? 'Starter' : mpg >= 15 ? 'Rotation' : games >= 20 ? 'Specialist' : 'Depth';
-  final score = ppg + bpm + (mpg / 3) + (ts * 4);
-  return _RoleRow(player: _text(row['player_label']), teams: _text(row['team_ids']), role: role, score: score, games: games, mpg: mpg, ppg: ppg, rebounds: _num(row['rebounds']), assists: _num(row['assists']), ts: ts, bpm: bpm);
+  return {'player': _txt(row['player_label']), 'teams': _txt(row['team_ids']), 'role': role, 'score': ppg + bpm + (mpg / 3) + (ts * 4), 'games': games, 'mpg': mpg, 'ppg': ppg, 'rebounds': _num(row['rebounds']), 'assists': _num(row['assists']), 'ts': ts, 'bpm': bpm};
 }
 
-List<_MomentumRow> _momentum(List<Map<String, dynamic>> logs, int window) {
+List<Map<String, dynamic>> _momentumRows(List<Map<String, dynamic>> logs, int window) {
   final grouped = <String, List<Map<String, dynamic>>>{};
   for (final row in logs) {
-    grouped.putIfAbsent(_text(row['team_id']), () => <Map<String, dynamic>>[]).add(row);
+    grouped.putIfAbsent(_txt(row['team_id']), () => <Map<String, dynamic>>[]).add(row);
   }
-  final out = <_MomentumRow>[];
+  final out = <Map<String, dynamic>>[];
   for (final entry in grouped.entries) {
     final recent = entry.value.length <= window ? entry.value : entry.value.sublist(entry.value.length - window);
     var wins = 0;
@@ -512,7 +379,7 @@ List<_MomentumRow> _momentum(List<Map<String, dynamic>> logs, int window) {
     var opp = 0.0;
     var margin = 0.0;
     for (final row in recent) {
-      final result = _text(row['result']).toUpperCase();
+      final result = _txt(row['result']).toUpperCase();
       if (result == 'W') wins += 1;
       if (result == 'L') losses += 1;
       points += _num(row['points']);
@@ -520,18 +387,19 @@ List<_MomentumRow> _momentum(List<Map<String, dynamic>> logs, int window) {
       margin += _num(row['margin']);
     }
     final last = recent.isEmpty ? null : recent.last;
-    out.add(_MomentumRow(team: entry.key, games: recent.length, wins: wins, losses: losses, points: points, oppPoints: opp, totalMargin: margin, lastGame: _text(last?['game_id']), lastResult: _text(last?['result'])));
+    final games = recent.length;
+    out.add({'team': entry.key, 'games': games, 'wins': wins, 'losses': losses, 'winRate': games == 0 ? 0 : wins / games, 'ppg': games == 0 ? 0 : points / games, 'oppPpg': games == 0 ? 0 : opp / games, 'margin': games == 0 ? 0 : margin / games, 'lastGame': _txt(last?['game_id']), 'lastResult': _txt(last?['result'])});
   }
   return out;
 }
 
-List<_MonthRow> _months(List<Map<String, dynamic>> games) {
+List<Map<String, dynamic>> _monthRows(List<Map<String, dynamic>> games) {
   final buckets = <String, List<Map<String, dynamic>>>{};
   for (final game in games) {
-    final date = _text(game['game_date']);
+    final date = _txt(game['game_date']);
     if (date.length >= 7) buckets.putIfAbsent(date.substring(0, 7), () => <Map<String, dynamic>>[]).add(game);
   }
-  final rows = <_MonthRow>[];
+  final rows = <Map<String, dynamic>>[];
   for (final entry in buckets.entries) {
     var total = 0.0;
     var margin = 0.0;
@@ -545,28 +413,35 @@ List<_MonthRow> _months(List<Map<String, dynamic>> games) {
       total += away + home;
       margin += diff;
       if (diff <= 5) close += 1;
-      if (_text(game['winner_team_id']) == _text(game['home_team_id'])) {
+      if (_txt(game['winner_team_id']) == _txt(game['home_team_id'])) {
         homeWins += 1;
       } else {
         awayWins += 1;
       }
     }
-    rows.add(_MonthRow(month: entry.key, games: entry.value.length, totalPoints: total, totalMargin: margin, closeGames: close, homeWins: homeWins, awayWins: awayWins));
+    final count = entry.value.length;
+    rows.add({'month': entry.key, 'games': count, 'avgTotal': count == 0 ? 0 : total / count, 'avgMargin': count == 0 ? 0 : margin / count, 'closeGames': close, 'homeWins': homeWins, 'awayWins': awayWins});
   }
-  rows.sort((a, b) => a.month.compareTo(b.month));
+  rows.sort((a, b) => _txt(a['month']).compareTo(_txt(b['month'])));
   return rows;
 }
 
 List<Map<String, dynamic>> _filter(List<Map<String, dynamic>> rows, String query, List<String> fields) {
   final q = query.trim().toLowerCase();
   if (q.isEmpty) return rows;
-  return rows.where((row) => fields.map((field) => _text(row[field])).join(' ').toLowerCase().contains(q)).toList();
+  return rows.where((row) => fields.map((field) => _txt(row[field])).join(' ').toLowerCase().contains(q)).toList();
 }
 
 double _avg(Iterable<double> values) {
   final list = values.toList();
   if (list.isEmpty) return 0;
-  return list.fold<double>(0, (sum, item) => sum + item) / list.length;
+  return list.fold<double>(0, (sum, value) => sum + value) / list.length;
+}
+
+int _clamp(int value, int min, int max) {
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
 }
 
 double _num(Object? value) {
@@ -575,10 +450,9 @@ double _num(Object? value) {
 }
 
 bool _isOne(Object? value) => value == 1 || value == true || value?.toString() == '1';
+String _txt(Object? value) => value?.toString() ?? '—';
 
-String _text(Object? value) => value?.toString() ?? '—';
-
-String _decimal(Object? value, {int decimals = 3}) {
+String _decimal(Object? value, {int decimals = 2}) {
   final number = value is num ? value : num.tryParse(value?.toString() ?? '');
   if (number == null) return '—';
   return decimals == 0 ? number.round().toString() : number.toStringAsFixed(decimals);
