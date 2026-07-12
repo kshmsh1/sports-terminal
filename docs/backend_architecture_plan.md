@@ -1,6 +1,6 @@
 # Sports Terminal Backend Architecture Plan
 
-Sports Terminal can continue as a Flutter/static-asset prototype for NBA historical data, but the launch product needs a backend before community, messaging, saved workspaces, profiles, fantasy, billing, and admin operations can become real.
+Sports Terminal can continue as a Flutter/static-asset prototype for NBA historical data, but the launch product needs a backend before community, messaging, saved workspaces, profiles, fantasy, billing, and admin operations can become real. A first SQL schema draft now lives at `backend/schema_v1.sql` so the backend work has a concrete starting point instead of only a product outline.
 
 ## Backend goals
 
