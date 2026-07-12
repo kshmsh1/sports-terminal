@@ -16,6 +16,11 @@ analyzer:
     # Legacy prototype screens may keep intermediate computed values while a
     # panel is being wired. Product validation should not fail on these.
     unused_local_variable: ignore
+    # Historical/internal lab screens intentionally keep a few helper functions
+    # and palette constants for hidden modules that will be folded into routed
+    # product pages later. Keep those warnings out of the launch loop while the
+    # user-facing product shell is being built.
+    unused_element: ignore
 
 linter:
   rules:
