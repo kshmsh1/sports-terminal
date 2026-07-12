@@ -5,6 +5,7 @@ import sys
 import urllib.error
 import urllib.request
 from typing import Any
+from uuid import uuid4
 
 BASE_URL = sys.argv[1].rstrip('/') if len(sys.argv) > 1 else 'http://127.0.0.1:8000'
 
@@ -27,8 +28,9 @@ def request(method: str, path: str, payload: dict[str, Any] | None = None) -> An
 
 
 def main() -> None:
+    suffix = uuid4().hex[:8]
     print('health:', request('GET', '/health'))
-    user = request('POST', '/users', {'email': 'demo@sportsterminal.local', 'display_name': 'Demo User', 'role': 'admin'})
+    user = request('POST', '/users', {'email': f'demo-{suffix}@sportsterminal.local', 'display_name': 'Demo User', 'role': 'admin'})
     user_id = user['id']
     print('created user:', user_id)
     print('favorite teams:', request('POST', f'/users/{user_id}/favorite-teams', {'item_id': 'OKC'}))
