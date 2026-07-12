@@ -11,6 +11,7 @@ import '../screens/final_rosters_screen.dart';
 import '../screens/games_screen.dart';
 import '../screens/internal_spreadsheet_screen.dart';
 import '../screens/nba_2025_detail_screens.dart';
+import '../screens/nba_2025_operations_screens.dart';
 import '../screens/nba_2025_research_screens.dart';
 import '../screens/nba_2025_screener_screens.dart';
 import '../screens/nba_2025_workbench_screens.dart';
@@ -51,8 +52,14 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
         const _UserTab('2025 Games', Icons.sports_basketball_outlined, Nba2025GamesScreen(), 'NBA 2025'),
         const _UserTab('2025 Leaders', Icons.leaderboard_outlined, Nba2025LeadersScreen(), 'NBA 2025'),
         const _UserTab('2025 Team Power', Icons.trending_up_outlined, Nba2025TeamPowerScreen(), 'NBA 2025'),
+        const _UserTab('2025 Team Splits', Icons.splitscreen_outlined, Nba2025TeamSplitsScreen(), 'NBA 2025'),
+        const _UserTab('2025 Opponent Matrix', Icons.grid_4x4_outlined, Nba2025OpponentMatrixScreen(), 'NBA 2025'),
         const _UserTab('2025 Player Screener', Icons.filter_alt_outlined, Nba2025PlayerScreenerScreen(), 'NBA 2025'),
+        const _UserTab('2025 Player Roles', Icons.badge_outlined, Nba2025PlayerRoleBoardScreen(), 'NBA 2025'),
+        const _UserTab('2025 Box Finder', Icons.saved_search_outlined, Nba2025BoxScoreFinderScreen(), 'NBA 2025'),
         const _UserTab('2025 Game Screener', Icons.rule_outlined, Nba2025GameScreenerScreen(), 'NBA 2025'),
+        const _UserTab('2025 Momentum', Icons.bolt_outlined, Nba2025MomentumBoardScreen(), 'NBA 2025'),
+        const _UserTab('2025 Timeline', Icons.timeline_outlined, Nba2025SeasonTimelineScreen(), 'NBA 2025'),
         const _UserTab('2025 Daily Tape', Icons.calendar_view_day_outlined, Nba2025DailyTapeScreen(), 'NBA 2025'),
         const _UserTab('2025 Leader Matrix', Icons.view_module_outlined, Nba2025LeaderboardMatrixScreen(), 'NBA 2025'),
         const _UserTab('2025 Source Map', Icons.account_tree_outlined, Nba2025SourceMapScreen(), 'NBA 2025'),
