@@ -11,6 +11,7 @@ Sports Terminal is now being shaped as an NBA-first consumer product with an int
 | Internal analytics lab | Strong prototype | NBA 2025 analytical surfaces validate workflows: leaders, screeners, splits, trends, matchups, details, QA, source maps, and front-office boards. |
 | Consumer shell | Stronger first version | Main navigation is product-oriented: Home, NBA, Fantasy, Community, Articles, Workspace, Messages, Profile, Admin, Internal Lab. |
 | Visual identity | Improving | The shell now uses a more distinctive navy/orange/blue sports identity, floating nav, gradient backdrops, glass pills, and less generic card layout. |
+| Local persistence | First version | The product now has a shared local persistence service and persisted shell theme/workbook state. This is not a backend replacement, but it makes the prototype feel less temporary. |
 | NBA hub | First real version | NBA hub supports player, team, and game page modes powered by generated data. |
 | Fantasy | First interactive version | Fantasy War Room includes target board, simple fantasy scoring proxy, and local watchlist interactions. |
 | Community | First interactive version | Community Arena includes boards, demo threads, likes, replies roadmap, and moderation checklist. |
@@ -18,9 +19,10 @@ Sports Terminal is now being shaped as an NBA-first consumer product with an int
 | Messaging | First real version | Messages Arena frames DMs, group rooms, support/data issue chats, safety, and notification needs. |
 | Profile | First real version | Profile Clubhouse introduces local settings switches and favorite-team chips. |
 | Admin | First real version | Admin Ops Center introduces pipeline metrics, operator lanes, CMS/moderation/billing/data ops roadmap. |
-| Workspace | First real version | Excel-inspired workbook UI has a title bar, ribbon, formula bar, grid, active cell, templates, sheet tabs, and status bar. |
-| Theme system | First version | Light/dark toggle exists in the shell. Light mode uses the navy Sports Terminal identity. |
+| Workspace | Stronger first version | Excel-inspired workbook UI has a title bar, ribbon, formula bar, editable grid cells, active cell, basic formulas, local autosave, templates, sheet tabs, and status bar. |
+| Theme system | First persisted version | Light/dark toggle exists and persists locally. Light mode uses the navy Sports Terminal identity. |
 | Legal footer | First version | About, Contact, Privacy Policy, and Terms & Conditions are footer-linked pages. |
+| Analyzer hygiene | Improved | Legacy internal helper warnings are no longer allowed to interrupt product build loops, while runtime/compiler errors still remain blocking. |
 
 ## Current product architecture
 
@@ -31,7 +33,7 @@ Sports Terminal is now being shaped as an NBA-first consumer product with an int
 | Fantasy | Fantasy workflow center | Fantasy War Room with player target board, watchlist, scoring proxy, and launch checklist. |
 | Community | Social layer | Community Arena with boards, threads, like interactions, replies roadmap, and moderation checklist. |
 | Articles | Editorial/blog layer | Articles Arena with featured story template, editorial queue, and CMS launch needs. |
-| Workspace | Excel-like analysis workspace | Editable local workbook-style UI with ribbon, formula bar, templates, sheet tabs, and status bar. |
+| Workspace | Excel-like analysis workspace | Editable local workbook-style UI with ribbon, formula bar, templates, sheet tabs, local autosave, and basic formulas like SUM/AVG/MIN/MAX. |
 | Messages | Private/group communication | Messaging Arena with inbox prototype, room view, chat bubbles, and safety/persistence roadmap. |
 | Profile | User identity and settings | Profile Clubhouse with session identity, local settings switches, and favorite-team chips. |
 | Admin | Operator console | Admin Ops Center with data health metrics, kanban-style operator lanes, and launch checklist. |
@@ -44,10 +46,10 @@ Sports Terminal is now being shaped as an NBA-first consumer product with an int
 | Backend | Persistent users, profiles, favorites, watchlists, workspaces, posts, comments, messages, notifications, billing, admin actions, and moderation. |
 | Auth | Real sign-up, login, provider/password handling, email verification, account recovery, deletion/export, and role management. |
 | NBA routes | Proper URLs and routing for player pages, team pages, game pages, standings, schedules, and leaders. |
-| Workspace engine | Better cell editing, formulas, copy/paste, keyboard navigation, resizing, saved sheets, templates, import/export, and sharing. |
+| Workspace engine | Better formula coverage, copy/paste, keyboard navigation refinement, resizing, saved multi-sheet workbooks, import/export, and sharing. |
 | Community backend | Create posts, comments, likes, saves, follows, reports, moderation queue, bans, and content safety. |
 | Messaging backend | DMs, group rooms, unread counts, blocking, reporting, and notification delivery. |
-| Fantasy features | Persistent watchlists, league imports, roster management, scoring settings, waiver boards, matchup tools, and alerts. |
+| Fantasy features | Persistent backend watchlists, league imports, roster management, scoring settings, waiver boards, matchup tools, and alerts. |
 | CMS | Admin article editor, drafts, publish/unpublish, featured cards, tags, author pages, and moderation. |
 | Billing | Plans, trials, Stripe or equivalent, invoices, cancellation, entitlements, and usage limits. |
 | Live data | Current-season refreshes, live scores, injury feeds, scheduled jobs, and eventually official/commercial data agreements. |
@@ -56,9 +58,9 @@ Sports Terminal is now being shaped as an NBA-first consumer product with an int
 
 ## Near-term build sequence
 
-1. Add local persistence for theme, favorites, player watchlists, profile settings, community likes, and workspace sheets.
+1. Persist more local prototype state: NBA favorites/watchlists, fantasy watchlists, profile switches, community likes, and last-opened pages.
 2. Make NBA player/team/game pages feel like real routed pages, then add actual URLs/routing.
-3. Improve the workspace engine: direct cell editing, keyboard navigation, formulas, copy/paste, and import/export.
+3. Improve the workspace engine: copy/paste, drag fill, column resizing, more formulas, and import/export.
 4. Create initial backend schema for users, profiles, favorites, posts, comments, workspaces, messages, and admin roles.
 5. Build community primitives with moderation hooks.
 6. Build admin data-ops/CMS/moderation views that can eventually control the platform.
@@ -69,8 +71,8 @@ Sports Terminal is now being shaped as an NBA-first consumer product with an int
 
 | Principle | Direction |
 | --- | --- |
-| Sports-first, not generic SaaS | Use stronger sports-product language, bolder hero areas, data chips, live/status treatments, and less templated card grids. |
+| Sports-first, not generic SaaS | Use stronger sports-product language, bolder hero areas, data chips, live/status treatments, distinct layout rhythm, and fewer identical card grids. |
 | Navy identity | Keep navy as the light-mode brand anchor, supported by orange and electric blue accents. |
 | Consumer first | Normal users should see Home, NBA, Fantasy, Community, Articles, Workspace, Messages, Profile. Internal tooling belongs in Admin/Internal Lab. |
 | Data underneath, not in the user's face | Raw tables and QA screens should feed friendly player/team/game/fantasy pages rather than dominate navigation. |
-| Launchable surface, expandable core | Prototype with local state now, then replace local state with backend persistence once schema/auth are ready. |
+| Launchable surface, expandable core | Prototype with local persistence now, then replace local state with backend persistence once schema/auth are ready. |
