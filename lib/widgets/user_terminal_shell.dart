@@ -4,6 +4,7 @@ import '../controllers/internal_workspace_controller.dart';
 import '../models/app_session.dart';
 import '../screens/excel_like_workspace_screen.dart';
 import '../screens/product_arena_home_screen.dart';
+import '../screens/product_content_ops_screens.dart';
 import '../screens/product_fantasy_community_screens.dart';
 import '../screens/product_nba_entity_hub_screen.dart';
 import '../screens/product_shell_screens.dart';
@@ -44,11 +45,11 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
         const _UserTab('NBA', Icons.sports_basketball_rounded, ProductNbaEntityHubScreen(), 'Product'),
         const _UserTab('Fantasy', Icons.bolt_rounded, ProductFantasyWarRoomScreen(), 'Product'),
         const _UserTab('Community', Icons.forum_rounded, ProductCommunityArenaScreen(), 'Product'),
-        const _UserTab('Articles', Icons.article_rounded, ProductArticlesScreen(), 'Product'),
+        const _UserTab('Articles', Icons.article_rounded, ProductArticlesArenaScreen(), 'Product'),
         const _UserTab('Workspace', Icons.grid_on_rounded, ProductWorkspaceHubScreen(workspace: ExcelLikeWorkspaceScreen()), 'Product'),
-        const _UserTab('Messages', Icons.chat_bubble_rounded, ProductMessagesScreen(), 'Product'),
-        _UserTab('Profile', Icons.person_rounded, ProductProfileScreen(session: widget.session), 'Product'),
-        _UserTab('Admin', Icons.admin_panel_settings_rounded, ProductAdminConsoleScreen(session: widget.session), 'Operator'),
+        const _UserTab('Messages', Icons.chat_bubble_rounded, ProductMessagesArenaScreen(), 'Product'),
+        _UserTab('Profile', Icons.person_rounded, ProductProfileArenaScreen(session: widget.session), 'Product'),
+        _UserTab('Admin', Icons.admin_panel_settings_rounded, ProductAdminOpsCenterScreen(session: widget.session), 'Operator'),
         const _UserTab('Internal Lab', Icons.science_rounded, ProductInternalLabScreen(), 'Operator'),
         const _UserTab('About Us', Icons.info_outline_rounded, ProductLegalScreen(kind: 'about'), 'Legal', showInPrimaryNav: false),
         const _UserTab('Contact', Icons.mail_outline_rounded, ProductLegalScreen(kind: 'contact'), 'Legal', showInPrimaryNav: false),
@@ -70,7 +71,7 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
         useMaterial3: true,
       ),
       child: LayoutBuilder(builder: (context, constraints) {
-        final compact = constraints.maxWidth < 900;
+        final compact = constraints.maxWidth < 920;
         return Scaffold(
           backgroundColor: palette.background,
           appBar: compact
@@ -79,7 +80,7 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
                   foregroundColor: palette.text,
                   elevation: 0,
                   title: Row(children: [
-                    CircleAvatar(radius: 17, backgroundColor: palette.logoBackground, child: const Icon(Icons.sports_basketball_rounded, color: _orange, size: 19)),
+                    _LogoMark(size: 34),
                     const SizedBox(width: 10),
                     const Text('Sports Terminal', style: TextStyle(fontWeight: FontWeight.w900)),
                   ]),
@@ -167,12 +168,11 @@ class _AppBackdrop extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: palette.backdropColors),
-      ),
+      decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: palette.backdropColors)),
       child: Stack(children: [
         Positioned(right: -110, top: 80, child: _BackdropOrb(size: 260, color: palette.orbOne)),
         Positioned(left: -140, bottom: -120, child: _BackdropOrb(size: 320, color: palette.orbTwo)),
+        Positioned(right: 260, bottom: 90, child: _BackdropOrb(size: 90, color: palette.orbThree)),
         child,
       ]),
     );
@@ -185,7 +185,9 @@ class _BackdropOrb extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => IgnorePointer(child: Container(width: size, height: size, decoration: BoxDecoration(shape: BoxShape.circle, color: color)));
+  Widget build(BuildContext context) => IgnorePointer(
+        child: Container(width: size, height: size, decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
+      );
 }
 
 class _DesktopHeader extends StatelessWidget {
@@ -211,9 +213,9 @@ class _DesktopHeader extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       decoration: BoxDecoration(
         color: palette.header.withValues(alpha: darkMode ? 0.78 : 0.92),
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(color: palette.line),
-        boxShadow: [BoxShadow(color: palette.shadow, blurRadius: 26, offset: const Offset(0, 12))],
+        boxShadow: [BoxShadow(color: palette.shadow, blurRadius: 30, offset: const Offset(0, 14))],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(children: [
@@ -221,12 +223,7 @@ class _DesktopHeader extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           onTap: () => onSelected(0),
           child: Row(children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(gradient: const LinearGradient(colors: [_orange, _blue]), borderRadius: BorderRadius.circular(16), boxShadow: const [BoxShadow(color: Color(0x33FF7A1A), blurRadius: 18, offset: Offset(0, 8))]),
-              child: const Icon(Icons.sports_basketball_rounded, color: Colors.white),
-            ),
+            const _LogoMark(size: 42),
             const SizedBox(width: 11),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Sports Terminal', style: TextStyle(color: palette.text, fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: -0.2)),
@@ -257,6 +254,23 @@ class _DesktopHeader extends StatelessWidget {
       ]),
     );
   }
+}
+
+class _LogoMark extends StatelessWidget {
+  const _LogoMark({required this.size});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [_orange, _blue]),
+          borderRadius: BorderRadius.circular(size * 0.38),
+          boxShadow: const [BoxShadow(color: Color(0x33FF7A1A), blurRadius: 18, offset: Offset(0, 8))],
+        ),
+        child: const Icon(Icons.sports_basketball_rounded, color: Colors.white),
+      );
 }
 
 class _CommandSearchPill extends StatelessWidget {
@@ -316,7 +330,7 @@ class _MobileNavigation extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          CircleAvatar(radius: 20, backgroundColor: palette.logoBackground, child: const Icon(Icons.sports_basketball_rounded, color: _orange)),
+          const _LogoMark(size: 40),
           const SizedBox(width: 10),
           Expanded(child: Text('Sports Terminal', style: TextStyle(color: palette.text, fontWeight: FontWeight.w900, fontSize: 18))),
           _ThemeToggleButton(darkMode: darkMode, onPressed: onThemeToggle),
@@ -382,10 +396,7 @@ class _NavChip extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: selected ? Colors.transparent : palette.line.withValues(alpha: 0.75)),
-          ),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), border: Border.all(color: selected ? Colors.transparent : palette.line.withValues(alpha: 0.75))),
           child: Row(children: [
             Icon(tab.icon, size: 17, color: selected ? Colors.white : palette.muted),
             const SizedBox(width: 7),
@@ -492,6 +503,7 @@ class _ShellPalette {
   Color get shadow => darkMode ? const Color(0x44000000) : const Color(0x16071A33);
   Color get orbOne => darkMode ? _orange.withValues(alpha: 0.08) : _orange.withValues(alpha: 0.12);
   Color get orbTwo => darkMode ? _blue.withValues(alpha: 0.09) : _blue.withValues(alpha: 0.10);
+  Color get orbThree => darkMode ? _lime.withValues(alpha: 0.06) : _lime.withValues(alpha: 0.10);
   List<Color> get backdropColors => darkMode ? const [Color(0xFF07111F), Color(0xFF0C1E37), Color(0xFF07111F)] : const [Color(0xFFF8FBFF), Color(0xFFEFF6FF), Color(0xFFFFF7ED)];
 }
 
