@@ -11,6 +11,7 @@ import '../screens/final_rosters_screen.dart';
 import '../screens/games_screen.dart';
 import '../screens/internal_spreadsheet_screen.dart';
 import '../screens/nba_2025_detail_screens.dart';
+import '../screens/nba_2025_front_office_screens.dart';
 import '../screens/nba_2025_operations_screens.dart';
 import '../screens/nba_2025_research_screens.dart';
 import '../screens/nba_2025_screener_screens.dart';
@@ -51,6 +52,12 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
         const _UserTab('2025 Teams', Icons.groups_outlined, Nba2025TeamsScreen(), 'NBA 2025'),
         const _UserTab('2025 Games', Icons.sports_basketball_outlined, Nba2025GamesScreen(), 'NBA 2025'),
         const _UserTab('2025 Leaders', Icons.leaderboard_outlined, Nba2025LeadersScreen(), 'NBA 2025'),
+        const _UserTab('2025 Clutch', Icons.timer_outlined, Nba2025ClutchConsoleScreen(), 'NBA 2025'),
+        const _UserTab('2025 Rotation Depth', Icons.groups_2_outlined, Nba2025RotationDepthScreen(), 'NBA 2025'),
+        const _UserTab('2025 Efficiency', Icons.speed_outlined, Nba2025EfficiencyBoardScreen(), 'NBA 2025'),
+        const _UserTab('2025 Period Scoring', Icons.stacked_bar_chart_outlined, Nba2025PeriodScoringScreen(), 'NBA 2025'),
+        const _UserTab('2025 Plus-Minus', Icons.swap_vert_outlined, Nba2025PlusMinusFinderScreen(), 'NBA 2025'),
+        const _UserTab('2025 Scoring Env', Icons.analytics_outlined, Nba2025ScoringEnvironmentScreen(), 'NBA 2025'),
         const _UserTab('2025 Team Power', Icons.trending_up_outlined, Nba2025TeamPowerScreen(), 'NBA 2025'),
         const _UserTab('2025 Team Splits', Icons.splitscreen_outlined, Nba2025TeamSplitsScreen(), 'NBA 2025'),
         const _UserTab('2025 Opponent Matrix', Icons.grid_4x4_outlined, Nba2025OpponentMatrixScreen(), 'NBA 2025'),
