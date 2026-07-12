@@ -11,6 +11,7 @@ import '../screens/final_rosters_screen.dart';
 import '../screens/games_screen.dart';
 import '../screens/internal_spreadsheet_screen.dart';
 import '../screens/nba_2025_detail_screens.dart';
+import '../screens/nba_2025_research_screens.dart';
 import '../screens/nba_2025_workbench_screens.dart';
 import '../screens/nba_terminal_seed_screen.dart';
 import '../screens/players_screen.dart';
@@ -46,15 +47,20 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
   List<_UserTab> get tabs => [
         const _UserTab('Dashboard', Icons.dashboard_outlined, DashboardScreen(), 'Command'),
         const _UserTab('Search', Icons.search, SearchScreen(), 'Command'),
+        const _UserTab('2025 Command', Icons.monitor_heart_outlined, Nba2025CommandCenterScreen(), 'NBA 2025'),
+        const _UserTab('2025 Explorer', Icons.manage_search_outlined, Nba2025ExplorerScreen(), 'NBA 2025'),
         const _UserTab('2025 Data', Icons.storage_outlined, NbaTerminalSeedScreen(), 'NBA 2025'),
         const _UserTab('2025 Players', Icons.person_search_outlined, Nba2025PlayersScreen(), 'NBA 2025'),
         const _UserTab('2025 Teams', Icons.groups_outlined, Nba2025TeamsScreen(), 'NBA 2025'),
         const _UserTab('2025 Games', Icons.sports_basketball_outlined, Nba2025GamesScreen(), 'NBA 2025'),
         const _UserTab('2025 Leaders', Icons.leaderboard_outlined, Nba2025LeadersScreen(), 'NBA 2025'),
+        const _UserTab('2025 Compare Lab', Icons.compare_arrows_outlined, Nba2025CompareLabScreen(), 'NBA 2025'),
+        const _UserTab('2025 Trend Lab', Icons.show_chart_outlined, Nba2025TrendLabScreen(), 'NBA 2025'),
         const _UserTab('2025 Matchups', Icons.hub_outlined, Nba2025MatchupsScreen(), 'NBA 2025'),
         const _UserTab('2025 Game Detail', Icons.scoreboard_outlined, Nba2025GameDetailScreen(), 'NBA 2025'),
         const _UserTab('2025 Player Detail', Icons.badge_outlined, Nba2025PlayerDetailScreen(), 'NBA 2025'),
         const _UserTab('2025 Team Detail', Icons.account_tree_outlined, Nba2025TeamDetailScreen(), 'NBA 2025'),
+        const _UserTab('2025 QA Console', Icons.verified_outlined, Nba2025QAConsoleScreen(), 'NBA 2025'),
         const _UserTab('Players', Icons.person_search_outlined, PlayersScreen(), 'NBA'),
         const _UserTab('Teams', Icons.groups_outlined, TeamsScreen(), 'NBA'),
         const _UserTab('Seasons', Icons.calendar_month_outlined, SeasonsScreen(), 'NBA'),
