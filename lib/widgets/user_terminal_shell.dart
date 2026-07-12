@@ -8,11 +8,11 @@ import '../screens/product_content_ops_screens.dart';
 import '../screens/product_fantasy_community_screens.dart';
 import '../screens/product_nba_entity_hub_screen.dart';
 import '../screens/product_shell_screens.dart';
+import '../services/product_local_store.dart';
 
 const _lightBackground = Color(0xFFF5F7FB);
 const _darkBackground = Color(0xFF07111F);
 const _navy = Color(0xFF102A56);
-const _navyDeep = Color(0xFF06162B);
 const _ink = Color(0xFF102033);
 const _muted = Color(0xFF667085);
 const _line = Color(0xFFE3E8F0);
@@ -37,6 +37,7 @@ class UserTerminalShell extends StatefulWidget {
 }
 
 class _UserTerminalShellState extends State<UserTerminalShell> {
+  final ProductLocalStore localStore = const ProductLocalStore();
   int selectedIndex = 0;
   bool darkMode = false;
 
@@ -56,6 +57,22 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
         const _UserTab('Privacy Policy', Icons.privacy_tip_outlined, ProductLegalScreen(kind: 'privacy'), 'Legal', showInPrimaryNav: false),
         const _UserTab('Terms & Conditions', Icons.description_outlined, ProductLegalScreen(kind: 'terms'), 'Legal', showInPrimaryNav: false),
       ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTheme();
+  }
+
+  Future<void> _loadTheme() async {
+    final savedDarkMode = await localStore.loadBool(ProductLocalStore.darkModeKey);
+    if (mounted) setState(() => darkMode = savedDarkMode);
+  }
+
+  Future<void> _setDarkMode(bool value) async {
+    setState(() => darkMode = value);
+    await localStore.saveBool(ProductLocalStore.darkModeKey, value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,12 +97,12 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
                   foregroundColor: palette.text,
                   elevation: 0,
                   title: Row(children: [
-                    _LogoMark(size: 34),
+                    const _LogoMark(size: 34),
                     const SizedBox(width: 10),
                     const Text('Sports Terminal', style: TextStyle(fontWeight: FontWeight.w900)),
                   ]),
                   actions: [
-                    _ThemeToggleButton(darkMode: darkMode, onPressed: () => setState(() => darkMode = !darkMode)),
+                    _ThemeToggleButton(darkMode: darkMode, onPressed: () => _setDarkMode(!darkMode)),
                     IconButton(tooltip: 'Sign out', onPressed: widget.onSignOut, icon: const Icon(Icons.logout_rounded)),
                   ],
                 )
@@ -99,7 +116,7 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
                       selectedIndex: selectedIndex,
                       palette: palette,
                       darkMode: darkMode,
-                      onThemeToggle: () => setState(() => darkMode = !darkMode),
+                      onThemeToggle: () => _setDarkMode(!darkMode),
                       onSelected: (index) {
                         setState(() => selectedIndex = index);
                         Navigator.of(context).pop();
@@ -119,7 +136,7 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
                   session: widget.session,
                   palette: palette,
                   darkMode: darkMode,
-                  onThemeToggle: () => setState(() => darkMode = !darkMode),
+                  onThemeToggle: () => _setDarkMode(!darkMode),
                   onSelected: (index) => setState(() => selectedIndex = index),
                   onSignOut: widget.onSignOut,
                 ),
