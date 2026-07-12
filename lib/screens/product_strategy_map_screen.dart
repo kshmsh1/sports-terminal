@@ -90,6 +90,15 @@ const _competitors = [
   _Competitor('ESPN / mainstream', 'Friendly entry point', 'Keep the surface readable while offering terminal depth underneath.'),
 ];
 
+const _pillars = [
+  _Pillar('Universal command layer', 'Ask, search, jump, save, chart, compare, export, and cite from one place.'),
+  _Pillar('Player command centers', 'Overview, game log, role, impact, shot profile, fantasy, contract, discussion, articles.'),
+  _Pillar('Team front-office pages', 'Roster, rotation, schedule, four factors, lineup context, cap table, trade needs.'),
+  _Pillar('Game postgame workflow', 'Score, box, advanced box, momentum, PBP, lineup stints, recap draft, comments.'),
+  _Pillar('Excel for sports objects', 'Tables, formulas, imports, charts, saved scenarios, multi-sheet workbooks.'),
+  _Pillar('Front-office simulator', 'CBA legality, salary matching, basketball impact, rotation fit, fan response.'),
+];
+
 class _PillarGrid extends StatelessWidget {
   const _PillarGrid();
 
@@ -100,14 +109,7 @@ class _PillarGrid extends StatelessWidget {
           const SizedBox(height: 14),
           LayoutBuilder(builder: (context, constraints) {
             final width = constraints.maxWidth < 800 ? constraints.maxWidth : (constraints.maxWidth - 18) / 2;
-            return Wrap(spacing: 18, runSpacing: 12, children: const [
-              SizedBox(width: 520, child: _Pillar('Universal command layer', 'Ask, search, jump, save, chart, compare, export, and cite from one place.')),
-              SizedBox(width: 520, child: _Pillar('Player command centers', 'Overview, game log, role, impact, shot profile, fantasy, contract, discussion, articles.')),
-              SizedBox(width: 520, child: _Pillar('Team front-office pages', 'Roster, rotation, schedule, four factors, lineup context, cap table, trade needs.')),
-              SizedBox(width: 520, child: _Pillar('Game postgame workflow', 'Score, box, advanced box, momentum, PBP, lineup stints, recap draft, comments.')),
-              SizedBox(width: 520, child: _Pillar('Excel for sports objects', 'Tables, formulas, imports, charts, saved scenarios, multi-sheet workbooks.')),
-              SizedBox(width: 520, child: _Pillar('Front-office simulator', 'CBA legality, salary matching, basketball impact, rotation fit, fan response.')),
-            ].map((child) => SizedBox(width: width, child: child.child!)).toList());
+            return Wrap(spacing: 18, runSpacing: 12, children: [for (final pillar in _pillars) SizedBox(width: width, child: pillar)]);
           }),
         ]),
       );
