@@ -22,7 +22,8 @@ class _Nba2025MatchupsScreenState extends State<Nba2025MatchupsScreen> {
         final matchups = _buildMatchups(data.games);
         final visible = _filterMatchups(matchups, query);
         final totalGames = visible.fold<int>(0, (sum, row) => sum + row.games);
-        final closest = visible.isEmpty ? null : [...visible]..sort((a, b) => a.averageMargin.compareTo(b.averageMargin));
+        final closest = visible.isEmpty ? null : ([...visible]..sort((a, b) => a.averageMargin.compareTo(b.averageMargin))).first;
+
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const SectionHeader(
             title: '2025 Matchups',
@@ -33,7 +34,7 @@ class _Nba2025MatchupsScreenState extends State<Nba2025MatchupsScreen> {
             _MetricSpec('Matchups', '${matchups.length}', 'Unique team pairings'),
             _MetricSpec('Visible Matchups', '${visible.length}', query.trim().isEmpty ? 'Unfiltered' : 'Query filtered'),
             _MetricSpec('Visible Games', '$totalGames', 'Games in visible pairings'),
-            _MetricSpec('Closest Pairing', closest == null ? '—' : '${closest.first.teamA}-${closest.first.teamB}', closest == null ? 'No rows' : '${closest.first.averageMargin.toStringAsFixed(1)} avg margin'),
+            _MetricSpec('Closest Pairing', closest == null ? '—' : '${closest.teamA}-${closest.teamB}', closest == null ? 'No rows' : '${closest.averageMargin.toStringAsFixed(1)} avg margin'),
           ]),
           const SizedBox(height: 22),
           _SearchBox(onChanged: (value) => setState(() => query = value), hint: 'Search team code or matchup, e.g. OKC, BOS, NYK-LAL...'),
@@ -44,18 +45,7 @@ class _Nba2025MatchupsScreenState extends State<Nba2025MatchupsScreen> {
             columns: const ['Team A', 'Team B', 'Games', 'A Wins', 'B Wins', 'A PPG', 'B PPG', 'Avg Margin', 'Last Game', 'Last Winner'],
             rows: [
               for (final row in visible.take(120))
-                [
-                  row.teamA,
-                  row.teamB,
-                  '${row.games}',
-                  '${row.winsA}',
-                  '${row.winsB}',
-                  row.ppgA.toStringAsFixed(1),
-                  row.ppgB.toStringAsFixed(1),
-                  row.averageMargin.toStringAsFixed(1),
-                  row.lastGameId,
-                  row.lastWinner,
-                ],
+                [row.teamA, row.teamB, '${row.games}', '${row.winsA}', '${row.winsB}', row.ppgA.toStringAsFixed(1), row.ppgB.toStringAsFixed(1), row.averageMargin.toStringAsFixed(1), row.lastGameId, row.lastWinner],
             ],
           ),
         ]);
@@ -86,6 +76,7 @@ class _Nba2025GameDetailScreenState extends State<Nba2025GameDetailScreen> {
         final teamRows = data.teamGameLogs.where((row) => _text(row['game_id']) == gameId).toList();
         final playerRows = data.playerGameLogsTop.where((row) => _text(row['game_id']) == gameId).toList();
         final margin = game == null ? 0 : (_num(game['home_score']) - _num(game['away_score'])).abs();
+
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const SectionHeader(
             title: '2025 Game Detail',
@@ -160,11 +151,10 @@ class _Nba2025PlayerDetailScreenState extends State<Nba2025PlayerDetailScreen> {
         final highs = <Map<String, dynamic>>[];
         for (final entry in data.playerGameHighs.entries) {
           for (final row in _asMapList(entry.value)) {
-            if (_text(row['player_id']) == playerId || _text(row['player_label']) == playerName) {
-              highs.add({'board': entry.key, ...row});
-            }
+            if (_text(row['player_id']) == playerId || _text(row['player_label']) == playerName) highs.add({'board': entry.key, ...row});
           }
         }
+
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const SectionHeader(
             title: '2025 Player Detail',
@@ -238,6 +228,7 @@ class _Nba2025TeamDetailScreenState extends State<Nba2025TeamDetailScreen> {
         final players = data.playerSeasonTotals.where((row) => _text(row['team_ids']).split(',').map((item) => item.trim()).contains(teamId)).toList();
         final wins = _num(record?['wins']);
         final losses = _num(record?['losses']);
+
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const SectionHeader(
             title: '2025 Team Detail',
@@ -299,9 +290,7 @@ class _SeedFuture extends StatelessWidget {
     return FutureBuilder<NbaTerminalSeedSnapshot>(
       future: future,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const TerminalCard(child: Text('Loading generated NBA terminal assets...', style: TextStyle(color: terminalTextSoft)));
-        }
+        if (snapshot.connectionState != ConnectionState.done) return const TerminalCard(child: Text('Loading generated NBA terminal assets...', style: TextStyle(color: terminalTextSoft)));
         if (snapshot.hasError) {
           return TerminalCard(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -321,26 +310,17 @@ class _SeedFuture extends StatelessWidget {
 
 class _SearchBox extends StatelessWidget {
   const _SearchBox({required this.onChanged, required this.hint});
-
   final ValueChanged<String> onChanged;
   final String hint;
 
   @override
   Widget build(BuildContext context) {
-    return TerminalCard(
-      child: TextField(
-        onChanged: onChanged,
-        style: const TextStyle(color: Colors.white),
-        cursorColor: terminalAccent,
-        decoration: _inputDecoration(hint),
-      ),
-    );
+    return TerminalCard(child: TextField(onChanged: onChanged, style: const TextStyle(color: Colors.white), cursorColor: terminalAccent, decoration: _inputDecoration(hint)));
   }
 }
 
 class _MetricGrid extends StatelessWidget {
   const _MetricGrid({required this.metrics});
-
   final List<_MetricSpec> metrics;
 
   @override
@@ -369,7 +349,6 @@ class _MetricSpec {
 
 class _MetricCard extends StatelessWidget {
   const _MetricCard({required this.label, required this.value, required this.detail});
-
   final String label;
   final String value;
   final String detail;
@@ -388,7 +367,6 @@ class _MetricCard extends StatelessWidget {
 
 class _DataPanel extends StatelessWidget {
   const _DataPanel({required this.title, required this.subtitle, required this.columns, required this.rows});
-
   final String title;
   final String subtitle;
   final List<String> columns;
@@ -437,17 +415,7 @@ class _DataPanel extends StatelessWidget {
 }
 
 class _MatchupRow {
-  const _MatchupRow({
-    required this.teamA,
-    required this.teamB,
-    required this.games,
-    required this.winsA,
-    required this.winsB,
-    required this.pointsA,
-    required this.pointsB,
-    required this.lastGameId,
-    required this.lastWinner,
-  });
+  const _MatchupRow({required this.teamA, required this.teamB, required this.games, required this.winsA, required this.winsB, required this.pointsA, required this.pointsB, required this.lastGameId, required this.lastWinner});
 
   final String teamA;
   final String teamB;
@@ -488,15 +456,12 @@ List<_MatchupRow> _buildMatchups(List<Map<String, dynamic>> games) {
     final ordered = [away, home]..sort();
     final teamA = ordered[0];
     final teamB = ordered[1];
-    final key = '$teamA|$teamB';
-    final row = builders.putIfAbsent(key, () => _MutableMatchup(teamA, teamB));
+    final row = builders.putIfAbsent('$teamA|$teamB', () => _MutableMatchup(teamA, teamB));
     final awayScore = _num(game['away_score']);
     final homeScore = _num(game['home_score']);
-    final scoreA = away == teamA ? awayScore : homeScore;
-    final scoreB = away == teamB ? awayScore : homeScore;
     row.games += 1;
-    row.pointsA += scoreA;
-    row.pointsB += scoreB;
+    row.pointsA += away == teamA ? awayScore : homeScore;
+    row.pointsB += away == teamB ? awayScore : homeScore;
     if (_text(game['winner_team_id']) == teamA) row.winsA += 1;
     if (_text(game['winner_team_id']) == teamB) row.winsB += 1;
     row.lastGameId = _text(game['game_id']);
