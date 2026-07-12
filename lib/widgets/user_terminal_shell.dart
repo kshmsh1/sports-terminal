@@ -2,33 +2,23 @@ import 'package:flutter/material.dart';
 
 import '../controllers/internal_workspace_controller.dart';
 import '../models/app_session.dart';
-import '../screens/alerts_screen.dart';
-import '../screens/award_races_screen.dart';
-import '../screens/compare_screen.dart';
-import '../screens/context_assets_overview_screen.dart';
-import '../screens/dashboard_screen.dart';
-import '../screens/final_rosters_screen.dart';
-import '../screens/games_screen.dart';
 import '../screens/internal_spreadsheet_screen.dart';
-import '../screens/nba_2025_detail_screens.dart';
-import '../screens/nba_2025_front_office_screens.dart';
-import '../screens/nba_2025_operations_screens.dart';
-import '../screens/nba_2025_research_screens.dart';
-import '../screens/nba_2025_screener_screens.dart';
-import '../screens/nba_2025_workbench_screens.dart';
-import '../screens/nba_terminal_seed_screen.dart';
-import '../screens/players_screen.dart';
-import '../screens/reports_screen.dart';
-import '../screens/safe_sql_screen.dart';
-import '../screens/saved_views_screen.dart';
-import '../screens/search_screen.dart';
-import '../screens/seasons_screen.dart';
-import '../screens/standings_playoffs_screen.dart';
-import '../screens/stats_screen.dart';
-import '../screens/teams_screen.dart';
+import '../screens/product_shell_screens.dart';
+
+const _pageBackground = Color(0xFFF6F8FC);
+const _ink = Color(0xFF102033);
+const _muted = Color(0xFF667085);
+const _line = Color(0xFFE3E8F0);
+const _blue = Color(0xFF2563EB);
+const _orange = Color(0xFFFF7A1A);
 
 class UserTerminalShell extends StatefulWidget {
-  const UserTerminalShell({super.key, required this.session, required this.workspaceController, required this.onSignOut});
+  const UserTerminalShell({
+    super.key,
+    required this.session,
+    required this.workspaceController,
+    required this.onSignOut,
+  });
 
   final AppSession session;
   final InternalWorkspaceController workspaceController;
@@ -40,59 +30,32 @@ class UserTerminalShell extends StatefulWidget {
 
 class _UserTerminalShellState extends State<UserTerminalShell> {
   int selectedIndex = 0;
-  String navFilter = '';
 
   List<_UserTab> get tabs => [
-        const _UserTab('Dashboard', Icons.dashboard_outlined, DashboardScreen(), 'Command'),
-        const _UserTab('Search', Icons.search, SearchScreen(), 'Command'),
-        const _UserTab('2025 Command', Icons.monitor_heart_outlined, Nba2025CommandCenterScreen(), 'NBA 2025'),
-        const _UserTab('2025 Explorer', Icons.manage_search_outlined, Nba2025ExplorerScreen(), 'NBA 2025'),
-        const _UserTab('2025 Data', Icons.storage_outlined, NbaTerminalSeedScreen(), 'NBA 2025'),
-        const _UserTab('2025 Players', Icons.person_search_outlined, Nba2025PlayersScreen(), 'NBA 2025'),
-        const _UserTab('2025 Teams', Icons.groups_outlined, Nba2025TeamsScreen(), 'NBA 2025'),
-        const _UserTab('2025 Games', Icons.sports_basketball_outlined, Nba2025GamesScreen(), 'NBA 2025'),
-        const _UserTab('2025 Leaders', Icons.leaderboard_outlined, Nba2025LeadersScreen(), 'NBA 2025'),
-        const _UserTab('2025 Clutch', Icons.timer_outlined, Nba2025ClutchConsoleScreen(), 'NBA 2025'),
-        const _UserTab('2025 Rotation Depth', Icons.groups_2_outlined, Nba2025RotationDepthScreen(), 'NBA 2025'),
-        const _UserTab('2025 Efficiency', Icons.speed_outlined, Nba2025EfficiencyBoardScreen(), 'NBA 2025'),
-        const _UserTab('2025 Period Scoring', Icons.stacked_bar_chart_outlined, Nba2025PeriodScoringScreen(), 'NBA 2025'),
-        const _UserTab('2025 Plus-Minus', Icons.swap_vert_outlined, Nba2025PlusMinusFinderScreen(), 'NBA 2025'),
-        const _UserTab('2025 Scoring Env', Icons.analytics_outlined, Nba2025ScoringEnvironmentScreen(), 'NBA 2025'),
-        const _UserTab('2025 Team Power', Icons.trending_up_outlined, Nba2025TeamPowerScreen(), 'NBA 2025'),
-        const _UserTab('2025 Team Splits', Icons.splitscreen_outlined, Nba2025TeamSplitsScreen(), 'NBA 2025'),
-        const _UserTab('2025 Opponent Matrix', Icons.grid_4x4_outlined, Nba2025OpponentMatrixScreen(), 'NBA 2025'),
-        const _UserTab('2025 Player Screener', Icons.filter_alt_outlined, Nba2025PlayerScreenerScreen(), 'NBA 2025'),
-        const _UserTab('2025 Player Roles', Icons.badge_outlined, Nba2025PlayerRoleBoardScreen(), 'NBA 2025'),
-        const _UserTab('2025 Box Finder', Icons.saved_search_outlined, Nba2025BoxScoreFinderScreen(), 'NBA 2025'),
-        const _UserTab('2025 Game Screener', Icons.rule_outlined, Nba2025GameScreenerScreen(), 'NBA 2025'),
-        const _UserTab('2025 Momentum', Icons.bolt_outlined, Nba2025MomentumBoardScreen(), 'NBA 2025'),
-        const _UserTab('2025 Timeline', Icons.timeline_outlined, Nba2025SeasonTimelineScreen(), 'NBA 2025'),
-        const _UserTab('2025 Daily Tape', Icons.calendar_view_day_outlined, Nba2025DailyTapeScreen(), 'NBA 2025'),
-        const _UserTab('2025 Leader Matrix', Icons.view_module_outlined, Nba2025LeaderboardMatrixScreen(), 'NBA 2025'),
-        const _UserTab('2025 Source Map', Icons.account_tree_outlined, Nba2025SourceMapScreen(), 'NBA 2025'),
-        const _UserTab('2025 Compare Lab', Icons.compare_arrows_outlined, Nba2025CompareLabScreen(), 'NBA 2025'),
-        const _UserTab('2025 Trend Lab', Icons.show_chart_outlined, Nba2025TrendLabScreen(), 'NBA 2025'),
-        const _UserTab('2025 Matchups', Icons.hub_outlined, Nba2025MatchupsScreen(), 'NBA 2025'),
-        const _UserTab('2025 Game Detail', Icons.scoreboard_outlined, Nba2025GameDetailScreen(), 'NBA 2025'),
-        const _UserTab('2025 Player Detail', Icons.badge_outlined, Nba2025PlayerDetailScreen(), 'NBA 2025'),
-        const _UserTab('2025 Team Detail', Icons.account_tree_outlined, Nba2025TeamDetailScreen(), 'NBA 2025'),
-        const _UserTab('2025 QA Console', Icons.verified_outlined, Nba2025QAConsoleScreen(), 'NBA 2025'),
-        const _UserTab('Players', Icons.person_search_outlined, PlayersScreen(), 'NBA'),
-        const _UserTab('Teams', Icons.groups_outlined, TeamsScreen(), 'NBA'),
-        const _UserTab('Seasons', Icons.calendar_month_outlined, SeasonsScreen(), 'NBA'),
-        const _UserTab('Stats', Icons.query_stats_outlined, StatsScreen(), 'NBA'),
-        const _UserTab('Standings', Icons.leaderboard_outlined, StandingsScreen(), 'NBA'),
-        const _UserTab('Playoffs', Icons.military_tech_outlined, PlayoffsScreen(), 'NBA'),
-        const _UserTab('Games', Icons.sports_basketball_outlined, GamesScreen(), 'NBA'),
-        const _UserTab('Rosters', Icons.assignment_ind_outlined, FinalRostersScreen(), 'NBA'),
-        const _UserTab('Context', Icons.hub_outlined, ContextAssetsOverviewScreen(), 'NBA'),
-        const _UserTab('Awards', Icons.emoji_events_outlined, AwardRacesScreen(), 'NBA'),
-        const _UserTab('Compare', Icons.compare_arrows_outlined, CompareScreen(), 'Research'),
-        const _UserTab('Reports', Icons.article_outlined, ReportsScreen(), 'Research'),
-        const _UserTab('Saved Views', Icons.bookmark_border_outlined, SavedViewsScreen(), 'Research'),
-        const _UserTab('Alerts', Icons.notifications_none_outlined, AlertsScreen(), 'Research'),
-        _UserTab('Spreadsheet', Icons.grid_on_outlined, InternalSpreadsheetScreen(session: widget.session, workspaceController: widget.workspaceController), 'Workspace'),
-        const _UserTab('Code Workspace', Icons.code_outlined, SafeSqlScreen(), 'Workspace'),
+        _UserTab('Home', Icons.home_rounded, ProductHomeScreen(session: widget.session), 'Product'),
+        const _UserTab('NBA', Icons.sports_basketball_rounded, ProductNbaHubScreen(), 'Product'),
+        const _UserTab('Fantasy', Icons.bolt_rounded, ProductFantasyScreen(), 'Product'),
+        const _UserTab('Community', Icons.forum_rounded, ProductCommunityScreen(), 'Product'),
+        const _UserTab('Articles', Icons.article_rounded, ProductArticlesScreen(), 'Product'),
+        _UserTab(
+          'Workspace',
+          Icons.grid_on_rounded,
+          ProductWorkspaceHubScreen(
+            workspace: InternalSpreadsheetScreen(
+              session: widget.session,
+              workspaceController: widget.workspaceController,
+            ),
+          ),
+          'Product',
+        ),
+        const _UserTab('Messages', Icons.chat_bubble_rounded, ProductMessagesScreen(), 'Product'),
+        _UserTab('Profile', Icons.person_rounded, ProductProfileScreen(session: widget.session), 'Product'),
+        _UserTab('Admin', Icons.admin_panel_settings_rounded, ProductAdminConsoleScreen(session: widget.session), 'Operator'),
+        const _UserTab('Internal Lab', Icons.science_rounded, ProductInternalLabScreen(), 'Operator'),
+        const _UserTab('About Us', Icons.info_outline_rounded, ProductLegalScreen(kind: 'about'), 'Legal', showInPrimaryNav: false),
+        const _UserTab('Contact', Icons.mail_outline_rounded, ProductLegalScreen(kind: 'contact'), 'Legal', showInPrimaryNav: false),
+        const _UserTab('Privacy Policy', Icons.privacy_tip_outlined, ProductLegalScreen(kind: 'privacy'), 'Legal', showInPrimaryNav: false),
+        const _UserTab('Terms & Conditions', Icons.description_outlined, ProductLegalScreen(kind: 'terms'), 'Legal', showInPrimaryNav: false),
       ];
 
   @override
@@ -100,175 +63,198 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
     final currentTabs = tabs;
     if (selectedIndex >= currentTabs.length) selectedIndex = 0;
     final selected = currentTabs[selectedIndex];
+
     return LayoutBuilder(builder: (context, constraints) {
-      final compact = constraints.maxWidth < 980;
-      if (compact) {
-        return Scaffold(
-          backgroundColor: const Color(0xFF0B0F14),
-          appBar: AppBar(
-            backgroundColor: const Color(0xFF0D1218),
-            foregroundColor: Colors.white,
-            title: Text(selected.label, maxLines: 1, overflow: TextOverflow.ellipsis),
-            actions: [IconButton(tooltip: 'Sign out', onPressed: widget.onSignOut, icon: const Icon(Icons.logout))],
-          ),
-          drawer: Drawer(
-            backgroundColor: const Color(0xFF111820),
-            child: SafeArea(
-              child: _NavigationPanel(
-                session: widget.session,
-                tabs: currentTabs,
-                selectedIndex: selectedIndex,
-                navFilter: navFilter,
-                onFilterChanged: (value) => setState(() => navFilter = value),
-                onSelected: (index) {
-                  setState(() => selectedIndex = index);
-                  Navigator.of(context).pop();
-                },
-                onSignOut: widget.onSignOut,
-              ),
-            ),
-          ),
-          body: SingleChildScrollView(padding: const EdgeInsets.all(18), child: selected.screen),
-        );
-      }
+      final compact = constraints.maxWidth < 900;
       return Scaffold(
-        backgroundColor: const Color(0xFF0B0F14),
-        body: Row(children: [
-          SizedBox(
-            width: 286,
-            child: _NavigationPanel(
-              session: widget.session,
+        backgroundColor: _pageBackground,
+        appBar: compact
+            ? AppBar(
+                backgroundColor: Colors.white,
+                foregroundColor: _ink,
+                elevation: 0,
+                title: Row(children: const [
+                  Icon(Icons.sports_basketball_rounded, color: _orange),
+                  SizedBox(width: 10),
+                  Text('Sports Terminal', style: TextStyle(fontWeight: FontWeight.w900)),
+                ]),
+                actions: [IconButton(tooltip: 'Sign out', onPressed: widget.onSignOut, icon: const Icon(Icons.logout_rounded))],
+              )
+            : null,
+        drawer: compact
+            ? Drawer(
+                backgroundColor: Colors.white,
+                child: SafeArea(
+                  child: _MobileNavigation(
+                    tabs: currentTabs,
+                    selectedIndex: selectedIndex,
+                    onSelected: (index) {
+                      setState(() => selectedIndex = index);
+                      Navigator.of(context).pop();
+                    },
+                    onSignOut: widget.onSignOut,
+                  ),
+                ),
+              )
+            : null,
+        body: Column(children: [
+          if (!compact)
+            _DesktopHeader(
               tabs: currentTabs,
               selectedIndex: selectedIndex,
-              navFilter: navFilter,
-              onFilterChanged: (value) => setState(() => navFilter = value),
+              session: widget.session,
               onSelected: (index) => setState(() => selectedIndex = index),
               onSignOut: widget.onSignOut,
             ),
-          ),
           Expanded(
-            child: SafeArea(
-              child: Column(children: [
-                _UserTopBar(session: widget.session, tab: selected),
-                Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: selected.screen)),
-              ]),
+            child: SingleChildScrollView(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1260),
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(compact ? 16 : 24, 24, compact ? 16 : 24, 0),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      _PageLabel(tab: selected),
+                      const SizedBox(height: 18),
+                      selected.screen,
+                      _Footer(
+                        onOpenAbout: () => _selectByLabel('About Us'),
+                        onOpenContact: () => _selectByLabel('Contact'),
+                        onOpenPrivacy: () => _selectByLabel('Privacy Policy'),
+                        onOpenTerms: () => _selectByLabel('Terms & Conditions'),
+                      ),
+                    ]),
+                  ),
+                ),
+              ),
             ),
           ),
         ]),
       );
     });
   }
+
+  void _selectByLabel(String label) {
+    final index = tabs.indexWhere((tab) => tab.label == label);
+    if (index >= 0) setState(() => selectedIndex = index);
+  }
 }
 
-class _NavigationPanel extends StatelessWidget {
-  const _NavigationPanel({required this.session, required this.tabs, required this.selectedIndex, required this.navFilter, required this.onFilterChanged, required this.onSelected, required this.onSignOut});
+class _DesktopHeader extends StatelessWidget {
+  const _DesktopHeader({required this.tabs, required this.selectedIndex, required this.session, required this.onSelected, required this.onSignOut});
 
-  final AppSession session;
   final List<_UserTab> tabs;
   final int selectedIndex;
-  final String navFilter;
-  final ValueChanged<String> onFilterChanged;
+  final AppSession session;
   final ValueChanged<int> onSelected;
   final VoidCallback onSignOut;
 
   @override
   Widget build(BuildContext context) {
-    final normalizedFilter = navFilter.trim().toLowerCase();
-    final filtered = <({int index, _UserTab tab})>[
+    final primaryItems = <({int index, _UserTab tab})>[
       for (var i = 0; i < tabs.length; i++)
-        if (normalizedFilter.isEmpty || '${tabs[i].label} ${tabs[i].group}'.toLowerCase().contains(normalizedFilter)) (index: i, tab: tabs[i]),
+        if (tabs[i].showInPrimaryNav) (index: i, tab: tabs[i]),
     ];
-    return Material(
-      color: const Color(0xFF111820),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Row(children: [
-              Icon(Icons.sports_basketball, color: Color(0xFF8AB4F8)),
-              SizedBox(width: 10),
-              Expanded(child: Text('Sports Terminal', overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900))),
-            ]),
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: const Color(0xFF0D1218), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF263241))),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(session.organizationName, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 3),
-                Text(session.role.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF8AB4F8), fontSize: 12)),
-              ]),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              onChanged: onFilterChanged,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-              decoration: InputDecoration(
-                hintText: 'Filter navigation...',
-                hintStyle: const TextStyle(color: Color(0xFF657386)),
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF657386), size: 18),
-                filled: true,
-                fillColor: const Color(0xFF0D1218),
-                isDense: true,
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF263241))),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF8AB4F8))),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView.separated(
-                itemCount: filtered.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 6),
-                itemBuilder: (context, position) {
-                  final item = filtered[position];
-                  return _NavigationEntry(icon: item.tab.icon, title: item.tab.label, subtitle: item.tab.group, selected: item.index == selectedIndex, onTap: () => onSelected(item.index));
-                },
-              ),
-            ),
-            const Divider(color: Color(0xFF263241)),
-            _NavigationEntry(icon: Icons.logout, title: 'Sign out', onTap: onSignOut),
+
+    return Container(
+      decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: _line))),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      child: Row(children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => onSelected(0),
+          child: Row(children: const [
+            CircleAvatar(radius: 20, backgroundColor: Color(0xFFFFF0E6), child: Icon(Icons.sports_basketball_rounded, color: _orange)),
+            SizedBox(width: 10),
+            Text('Sports Terminal', style: TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 18)),
           ]),
         ),
-      ),
+        const SizedBox(width: 22),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              for (final item in primaryItems) ...[
+                _NavChip(tab: item.tab, selected: item.index == selectedIndex, onTap: () => onSelected(item.index)),
+                const SizedBox(width: 8),
+              ],
+            ]),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Container(
+          constraints: const BoxConstraints(maxWidth: 250),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(16), border: Border.all(color: _line)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(session.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 12)),
+            Text(session.role.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _muted, fontSize: 11)),
+          ]),
+        ),
+        const SizedBox(width: 8),
+        IconButton(tooltip: 'Sign out', onPressed: onSignOut, icon: const Icon(Icons.logout_rounded, color: _muted)),
+      ]),
     );
   }
 }
 
-class _NavigationEntry extends StatelessWidget {
-  const _NavigationEntry({required this.icon, required this.title, required this.onTap, this.subtitle, this.selected = false});
+class _MobileNavigation extends StatelessWidget {
+  const _MobileNavigation({required this.tabs, required this.selectedIndex, required this.onSelected, required this.onSignOut});
 
-  final IconData icon;
-  final String title;
-  final String? subtitle;
+  final List<_UserTab> tabs;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+  final VoidCallback onSignOut;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Row(children: [
+          CircleAvatar(radius: 20, backgroundColor: Color(0xFFFFF0E6), child: Icon(Icons.sports_basketball_rounded, color: _orange)),
+          SizedBox(width: 10),
+          Expanded(child: Text('Sports Terminal', style: TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 18))),
+        ]),
+        const SizedBox(height: 18),
+        Expanded(
+          child: ListView.separated(
+            itemCount: tabs.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 6),
+            itemBuilder: (context, index) {
+              final tab = tabs[index];
+              return _DrawerEntry(tab: tab, selected: index == selectedIndex, onTap: () => onSelected(index));
+            },
+          ),
+        ),
+        const Divider(color: _line),
+        _DrawerEntry(tab: const _UserTab('Sign out', Icons.logout_rounded, SizedBox.shrink(), 'Account'), selected: false, onTap: onSignOut),
+      ]),
+    );
+  }
+}
+
+class _NavChip extends StatelessWidget {
+  const _NavChip({required this.tab, required this.selected, required this.onTap});
+
+  final _UserTab tab;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final foreground = selected ? Colors.white : const Color(0xFFB6C0CC);
-    final iconColor = selected ? const Color(0xFF8AB4F8) : const Color(0xFF8794A5);
     return Material(
-      color: selected ? const Color(0xFF1B2A3F) : Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
-      clipBehavior: Clip.antiAlias,
+      color: selected ? _blue : Colors.transparent,
+      borderRadius: BorderRadius.circular(999),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(999),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
           child: Row(children: [
-            Icon(icon, color: iconColor, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: foreground, fontWeight: selected ? FontWeight.w800 : FontWeight.w500)),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF657386), fontSize: 10)),
-                ],
-              ]),
-            ),
+            Icon(tab.icon, size: 17, color: selected ? Colors.white : _muted),
+            const SizedBox(width: 7),
+            Text(tab.label, style: TextStyle(color: selected ? Colors.white : _ink, fontWeight: selected ? FontWeight.w900 : FontWeight.w700, fontSize: 13)),
           ]),
         ),
       ),
@@ -276,38 +262,84 @@ class _NavigationEntry extends StatelessWidget {
   }
 }
 
-class _UserTopBar extends StatelessWidget {
-  const _UserTopBar({required this.session, required this.tab});
-  final AppSession session;
+class _DrawerEntry extends StatelessWidget {
+  const _DrawerEntry({required this.tab, required this.selected, required this.onTap});
+
+  final _UserTab tab;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? const Color(0xFFEFF6FF) : Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          child: Row(children: [
+            Icon(tab.icon, color: selected ? _blue : _muted, size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text(tab.label, style: TextStyle(color: selected ? _blue : _ink, fontWeight: selected ? FontWeight.w900 : FontWeight.w700))),
+            Text(tab.group, style: const TextStyle(color: _muted, fontSize: 10, fontWeight: FontWeight.w700)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _PageLabel extends StatelessWidget {
+  const _PageLabel({required this.tab});
   final _UserTab tab;
 
   @override
-  Widget build(BuildContext context) => Container(
-        height: 72,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        decoration: const BoxDecoration(color: Color(0xFF0D1218), border: Border(bottom: BorderSide(color: Color(0xFF263241)))),
-        child: Row(children: [
-          Expanded(
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(tab.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900)),
-              Text('${tab.group} • ${session.organizationName}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF8794A5), fontSize: 12)),
-            ]),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            constraints: const BoxConstraints(maxWidth: 240),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(color: const Color(0xFF121A23), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF263241))),
-            child: Text(session.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFB6C0CC), fontSize: 12, fontWeight: FontWeight.w700)),
-          ),
+  Widget build(BuildContext context) {
+    return Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 10, runSpacing: 8, children: [
+      Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7), decoration: BoxDecoration(color: Colors.white, border: Border.all(color: _line), borderRadius: BorderRadius.circular(999)), child: Text(tab.group, style: const TextStyle(color: _blue, fontWeight: FontWeight.w900, fontSize: 12))),
+      Text(tab.label, style: const TextStyle(color: _ink, fontSize: 26, fontWeight: FontWeight.w900)),
+    ]);
+  }
+}
+
+class _Footer extends StatelessWidget {
+  const _Footer({required this.onOpenAbout, required this.onOpenContact, required this.onOpenPrivacy, required this.onOpenTerms});
+
+  final VoidCallback onOpenAbout;
+  final VoidCallback onOpenContact;
+  final VoidCallback onOpenPrivacy;
+  final VoidCallback onOpenTerms;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 24),
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      decoration: const BoxDecoration(border: Border(top: BorderSide(color: _line))),
+      child: Wrap(alignment: WrapAlignment.spaceBetween, runSpacing: 12, children: [
+        const SizedBox(
+          width: 420,
+          child: Text('Sports Terminal is an NBA-first sports intelligence, fantasy, community, and workspace platform under active development.', style: TextStyle(color: _muted, height: 1.4)),
+        ),
+        Wrap(spacing: 10, runSpacing: 4, children: [
+          TextButton(onPressed: onOpenAbout, child: const Text('About Us')),
+          TextButton(onPressed: onOpenContact, child: const Text('Contact the Team')),
+          TextButton(onPressed: onOpenPrivacy, child: const Text('Privacy Policy')),
+          TextButton(onPressed: onOpenTerms, child: const Text('Terms & Conditions')),
         ]),
-      );
+      ]),
+    );
+  }
 }
 
 class _UserTab {
-  const _UserTab(this.label, this.icon, this.screen, this.group);
+  const _UserTab(this.label, this.icon, this.screen, this.group, {this.showInPrimaryNav = true});
+
   final String label;
   final IconData icon;
   final Widget screen;
   final String group;
+  final bool showInPrimaryNav;
 }
