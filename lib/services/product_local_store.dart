@@ -12,6 +12,12 @@ class ProductLocalStore {
   static const profileSettingsKey = 'sports_terminal.profile.settings';
   static const workbookCellsKey = 'sports_terminal.workspace.cells';
   static const workbookSheetKey = 'sports_terminal.workspace.sheet';
+  static const nbaModeKey = 'sports_terminal.nba.mode';
+  static const nbaSelectedPlayerKey = 'sports_terminal.nba.selected_player';
+  static const nbaSelectedTeamKey = 'sports_terminal.nba.selected_team';
+  static const nbaSelectedGameKey = 'sports_terminal.nba.selected_game';
+  static const fantasyQueryKey = 'sports_terminal.fantasy.query';
+  static const communityBoardKey = 'sports_terminal.community.board';
 
   Future<bool> loadBool(String key, {bool fallback = false}) async {
     final preferences = await SharedPreferences.getInstance();
