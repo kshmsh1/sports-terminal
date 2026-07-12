@@ -24,6 +24,8 @@ class ProductLocalStore {
   static const backendWorkbookIdKey = 'sports_terminal.backend.workbook_id';
   static const backendConversationIdKey = 'sports_terminal.backend.conversation_id';
   static const frontOfficeScenarioKey = 'sports_terminal.front_office.scenario';
+  static const statsQueryKey = 'sports_terminal.stats.query';
+  static const tradeMachineStateKey = 'sports_terminal.trade_machine.state';
 
   Future<bool> loadBool(String key, {bool fallback = false}) async {
     final preferences = await SharedPreferences.getInstance();
