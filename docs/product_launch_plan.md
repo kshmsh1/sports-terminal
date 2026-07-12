@@ -11,13 +11,13 @@ Sports Terminal is now being shaped as an NBA-first consumer product with an int
 | Internal analytics lab | Strong prototype | NBA 2025 analytical surfaces validate workflows: leaders, screeners, splits, trends, matchups, details, QA, source maps, and front-office boards. |
 | Consumer shell | Stronger first version | Main navigation is product-oriented: Home, NBA, Fantasy, Community, Articles, Workspace, Messages, Profile, Admin, Internal Lab. |
 | Visual identity | Improving | The shell now uses a more distinctive navy/orange/blue sports identity, floating nav, gradient backdrops, glass pills, and less generic card layout. |
-| Local persistence | First version | The product now has a shared local persistence service and persisted shell theme/workbook state. This is not a backend replacement, but it makes the prototype feel less temporary. |
-| NBA hub | First real version | NBA hub supports player, team, and game page modes powered by generated data. |
-| Fantasy | First interactive version | Fantasy War Room includes target board, simple fantasy scoring proxy, and local watchlist interactions. |
-| Community | First interactive version | Community Arena includes boards, demo threads, likes, replies roadmap, and moderation checklist. |
+| Local persistence | Expanded first version | The product now has a shared local persistence service for theme, workbook cells, selected workbook sheet, NBA mode, last-opened NBA player/team/game, favorite teams, player watchlist, fantasy query, community board, and liked posts. This is not a backend replacement, but it makes the prototype feel less temporary. |
+| NBA hub | Persisted first version | NBA hub supports player, team, and game page modes powered by generated data, with locally persisted favorites, watchlists, last-opened pages, and selected mode. |
+| Fantasy | Persisted first version | Fantasy War Room includes target board, simple fantasy scoring proxy, local search persistence, and shared player watchlist persistence. |
+| Community | Persisted first version | Community Arena includes boards, demo threads, persisted local likes, selected board persistence, replies roadmap, and moderation checklist. |
 | Articles | First real version | Articles Arena frames editorial, user blogs, article queues, CMS needs, and entity-attached writing. |
 | Messaging | First real version | Messages Arena frames DMs, group rooms, support/data issue chats, safety, and notification needs. |
-| Profile | First real version | Profile Clubhouse introduces local settings switches and favorite-team chips. |
+| Profile | First real version | Profile Clubhouse introduces settings switches and favorite-team chips; a persisted profile version now exists and should replace the current nav target after validation. |
 | Admin | First real version | Admin Ops Center introduces pipeline metrics, operator lanes, CMS/moderation/billing/data ops roadmap. |
 | Workspace | Stronger first version | Excel-inspired workbook UI has a title bar, ribbon, formula bar, editable grid cells, active cell, basic formulas, local autosave, templates, sheet tabs, and status bar. |
 | Theme system | First persisted version | Light/dark toggle exists and persists locally. Light mode uses the navy Sports Terminal identity. |
@@ -29,13 +29,13 @@ Sports Terminal is now being shaped as an NBA-first consumer product with an int
 | Surface | User purpose | Current implementation |
 | --- | --- | --- |
 | Home | Personalized sports dashboard | Arena-style landing page with data health, leaders, recent games, big nights, quick actions, and launch path. |
-| NBA | League intelligence hub | Player, team, and game pages in one surface with search, favorites/watchlist state, stat cards, and tables. |
-| Fantasy | Fantasy workflow center | Fantasy War Room with player target board, watchlist, scoring proxy, and launch checklist. |
-| Community | Social layer | Community Arena with boards, threads, like interactions, replies roadmap, and moderation checklist. |
+| NBA | League intelligence hub | Player, team, and game pages in one surface with search, persisted favorite teams, persisted player watchlist, persisted selected mode, and last-opened entity state. |
+| Fantasy | Fantasy workflow center | Fantasy War Room with player target board, persisted search, shared persisted watchlist, scoring proxy, and launch checklist. |
+| Community | Social layer | Community Arena with boards, threads, persisted local likes, selected board persistence, replies roadmap, and moderation checklist. |
 | Articles | Editorial/blog layer | Articles Arena with featured story template, editorial queue, and CMS launch needs. |
 | Workspace | Excel-like analysis workspace | Editable local workbook-style UI with ribbon, formula bar, templates, sheet tabs, local autosave, and basic formulas like SUM/AVG/MIN/MAX. |
 | Messages | Private/group communication | Messaging Arena with inbox prototype, room view, chat bubbles, and safety/persistence roadmap. |
-| Profile | User identity and settings | Profile Clubhouse with session identity, local settings switches, and favorite-team chips. |
+| Profile | User identity and settings | Profile Clubhouse with session identity, local settings switches, and favorite-team chips. Persisted profile implementation exists but still needs to be routed into the main shell after validation. |
 | Admin | Operator console | Admin Ops Center with data health metrics, kanban-style operator lanes, and launch checklist. |
 | Internal Lab | Analyst/operator tooling | Consolidated destination for the raw NBA 2025 analytics surfaces. |
 
@@ -49,7 +49,7 @@ Sports Terminal is now being shaped as an NBA-first consumer product with an int
 | Workspace engine | Better formula coverage, copy/paste, keyboard navigation refinement, resizing, saved multi-sheet workbooks, import/export, and sharing. |
 | Community backend | Create posts, comments, likes, saves, follows, reports, moderation queue, bans, and content safety. |
 | Messaging backend | DMs, group rooms, unread counts, blocking, reporting, and notification delivery. |
-| Fantasy features | Persistent backend watchlists, league imports, roster management, scoring settings, waiver boards, matchup tools, and alerts. |
+| Fantasy features | Backend-synced watchlists, league imports, roster management, scoring settings, waiver boards, matchup tools, and alerts. |
 | CMS | Admin article editor, drafts, publish/unpublish, featured cards, tags, author pages, and moderation. |
 | Billing | Plans, trials, Stripe or equivalent, invoices, cancellation, entitlements, and usage limits. |
 | Live data | Current-season refreshes, live scores, injury feeds, scheduled jobs, and eventually official/commercial data agreements. |
@@ -58,14 +58,15 @@ Sports Terminal is now being shaped as an NBA-first consumer product with an int
 
 ## Near-term build sequence
 
-1. Persist more local prototype state: NBA favorites/watchlists, fantasy watchlists, profile switches, community likes, and last-opened pages.
-2. Make NBA player/team/game pages feel like real routed pages, then add actual URLs/routing.
-3. Improve the workspace engine: copy/paste, drag fill, column resizing, more formulas, and import/export.
-4. Create initial backend schema for users, profiles, favorites, posts, comments, workspaces, messages, and admin roles.
-5. Build community primitives with moderation hooks.
-6. Build admin data-ops/CMS/moderation views that can eventually control the platform.
-7. Add billing/subscription scaffolding once account persistence exists.
-8. Add live/current-season data only after the product shell and persistence model are stable.
+1. Validate the expanded local persistence pass in Flutter, then route the persisted profile screen into the main shell.
+2. Persist remaining local prototype state: Profile settings in the active shell target, message draft text, article queue filters, and last-opened admin lane.
+3. Make NBA player/team/game pages feel like real routed pages, then add actual URLs/routing.
+4. Improve the workspace engine: copy/paste, drag fill, column resizing, more formulas, and import/export.
+5. Create initial backend schema for users, profiles, favorites, posts, comments, workspaces, messages, and admin roles.
+6. Build community primitives with moderation hooks.
+7. Build admin data-ops/CMS/moderation views that can eventually control the platform.
+8. Add billing/subscription scaffolding once account persistence exists.
+9. Add live/current-season data only after the product shell and persistence model are stable.
 
 ## Design direction
 
