@@ -7,6 +7,7 @@ import '../screens/product_arena_home_screen.dart';
 import '../screens/product_content_ops_screens.dart';
 import '../screens/product_fantasy_community_screens.dart';
 import '../screens/product_nba_entity_hub_screen.dart';
+import '../screens/product_profile_persisted_screen.dart';
 import '../screens/product_shell_screens.dart';
 import '../services/product_local_store.dart';
 
@@ -49,7 +50,7 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
         const _UserTab('Articles', Icons.article_rounded, ProductArticlesArenaScreen(), 'Product'),
         const _UserTab('Workspace', Icons.grid_on_rounded, ProductWorkspaceHubScreen(workspace: ExcelLikeWorkspaceScreen()), 'Product'),
         const _UserTab('Messages', Icons.chat_bubble_rounded, ProductMessagesArenaScreen(), 'Product'),
-        _UserTab('Profile', Icons.person_rounded, ProductProfileArenaScreen(session: widget.session), 'Product'),
+        _UserTab('Profile', Icons.person_rounded, ProductPersistedProfileScreen(session: widget.session), 'Product'),
         _UserTab('Admin', Icons.admin_panel_settings_rounded, ProductAdminOpsCenterScreen(session: widget.session), 'Operator'),
         const _UserTab('Internal Lab', Icons.science_rounded, ProductInternalLabScreen(), 'Operator'),
         const _UserTab('About Us', Icons.info_outline_rounded, ProductLegalScreen(kind: 'about'), 'Legal', showInPrimaryNav: false),
