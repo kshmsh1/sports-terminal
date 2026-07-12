@@ -7,17 +7,27 @@ This directory is the first executable backend for the launch product. It now us
 - FastAPI service entry point: `backend/app/main.py`
 - Local durable SQLite database: `backend/.data/sports_terminal.db` by default
 - Dependency list: `backend/requirements.txt`
-- One-command dev runner: `backend/scripts/dev.sh`
-- Smoke test helper: `backend/scripts/smoke_test.py`
+- Backend-local dev runner: `backend/scripts/dev.sh`
+- Repo-root dev runner: `scripts/dev_backend.sh`
+- Backend-local smoke test: `backend/scripts/smoke_test.py`
+- Repo-root smoke test runner: `scripts/smoke_backend.sh`
 - Database schema draft: `backend/schema_v1.sql`
 - Product/backend architecture docs in `docs/`
 
 ## Local run on macOS
 
-Your shell may not have `python` or `pip` aliases. Use `python3` / `python -m pip`, or use the helper script.
+Your shell may not have `python` or `pip` aliases. Use `python3` / `python -m pip`, or use the helper scripts.
+
+From the repository root:
 
 ```bash
-bash backend/scripts/dev.sh
+bash scripts/dev_backend.sh
+```
+
+From the `backend/` directory:
+
+```bash
+bash scripts/dev.sh
 ```
 
 Manual version:
@@ -41,15 +51,20 @@ http://127.0.0.1:8000/launch/readiness
 
 ## Smoke test
 
-Run the backend in one terminal. In a second terminal:
+Run the backend in one terminal. In a second terminal, from the repository root:
 
 ```bash
-cd backend
+bash scripts/smoke_backend.sh
+```
+
+Or from the `backend/` directory:
+
+```bash
 source .venv/bin/activate
 python scripts/smoke_test.py
 ```
 
-The smoke test creates a demo user, favorites OKC, adds a player watchlist row, creates a workbook/cell, creates a community post, and checks readiness.
+The smoke test creates a unique demo user, favorites OKC, adds a player watchlist row, creates a workbook/cell, creates a community post, and checks readiness.
 
 ## Useful environment variables
 
