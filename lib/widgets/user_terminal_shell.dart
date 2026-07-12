@@ -4,6 +4,7 @@ import '../controllers/internal_workspace_controller.dart';
 import '../models/app_session.dart';
 import '../screens/excel_like_workspace_screen.dart';
 import '../screens/product_arena_home_screen.dart';
+import '../screens/product_backend_sync_screen.dart';
 import '../screens/product_content_ops_screens.dart';
 import '../screens/product_fantasy_community_screens.dart';
 import '../screens/product_nba_entity_hub_screen.dart';
@@ -52,6 +53,7 @@ class _UserTerminalShellState extends State<UserTerminalShell> {
         const _UserTab('Messages', Icons.chat_bubble_rounded, ProductMessagesArenaScreen(), 'Product'),
         _UserTab('Profile', Icons.person_rounded, ProductPersistedProfileScreen(session: widget.session), 'Product'),
         _UserTab('Admin', Icons.admin_panel_settings_rounded, ProductAdminOpsCenterScreen(session: widget.session), 'Operator'),
+        _UserTab('Backend', Icons.cloud_sync_rounded, ProductBackendSyncScreen(session: widget.session), 'Operator'),
         const _UserTab('Internal Lab', Icons.science_rounded, ProductInternalLabScreen(), 'Operator'),
         const _UserTab('About Us', Icons.info_outline_rounded, ProductLegalScreen(kind: 'about'), 'Legal', showInPrimaryNav: false),
         const _UserTab('Contact', Icons.mail_outline_rounded, ProductLegalScreen(kind: 'contact'), 'Legal', showInPrimaryNav: false),
