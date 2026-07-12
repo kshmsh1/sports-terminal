@@ -8,6 +8,7 @@ This directory is the first executable backend for the launch product. It now us
 - Local durable SQLite database: `backend/.data/sports_terminal.db` by default
 - Dependency list: `backend/requirements.txt`
 - One-command dev runner: `backend/scripts/dev.sh`
+- Smoke test helper: `backend/scripts/smoke_test.py`
 - Database schema draft: `backend/schema_v1.sql`
 - Product/backend architecture docs in `docs/`
 
@@ -37,6 +38,18 @@ http://127.0.0.1:8000/health
 http://127.0.0.1:8000/docs
 http://127.0.0.1:8000/launch/readiness
 ```
+
+## Smoke test
+
+Run the backend in one terminal. In a second terminal:
+
+```bash
+cd backend
+source .venv/bin/activate
+python scripts/smoke_test.py
+```
+
+The smoke test creates a demo user, favorites OKC, adds a player watchlist row, creates a workbook/cell, creates a community post, and checks readiness.
 
 ## Useful environment variables
 
