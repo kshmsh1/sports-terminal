@@ -42,10 +42,12 @@ jobs:
             lib/screens/product_python_dev_lab_screen.dart \
             lib/screens/product_shell_screens.dart
 
-      - name: Wrap audited single-line flow controls
+      - name: Capture flow-control transformation diagnostics
+        id: flow_control
         shell: bash
         run: |
-          python3 - <<'PY'
+          set +e
+          python3 - <<'PY' 2>&1 | tee flow_control_counts.txt
           from pathlib import Path
           import re
 
@@ -74,11 +76,30 @@ jobs:
               path.write_text(updated, encoding='utf-8')
               print(f'{path}: wrapped {count} single-line if statement(s)')
 
+          print(f'TOTAL={total}')
           if total != 8:
               raise SystemExit(
                   f'Expected exactly 8 audited single-line if statements; found {total}'
               )
           PY
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload flow-control diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: flow-control-diagnostics
+          path: flow_control_counts.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Fail when flow-control assertion fails
+        if: steps.flow_control.outputs.status != '0'
+        run: exit 1
+
+      - name: Reformat flow-control fixes
+        run: |
           dart format \
             lib/screens/compare_screen.dart \
             lib/screens/product_advanced_nba_tools_screen.dart \
@@ -120,6 +141,7 @@ jobs:
           rm .github/workflows/controlled_repository_cleanup.yml
           rm tool/controlled_repository_cleanup.py
           rm strict_analyzer.txt
+          rm flow_control_counts.txt
           git config user.name "Sports Terminal Cleanup Bot"
           git config user.email "actions@github.com"
           git add -A
