@@ -33,6 +33,9 @@ jobs:
       - name: Refresh dependency lockfile
         run: flutter pub get
 
+      - name: Apply targeted flow-control lint fixes
+        run: dart fix --apply --code=curly_braces_in_flow_control_structures
+
       - name: Format modified Dart sources
         run: |
           dart format \
