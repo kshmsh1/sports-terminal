@@ -29,8 +29,26 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
 
-      - name: Analyze project
+      - name: Analyze project with production settings
         run: flutter analyze
+
+      - name: Capture strict unused-code analyzer output
+        shell: bash
+        run: |
+          mkdir -p audit_output
+          cp analysis_options.yaml /tmp/analysis_options.yaml
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('analysis_options.yaml')
+          lines = path.read_text().splitlines()
+          blocked = {'unused_local_variable: ignore', 'unused_element: ignore'}
+          path.write_text('\n'.join(line for line in lines if line.strip() not in blocked) + '\n')
+          PY
+          set +e
+          flutter analyze > audit_output/strict_unused_analysis.txt 2>&1
+          echo "$?" > audit_output/strict_unused_analysis_exit_code.txt
+          set -e
+          mv /tmp/analysis_options.yaml analysis_options.yaml
 
       - name: Run complete test suite
         run: flutter test
@@ -40,11 +58,11 @@ jobs:
 
       - name: Generate repository audit
         run: |
-          mkdir -p audit_output
           flutter pub deps --json > audit_output/flutter_pub_dependencies.json
           git status --short > audit_output/git_status.txt
           git branch -a --verbose --no-abbrev > audit_output/branches.txt
           python3 tool/repository_efficiency_audit.py
+          python3 tool/repository_reference_audit.py
 
       - name: Upload complete audit package
         uses: actions/upload-artifact@v4
