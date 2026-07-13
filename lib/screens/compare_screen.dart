@@ -92,7 +92,6 @@ class _CompareScreenState extends State<CompareScreen> {
         final planned = comparisonTemplateItems.where((item) => item.status == 'Planned').length;
         final future = comparisonTemplateItems.where((item) => item.status == 'Future').length;
         final possibleNow = comparisonTemplateItems.where((item) => _ComparisonGate.fromTemplate(item, payload).readyCount > 0).length;
-        final p0Stages = comparisonBuilderStageItems.where((item) => item.priority == 'P0').length;
 
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const SectionHeader(title: 'Compare', subtitle: 'Asset-aware comparison command center for players, teams, seasons, franchises, games, drafts, transactions, saved views, fantasy workflows, scouting profiles, and development paths.'),

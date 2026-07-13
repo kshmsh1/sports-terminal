@@ -8,8 +8,6 @@ const _muted = Color(0xFF667085);
 const _soft = Color(0xFFF4F7FB);
 const _line = Color(0xFFE3E8F0);
 const _blue = Color(0xFF2563EB);
-const _orange = Color(0xFFFF7A1A);
-const _green = Color(0xFF059669);
 
 class ProductHomeScreen extends StatelessWidget {
   const ProductHomeScreen({super.key, required this.session});
