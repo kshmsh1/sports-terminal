@@ -29,17 +29,33 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Show Flutter version
-        run: flutter --version
-
       - name: Resolve dependencies
         run: flutter pub get
 
       - name: Analyze project
         run: flutter analyze
 
-      - name: Run test suite
-        run: flutter test
+      - name: Run test suite and capture transcript
+        id: tests
+        shell: bash
+        run: |
+          set +e
+          flutter test --reporter expanded 2>&1 | tee flutter-test.log
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload test transcript
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-test-transcript
+          path: flutter-test.log
+          if-no-files-found: error
+
+      - name: Fail when tests fail
+        if: steps.tests.outputs.status != '0'
+        run: exit 1
 
       - name: Build web application
         run: flutter build web
