@@ -33,11 +33,52 @@ jobs:
       - name: Refresh dependency lockfile
         run: flutter pub get
 
-      - name: Apply targeted flow-control lint fixes
-        run: dart fix --apply --code=curly_braces_in_flow_control_structures
-
       - name: Format modified Dart sources
         run: |
+          dart format \
+            lib/screens/compare_screen.dart \
+            lib/screens/product_advanced_nba_tools_screen.dart \
+            lib/screens/product_content_ops_screens.dart \
+            lib/screens/product_python_dev_lab_screen.dart \
+            lib/screens/product_shell_screens.dart
+
+      - name: Wrap audited single-line flow controls
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          files = [
+              Path('lib/screens/compare_screen.dart'),
+              Path('lib/screens/product_advanced_nba_tools_screen.dart'),
+              Path('lib/screens/product_content_ops_screens.dart'),
+              Path('lib/screens/product_python_dev_lab_screen.dart'),
+              Path('lib/screens/product_shell_screens.dart'),
+          ]
+          pattern = re.compile(r'^(\s*)if \((.+)\) (.+;)\s*$', re.MULTILINE)
+          total = 0
+          for path in files:
+              text = path.read_text(encoding='utf-8')
+
+              def wrap(match: re.Match[str]) -> str:
+                  indent, condition, statement = match.groups()
+                  return (
+                      f'{indent}if ({condition}) {{\n'
+                      f'{indent}  {statement}\n'
+                      f'{indent}}}'
+                  )
+
+              updated, count = pattern.subn(wrap, text)
+              total += count
+              path.write_text(updated, encoding='utf-8')
+              print(f'{path}: wrapped {count} single-line if statement(s)')
+
+          if total != 8:
+              raise SystemExit(
+                  f'Expected exactly 8 audited single-line if statements; found {total}'
+              )
+          PY
           dart format \
             lib/screens/compare_screen.dart \
             lib/screens/product_advanced_nba_tools_screen.dart \
