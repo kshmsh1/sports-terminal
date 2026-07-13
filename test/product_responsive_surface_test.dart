@@ -28,6 +28,13 @@ void main() {
         ),
       ),
     );
+
+    // The product surfaces load several bundled JSON files through Future.wait.
+    // pumpAndSettle alone can return while that real asynchronous asset work is
+    // still pending because no new frame has yet been scheduled.
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    });
     await tester.pumpAndSettle();
   }
 
