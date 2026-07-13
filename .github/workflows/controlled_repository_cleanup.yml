@@ -42,64 +42,96 @@ jobs:
             lib/screens/product_python_dev_lab_screen.dart \
             lib/screens/product_shell_screens.dart
 
-      - name: Capture flow-control transformation diagnostics
-        id: flow_control
+      - name: Capture machine-readable analyzer findings
         shell: bash
         run: |
           set +e
-          python3 - <<'PY' 2>&1 | tee flow_control_counts.txt
+          dart analyze --format machine > initial_analyzer_machine.txt
+          exit 0
+
+      - name: Patch only analyzer-reported flow controls
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from collections import defaultdict
           from pathlib import Path
           import re
 
-          files = [
-              Path('lib/screens/compare_screen.dart'),
-              Path('lib/screens/product_advanced_nba_tools_screen.dart'),
-              Path('lib/screens/product_content_ops_screens.dart'),
-              Path('lib/screens/product_python_dev_lab_screen.dart'),
-              Path('lib/screens/product_shell_screens.dart'),
-          ]
-          pattern = re.compile(r'^(\s*)if \((.+)\) (.+;)\s*$', re.MULTILINE)
-          total = 0
-          for path in files:
-              text = path.read_text(encoding='utf-8')
+          root = Path('.').resolve()
+          machine = Path('initial_analyzer_machine.txt').read_text(encoding='utf-8')
+          findings: dict[Path, list[int]] = defaultdict(list)
+          other_findings: list[str] = []
 
-              def wrap(match: re.Match[str]) -> str:
-                  indent, condition, statement = match.groups()
-                  return (
-                      f'{indent}if ({condition}) {{\n'
-                      f'{indent}  {statement}\n'
-                      f'{indent}}}'
-                  )
+          for raw_line in machine.splitlines():
+              parts = raw_line.split('|', 7)
+              if len(parts) != 8:
+                  continue
+              severity, issue_type, code, file_name, line, column, length, message = parts
+              if code == 'curly_braces_in_flow_control_structures':
+                  path = Path(file_name).resolve()
+                  findings[path].append(int(line))
+              else:
+                  other_findings.append(raw_line)
 
-              updated, count = pattern.subn(wrap, text)
-              total += count
-              path.write_text(updated, encoding='utf-8')
-              print(f'{path}: wrapped {count} single-line if statement(s)')
-
-          print(f'TOTAL={total}')
+          total = sum(len(lines) for lines in findings.values())
           if total != 8:
               raise SystemExit(
-                  f'Expected exactly 8 audited single-line if statements; found {total}'
+                  f'Expected exactly 8 flow-control findings; found {total}.\n'
+                  + '\n'.join(machine.splitlines())
               )
+          if other_findings:
+              raise SystemExit(
+                  'Unexpected analyzer findings before targeted repair:\n'
+                  + '\n'.join(other_findings)
+              )
+
+          same_line = re.compile(r'^(\s*)if \((.+)\) (.+;)\s*$')
+          patched = 0
+
+          for path, issue_lines in findings.items():
+              lines = path.read_text(encoding='utf-8').splitlines()
+              for line_number in sorted(issue_lines, reverse=True):
+                  index = line_number - 1
+                  current = lines[index]
+                  match = same_line.match(current)
+                  if match:
+                      indent, condition, statement = match.groups()
+                      lines[index:index + 1] = [
+                          f'{indent}if ({condition}) {{',
+                          f'{indent}  {statement}',
+                          f'{indent}}}',
+                      ]
+                      patched += 1
+                      continue
+
+                  # Support the alternate formatted shape where the analyzer
+                  # points at the statement line immediately below the if.
+                  if index > 0 and lines[index - 1].lstrip().startswith('if ('):
+                      if_line = lines[index - 1]
+                      statement = current.strip()
+                      indent = if_line[: len(if_line) - len(if_line.lstrip())]
+                      if not statement.endswith(';'):
+                          raise SystemExit(
+                              f'Unsupported flow-control statement at {path}:{line_number}'
+                          )
+                      lines[index - 1:index + 1] = [
+                          f'{if_line} {{' if not if_line.rstrip().endswith(') {') else if_line,
+                          f'{indent}  {statement}',
+                          f'{indent}}}',
+                      ]
+                      patched += 1
+                      continue
+
+                  raise SystemExit(
+                      f'Could not patch analyzer finding at {path}:{line_number}: {current}'
+                  )
+
+              path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+
+          if patched != 8:
+              raise SystemExit(f'Expected to patch 8 findings; patched {patched}')
+          print('Patched exactly 8 analyzer-reported flow-control findings.')
           PY
-          status=${PIPESTATUS[0]}
-          echo "status=$status" >> "$GITHUB_OUTPUT"
-          exit 0
-
-      - name: Upload flow-control diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: flow-control-diagnostics
-          path: flow_control_counts.txt
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Fail when flow-control assertion fails
-        if: steps.flow_control.outputs.status != '0'
-        run: exit 1
-
-      - name: Reformat flow-control fixes
-        run: |
           dart format \
             lib/screens/compare_screen.dart \
             lib/screens/product_advanced_nba_tools_screen.dart \
@@ -141,7 +173,7 @@ jobs:
           rm .github/workflows/controlled_repository_cleanup.yml
           rm tool/controlled_repository_cleanup.py
           rm strict_analyzer.txt
-          rm flow_control_counts.txt
+          rm initial_analyzer_machine.txt
           git config user.name "Sports Terminal Cleanup Bot"
           git config user.email "actions@github.com"
           git add -A
