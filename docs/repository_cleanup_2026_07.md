@@ -14,7 +14,12 @@ This cleanup was generated from a full-history repository audit and merged only 
 - Active Stats Center, Trade Machine, query-engine, and user-shell implementations now live in their canonical filenames.
 - Manual roster-ingestion source files were moved out of Flutter's runtime asset tree into `raw/manual_sources/rosters/`.
 - Repository-wide unused-element and unused-local-variable suppressions were removed so future dead code is surfaced automatically.
+- `pubspec.lock` and the macOS generated plugin registrant were refreshed to record the already-declared `http` and `shared_preferences` dependency graph accurately.
 
 ## Preserved
 
 All active application routes, test-only validators, data-quality services, ingestion tools, platform targets, documentation, and Git history were retained.
+
+## Validation
+
+The cleaned working tree passed `flutter analyze`, the complete `flutter test` suite, and `flutter build web --release` before the cleanup commit was pushed. The normal Flutter Quality and Pre-Data workflows were then rerun against the final cleaned branch head before merge.
