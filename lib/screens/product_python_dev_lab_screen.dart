@@ -7,7 +7,6 @@ const _green = Color(0xFF059669);
 const _ink = Color(0xFF102033);
 const _muted = Color(0xFF667085);
 const _line = Color(0xFFE3E8F0);
-const _soft = Color(0xFFF6F8FC);
 
 class ProductPythonDevLabScreen extends StatefulWidget {
   const ProductPythonDevLabScreen({super.key});
