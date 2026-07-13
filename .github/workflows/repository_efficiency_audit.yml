@@ -1,0 +1,55 @@
+name: Repository Efficiency Audit
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Inventory, validate and profile repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Check out complete repository history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Analyze project
+        run: flutter analyze
+
+      - name: Run complete test suite
+        run: flutter test
+
+      - name: Build release web bundle
+        run: flutter build web --release
+
+      - name: Generate repository audit
+        run: |
+          mkdir -p audit_output
+          flutter pub deps --json > audit_output/flutter_pub_dependencies.json
+          git status --short > audit_output/git_status.txt
+          git branch -a --verbose --no-abbrev > audit_output/branches.txt
+          python3 tool/repository_efficiency_audit.py
+
+      - name: Upload complete audit package
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-efficiency-audit
+          path: audit_output/
+          if-no-files-found: error
+          retention-days: 14
