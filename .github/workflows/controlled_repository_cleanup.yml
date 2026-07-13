@@ -46,8 +46,16 @@ jobs:
         shell: bash
         run: |
           set +e
-          dart analyze --format machine > initial_analyzer_machine.txt
+          dart analyze --format machine > initial_analyzer_machine.txt 2>&1
           exit 0
+
+      - name: Upload machine analyzer diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: machine-analyzer-diagnostics
+          path: initial_analyzer_machine.txt
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Patch only analyzer-reported flow controls
         shell: bash
@@ -57,7 +65,6 @@ jobs:
           from pathlib import Path
           import re
 
-          root = Path('.').resolve()
           machine = Path('initial_analyzer_machine.txt').read_text(encoding='utf-8')
           findings: dict[Path, list[int]] = defaultdict(list)
           other_findings: list[str] = []
@@ -68,8 +75,7 @@ jobs:
                   continue
               severity, issue_type, code, file_name, line, column, length, message = parts
               if code == 'curly_braces_in_flow_control_structures':
-                  path = Path(file_name).resolve()
-                  findings[path].append(int(line))
+                  findings[Path(file_name).resolve()].append(int(line))
               else:
                   other_findings.append(raw_line)
 
@@ -77,7 +83,7 @@ jobs:
           if total != 8:
               raise SystemExit(
                   f'Expected exactly 8 flow-control findings; found {total}.\n'
-                  + '\n'.join(machine.splitlines())
+                  + machine
               )
           if other_findings:
               raise SystemExit(
@@ -104,8 +110,6 @@ jobs:
                       patched += 1
                       continue
 
-                  # Support the alternate formatted shape where the analyzer
-                  # points at the statement line immediately below the if.
                   if index > 0 and lines[index - 1].lstrip().startswith('if ('):
                       if_line = lines[index - 1]
                       statement = current.strip()
@@ -115,7 +119,7 @@ jobs:
                               f'Unsupported flow-control statement at {path}:{line_number}'
                           )
                       lines[index - 1:index + 1] = [
-                          f'{if_line} {{' if not if_line.rstrip().endswith(') {') else if_line,
+                          f'{if_line} {{',
                           f'{indent}  {statement}',
                           f'{indent}}}',
                       ]
