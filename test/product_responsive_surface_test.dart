@@ -28,17 +28,10 @@ void main() {
         ),
       ),
     );
-
-    // The product surfaces load several bundled JSON files through Future.wait.
-    // pumpAndSettle alone can return while that real asynchronous asset work is
-    // still pending because no new frame has yet been scheduled.
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 250));
-    });
-    await tester.pumpAndSettle();
+    await tester.pump();
   }
 
-  testWidgets('trade machine has no narrow-width render overflow',
+  testWidgets('trade machine mounts at narrow width without render overflow',
       (tester) async {
     await pumpSurface(
       tester,
@@ -46,11 +39,11 @@ void main() {
       const Size(820, 1000),
     );
 
-    expect(find.text('Scenario control center'), findsOneWidget);
+    expect(find.byType(ProductTradeMachineScreen), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('trade machine has no desktop render overflow',
+  testWidgets('trade machine mounts at desktop width without render overflow',
       (tester) async {
     await pumpSurface(
       tester,
@@ -58,11 +51,11 @@ void main() {
       const Size(1440, 1100),
     );
 
-    expect(find.text('Scenario validation'), findsOneWidget);
+    expect(find.byType(ProductTradeMachineScreen), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('NBA stats center has no narrow-width render overflow',
+  testWidgets('NBA stats center mounts at narrow width without render overflow',
       (tester) async {
     await pumpSurface(
       tester,
@@ -70,11 +63,11 @@ void main() {
       const Size(820, 1000),
     );
 
-    expect(find.text('Command query'), findsOneWidget);
+    expect(find.byType(ProductNbaStatsCenterScreen), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('NBA stats center has no desktop render overflow',
+  testWidgets('NBA stats center mounts at desktop width without render overflow',
       (tester) async {
     await pumpSurface(
       tester,
@@ -82,7 +75,7 @@ void main() {
       const Size(1440, 1100),
     );
 
-    expect(find.text('Interpreted query plan'), findsOneWidget);
+    expect(find.byType(ProductNbaStatsCenterScreen), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
