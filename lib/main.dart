@@ -22,6 +22,12 @@ class _SportsTerminalAppState extends State<SportsTerminalApp> {
   final workspaceController = InternalWorkspaceController();
 
   @override
+  void initState() {
+    super.initState();
+    routePayloadController.hydrate();
+  }
+
+  @override
   void dispose() {
     routePayloadController.dispose();
     authController.dispose();
