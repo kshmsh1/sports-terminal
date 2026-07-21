@@ -46,7 +46,9 @@ class _ProductObjectRouterScreenState extends State<ProductObjectRouterScreen> {
   }
 
   Future<void> _restore() async {
-    final state = await store.loadStringMap(ProductLocalStore.objectRouterStateKey);
+    final state = await store.loadStringMap(
+      ProductLocalStore.objectRouterStateKey,
+    );
     if (!mounted) return;
     setState(() {
       dataset = _datasetIds.contains(state['dataset'])
@@ -141,9 +143,9 @@ class _ProductObjectRouterScreenState extends State<ProductObjectRouterScreen> {
   }
 
   void _show(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -223,11 +225,7 @@ class _ProductObjectRouterScreenState extends State<ProductObjectRouterScreen> {
                 );
                 if (constraints.maxWidth < 1040) {
                   return Column(
-                    children: [
-                      selection,
-                      const SizedBox(height: 18),
-                      package,
-                    ],
+                    children: [selection, const SizedBox(height: 18), package],
                   );
                 }
                 return Row(
@@ -241,10 +239,7 @@ class _ProductObjectRouterScreenState extends State<ProductObjectRouterScreen> {
               },
             ),
             const SizedBox(height: 18),
-            _PreviewTable(
-              payload: payload,
-              columns: previewColumns,
-            ),
+            _PreviewTable(payload: payload, columns: previewColumns),
             const SizedBox(height: 18),
             const _RouteHistoryPanel(),
           ],
@@ -372,10 +367,7 @@ _DatasetDefinition _definition(String id) {
   );
 }
 
-List<Map<String, dynamic>> _rows(
-  NbaTerminalSeedSnapshot snapshot,
-  String id,
-) {
+List<Map<String, dynamic>> _rows(NbaTerminalSeedSnapshot snapshot, String id) {
   switch (id) {
     case 'team_records':
       return snapshot.teamRecords;
@@ -399,7 +391,8 @@ List<Map<String, dynamic>> _filter(
   return [
     for (final row in rows)
       if (row.values.any(
-        (value) => value?.toString().toLowerCase().contains(normalized) ?? false,
+        (value) =>
+            value?.toString().toLowerCase().contains(normalized) ?? false,
       ))
         row,
   ];
@@ -630,14 +623,13 @@ class _SelectionPanel extends StatelessWidget {
             height: 430,
             child: ListView.separated(
               itemCount: rows.length > 150 ? 150 : rows.length,
-              separatorBuilder: (_, __) => const Divider(
-                height: 1,
-                color: _routerLine,
-              ),
+              separatorBuilder: (_, _) =>
+                  const Divider(height: 1, color: _routerLine),
               itemBuilder: (context, index) {
                 final row = rows[index];
                 final key = rowKey(row, index);
-                final title = row['player_label'] ??
+                final title =
+                    row['player_label'] ??
                     row['team_id'] ??
                     row['game_id'] ??
                     'Row ${index + 1}';
@@ -710,7 +702,10 @@ class _PackagePanel extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE8F7F0),
                   borderRadius: BorderRadius.circular(999),
@@ -840,7 +835,10 @@ class _PreviewTable extends StatelessWidget {
           if (columns.isEmpty)
             const Padding(
               padding: EdgeInsets.all(18),
-              child: Text('No rows match this package.', style: TextStyle(color: _routerMuted)),
+              child: Text(
+                'No rows match this package.',
+                style: TextStyle(color: _routerMuted),
+              ),
             )
           else
             SingleChildScrollView(
@@ -921,7 +919,10 @@ class _RouteHistoryPanel extends StatelessWidget {
                 for (final payload in controller.history.take(8))
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.route_rounded, color: _routerBlue),
+                    leading: const Icon(
+                      Icons.route_rounded,
+                      color: _routerBlue,
+                    ),
                     title: Text(
                       payload.conciseDebugLabel,
                       style: const TextStyle(

@@ -30,10 +30,12 @@ class _ProductCapLabScreenState extends State<ProductCapLabScreen> {
   final SportsObjectRouter router = const SportsObjectRouter();
   final WorkspaceRouteImportService workspaceImporter =
       const WorkspaceRouteImportService();
-  final TextEditingController teamController =
-      TextEditingController(text: 'Modeled Team');
-  final TextEditingController salaryController =
-      TextEditingController(text: '180.0');
+  final TextEditingController teamController = TextEditingController(
+    text: 'Modeled Team',
+  );
+  final TextEditingController salaryController = TextEditingController(
+    text: '180.0',
+  );
   late final Future<List<NbaCapEnvironment>> future;
 
   String season = '2026-27';
@@ -90,14 +92,16 @@ class _ProductCapLabScreenState extends State<ProductCapLabScreen> {
         : teamController.text.trim();
     return router.packageRows(
       datasetId: 'nba_cap_position_${environment.season}',
-      packageId: '${environment.season}:${team.toLowerCase().replaceAll(' ', '-')}',
+      packageId:
+          '${environment.season}:${team.toLowerCase().replaceAll(' ', '-')}',
       displayLabel: '$team · ${environment.season} Cap Position',
       sourceObjectType: 'NbaCapScenario',
       rows: [position.toRow()],
       targetRoute: route,
       rowKey: 'season',
       sourceSnapshot: environment.sourceLabel,
-      filterSummary: 'User-entered modeled team salary: ${_money(position.teamSalary)}',
+      filterSummary:
+          'User-entered modeled team salary: ${_money(position.teamSalary)}',
       preferredColumns: const [
         'season',
         'modeled_team_salary',
@@ -142,9 +146,9 @@ class _ProductCapLabScreenState extends State<ProductCapLabScreen> {
   }
 
   void _show(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -160,7 +164,9 @@ class _ProductCapLabScreenState extends State<ProductCapLabScreen> {
             ),
           );
         }
-        if (snapshot.hasError || snapshot.data == null || snapshot.data!.isEmpty) {
+        if (snapshot.hasError ||
+            snapshot.data == null ||
+            snapshot.data!.isEmpty) {
           return _CapSurface(
             child: Text(
               'Cap environment data unavailable: ${snapshot.error}',
@@ -210,11 +216,7 @@ class _ProductCapLabScreenState extends State<ProductCapLabScreen> {
                 final exceptions = _ExceptionPanel(environment: environment);
                 if (constraints.maxWidth < 980) {
                   return Column(
-                    children: [
-                      ladder,
-                      const SizedBox(height: 18),
-                      exceptions,
-                    ],
+                    children: [ladder, const SizedBox(height: 18), exceptions],
                   );
                 }
                 return Row(
@@ -367,7 +369,10 @@ class _ScenarioControls extends StatelessWidget {
               decoration: _capInput('Operating season'),
               items: [
                 for (final item in environments)
-                  DropdownMenuItem(value: item.season, child: Text(item.season)),
+                  DropdownMenuItem(
+                    value: item.season,
+                    child: Text(item.season),
+                  ),
               ],
               onChanged: (value) {
                 if (value != null) onSeason(value);
@@ -386,8 +391,10 @@ class _ScenarioControls extends StatelessWidget {
             width: 220,
             child: TextField(
               controller: salaryController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: _capInput('Modeled salary · $M'),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: _capInput('Modeled salary · \$M'),
               onChanged: (_) => onChanged(),
             ),
           ),
@@ -417,17 +424,29 @@ class _MetricGrid extends StatelessWidget {
       _CapMetric('Modeled salary', _money(position.teamSalary), position.tier),
       _CapMetric('Cap room', _signedMoney(position.capRoom), 'vs salary cap'),
       _CapMetric('Tax room', _signedMoney(position.taxRoom), 'vs tax line'),
-      _CapMetric('First apron room', _signedMoney(position.firstApronRoom), 'transaction threshold'),
-      _CapMetric('Second apron room', _signedMoney(position.secondApronRoom), 'maximum restriction tier'),
-      _CapMetric('Minimum salary gap', _signedMoney(position.minimumSalaryGap), 'positive means below minimum'),
+      _CapMetric(
+        'First apron room',
+        _signedMoney(position.firstApronRoom),
+        'transaction threshold',
+      ),
+      _CapMetric(
+        'Second apron room',
+        _signedMoney(position.secondApronRoom),
+        'maximum restriction tier',
+      ),
+      _CapMetric(
+        'Minimum salary gap',
+        _signedMoney(position.minimumSalaryGap),
+        'positive means below minimum',
+      ),
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth >= 1100
             ? 3
             : constraints.maxWidth >= 680
-                ? 2
-                : 1;
+            ? 2
+            : 1;
         final width = (constraints.maxWidth - 14 * (columns - 1)) / columns;
         return Wrap(
           spacing: 14,
@@ -460,10 +479,7 @@ class _MetricGrid extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         item.detail,
-                        style: const TextStyle(
-                          color: _capMuted,
-                          fontSize: 12,
-                        ),
+                        style: const TextStyle(color: _capMuted, fontSize: 12),
                       ),
                     ],
                   ),
@@ -569,10 +585,7 @@ class _ThresholdRow extends StatelessWidget {
           ),
           Text(
             _money(threshold),
-            style: const TextStyle(
-              color: _capInk,
-              fontWeight: FontWeight.w900,
-            ),
+            style: const TextStyle(color: _capInk, fontWeight: FontWeight.w900),
           ),
           const SizedBox(width: 12),
           SizedBox(
@@ -622,11 +635,7 @@ class _ExceptionPanel extends StatelessWidget {
           const SizedBox(height: 14),
           const Text(
             'This is a threshold and planning layer—not a complete legality engine. Hard caps, aggregation, trade matching, base-year compensation, poison-pill treatment, sign-and-trades and exception expiry still require transaction-specific rules.',
-            style: TextStyle(
-              color: _capMuted,
-              fontSize: 12,
-              height: 1.45,
-            ),
+            style: TextStyle(color: _capMuted, fontSize: 12, height: 1.45),
           ),
         ],
       ),
@@ -753,10 +762,7 @@ class _SourcePanel extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             environment.sourceLabel,
-            style: const TextStyle(
-              color: _capInk,
-              fontWeight: FontWeight.w800,
-            ),
+            style: const TextStyle(color: _capInk, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 6),
           SelectableText(
@@ -766,10 +772,7 @@ class _SourcePanel extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             'Effective ${environment.effectiveDate}. League thresholds are sourced; the team salary field is a user-entered scenario and is deliberately not presented as a live team payroll.',
-            style: const TextStyle(
-              color: _capMuted,
-              height: 1.45,
-            ),
+            style: const TextStyle(color: _capMuted, height: 1.45),
           ),
         ],
       ),
@@ -827,6 +830,10 @@ InputDecoration _capInput(String label) {
 String _money(double value) => '\$${(value / 1000000).toStringAsFixed(3)}M';
 
 String _signedMoney(double value) {
-  final sign = value > 0 ? '+' : value < 0 ? '−' : '';
+  final sign = value > 0
+      ? '+'
+      : value < 0
+      ? '−'
+      : '';
   return '$sign\$${(value.abs() / 1000000).toStringAsFixed(3)}M';
 }
