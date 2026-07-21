@@ -76,9 +76,30 @@ void main() {
     expect(trade.teams, ['BOS', 'PHI']);
     expect(trade.summary, contains('1 routed assets'));
     final ledger = candidates.firstWhere((item) => item.source == 'Front Office Ledger');
-    expect(ledger.currentTeamSalary, 25000003);
+    expect(ledger.currentTeamSalary, 28000000);
+    expect(ledger.assumptions, contains('Non-contract charges: \$3.0M.'));
     expect(ledger.findings.any((item) => item.contains('NO_TRADE_CONSENT')), isTrue);
     expect(ledger.findings.any((item) => item.contains('PICK_TERMS_UNVERIFIED')), isTrue);
+  });
+
+  test('normalizes saved Cap Lab values from millions to dollars', () async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      ProductLocalStore.capLabStateKey,
+      jsonEncode({
+        'team': 'BOS',
+        'season': '2026-27',
+        'teamSalary': '200',
+        'firstApron': '209.015',
+        'secondApron': '221.686',
+      }),
+    );
+
+    final candidates = await const TransactionCaseConvergenceService().discover();
+    final cap = candidates.firstWhere((item) => item.source == 'Cap Lab');
+    expect(cap.currentTeamSalary, 200000000);
+    expect(cap.firstApron, 209015000);
+    expect(cap.secondApron, 221686000);
   });
 
   test('imports a shared candidate into personal and organization cases', () async {
