@@ -1,6 +1,8 @@
 name: Apply Transaction Convergence
 
 on:
+  push:
+    branches: [agent/transaction-convergence-collaboration]
   pull_request:
     branches: [main]
 
