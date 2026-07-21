@@ -26,9 +26,9 @@ jobs:
         run: |
           set +e
           flutter analyze > /tmp/analyze.log 2>&1
-          grep -E "^(error|warning|info) •|[0-9]+ issues? found|No issues found" /tmp/analyze.log > docs/temp_role_platform_analyzer.txt || tail -n 120 /tmp/analyze.log > docs/temp_role_platform_analyzer.txt
+          tail -n 120 /tmp/analyze.log > docs/temp_role_platform_analyzer.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/temp_role_platform_analyzer.txt
-          git commit -m "Capture role platform analyzer findings"
+          git commit -m "Capture full role platform analyzer finding"
           git push origin HEAD:agent/role-platform-transaction-workflows
