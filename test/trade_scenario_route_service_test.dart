@@ -24,7 +24,7 @@ void main() {
       capContexts: {
         'BOS': TeamCapContext(
           team: 'BOS',
-          teamSalary: 225000000,
+          teamSalary: 250000000,
           salaryCap: 164961000,
           taxLine: 200428000,
           firstApron: 209015000,
