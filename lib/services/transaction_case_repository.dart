@@ -1,14 +1,20 @@
 import 'dart:convert';
 
 import '../models/transaction_case.dart';
+import '../models/transaction_workflow.dart';
 import 'product_local_store.dart';
+import 'transaction_workflow_repository.dart';
 
 class TransactionCaseRepository {
   const TransactionCaseRepository({
     ProductLocalStore store = const ProductLocalStore(),
-  }) : _store = store;
+    TransactionWorkflowRepository workflow =
+        const TransactionWorkflowRepository(),
+  })  : _store = store,
+        _workflow = workflow;
 
   final ProductLocalStore _store;
+  final TransactionWorkflowRepository _workflow;
 
   String personalKey(String userId) =>
       'sports_terminal.transaction_cases.personal.$userId.v1';
@@ -51,10 +57,10 @@ class TransactionCaseRepository {
     TransactionCase transactionCase,
   ) async {
     final cases = await loadOrganization(organizationId);
-    await saveOrganization(
-      organizationId,
-      _upsert(cases, transactionCase.copyWith(isOrganizationVisible: true)),
-    );
+    final previous = _findCase(cases, transactionCase.id);
+    final shared = transactionCase.copyWith(isOrganizationVisible: true);
+    await saveOrganization(organizationId, _upsert(cases, shared));
+    await _recordDecisionChange(previous: previous, current: shared);
   }
 
   Future<void> publishToOrganization(TransactionCase transactionCase) async {
@@ -85,6 +91,83 @@ class TransactionCaseRepository {
       organizationId,
       cases.where((item) => item.id != caseId).toList(),
     );
+  }
+
+  Future<void> _recordDecisionChange({
+    required TransactionCase? previous,
+    required TransactionCase current,
+  }) async {
+    final currentDecision = _latestResolvedApproval(current);
+    if (currentDecision == null) return;
+    final previousDecision = previous == null
+        ? null
+        : _latestResolvedApproval(previous);
+    if (previousDecision?.decision == currentDecision.decision &&
+        previousDecision?.updatedAtIso == currentDecision.updatedAtIso) {
+      return;
+    }
+
+    final approved =
+        currentDecision.decision == TransactionApprovalDecision.approved;
+    final rejected =
+        currentDecision.decision == TransactionApprovalDecision.rejected;
+    final decisionLabel = approved
+        ? 'approved'
+        : rejected
+            ? 'rejected'
+            : 'returned for changes';
+    final title = approved
+        ? 'Transaction case approved'
+        : rejected
+            ? 'Transaction case rejected'
+            : 'Changes requested';
+    final now = currentDecision.updatedAtIso.isEmpty
+        ? DateTime.now().toUtc().toIso8601String()
+        : currentDecision.updatedAtIso;
+    final actorName = currentDecision.approverName.isEmpty
+        ? current.organizationName
+        : currentDecision.approverName;
+
+    await _workflow.addActivity(
+      TransactionActivity(
+        id: 'decision_${current.id}_${currentDecision.decision.name}_$now',
+        caseId: current.id,
+        organizationId: current.organizationId,
+        actorUserId: currentDecision.approverId,
+        actorName: actorName,
+        kind: TransactionActivityKind.approval,
+        message: '$actorName $decisionLabel “${current.title}”.',
+        createdAtIso: now,
+        recipientUserId: current.ownerUserId,
+      ),
+    );
+    await _workflow.addNotification(
+      TransactionNotification(
+        id: 'decision_notice_${current.id}_${currentDecision.decision.name}_$now',
+        caseId: current.id,
+        organizationId: current.organizationId,
+        recipientUserId: current.ownerUserId,
+        title: title,
+        body: '$actorName $decisionLabel ${current.title}.',
+        createdAtIso: now,
+      ),
+    );
+  }
+
+  TransactionApproval? _latestResolvedApproval(TransactionCase item) {
+    for (final approval in item.approvals.reversed) {
+      if (approval.decision != TransactionApprovalDecision.pending) {
+        return approval;
+      }
+    }
+    return null;
+  }
+
+  TransactionCase? _findCase(List<TransactionCase> cases, String caseId) {
+    for (final item in cases) {
+      if (item.id == caseId) return item;
+    }
+    return null;
   }
 
   Future<List<TransactionCase>> _load(String key) async {
