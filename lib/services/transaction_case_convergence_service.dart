@@ -219,10 +219,10 @@ class TransactionCaseConvergenceService {
         contractSalary += _number(item['salary']);
         if (item['noTradeClause'] == true) noTradeCount++;
       }
-      final charges = _number(map['deadMoney']) +
-          _number(map['capHolds']) +
-          _number(map['draftHolds']) +
-          _number(map['rosterCharges']);
+      final charges = _storedMillions(map['deadMoney']) +
+          _storedMillions(map['capHolds']) +
+          _storedMillions(map['draftHolds']) +
+          _storedMillions(map['rosterCharges']);
       final unverifiedPicks = picks.where((item) {
         if (item is! Map) return false;
         final protection = item['protections']?.toString().trim() ?? '';
@@ -294,9 +294,9 @@ class TransactionCaseConvergenceService {
     if (state.isEmpty) return null;
     final team = (state['team'] ?? state['teamId'] ?? '').toUpperCase();
     final season = state['season'] ?? state['year'] ?? '2026-27';
-    final current = _number(state['teamSalary'] ?? state['currentSalary']);
-    final first = _number(state['firstApron']);
-    final second = _number(state['secondApron']);
+    final current = _storedMillions(state['teamSalary'] ?? state['currentSalary']);
+    final first = _storedMillions(state['firstApron']);
+    final second = _storedMillions(state['secondApron']);
     return TransactionImportCandidate(
       id: 'cap-lab-current',
       source: 'Cap Lab',
@@ -332,5 +332,7 @@ double _number(Object? value) {
   if (value is num) return value.toDouble();
   return double.tryParse(value?.toString().replaceAll(',', '') ?? '') ?? 0;
 }
+
+double _storedMillions(Object? value) => _number(value) * 1000000;
 
 String _money(double value) => '\$${(value / 1000000).toStringAsFixed(1)}M';
