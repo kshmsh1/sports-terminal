@@ -36,7 +36,26 @@ jobs:
         run: flutter pub get
 
       - name: Analyze project
-        run: flutter analyze
+        id: analyze
+        shell: bash
+        run: |
+          set +e
+          flutter analyze 2>&1 | tee analyzer.log
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Retain analyzer diagnostics
+        if: steps.analyze.outputs.status != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-analyzer-diagnostics
+          path: analyzer.log
+          retention-days: 7
+
+      - name: Stop on analyzer failure
+        if: steps.analyze.outputs.status != '0'
+        run: exit 1
 
       - name: Run test suite
         run: flutter test
