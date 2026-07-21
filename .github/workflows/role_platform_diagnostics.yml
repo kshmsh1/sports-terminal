@@ -1,0 +1,27 @@
+name: Role Platform Diagnostics
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/role-platform-transaction-workflows
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get >/dev/null
+      - name: Analyzer findings only
+        shell: bash
+        run: |
+          set +e
+          flutter analyze > /tmp/analyze.log 2>&1
+          status=$?
+          grep -E "^(error|warning|info) •|[0-9]+ issues? found|No issues found" /tmp/analyze.log || tail -n 80 /tmp/analyze.log
+          exit $status
