@@ -1,0 +1,120 @@
+name: Apply Transaction Convergence
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/transaction-convergence-collaboration
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Wire role shells and approval events
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          shell = Path('lib/widgets/role_terminal_shell.dart')
+          text = shell.read_text()
+          text = text.replace("import '../screens/product_arena_home_screen.dart';\n", "")
+          text = text.replace("import '../screens/product_front_office_scenario_screen.dart';\n", "")
+          text = text.replace("import '../screens/product_role_operations_screen.dart';\n", "")
+          text = text.replace("import '../screens/product_trade_machine_screen.dart';\n", "")
+          anchor = "import '../screens/product_content_ops_screens.dart';\n"
+          additions = (
+              "import '../screens/product_connected_transaction_screens.dart';\n"
+              "import '../screens/product_role_home_screen.dart';\n"
+              "import '../screens/product_transaction_command_center_screen.dart';\n"
+          )
+          text = text.replace(anchor, anchor + additions)
+          text = text.replace(
+              "screen: ProductRoleOperationsScreen(\n        session: widget.session,\n        organizationMode: organizationMode,\n      ),",
+              "screen: ProductTransactionCommandCenterScreen(\n        session: widget.session,\n        organizationMode: organizationMode,\n      ),",
+          )
+          text = text.replace(
+              "screen: ProductArenaHomeScreen(session: widget.session),",
+              "screen: ProductRoleHomeScreen(\n        session: widget.session,\n        organizationMode: organizationMode,\n      ),",
+          )
+          text = text.replace(
+              "const _Destination(\n      label: 'Trade Machine',\n      group: 'Transactions',\n      icon: Icons.swap_horiz_rounded,\n      screen: ProductTradeMachineScreen(),\n    ),",
+              "_Destination(\n      label: 'Trade Machine',\n      group: 'Transactions',\n      icon: Icons.swap_horiz_rounded,\n      screen: ProductConnectedTradeMachineScreen(\n        session: widget.session,\n        organizationMode: organizationMode,\n      ),\n    ),",
+          )
+          text = text.replace(
+              "const _Destination(\n      label: 'Front Office',\n      group: 'Transactions',\n      icon: Icons.account_tree_rounded,\n      screen: ProductFrontOfficeScenarioScreen(),\n    ),",
+              "_Destination(\n      label: 'Front Office',\n      group: 'Transactions',\n      icon: Icons.account_tree_rounded,\n      screen: ProductConnectedFrontOfficeScreen(\n        session: widget.session,\n        organizationMode: organizationMode,\n      ),\n    ),",
+          )
+          shell.write_text(text)
+
+          operations = Path('lib/screens/product_role_operations_screen.dart')
+          text = operations.read_text()
+          text = text.replace(
+              "import '../models/transaction_case.dart';\n",
+              "import '../models/transaction_case.dart';\nimport '../models/transaction_workflow.dart';\n",
+          )
+          text = text.replace(
+              "import '../services/transaction_case_repository.dart';\n",
+              "import '../services/transaction_case_repository.dart';\nimport '../services/transaction_workflow_repository.dart';\n",
+          )
+          text = text.replace(
+              "final rules = const CbaTransactionRulesEngine();\n",
+              "final rules = const CbaTransactionRulesEngine();\n  final workflow = const TransactionWorkflowRepository();\n",
+          )
+          marker = "    await repository.upsertOrganization(updated.organizationId, updated);\n    await repository.upsertPersonal(updated.ownerUserId, updated);\n    await _load();"
+          replacement = """    await repository.upsertOrganization(updated.organizationId, updated);
+    await repository.upsertPersonal(updated.ownerUserId, updated);
+    await workflow.addActivity(TransactionActivity(
+      id: 'activity_${DateTime.now().microsecondsSinceEpoch}',
+      caseId: updated.id,
+      organizationId: updated.organizationId,
+      actorUserId: widget.session.userId,
+      actorName: widget.session.displayName,
+      kind: TransactionActivityKind.approval,
+      message: decision == TransactionApprovalDecision.approved
+          ? 'Approved “${updated.title}”.'
+          : 'Requested changes to “${updated.title}”.',
+      createdAtIso: now,
+      recipientUserId: updated.ownerUserId,
+    ));
+    await workflow.addNotification(TransactionNotification(
+      id: 'notification_${DateTime.now().microsecondsSinceEpoch}',
+      caseId: updated.id,
+      organizationId: updated.organizationId,
+      recipientUserId: updated.ownerUserId,
+      title: decision == TransactionApprovalDecision.approved
+          ? 'Transaction case approved'
+          : 'Changes requested',
+      body: decision == TransactionApprovalDecision.approved
+          ? '${updated.title} was approved by ${widget.session.displayName}.'
+          : '${widget.session.displayName} requested changes to ${updated.title}.',
+      createdAtIso: now,
+    ));
+    await _load();"""
+          if marker not in text:
+              raise SystemExit('approval marker not found')
+          operations.write_text(text.replace(marker, replacement))
+          PY
+      - run: dart format lib/models/transaction_workflow.dart lib/services/transaction_workflow_repository.dart lib/services/transaction_case_convergence_service.dart lib/screens/product_connected_transaction_screens.dart lib/screens/product_transaction_command_center_screen.dart lib/screens/product_role_home_screen.dart lib/screens/product_role_operations_screen.dart lib/widgets/role_terminal_shell.dart test/transaction_convergence_collaboration_test.dart
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build web --release
+      - name: Commit connected role platforms
+        run: |
+          rm .github/workflows/apply_transaction_convergence.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Connect transaction tools and collaboration workflows"
+          git push origin HEAD:agent/transaction-convergence-collaboration
