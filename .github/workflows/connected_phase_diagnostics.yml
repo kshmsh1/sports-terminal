@@ -1,0 +1,38 @@
+name: Connected Phase Diagnostics
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Capture analyzer transcript
+        shell: bash
+        run: |
+          set +e
+          flutter analyze > analyzer.log 2>&1
+          status=$?
+          cat analyzer.log
+          echo "$status" > analyzer.status
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: connected-phase-analyzer
+          path: |
+            analyzer.log
+            analyzer.status
+          retention-days: 7
+      - name: Fail when analysis fails
+        run: test "$(cat analyzer.status)" = "0"
