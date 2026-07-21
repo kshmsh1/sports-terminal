@@ -5,13 +5,17 @@ import '../models/app_session.dart';
 import '../screens/excel_like_workspace_screen.dart';
 import '../screens/product_advanced_nba_tools_screen.dart';
 import '../screens/product_arena_home_screen.dart';
+import '../screens/product_backend_sync_screen.dart';
 import '../screens/product_content_ops_screens.dart';
+import '../screens/product_fantasy_community_screens.dart';
 import '../screens/product_front_office_scenario_screen.dart';
 import '../screens/product_nba_entity_hub_screen.dart';
 import '../screens/product_nba_stats_center_screen.dart';
 import '../screens/product_profile_persisted_screen.dart';
 import '../screens/product_python_dev_lab_screen.dart';
 import '../screens/product_role_operations_screen.dart';
+import '../screens/product_strategy_map_screen.dart';
+import '../screens/product_team_blogs_screen.dart';
 import '../screens/product_shell_screens.dart';
 import '../screens/product_trade_machine_screen.dart';
 import '../services/product_local_store.dart';
@@ -46,93 +50,153 @@ class _RoleTerminalShellState extends State<RoleTerminalShell> {
   bool get organizationMode => widget.session.role.canManageOrganization;
 
   List<_Destination> get destinations => [
-        _Destination(
-          label: organizationMode ? 'Organization' : 'My Work',
-          group: organizationMode ? 'Organization' : 'Personal',
-          icon: organizationMode
-              ? Icons.corporate_fare_rounded
-              : Icons.space_dashboard_rounded,
-          screen: ProductRoleOperationsScreen(
-            session: widget.session,
-            organizationMode: organizationMode,
-          ),
-        ),
-        _Destination(
-          label: 'Home',
-          group: 'Product',
-          icon: Icons.home_rounded,
-          screen: ProductArenaHomeScreen(session: widget.session),
-        ),
-        const _Destination(
-          label: 'Stats',
-          group: 'NBA',
-          icon: Icons.leaderboard_rounded,
-          screen: ProductNbaStatsCenterScreen(),
-        ),
-        const _Destination(
-          label: 'NBA Hub',
-          group: 'NBA',
-          icon: Icons.sports_basketball_rounded,
-          screen: ProductNbaEntityHubScreen(),
-        ),
-        const _Destination(
-          label: 'Advanced',
-          group: 'NBA',
-          icon: Icons.analytics_rounded,
-          screen: ProductAdvancedNbaToolsScreen(),
-        ),
-        const _Destination(
-          label: 'Trade Machine',
-          group: 'Transactions',
-          icon: Icons.swap_horiz_rounded,
-          screen: ProductTradeMachineScreen(),
-        ),
-        const _Destination(
-          label: 'Front Office',
-          group: 'Transactions',
-          icon: Icons.account_tree_rounded,
-          screen: ProductFrontOfficeScenarioScreen(),
-        ),
-        const _Destination(
-          label: 'Workspace',
-          group: 'Tools',
-          icon: Icons.grid_on_rounded,
-          screen: ProductWorkspaceHubScreen(
-            workspace: ExcelLikeWorkspaceScreen(),
-          ),
-        ),
-        const _Destination(
-          label: 'Python Lab',
-          group: 'Tools',
-          icon: Icons.code_rounded,
-          screen: ProductPythonDevLabScreen(),
-        ),
-        if (organizationMode)
-          _Destination(
-            label: 'Organization Admin',
-            group: 'Organization',
-            icon: Icons.admin_panel_settings_rounded,
-            screen: ProductAdminOpsCenterScreen(session: widget.session),
-          ),
-        const _Destination(
-          label: 'Articles',
-          group: 'Network',
-          icon: Icons.article_rounded,
-          screen: ProductArticlesArenaScreen(),
-        ),
-        const _Destination(
-          label: 'Messages',
-          group: 'Network',
-          icon: Icons.chat_bubble_rounded,
-          screen: ProductMessagesArenaScreen(),
-        ),
-        _Destination(
-          label: 'Profile',
-          group: 'Account',
-          icon: Icons.person_rounded,
-          screen: ProductPersistedProfileScreen(session: widget.session),
-        ),
-      ];
+    _Destination(
+      label: organizationMode ? 'Organization' : 'My Work',
+      group: organizationMode ? 'Organization' : 'Personal',
+      icon: organizationMode
+          ? Icons.corporate_fare_rounded
+          : Icons.space_dashboard_rounded,
+      screen: ProductRoleOperationsScreen(
+        session: widget.session,
+        organizationMode: organizationMode,
+      ),
+    ),
+    _Destination(
+      label: 'Home',
+      group: 'Product',
+      icon: Icons.home_rounded,
+      screen: ProductArenaHomeScreen(session: widget.session),
+    ),
+    const _Destination(
+      label: 'Stats',
+      group: 'NBA',
+      icon: Icons.leaderboard_rounded,
+      screen: ProductNbaStatsCenterScreen(),
+    ),
+    const _Destination(
+      label: 'NBA Hub',
+      group: 'NBA',
+      icon: Icons.sports_basketball_rounded,
+      screen: ProductNbaEntityHubScreen(),
+    ),
+    const _Destination(
+      label: 'Advanced',
+      group: 'NBA',
+      icon: Icons.analytics_rounded,
+      screen: ProductAdvancedNbaToolsScreen(),
+    ),
+    const _Destination(
+      label: 'Trade Machine',
+      group: 'Transactions',
+      icon: Icons.swap_horiz_rounded,
+      screen: ProductTradeMachineScreen(),
+    ),
+    const _Destination(
+      label: 'Front Office',
+      group: 'Transactions',
+      icon: Icons.account_tree_rounded,
+      screen: ProductFrontOfficeScenarioScreen(),
+    ),
+    const _Destination(
+      label: 'Workspace',
+      group: 'Tools',
+      icon: Icons.grid_on_rounded,
+      screen: ProductWorkspaceHubScreen(workspace: ExcelLikeWorkspaceScreen()),
+    ),
+    const _Destination(
+      label: 'Python Lab',
+      group: 'Tools',
+      icon: Icons.code_rounded,
+      screen: ProductPythonDevLabScreen(),
+    ),
+    if (organizationMode)
+      _Destination(
+        label: 'Organization Admin',
+        group: 'Organization',
+        icon: Icons.admin_panel_settings_rounded,
+        screen: ProductAdminOpsCenterScreen(session: widget.session),
+      ),
+    const _Destination(
+      label: 'Strategy',
+      group: 'Product',
+      icon: Icons.radar_rounded,
+      screen: ProductStrategyMapScreen(),
+    ),
+    const _Destination(
+      label: 'Fantasy',
+      group: 'Product',
+      icon: Icons.bolt_rounded,
+      screen: ProductFantasyWarRoomScreen(),
+    ),
+    const _Destination(
+      label: 'Team Blogs',
+      group: 'Content',
+      icon: Icons.newspaper_rounded,
+      screen: ProductTeamBlogsScreen(),
+    ),
+    const _Destination(
+      label: 'Community',
+      group: 'Network',
+      icon: Icons.forum_rounded,
+      screen: ProductCommunityArenaScreen(),
+    ),
+    const _Destination(
+      label: 'Articles',
+      group: 'Network',
+      icon: Icons.article_rounded,
+      screen: ProductArticlesArenaScreen(),
+    ),
+    const _Destination(
+      label: 'Messages',
+      group: 'Network',
+      icon: Icons.chat_bubble_rounded,
+      screen: ProductMessagesArenaScreen(),
+    ),
+    if (organizationMode)
+      _Destination(
+        label: 'Backend',
+        group: 'Organization',
+        icon: Icons.cloud_sync_rounded,
+        screen: ProductBackendSyncScreen(session: widget.session),
+      ),
+    if (organizationMode)
+      const _Destination(
+        label: 'Internal Lab',
+        group: 'Organization',
+        icon: Icons.science_rounded,
+        screen: ProductInternalLabScreen(),
+      ),
+    _Destination(
+      label: 'Profile',
+      group: 'Account',
+      icon: Icons.person_rounded,
+      screen: ProductPersistedProfileScreen(session: widget.session),
+    ),
+    const _Destination(
+      label: 'About Us',
+      group: 'Legal',
+      icon: Icons.info_outline_rounded,
+      screen: ProductLegalScreen(kind: 'about'),
+    ),
+    const _Destination(
+      label: 'Contact',
+      group: 'Legal',
+      icon: Icons.mail_outline_rounded,
+      screen: ProductLegalScreen(kind: 'contact'),
+    ),
+    const _Destination(
+      label: 'Privacy Policy',
+      group: 'Legal',
+      icon: Icons.privacy_tip_outlined,
+      screen: ProductLegalScreen(kind: 'privacy'),
+    ),
+    const _Destination(
+      label: 'Terms & Conditions',
+      group: 'Legal',
+      icon: Icons.description_outlined,
+      screen: ProductLegalScreen(kind: 'terms'),
+    ),
+  ];
 
   @override
   void initState() {
@@ -183,9 +247,11 @@ class _RoleTerminalShellState extends State<RoleTerminalShell> {
                     actions: [
                       IconButton(
                         onPressed: _toggleTheme,
-                        icon: Icon(darkMode
-                            ? Icons.light_mode_rounded
-                            : Icons.dark_mode_rounded),
+                        icon: Icon(
+                          darkMode
+                              ? Icons.light_mode_rounded
+                              : Icons.dark_mode_rounded,
+                        ),
                       ),
                       IconButton(
                         onPressed: widget.onSignOut,
@@ -338,10 +404,7 @@ class _Navigation extends StatelessWidget {
                       session.role.canManageOrganization
                           ? 'Organization terminal'
                           : 'Individual terminal',
-                      style: TextStyle(
-                        color: palette.muted,
-                        fontSize: 11,
-                      ),
+                      style: TextStyle(color: palette.muted, fontSize: 11),
                     ),
                   ],
                 ),
@@ -356,8 +419,8 @@ class _Navigation extends StatelessWidget {
             itemCount: destinations.length,
             itemBuilder: (context, index) {
               final item = destinations[index];
-              final showGroup = index == 0 ||
-                  destinations[index - 1].group != item.group;
+              final showGroup =
+                  index == 0 || destinations[index - 1].group != item.group;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -428,9 +491,11 @@ class _Navigation extends StatelessWidget {
               Row(
                 children: [
                   CircleAvatar(
-                    child: Text(session.displayName.isEmpty
-                        ? 'U'
-                        : session.displayName[0].toUpperCase()),
+                    child: Text(
+                      session.displayName.isEmpty
+                          ? 'U'
+                          : session.displayName[0].toUpperCase(),
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -448,10 +513,7 @@ class _Navigation extends StatelessWidget {
                         ),
                         Text(
                           session.role.label,
-                          style: TextStyle(
-                            color: palette.muted,
-                            fontSize: 11,
-                          ),
+                          style: TextStyle(color: palette.muted, fontSize: 11),
                         ),
                       ],
                     ),
