@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "currency": "USD",
+  "environments": [
+    {
+      "season": "2024-25",
+      "effectiveDate": "2024-07-01",
+      "salaryCap": 140588000,
+      "taxLevel": 170814000,
+      "minimumTeamSalary": 126529000,
+      "firstApron": 178132000,
+      "secondApron": 188931000,
+      "nonTaxpayerMle": 12822000,
+      "taxpayerMle": 5168000,
+      "roomMle": 7983000,
+      "sourceLabel": "NBA Communications — Salary Cap for 2024-25",
+      "sourceUrl": "https://www.nba.com/news/nba-salary-cap-set-2024-25-season"
+    },
+    {
+      "season": "2025-26",
+      "effectiveDate": "2025-07-01",
+      "salaryCap": 154647000,
+      "taxLevel": 187895000,
+      "minimumTeamSalary": 139182000,
+      "firstApron": 195945000,
+      "secondApron": 207824000,
+      "nonTaxpayerMle": 14104000,
+      "taxpayerMle": 5685000,
+      "roomMle": 8781000,
+      "sourceLabel": "NBA Communications — Salary Cap for 2025-26",
+      "sourceUrl": "https://pr.nba.com/nba-salary-cap-2025-26-season/"
+    },
+    {
+      "season": "2026-27",
+      "effectiveDate": "2026-07-01",
+      "salaryCap": 164961000,
+      "taxLevel": 200428000,
+      "minimumTeamSalary": 148465000,
+      "firstApron": 209015000,
+      "secondApron": 221686000,
+      "nonTaxpayerMle": 15044000,
+      "taxpayerMle": 6064000,
+      "roomMle": 9366000,
+      "sourceLabel": "NBA Communications — Salary Cap for 2026-27",
+      "sourceUrl": "https://www.nba.com/news/nba-salary-cap-2026-27-season"
+    }
+  ]
+}

@@ -12,6 +12,7 @@ class ProductLocalStore {
   static const profileSettingsKey = 'sports_terminal.profile.settings';
   static const workbookCellsKey = 'sports_terminal.workspace.cells';
   static const workbookSheetKey = 'sports_terminal.workspace.sheet';
+  static const workspaceImportMetadataKey = 'sports_terminal.workspace.import_metadata';
   static const nbaModeKey = 'sports_terminal.nba.mode';
   static const nbaSelectedPlayerKey = 'sports_terminal.nba.selected_player';
   static const nbaSelectedTeamKey = 'sports_terminal.nba.selected_team';
@@ -26,6 +27,12 @@ class ProductLocalStore {
   static const frontOfficeScenarioKey = 'sports_terminal.front_office.scenario';
   static const statsQueryKey = 'sports_terminal.stats.query';
   static const tradeMachineStateKey = 'sports_terminal.trade_machine.state';
+  static const routePayloadActiveKey = 'sports_terminal.routes.active_payload';
+  static const routePayloadHistoryKey = 'sports_terminal.routes.history';
+  static const objectRouterStateKey = 'sports_terminal.object_router.state';
+  static const pythonNotebookCodeKey = 'sports_terminal.python.notebook_code';
+  static const pythonNotebookOutputKey = 'sports_terminal.python.notebook_output';
+  static const capLabStateKey = 'sports_terminal.cap_lab.state';
 
   Future<bool> loadBool(String key, {bool fallback = false}) async {
     final preferences = await SharedPreferences.getInstance();
@@ -47,7 +54,15 @@ class ProductLocalStore {
     await preferences.setString(key, value);
   }
 
-  Future<Set<String>> loadStringSet(String key, {Set<String> fallback = const {}}) async {
+  Future<void> remove(String key) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove(key);
+  }
+
+  Future<Set<String>> loadStringSet(
+    String key, {
+    Set<String> fallback = const {},
+  }) async {
     final preferences = await SharedPreferences.getInstance();
     final encoded = preferences.getString(key);
     if (encoded == null || encoded.isEmpty) return Set<String>.from(fallback);
@@ -66,14 +81,19 @@ class ProductLocalStore {
     await preferences.setString(key, jsonEncode(sorted));
   }
 
-  Future<Map<String, String>> loadStringMap(String key, {Map<String, String> fallback = const {}}) async {
+  Future<Map<String, String>> loadStringMap(
+    String key, {
+    Map<String, String> fallback = const {},
+  }) async {
     final preferences = await SharedPreferences.getInstance();
     final encoded = preferences.getString(key);
     if (encoded == null || encoded.isEmpty) return Map<String, String>.from(fallback);
     try {
       final decoded = jsonDecode(encoded);
       if (decoded is Map) {
-        return decoded.map((key, value) => MapEntry(key.toString(), value?.toString() ?? ''));
+        return decoded.map(
+          (key, value) => MapEntry(key.toString(), value?.toString() ?? ''),
+        );
       }
     } catch (_) {
       return Map<String, String>.from(fallback);
