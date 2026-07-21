@@ -1,24 +1,27 @@
 name: Flutter Quality
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: flutter-quality-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
-    if: github.actor != 'github-actions[bot]'
-    name: Integrate, analyze, test and build web
+    name: Analyze, test and build web
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 30
 
     steps:
-      - name: Check out product branch
+      - name: Check out repository
         uses: actions/checkout@v6
-        with:
-          ref: agent/transaction-convergence-collaboration
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -26,200 +29,17 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Apply role-platform integration
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          shell = Path('lib/widgets/role_terminal_shell.dart')
-          text = shell.read_text()
-          for old in [
-              "import '../screens/product_arena_home_screen.dart';\n",
-              "import '../screens/product_front_office_scenario_screen.dart';\n",
-              "import '../screens/product_role_operations_screen.dart';\n",
-              "import '../screens/product_trade_machine_screen.dart';\n",
-          ]:
-              text = text.replace(old, '')
-          anchor = "import '../screens/product_content_ops_screens.dart';\n"
-          additions = (
-              "import '../screens/product_connected_transaction_screens.dart';\n"
-              "import '../screens/product_role_home_screen.dart';\n"
-              "import '../screens/product_transaction_command_center_screen.dart';\n"
-          )
-          if additions not in text:
-              text = text.replace(anchor, anchor + additions)
-          text = text.replace(
-              "screen: ProductRoleOperationsScreen(\n        session: widget.session,\n        organizationMode: organizationMode,\n      ),",
-              "screen: ProductTransactionCommandCenterScreen(\n        session: widget.session,\n        organizationMode: organizationMode,\n      ),",
-          )
-          text = text.replace(
-              "screen: ProductArenaHomeScreen(session: widget.session),",
-              "screen: ProductRoleHomeScreen(\n        session: widget.session,\n        organizationMode: organizationMode,\n      ),",
-          )
-          text = text.replace(
-              "const _Destination(\n      label: 'Trade Machine',\n      group: 'Transactions',\n      icon: Icons.swap_horiz_rounded,\n      screen: ProductTradeMachineScreen(),\n    ),",
-              "_Destination(\n      label: 'Trade Machine',\n      group: 'Transactions',\n      icon: Icons.swap_horiz_rounded,\n      screen: ProductConnectedTradeMachineScreen(\n        session: widget.session,\n        organizationMode: organizationMode,\n      ),\n    ),",
-          )
-          text = text.replace(
-              "const _Destination(\n      label: 'Front Office',\n      group: 'Transactions',\n      icon: Icons.account_tree_rounded,\n      screen: ProductFrontOfficeScenarioScreen(),\n    ),",
-              "_Destination(\n      label: 'Front Office',\n      group: 'Transactions',\n      icon: Icons.account_tree_rounded,\n      screen: ProductConnectedFrontOfficeScreen(\n        session: widget.session,\n        organizationMode: organizationMode,\n      ),\n    ),",
-          )
-          shell.write_text(text)
-
-          operations = Path('lib/screens/product_role_operations_screen.dart')
-          text = operations.read_text()
-          if "transaction_workflow.dart" not in text:
-              text = text.replace(
-                  "import '../models/transaction_case.dart';\n",
-                  "import '../models/transaction_case.dart';\nimport '../models/transaction_workflow.dart';\n",
-              )
-          if "transaction_workflow_repository.dart" not in text:
-              text = text.replace(
-                  "import '../services/transaction_case_repository.dart';\n",
-                  "import '../services/transaction_case_repository.dart';\nimport '../services/transaction_workflow_repository.dart';\n",
-              )
-          if "final workflow = const TransactionWorkflowRepository();" not in text:
-              text = text.replace(
-                  "final rules = const CbaTransactionRulesEngine();\n",
-                  "final rules = const CbaTransactionRulesEngine();\n  final workflow = const TransactionWorkflowRepository();\n",
-              )
-          marker = "    await repository.upsertOrganization(updated.organizationId, updated);\n    await repository.upsertPersonal(updated.ownerUserId, updated);\n    await _load();"
-          replacement = """    await repository.upsertOrganization(updated.organizationId, updated);
-    await repository.upsertPersonal(updated.ownerUserId, updated);
-    await workflow.addActivity(TransactionActivity(
-      id: 'activity_${DateTime.now().microsecondsSinceEpoch}',
-      caseId: updated.id,
-      organizationId: updated.organizationId,
-      actorUserId: widget.session.userId,
-      actorName: widget.session.displayName,
-      kind: TransactionActivityKind.approval,
-      message: decision == TransactionApprovalDecision.approved
-          ? 'Approved “${updated.title}”.'
-          : 'Requested changes to “${updated.title}”.',
-      createdAtIso: now,
-      recipientUserId: updated.ownerUserId,
-    ));
-    await workflow.addNotification(TransactionNotification(
-      id: 'notification_${DateTime.now().microsecondsSinceEpoch}',
-      caseId: updated.id,
-      organizationId: updated.organizationId,
-      recipientUserId: updated.ownerUserId,
-      title: decision == TransactionApprovalDecision.approved
-          ? 'Transaction case approved'
-          : 'Changes requested',
-      body: decision == TransactionApprovalDecision.approved
-          ? '${updated.title} was approved by ${widget.session.displayName}.'
-          : '${widget.session.displayName} requested changes to ${updated.title}.',
-      createdAtIso: now,
-    ));
-    await _load();"""
-          if marker in text:
-              text = text.replace(marker, replacement)
-          operations.write_text(text)
-
-          command = Path('lib/screens/product_transaction_command_center_screen.dart')
-          text = command.read_text().replace('return Future.value();', 'return Future<void>.value();')
-          command.write_text(text)
-          PY
-
-      - name: Format connected product files
-        run: |
-          dart format \
-            lib/models/transaction_workflow.dart \
-            lib/services/transaction_workflow_repository.dart \
-            lib/services/transaction_case_convergence_service.dart \
-            lib/screens/product_connected_transaction_screens.dart \
-            lib/screens/product_transaction_command_center_screen.dart \
-            lib/screens/product_role_home_screen.dart \
-            lib/screens/product_role_operations_screen.dart \
-            lib/widgets/role_terminal_shell.dart \
-            test/transaction_convergence_collaboration_test.dart
+      - name: Show Flutter version
+        run: flutter --version
 
       - name: Resolve dependencies
         run: flutter pub get
 
-      - name: Analyze product
-        id: analyze
-        shell: bash
-        run: |
-          set +e
-          flutter analyze > /tmp/analyze.log 2>&1
-          status=$?
-          cat /tmp/analyze.log
-          echo "status=$status" >> "$GITHUB_OUTPUT"
-          exit 0
+      - name: Analyze project
+        run: flutter analyze
 
       - name: Run test suite
-        if: steps.analyze.outputs.status == '0'
         run: flutter test
 
       - name: Build web application
-        if: steps.analyze.outputs.status == '0'
-        run: flutter build web --release
-
-      - name: Commit integrated product or diagnostics
-        shell: bash
-        run: |
-          status='${{ steps.analyze.outputs.status }}'
-          rm -f .github/workflows/apply_transaction_convergence.yml
-          cat > .github/workflows/flutter_quality.yml <<'YAML'
-          name: Flutter Quality
-
-          on:
-            push:
-              branches: [main]
-            pull_request:
-              branches: [main]
-
-          permissions:
-            contents: read
-
-          concurrency:
-            group: flutter-quality-${{ github.ref }}
-            cancel-in-progress: true
-
-          jobs:
-            validate:
-              name: Analyze, test and build web
-              runs-on: ubuntu-latest
-              timeout-minutes: 30
-
-              steps:
-                - name: Check out repository
-                  uses: actions/checkout@v6
-
-                - name: Set up Flutter
-                  uses: subosito/flutter-action@v2
-                  with:
-                    channel: stable
-                    cache: true
-
-                - name: Show Flutter version
-                  run: flutter --version
-
-                - name: Resolve dependencies
-                  run: flutter pub get
-
-                - name: Analyze project
-                  run: flutter analyze
-
-                - name: Run test suite
-                  run: flutter test
-
-                - name: Build web application
-                  run: flutter build web
-          YAML
-          if [ "$status" != '0' ]; then
-            cp /tmp/analyze.log docs/temp_transaction_analyzer.txt
-          else
-            rm -f docs/temp_transaction_analyzer.txt
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Connect transaction tools and collaboration workflows"
-          git push origin HEAD:agent/transaction-convergence-collaboration
-          if [ "$status" != '0' ]; then
-            exit 1
-          fi
+        run: flutter build web
