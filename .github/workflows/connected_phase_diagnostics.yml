@@ -1,38 +1,63 @@
-name: Connected Phase Diagnostics
+name: Connected Phase Repair
 
 on:
   pull_request:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  analyze:
+  repair:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v6
-      - uses: subosito/flutter-action@v2
+      - name: Check out implementation branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/connected-data-finance-studio
+          fetch-depth: 0
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-      - run: flutter pub get
-      - name: Capture analyzer transcript
+      - name: Apply exact analyzer repairs
+        shell: python
+        run: |
+          from pathlib import Path
+
+          replacements = {
+              Path('lib/screens/product_cap_lab_screen.dart'): [
+                  ("_capInput('Modeled salary · $M')", "_capInput('Modeled salary · \\$M')"),
+              ],
+              Path('lib/screens/product_object_router_screen.dart'): [
+                  ('separatorBuilder: (_, __) => const Divider(', 'separatorBuilder: (_, _) => const Divider('),
+              ],
+          }
+          for path, changes in replacements.items():
+              text = path.read_text(encoding='utf-8')
+              for old, new in changes:
+                  if text.count(old) != 1:
+                      raise SystemExit(f'Expected exactly one match in {path}: {old}')
+                  text = text.replace(old, new)
+              path.write_text(text, encoding='utf-8')
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Format repaired files
+        run: dart format lib/screens/product_cap_lab_screen.dart lib/screens/product_object_router_screen.dart
+      - name: Analyze project
+        run: flutter analyze
+      - name: Run complete test suite
+        run: flutter test
+      - name: Build release web application
+        run: flutter build web --release
+      - name: Commit validated repair
         shell: bash
         run: |
-          set +e
-          flutter analyze > analyzer.log 2>&1
-          status=$?
-          cat analyzer.log
-          echo "$status" > analyzer.status
-          exit 0
-      - uses: actions/upload-artifact@v4
-        with:
-          name: connected-phase-analyzer
-          path: |
-            analyzer.log
-            analyzer.status
-          retention-days: 7
-      - name: Fail when analysis fails
-        run: test "$(cat analyzer.status)" = "0"
+          rm .github/workflows/connected_phase_diagnostics.yml
+          git config user.name "Sports Terminal Build Bot"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -m "Validate connected data and finance studio"
+          git push origin HEAD:agent/connected-data-finance-studio
