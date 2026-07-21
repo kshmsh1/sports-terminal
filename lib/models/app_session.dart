@@ -12,6 +12,9 @@ extension UserRoleLabel on UserRole {
       };
 
   bool get canAccessPlatformAdmin => this == UserRole.platformAdmin;
+  bool get canManageOrganization =>
+      this == UserRole.organizationAdmin || this == UserRole.platformAdmin;
+  bool get isIndividualUser => this == UserRole.analyst;
 }
 
 class AppSession {
