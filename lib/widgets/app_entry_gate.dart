@@ -4,8 +4,8 @@ import '../controllers/auth_controller.dart';
 import '../controllers/internal_workspace_controller.dart';
 import '../models/app_session.dart';
 import '../screens/login_screen.dart';
+import 'role_terminal_shell.dart';
 import 'terminal_shell.dart';
-import 'user_terminal_shell.dart';
 
 class AppEntryGate extends StatelessWidget {
   const AppEntryGate({
@@ -29,7 +29,7 @@ class AppEntryGate extends StatelessWidget {
         if (session.role.canAccessPlatformAdmin) {
           return const TerminalShell();
         }
-        return UserTerminalShell(
+        return RoleTerminalShell(
           session: session,
           workspaceController: workspaceController,
           onSignOut: authController.signOut,
