@@ -82,4 +82,4 @@ The phase adds deterministic tests for:
 - persistent active package and history hydration;
 - cap-tier classification and room calculations.
 
-The branch must pass `flutter analyze`, the complete test suite, the Pre-Data Gate and `flutter build web --release` before merge.
+The dedicated branch validation completed `flutter analyze`, the complete test suite and `flutter build web --release` before the validated repair commit was pushed. The normal Flutter Quality and Pre-Data workflows are required to pass again against the final branch head before merge.
