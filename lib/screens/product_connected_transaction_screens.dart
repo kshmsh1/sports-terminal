@@ -8,7 +8,6 @@ import 'product_trade_machine_screen.dart';
 const _navy = Color(0xFF071A33);
 const _blue = Color(0xFF2563EB);
 const _orange = Color(0xFFFF7A1A);
-const _ink = Color(0xFF102033);
 const _muted = Color(0xFF667085);
 const _line = Color(0xFFE3E8F0);
 
