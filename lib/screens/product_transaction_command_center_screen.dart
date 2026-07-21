@@ -11,8 +11,6 @@ import 'product_role_operations_screen.dart';
 const _navy = Color(0xFF071A33);
 const _blue = Color(0xFF2563EB);
 const _orange = Color(0xFFFF7A1A);
-const _green = Color(0xFF059669);
-const _red = Color(0xFFDC2626);
 const _ink = Color(0xFF102033);
 const _muted = Color(0xFF667085);
 const _line = Color(0xFFE3E8F0);
@@ -35,44 +33,30 @@ class ProductTransactionCommandCenterScreen extends StatefulWidget {
 
 class _ProductTransactionCommandCenterScreenState
     extends State<ProductTransactionCommandCenterScreen> {
-  final caseRepository = const TransactionCaseRepository();
-  final workflowRepository = const TransactionWorkflowRepository();
-  final convergence = const TransactionCaseConvergenceService();
-  final commentController = TextEditingController();
-  final assigneeController = TextEditingController();
-  final memberIdController = TextEditingController();
-  final memberNameController = TextEditingController();
-  final memberFocusController = TextEditingController(text: 'League-wide');
+  final TransactionCaseRepository caseRepository =
+      const TransactionCaseRepository();
+  final TransactionWorkflowRepository workflowRepository =
+      const TransactionWorkflowRepository();
+  final TransactionCaseConvergenceService convergence =
+      const TransactionCaseConvergenceService();
 
-  String selectedTab = 'Cases';
+  final TextEditingController commentController = TextEditingController();
+  final TextEditingController assigneeController = TextEditingController();
+  final TextEditingController memberIdController = TextEditingController();
+  final TextEditingController memberNameController = TextEditingController();
+  final TextEditingController memberFocusController =
+      TextEditingController(text: 'League-wide');
+
+  bool loading = true;
+  bool saving = false;
+  String tab = 'Cases';
   String selectedCaseId = '';
   String memberRole = 'Analyst';
-  bool loading = true;
-  bool mutating = false;
-  List<TransactionCase> cases = [];
-  List<TransactionImportCandidate> candidates = [];
-  List<TransactionActivity> activities = [];
-  List<TransactionNotification> notifications = [];
-  List<OrganizationMemberRecord> members = [];
-
-  List<String> get tabs => [
-        'Cases',
-        'Imports',
-        'Collaboration',
-        'Activity',
-        'Notifications',
-        if (widget.organizationMode) 'Members',
-      ];
-
-  TransactionCase? get selectedCase {
-    if (cases.isEmpty) return null;
-    return cases.firstWhere(
-      (item) => item.id == selectedCaseId,
-      orElse: () => cases.first,
-    );
-  }
-
-  int get unreadCount => notifications.where((item) => !item.isRead).length;
+  List<TransactionCase> cases = <TransactionCase>[];
+  List<TransactionImportCandidate> candidates = <TransactionImportCandidate>[];
+  List<TransactionActivity> activities = <TransactionActivity>[];
+  List<TransactionNotification> notifications = <TransactionNotification>[];
+  List<OrganizationMemberRecord> members = <OrganizationMemberRecord>[];
 
   @override
   void initState() {
@@ -90,23 +74,45 @@ class _ProductTransactionCommandCenterScreenState
     super.dispose();
   }
 
+  List<String> get availableTabs => <String>[
+        'Cases',
+        'Imports',
+        'Collaboration',
+        'Activity',
+        'Notifications',
+        if (widget.organizationMode) 'Members',
+      ];
+
+  int get unreadCount {
+    return notifications.where((TransactionNotification item) => !item.isRead).length;
+  }
+
+  TransactionCase? _selectedCase() {
+    if (cases.isEmpty) return null;
+    for (final TransactionCase item in cases) {
+      if (item.id == selectedCaseId) return item;
+    }
+    return cases.first;
+  }
+
   Future<void> _load() async {
-    final loadedCases = widget.organizationMode
+    final List<TransactionCase> loadedCases = widget.organizationMode
         ? await caseRepository.loadOrganization(widget.session.organizationId)
         : await caseRepository.loadPersonal(widget.session.userId);
-    final loadedCandidates = await convergence.discover();
-    final loadedActivities = await workflowRepository.loadActivities(
-      widget.session.organizationId,
-    );
-    final loadedNotifications = await workflowRepository.loadNotifications(
-      widget.session.userId,
-    );
-    var loadedMembers = await workflowRepository.loadMembers(
-      widget.session.organizationId,
-    );
+    final List<TransactionImportCandidate> loadedCandidates =
+        await convergence.discover();
+    final List<TransactionActivity> loadedActivities =
+        await workflowRepository.loadActivities(widget.session.organizationId);
+    final List<TransactionNotification> loadedNotifications =
+        await workflowRepository.loadNotifications(widget.session.userId);
+    List<OrganizationMemberRecord> loadedMembers =
+        await workflowRepository.loadMembers(widget.session.organizationId);
+
     if (widget.organizationMode &&
-        !loadedMembers.any((item) => item.userId == widget.session.userId)) {
-      final self = OrganizationMemberRecord(
+        !loadedMembers.any(
+          (OrganizationMemberRecord item) => item.userId == widget.session.userId,
+        )) {
+      final OrganizationMemberRecord self = OrganizationMemberRecord(
         userId: widget.session.userId,
         displayName: widget.session.displayName,
         roleLabel: widget.session.role.label,
@@ -115,8 +121,9 @@ class _ProductTransactionCommandCenterScreenState
         reviewCapacity: 12,
       );
       await workflowRepository.upsertMember(widget.session.organizationId, self);
-      loadedMembers = [self, ...loadedMembers];
+      loadedMembers = <OrganizationMemberRecord>[self, ...loadedMembers];
     }
+
     if (!mounted) return;
     setState(() {
       cases = loadedCases;
@@ -124,49 +131,50 @@ class _ProductTransactionCommandCenterScreenState
       activities = loadedActivities;
       notifications = loadedNotifications;
       members = loadedMembers;
-      if (cases.isNotEmpty && !cases.any((item) => item.id == selectedCaseId)) {
+      if (cases.isNotEmpty &&
+          !cases.any((TransactionCase item) => item.id == selectedCaseId)) {
         selectedCaseId = cases.first.id;
       }
       loading = false;
     });
   }
 
-  Future<void> _run(Future<void> Function() action) async {
-    if (mutating) return;
-    setState(() => mutating = true);
+  Future<void> _execute(Future<void> Function() action) async {
+    if (saving) return;
+    setState(() => saving = true);
     try {
       await action();
       await _load();
     } catch (error) {
-      _show('The workflow update could not be completed: $error');
+      _message('Workflow update failed: $error');
     } finally {
-      if (mounted) setState(() => mutating = false);
+      if (mounted) setState(() => saving = false);
     }
   }
 
-  Future<void> _importCandidate(
-    TransactionImportCandidate candidate, {
-    required bool organizationVisible,
-  }) {
-    return _run(() async {
-      final item = await convergence.importCandidate(
+  Future<void> _import(
+    TransactionImportCandidate candidate,
+    bool organizationVisible,
+  ) async {
+    await _execute(() async {
+      final TransactionCase item = await convergence.importCandidate(
         candidate: candidate,
         session: widget.session,
         organizationVisible: organizationVisible,
       );
       selectedCaseId = item.id;
-      selectedTab = 'Collaboration';
-      _show('Imported “${item.title}”.');
+      tab = 'Collaboration';
+      _message('Imported “${item.title}”.');
     });
   }
 
-  Future<void> _publish(TransactionCase item) {
-    return _run(() async {
-      final now = DateTime.now().toUtc().toIso8601String();
-      final updated = item.copyWith(
+  Future<void> _submit(TransactionCase item) async {
+    await _execute(() async {
+      final String now = DateTime.now().toUtc().toIso8601String();
+      final TransactionCase updated = item.copyWith(
         status: TransactionCaseStatus.review,
         isOrganizationVisible: true,
-        approvals: [
+        approvals: <TransactionApproval>[
           TransactionApproval(
             approverId: 'organization-review',
             approverName: '${item.organizationName} review queue',
@@ -177,40 +185,44 @@ class _ProductTransactionCommandCenterScreenState
         updatedAtIso: now,
       );
       await caseRepository.publishToOrganization(updated);
-      await workflowRepository.addActivity(TransactionActivity(
-        id: 'activity_${DateTime.now().microsecondsSinceEpoch}',
-        caseId: item.id,
-        organizationId: item.organizationId,
-        actorUserId: widget.session.userId,
-        actorName: widget.session.displayName,
-        kind: TransactionActivityKind.status,
-        message: 'Submitted “${item.title}” to the organization review queue.',
-        createdAtIso: now,
-        recipientUserId: item.ownerUserId,
-      ));
-      await workflowRepository.addNotification(TransactionNotification(
-        id: 'notification_${DateTime.now().microsecondsSinceEpoch}',
-        caseId: item.id,
-        organizationId: item.organizationId,
-        recipientUserId: item.ownerUserId,
-        title: 'Case submitted',
-        body: '${item.title} is awaiting organization review.',
-        createdAtIso: now,
-      ));
-      _show('Submitted to ${item.organizationName}.');
+      await workflowRepository.addActivity(
+        TransactionActivity(
+          id: 'activity_${DateTime.now().microsecondsSinceEpoch}',
+          caseId: updated.id,
+          organizationId: updated.organizationId,
+          actorUserId: widget.session.userId,
+          actorName: widget.session.displayName,
+          kind: TransactionActivityKind.status,
+          message: 'Submitted “${updated.title}” for organization review.',
+          createdAtIso: now,
+          recipientUserId: updated.ownerUserId,
+        ),
+      );
+      await workflowRepository.addNotification(
+        TransactionNotification(
+          id: 'notification_${DateTime.now().microsecondsSinceEpoch}',
+          caseId: updated.id,
+          organizationId: updated.organizationId,
+          recipientUserId: updated.ownerUserId,
+          title: 'Case submitted',
+          body: '${updated.title} is awaiting organization review.',
+          createdAtIso: now,
+        ),
+      );
+      _message('Submitted to ${updated.organizationName}.');
     });
   }
 
-  Future<void> _addComment(TransactionCase item) {
-    final body = commentController.text.trim();
+  Future<void> _addComment(TransactionCase item) async {
+    final String body = commentController.text.trim();
     if (body.isEmpty) {
-      _show('Enter a comment first.');
-      return Future.value();
+      _message('Enter a comment first.');
+      return;
     }
-    return _run(() async {
-      final now = DateTime.now().toUtc().toIso8601String();
-      final updated = item.copyWith(
-        comments: [
+    await _execute(() async {
+      final String now = DateTime.now().toUtc().toIso8601String();
+      final TransactionCase updated = item.copyWith(
+        comments: <TransactionCaseComment>[
           ...item.comments,
           TransactionCaseComment(
             authorId: widget.session.userId,
@@ -221,114 +233,137 @@ class _ProductTransactionCommandCenterScreenState
         ],
         updatedAtIso: now,
       );
-      await caseRepository.upsertPersonal(item.ownerUserId, updated);
+      await caseRepository.upsertPersonal(updated.ownerUserId, updated);
       if (updated.isOrganizationVisible) {
-        await caseRepository.upsertOrganization(item.organizationId, updated);
+        await caseRepository.upsertOrganization(updated.organizationId, updated);
       }
-      await workflowRepository.addActivity(TransactionActivity(
-        id: 'activity_${DateTime.now().microsecondsSinceEpoch}',
-        caseId: item.id,
-        organizationId: item.organizationId,
-        actorUserId: widget.session.userId,
-        actorName: widget.session.displayName,
-        kind: TransactionActivityKind.comment,
-        message: 'Commented on “${item.title}”: $body',
-        createdAtIso: now,
-        recipientUserId: item.ownerUserId,
-      ));
-      if (item.ownerUserId != widget.session.userId) {
-        await workflowRepository.addNotification(TransactionNotification(
-          id: 'notification_${DateTime.now().microsecondsSinceEpoch}',
-          caseId: item.id,
-          organizationId: item.organizationId,
-          recipientUserId: item.ownerUserId,
-          title: 'New case comment',
-          body: '${widget.session.displayName} commented on ${item.title}.',
+      await workflowRepository.addActivity(
+        TransactionActivity(
+          id: 'activity_${DateTime.now().microsecondsSinceEpoch}',
+          caseId: updated.id,
+          organizationId: updated.organizationId,
+          actorUserId: widget.session.userId,
+          actorName: widget.session.displayName,
+          kind: TransactionActivityKind.comment,
+          message: 'Commented on “${updated.title}”: $body',
           createdAtIso: now,
-        ));
+          recipientUserId: updated.ownerUserId,
+        ),
+      );
+      if (updated.ownerUserId != widget.session.userId) {
+        await workflowRepository.addNotification(
+          TransactionNotification(
+            id: 'notification_${DateTime.now().microsecondsSinceEpoch}',
+            caseId: updated.id,
+            organizationId: updated.organizationId,
+            recipientUserId: updated.ownerUserId,
+            title: 'New transaction comment',
+            body: '${widget.session.displayName} commented on ${updated.title}.',
+            createdAtIso: now,
+          ),
+        );
       }
       commentController.clear();
     });
   }
 
-  Future<void> _assign(TransactionCase item) {
-    final raw = assigneeController.text.trim();
+  Future<void> _assign(TransactionCase item) async {
+    final String raw = assigneeController.text.trim();
     if (raw.isEmpty) {
-      _show('Enter a member ID or name.');
-      return Future.value();
+      _message('Enter a member ID or display name.');
+      return;
     }
-    final member = members.where((candidate) {
-      return candidate.userId.toLowerCase() == raw.toLowerCase() ||
-          candidate.displayName.toLowerCase() == raw.toLowerCase();
-    }).firstOrNull;
-    final assigneeId = member?.userId ?? raw;
-    final assigneeName = member?.displayName ?? raw;
-    return _run(() async {
-      final now = DateTime.now().toUtc().toIso8601String();
-      final assignments = {...item.assignedUserIds, assigneeId}.toList();
-      final updated = item.copyWith(
-        assignedUserIds: assignments,
+    String assigneeId = raw;
+    String assigneeName = raw;
+    for (final OrganizationMemberRecord member in members) {
+      if (member.userId.toLowerCase() == raw.toLowerCase() ||
+          member.displayName.toLowerCase() == raw.toLowerCase()) {
+        assigneeId = member.userId;
+        assigneeName = member.displayName;
+        break;
+      }
+    }
+    await _execute(() async {
+      final String now = DateTime.now().toUtc().toIso8601String();
+      final Set<String> nextAssignments = <String>{...item.assignedUserIds, assigneeId};
+      final TransactionCase updated = item.copyWith(
+        assignedUserIds: nextAssignments.toList(),
         updatedAtIso: now,
       );
-      await caseRepository.upsertPersonal(item.ownerUserId, updated);
+      await caseRepository.upsertPersonal(updated.ownerUserId, updated);
       if (updated.isOrganizationVisible) {
-        await caseRepository.upsertOrganization(item.organizationId, updated);
+        await caseRepository.upsertOrganization(updated.organizationId, updated);
       }
-      await workflowRepository.addActivity(TransactionActivity(
-        id: 'activity_${DateTime.now().microsecondsSinceEpoch}',
-        caseId: item.id,
-        organizationId: item.organizationId,
-        actorUserId: widget.session.userId,
-        actorName: widget.session.displayName,
-        kind: TransactionActivityKind.assignment,
-        message: 'Assigned $assigneeName to “${item.title}”.',
-        createdAtIso: now,
-        recipientUserId: assigneeId,
-      ));
-      await workflowRepository.addNotification(TransactionNotification(
-        id: 'notification_${DateTime.now().microsecondsSinceEpoch}',
-        caseId: item.id,
-        organizationId: item.organizationId,
-        recipientUserId: assigneeId,
-        title: 'Transaction case assignment',
-        body: 'You were assigned to ${item.title}.',
-        createdAtIso: now,
-      ));
+      await workflowRepository.addActivity(
+        TransactionActivity(
+          id: 'activity_${DateTime.now().microsecondsSinceEpoch}',
+          caseId: updated.id,
+          organizationId: updated.organizationId,
+          actorUserId: widget.session.userId,
+          actorName: widget.session.displayName,
+          kind: TransactionActivityKind.assignment,
+          message: 'Assigned $assigneeName to “${updated.title}”.',
+          createdAtIso: now,
+          recipientUserId: assigneeId,
+        ),
+      );
+      await workflowRepository.addNotification(
+        TransactionNotification(
+          id: 'notification_${DateTime.now().microsecondsSinceEpoch}',
+          caseId: updated.id,
+          organizationId: updated.organizationId,
+          recipientUserId: assigneeId,
+          title: 'Transaction case assignment',
+          body: 'You were assigned to ${updated.title}.',
+          createdAtIso: now,
+        ),
+      );
       assigneeController.clear();
     });
   }
 
-  Future<void> _addMember() {
-    final id = memberIdController.text.trim();
-    final name = memberNameController.text.trim();
+  Future<void> _addMember() async {
+    final String id = memberIdController.text.trim();
+    final String name = memberNameController.text.trim();
     if (id.isEmpty || name.isEmpty) {
-      _show('Enter a member ID and display name.');
-      return Future.value();
+      _message('Enter a member ID and display name.');
+      return;
     }
-    return _run(() async {
-      final member = OrganizationMemberRecord(
-        userId: id,
-        displayName: name,
-        roleLabel: memberRole,
-        createdAtIso: DateTime.now().toUtc().toIso8601String(),
-        teamFocus: memberFocusController.text.trim().isEmpty
-            ? 'League-wide'
-            : memberFocusController.text.trim(),
+    await _execute(() async {
+      await workflowRepository.upsertMember(
+        widget.session.organizationId,
+        OrganizationMemberRecord(
+          userId: id,
+          displayName: name,
+          roleLabel: memberRole,
+          createdAtIso: DateTime.now().toUtc().toIso8601String(),
+          teamFocus: memberFocusController.text.trim().isEmpty
+              ? 'League-wide'
+              : memberFocusController.text.trim(),
+        ),
       );
-      await workflowRepository.upsertMember(widget.session.organizationId, member);
       memberIdController.clear();
       memberNameController.clear();
       memberFocusController.text = 'League-wide';
     });
   }
 
-  Future<void> _markNotificationsRead() {
-    return _run(() async {
+  Future<void> _removeMember(String userId) async {
+    await _execute(() async {
+      await workflowRepository.removeMember(
+        widget.session.organizationId,
+        userId,
+      );
+    });
+  }
+
+  Future<void> _markRead() async {
+    await _execute(() async {
       await workflowRepository.markAllNotificationsRead(widget.session.userId);
     });
   }
 
-  void _show(String message) {
+  void _message(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
@@ -338,38 +373,45 @@ class _ProductTransactionCommandCenterScreenState
     if (loading) {
       return const _Panel(child: Text('Loading transaction command center...'));
     }
-    final visibleActivities = widget.organizationMode
+    final Set<String> visibleCaseIds = cases.map((TransactionCase item) => item.id).toSet();
+    final List<TransactionActivity> visibleActivities = widget.organizationMode
         ? activities
-        : activities.where((activity) {
-            return cases.any((item) => item.id == activity.caseId);
-          }).toList();
+        : activities
+            .where((TransactionActivity item) => visibleCaseIds.contains(item.caseId))
+            .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+      children: <Widget>[
         _hero(visibleActivities.length),
         const SizedBox(height: 16),
         _metrics(visibleActivities.length),
         const SizedBox(height: 16),
-        _tabBar(),
+        _tabs(),
         const SizedBox(height: 16),
-        if (selectedTab == 'Imports')
-          _imports()
-        else if (selectedTab == 'Collaboration')
-          _collaboration()
-        else if (selectedTab == 'Activity')
-          _activity(visibleActivities)
-        else if (selectedTab == 'Notifications')
-          _notificationCenter()
-        else if (selectedTab == 'Members')
-          _members()
-        else
-          ProductRoleOperationsScreen(
-            key: ValueKey('cases_${cases.length}_${cases.firstOrNull?.updatedAtIso}'),
-            session: widget.session,
-            organizationMode: widget.organizationMode,
-          ),
+        _content(visibleActivities),
       ],
     );
+  }
+
+  Widget _content(List<TransactionActivity> visibleActivities) {
+    switch (tab) {
+      case 'Imports':
+        return _imports();
+      case 'Collaboration':
+        return _collaboration();
+      case 'Activity':
+        return _activity(visibleActivities);
+      case 'Notifications':
+        return _notifications();
+      case 'Members':
+        return _members();
+      default:
+        return ProductRoleOperationsScreen(
+          key: ValueKey<String>('cases_${cases.length}_${cases.isEmpty ? '' : cases.first.updatedAtIso}'),
+          session: widget.session,
+          organizationMode: widget.organizationMode,
+        );
+    }
   }
 
   Widget _hero(int activityCount) {
@@ -377,12 +419,12 @@ class _ProductTransactionCommandCenterScreenState
       width: double.infinity,
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [_navy, _blue, _orange]),
+        gradient: const LinearGradient(colors: <Color>[_navy, _blue, _orange]),
         borderRadius: BorderRadius.circular(30),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        children: <Widget>[
           Text(
             widget.organizationMode
                 ? 'ORGANIZATION TRANSACTION COMMAND'
@@ -409,8 +451,8 @@ class _ProductTransactionCommandCenterScreenState
           const SizedBox(height: 10),
           Text(
             widget.organizationMode
-                ? 'Cases, imported scenarios, assignments, comments, approvals, activity, members and notifications now share one organization workflow.'
-                : 'Import Trade Machine and Front Office work, collaborate on cases, submit for review and follow every organization update.',
+                ? 'Cases, imports, assignments, comments, approvals, members, activity and notifications now share one organization workflow.'
+                : 'Import Trade Machine and Front Office work, collaborate on cases, submit for review and follow every update.',
             style: const TextStyle(
               color: Color(0xFFEAF2FF),
               height: 1.45,
@@ -421,12 +463,12 @@ class _ProductTransactionCommandCenterScreenState
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: [
-              _heroPill('${cases.length} CASES'),
-              _heroPill('${candidates.length} IMPORT SOURCES'),
-              _heroPill('$activityCount EVENTS'),
-              _heroPill('$unreadCount UNREAD'),
-              if (widget.organizationMode) _heroPill('${members.length} MEMBERS'),
+            children: <Widget>[
+              _pill('${cases.length} CASES'),
+              _pill('${candidates.length} IMPORT SOURCES'),
+              _pill('$activityCount EVENTS'),
+              _pill('$unreadCount UNREAD'),
+              if (widget.organizationMode) _pill('${members.length} MEMBERS'),
             ],
           ),
         ],
@@ -435,47 +477,39 @@ class _ProductTransactionCommandCenterScreenState
   }
 
   Widget _metrics(int activityCount) {
-    final shared = cases.where((item) => item.isOrganizationVisible).length;
-    final assigned = cases.where((item) => item.assignedUserIds.length > 1).length;
-    final commented = cases.where((item) => item.comments.isNotEmpty).length;
+    final int shared = cases.where((TransactionCase item) => item.isOrganizationVisible).length;
+    final int collaborative =
+        cases.where((TransactionCase item) => item.assignedUserIds.length > 1).length;
+    final int discussed =
+        cases.where((TransactionCase item) => item.comments.isNotEmpty).length;
     return Wrap(
       spacing: 12,
       runSpacing: 12,
-      children: [
+      children: <Widget>[
         _Metric('Shared cases', '$shared', 'organization-visible'),
-        _Metric('Collaborative', '$assigned', 'multiple assignees'),
-        _Metric('Discussed', '$commented', 'cases with comments'),
+        _Metric('Collaborative', '$collaborative', 'multiple assignees'),
+        _Metric('Discussed', '$discussed', 'cases with comments'),
         _Metric('Activity', '$activityCount', 'workflow events'),
         _Metric('Unread', '$unreadCount', 'personal notifications'),
       ],
     );
   }
 
-  Widget _tabBar() {
+  Widget _tabs() {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: [
-        for (final tab in tabs)
+      children: <Widget>[
+        for (final String name in availableTabs)
           ChoiceChip(
-            selected: selectedTab == tab,
-            onSelected: (_) => setState(() => selectedTab = tab),
-            label: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(tab),
-                if (tab == 'Notifications' && unreadCount > 0) ...[
-                  const SizedBox(width: 6),
-                  CircleAvatar(
-                    radius: 9,
-                    backgroundColor: _orange,
-                    child: Text(
-                      '$unreadCount',
-                      style: const TextStyle(color: Colors.white, fontSize: 10),
-                    ),
-                  ),
-                ],
-              ],
+            selected: tab == name,
+            onSelected: (bool selected) {
+              if (selected) setState(() => tab = name);
+            },
+            label: Text(
+              name == 'Notifications' && unreadCount > 0
+                  ? '$name ($unreadCount)'
+                  : name,
             ),
           ),
       ],
@@ -486,144 +520,170 @@ class _ProductTransactionCommandCenterScreenState
     return _Panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        children: <Widget>[
           const _Title(
             'Connected product imports',
-            'Saved analytical work becomes a persistent transaction case instead of remaining trapped in an isolated tool.',
+            'Saved analytical work becomes a persistent transaction case instead of remaining trapped inside one tool.',
           ),
           const SizedBox(height: 14),
           if (candidates.isEmpty)
             const Text(
-              'No saved Trade Machine, Front Office, Cap Lab or routed-data package is available yet.',
+              'No saved Trade Machine, Front Office, Cap Lab or routed-data package is available.',
               style: TextStyle(color: _muted),
             )
           else
-            for (final candidate in candidates)
-              _ImportRow(
-                candidate: candidate,
-                organizationMode: widget.organizationMode,
-                busy: mutating,
-                onPrivate: () => _importCandidate(
-                  candidate,
-                  organizationVisible: false,
+            for (final TransactionImportCandidate candidate in candidates)
+              _candidateCard(candidate),
+        ],
+      ),
+    );
+  }
+
+  Widget _candidateCard(TransactionImportCandidate candidate) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _soft,
+        border: Border.all(color: _line),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            candidate.source.toUpperCase(),
+            style: const TextStyle(
+              color: _blue,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            candidate.title,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(candidate.summary, style: const TextStyle(color: _muted)),
+          const SizedBox(height: 9),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: <Widget>[
+              _tag(candidate.operatingSeason),
+              _tag(candidate.teams.isEmpty ? 'Teams unresolved' : candidate.teams.join(' / ')),
+              _tag(candidate.readiness),
+              _tag('${candidate.findings.length} source findings'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              if (!widget.organizationMode)
+                OutlinedButton.icon(
+                  onPressed: saving ? null : () => _import(candidate, false),
+                  icon: const Icon(Icons.lock_outline_rounded),
+                  label: const Text('Import privately'),
                 ),
-                onShared: () => _importCandidate(
-                  candidate,
-                  organizationVisible: true,
+              FilledButton.icon(
+                onPressed: saving ? null : () => _import(candidate, true),
+                icon: const Icon(Icons.corporate_fare_rounded),
+                label: Text(
+                  widget.organizationMode
+                      ? 'Create shared case'
+                      : 'Submit to organization',
                 ),
               ),
+            ],
+          ),
         ],
       ),
     );
   }
 
   Widget _collaboration() {
-    final item = selectedCase;
+    final TransactionCase? item = _selectedCase();
     return _Panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        children: <Widget>[
           const _Title(
             'Case collaboration',
-            'Assign work, add decision context, publish private cases and preserve a shared operating history.',
+            'Assign work, add decision context, publish private cases and preserve operating history.',
           ),
           const SizedBox(height: 14),
           if (cases.isEmpty)
             const Text('Create or import a transaction case first.')
-          else ...[
+          else ...<Widget>[
             DropdownButtonFormField<String>(
-              value: item?.id,
+              initialValue: item?.id,
               isExpanded: true,
               decoration: _input('Selected transaction case'),
-              items: [
-                for (final candidate in cases)
-                  DropdownMenuItem(
+              items: <DropdownMenuItem<String>>[
+                for (final TransactionCase candidate in cases)
+                  DropdownMenuItem<String>(
                     value: candidate.id,
                     child: Text('${candidate.title} · ${candidate.status.name}'),
                   ),
               ],
-              onChanged: (value) => setState(() => selectedCaseId = value ?? ''),
+              onChanged: (String? value) {
+                if (value != null) setState(() => selectedCaseId = value);
+              },
             ),
-            const SizedBox(height: 14),
-            if (item != null) ...[
-              _caseSummary(item),
+            if (item != null) ...<Widget>[
               const SizedBox(height: 14),
+              _caseCard(item),
+              const SizedBox(height: 12),
               if (!widget.organizationMode && !item.isOrganizationVisible)
                 FilledButton.icon(
-                  onPressed: mutating ? null : () => _publish(item),
+                  onPressed: saving ? null : () => _submit(item),
                   icon: const Icon(Icons.publish_rounded),
                   label: Text('Submit to ${item.organizationName}'),
                 ),
               const SizedBox(height: 14),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final compact = constraints.maxWidth < 760;
-                  final comment = _collaborationCard(
-                    title: 'Add comment',
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: commentController,
-                          maxLines: 3,
-                          decoration: _input('Decision context or question'),
-                        ),
-                        const SizedBox(height: 10),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: FilledButton.icon(
-                            onPressed: mutating ? null : () => _addComment(item),
-                            icon: const Icon(Icons.comment_rounded),
-                            label: const Text('Post comment'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                  final assignment = _collaborationCard(
-                    title: 'Assign member',
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: assigneeController,
-                          decoration: _input('Member ID or display name'),
-                        ),
-                        const SizedBox(height: 10),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: FilledButton.icon(
-                            onPressed: mutating ? null : () => _assign(item),
-                            icon: const Icon(Icons.person_add_alt_1_rounded),
-                            label: const Text('Assign'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (compact) {
-                    return Column(
-                      children: [comment, const SizedBox(height: 12), assignment],
-                    );
-                  }
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: comment),
-                      const SizedBox(width: 12),
-                      Expanded(child: assignment),
-                    ],
-                  );
-                },
+              TextField(
+                controller: commentController,
+                maxLines: 3,
+                decoration: _input('Decision context or question'),
+              ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                onPressed: saving ? null : () => _addComment(item),
+                icon: const Icon(Icons.comment_rounded),
+                label: const Text('Post comment'),
               ),
               const SizedBox(height: 14),
+              TextField(
+                controller: assigneeController,
+                decoration: _input('Member ID or display name'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: saving ? null : () => _assign(item),
+                icon: const Icon(Icons.person_add_alt_1_rounded),
+                label: const Text('Assign member'),
+              ),
+              const SizedBox(height: 16),
               const Text(
                 'Comments',
                 style: TextStyle(color: _ink, fontWeight: FontWeight.w900),
               ),
-              const SizedBox(height: 8),
               if (item.comments.isEmpty)
-                const Text('No comments yet.', style: TextStyle(color: _muted))
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text('No comments yet.', style: TextStyle(color: _muted)),
+                )
               else
-                for (final comment in item.comments.reversed)
+                for (final TransactionCaseComment comment in item.comments.reversed)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const CircleAvatar(child: Icon(Icons.comment_rounded)),
@@ -638,20 +698,62 @@ class _ProductTransactionCommandCenterScreenState
     );
   }
 
+  Widget _caseCard(TransactionCase item) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _soft,
+        border: Border.all(color: _line),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            item.title,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${item.teams.join(' / ')} · ${item.operatingSeason} · ${item.ownerName}',
+            style: const TextStyle(color: _muted, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 9),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: <Widget>[
+              _tag(item.status.name),
+              _tag('${item.assignedUserIds.length} assignees'),
+              _tag('${item.comments.length} comments'),
+              _tag('${item.ruleFindings.length} findings'),
+              _tag(item.isOrganizationVisible ? 'Organization shared' : 'Private'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _activity(List<TransactionActivity> visibleActivities) {
     return _Panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        children: <Widget>[
           const _Title(
-            'Immutable-style activity stream',
-            'A chronological operating history for imports, submissions, comments, assignments and organization decisions.',
+            'Transaction activity stream',
+            'A chronological history for imports, submissions, comments, assignments and decisions.',
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           if (visibleActivities.isEmpty)
             const Text('No workflow activity has been recorded yet.')
           else
-            for (final activity in visibleActivities)
+            for (final TransactionActivity activity in visibleActivities)
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(child: Icon(_activityIcon(activity.kind))),
@@ -664,32 +766,33 @@ class _ProductTransactionCommandCenterScreenState
     );
   }
 
-  Widget _notificationCenter() {
+  Widget _notifications() {
     return _Panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        children: <Widget>[
           Row(
-            children: [
+            children: <Widget>[
               const Expanded(
                 child: _Title(
                   'Notification inbox',
-                  'Assignments, comments, submissions and decisions surface in the user’s own operating queue.',
+                  'Assignments, comments, submissions and decisions enter the user’s operating queue.',
                 ),
               ),
               TextButton.icon(
-                onPressed: unreadCount == 0 || mutating ? null : _markNotificationsRead,
+                onPressed: unreadCount == 0 || saving ? null : _markRead,
                 icon: const Icon(Icons.done_all_rounded),
                 label: const Text('Mark all read'),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           if (notifications.isEmpty)
             const Text('No transaction notifications yet.')
           else
-            for (final notification in notifications)
+            for (final TransactionNotification notification in notifications)
               Container(
+                width: double.infinity,
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -697,34 +800,16 @@ class _ProductTransactionCommandCenterScreenState
                   border: Border.all(color: _line),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      notification.isRead
-                          ? Icons.notifications_none_rounded
-                          : Icons.notifications_active_rounded,
-                      color: notification.isRead ? _muted : _blue,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      notification.title,
+                      style: const TextStyle(color: _ink, fontWeight: FontWeight.w900),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            notification.title,
-                            style: const TextStyle(
-                              color: _ink,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            notification.body,
-                            style: const TextStyle(color: _muted),
-                          ),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(height: 3),
+                    Text(notification.body, style: const TextStyle(color: _muted)),
+                    const SizedBox(height: 5),
                     Text(_date(notification.createdAtIso)),
                   ],
                 ),
@@ -738,62 +823,64 @@ class _ProductTransactionCommandCenterScreenState
     return _Panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        children: <Widget>[
           const _Title(
             'Organization members and reviewers',
-            'Create the local organization directory used by assignments, workload views and review routing.',
+            'Build the directory used by assignments, workload views and review routing.',
           ),
           const SizedBox(height: 14),
           Wrap(
             spacing: 10,
             runSpacing: 10,
-            children: [
+            children: <Widget>[
               SizedBox(
-                width: 210,
+                width: 200,
                 child: TextField(
                   controller: memberIdController,
                   decoration: _input('Member user ID'),
                 ),
               ),
               SizedBox(
-                width: 230,
+                width: 220,
                 child: TextField(
                   controller: memberNameController,
                   decoration: _input('Display name'),
                 ),
               ),
               SizedBox(
-                width: 190,
+                width: 180,
                 child: DropdownButtonFormField<String>(
-                  value: memberRole,
+                  initialValue: memberRole,
                   decoration: _input('Role'),
-                  items: const [
-                    DropdownMenuItem(value: 'Analyst', child: Text('Analyst')),
-                    DropdownMenuItem(value: 'Reviewer', child: Text('Reviewer')),
-                    DropdownMenuItem(value: 'Admin', child: Text('Admin')),
+                  items: const <DropdownMenuItem<String>>[
+                    DropdownMenuItem<String>(value: 'Analyst', child: Text('Analyst')),
+                    DropdownMenuItem<String>(value: 'Reviewer', child: Text('Reviewer')),
+                    DropdownMenuItem<String>(value: 'Admin', child: Text('Admin')),
                   ],
-                  onChanged: (value) => setState(() => memberRole = value ?? 'Analyst'),
+                  onChanged: (String? value) {
+                    if (value != null) setState(() => memberRole = value);
+                  },
                 ),
               ),
               SizedBox(
                 width: 210,
                 child: TextField(
                   controller: memberFocusController,
-                  decoration: _input('Team or coverage focus'),
+                  decoration: _input('Coverage focus'),
                 ),
               ),
               FilledButton.icon(
-                onPressed: mutating ? null : _addMember,
+                onPressed: saving ? null : _addMember,
                 icon: const Icon(Icons.person_add_rounded),
                 label: const Text('Add member'),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           if (members.isEmpty)
             const Text('No organization members have been added.')
           else
-            for (final member in members)
+            for (final OrganizationMemberRecord member in members)
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const CircleAvatar(child: Icon(Icons.badge_rounded)),
@@ -805,179 +892,11 @@ class _ProductTransactionCommandCenterScreenState
                     ? const Chip(label: Text('You'))
                     : IconButton(
                         tooltip: 'Remove member',
-                        onPressed: mutating
-                            ? null
-                            : () => _run(() async {
-                                  await workflowRepository.removeMember(
-                                    widget.session.organizationId,
-                                    member.userId,
-                                  );
-                                }),
+                        onPressed: saving ? null : () => _removeMember(member.userId),
                         icon: const Icon(Icons.remove_circle_outline_rounded),
                       ),
               ),
         ],
-      ),
-    );
-  }
-
-  Widget _caseSummary(TransactionCase item) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _soft,
-        border: Border.all(color: _line),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  item.title,
-                  style: const TextStyle(
-                    color: _ink,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              Chip(label: Text(item.status.name)),
-            ],
-          ),
-          Text(
-            '${item.teams.join(' / ')} · ${item.operatingSeason} · ${item.ownerName}',
-            style: const TextStyle(color: _muted, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _tag('${item.assignedUserIds.length} assignees'),
-              _tag('${item.comments.length} comments'),
-              _tag('${item.ruleFindings.length} findings'),
-              _tag(item.isOrganizationVisible ? 'Organization shared' : 'Private'),
-              if (item.sourcePayloadId.isNotEmpty) _tag('Connected source'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _collaborationCard({required String title, required Widget child}) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        border: Border.all(color: _line),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(color: _ink, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 10),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-class _ImportRow extends StatelessWidget {
-  const _ImportRow({
-    required this.candidate,
-    required this.organizationMode,
-    required this.busy,
-    required this.onPrivate,
-    required this.onShared,
-  });
-
-  final TransactionImportCandidate candidate;
-  final bool organizationMode;
-  final bool busy;
-  final VoidCallback onPrivate;
-  final VoidCallback onShared;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _soft,
-        border: Border.all(color: _line),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final copy = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                candidate.source.toUpperCase(),
-                style: const TextStyle(
-                  color: _blue,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
-                ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                candidate.title,
-                style: const TextStyle(
-                  color: _ink,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(candidate.summary, style: const TextStyle(color: _muted)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 7,
-                runSpacing: 7,
-                children: [
-                  _tag(candidate.operatingSeason),
-                  _tag(candidate.teams.isEmpty ? 'Teams unresolved' : candidate.teams.join(' / ')),
-                  _tag(candidate.readiness),
-                  _tag('${candidate.findings.length} source findings'),
-                ],
-              ),
-            ],
-          );
-          final actions = Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (!organizationMode)
-                OutlinedButton.icon(
-                  onPressed: busy ? null : onPrivate,
-                  icon: const Icon(Icons.lock_outline_rounded),
-                  label: const Text('Import privately'),
-                ),
-              FilledButton.icon(
-                onPressed: busy ? null : onShared,
-                icon: const Icon(Icons.corporate_fare_rounded),
-                label: Text(organizationMode ? 'Create shared case' : 'Submit to organization'),
-              ),
-            ],
-          );
-          if (constraints.maxWidth < 840) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [copy, const SizedBox(height: 12), actions],
-            );
-          }
-          return Row(
-            children: [Expanded(child: copy), const SizedBox(width: 16), actions],
-          );
-        },
       ),
     );
   }
@@ -988,23 +907,25 @@ class _Panel extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: _line),
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0D071A33),
-              blurRadius: 18,
-              offset: Offset(0, 8),
-            ),
-          ],
-        ),
-        child: child,
-      );
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: _line),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x0D071A33),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
 }
 
 class _Title extends StatelessWidget {
@@ -1013,21 +934,23 @@ class _Title extends StatelessWidget {
   final String body;
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: _ink,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-            ),
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          title,
+          style: const TextStyle(
+            color: _ink,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
           ),
-          const SizedBox(height: 4),
-          Text(body, style: const TextStyle(color: _muted, height: 1.4)),
-        ],
-      );
+        ),
+        const SizedBox(height: 4),
+        Text(body, style: const TextStyle(color: _muted, height: 1.4)),
+      ],
+    );
+  }
 }
 
 class _Metric extends StatelessWidget {
@@ -1037,83 +960,96 @@ class _Metric extends StatelessWidget {
   final String detail;
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: 190,
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: _line),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(color: _muted, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: const TextStyle(
-                color: _ink,
-                fontSize: 25,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            Text(detail, style: const TextStyle(color: _muted, fontSize: 11)),
-          ],
-        ),
-      );
-}
-
-InputDecoration _input(String label) => InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: _soft,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-    );
-
-Widget _tag(String label) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+  Widget build(BuildContext context) {
+    return Container(
+      width: 190,
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: _line),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(18),
       ),
-      child: Text(label, style: const TextStyle(color: _muted, fontSize: 11)),
-    );
-
-Widget _heroPill(String label) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
-        border: Border.all(color: Colors.white24),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.w900,
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(label, style: const TextStyle(color: _muted, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 25,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          Text(detail, style: const TextStyle(color: _muted, fontSize: 11)),
+        ],
       ),
     );
-
-IconData _activityIcon(TransactionActivityKind kind) => switch (kind) {
-      TransactionActivityKind.created => Icons.add_task_rounded,
-      TransactionActivityKind.imported => Icons.input_rounded,
-      TransactionActivityKind.status => Icons.sync_alt_rounded,
-      TransactionActivityKind.comment => Icons.comment_rounded,
-      TransactionActivityKind.assignment => Icons.person_add_alt_1_rounded,
-      TransactionActivityKind.approval => Icons.approval_rounded,
-      TransactionActivityKind.notification => Icons.notifications_rounded,
-    };
-
-String _date(String iso) {
-  final value = DateTime.tryParse(iso)?.toLocal();
-  if (value == null) return '—';
-  return '${value.month}/${value.day}/${value.year}';
+  }
 }
 
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
+InputDecoration _input(String label) {
+  return InputDecoration(
+    labelText: label,
+    filled: true,
+    fillColor: _soft,
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+  );
+}
+
+Widget _tag(String label) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      border: Border.all(color: _line),
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Text(label, style: const TextStyle(color: _muted, fontSize: 11)),
+  );
+}
+
+Widget _pill(String label) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.14),
+      border: Border.all(color: Colors.white24),
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Text(
+      label,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 10,
+        fontWeight: FontWeight.w900,
+      ),
+    ),
+  );
+}
+
+IconData _activityIcon(TransactionActivityKind kind) {
+  switch (kind) {
+    case TransactionActivityKind.created:
+      return Icons.add_task_rounded;
+    case TransactionActivityKind.imported:
+      return Icons.input_rounded;
+    case TransactionActivityKind.status:
+      return Icons.sync_alt_rounded;
+    case TransactionActivityKind.comment:
+      return Icons.comment_rounded;
+    case TransactionActivityKind.assignment:
+      return Icons.person_add_alt_1_rounded;
+    case TransactionActivityKind.approval:
+      return Icons.approval_rounded;
+    case TransactionActivityKind.notification:
+      return Icons.notifications_rounded;
+  }
+}
+
+String _date(String iso) {
+  final DateTime? value = DateTime.tryParse(iso)?.toLocal();
+  if (value == null) return '—';
+  return '${value.month}/${value.day}/${value.year}';
 }
