@@ -85,6 +85,8 @@ class NbaCapPosition {
   bool get overTax => teamSalary > environment.taxLevel;
   bool get overFirstApron => teamSalary > environment.firstApron;
   bool get overSecondApron => teamSalary > environment.secondApron;
+  bool get aboveFirstApron => overFirstApron;
+  bool get aboveSecondApron => overSecondApron;
 
   String get tier {
     if (overSecondApron) return 'Above second apron';
@@ -94,6 +96,8 @@ class NbaCapPosition {
     if (belowMinimum) return 'Below minimum team salary';
     return 'Cap-space team';
   }
+
+  String get tierLabel => tier;
 
   Map<String, dynamic> toRow() => {
         'season': environment.season,
