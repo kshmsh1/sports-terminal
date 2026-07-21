@@ -1,12 +1,20 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
-import '../services/nba_terminal_seed_repository.dart';
+import '../controllers/route_payload_controller.dart';
+import '../models/front_office_ledger.dart';
+import '../models/nba_cap_environment.dart';
+import '../services/front_office_ledger_engine.dart';
+import '../services/nba_financial_repository.dart';
 import '../services/product_local_store.dart';
+import '../services/workspace_route_import_service.dart';
 
 const _navy = Color(0xFF071A33);
 const _blue = Color(0xFF2563EB);
 const _orange = Color(0xFFFF7A1A);
 const _green = Color(0xFF059669);
+const _red = Color(0xFFDC2626);
 const _ink = Color(0xFF102033);
 const _muted = Color(0xFF667085);
 const _line = Color(0xFFE3E8F0);
@@ -16,327 +24,1142 @@ class ProductFrontOfficeScenarioScreen extends StatefulWidget {
   const ProductFrontOfficeScenarioScreen({super.key});
 
   @override
-  State<ProductFrontOfficeScenarioScreen> createState() => _ProductFrontOfficeScenarioScreenState();
+  State<ProductFrontOfficeScenarioScreen> createState() =>
+      _ProductFrontOfficeScenarioScreenState();
 }
 
-class _ProductFrontOfficeScenarioScreenState extends State<ProductFrontOfficeScenarioScreen> {
-  final ProductLocalStore localStore = const ProductLocalStore();
-  String teamA = 'OKC';
-  String teamB = 'BOS';
-  String savedScenario = '';
+class _ProductFrontOfficeScenarioScreenState
+    extends State<ProductFrontOfficeScenarioScreen> {
+  static const _storageKey = 'sports_terminal.front_office.ledger_v1';
+
+  final ProductLocalStore store = const ProductLocalStore();
+  final FrontOfficeLedgerEngine engine = const FrontOfficeLedgerEngine();
+  final WorkspaceRouteImportService workspaceImporter =
+      const WorkspaceRouteImportService();
+
+  final playerController = TextEditingController();
+  final teamController = TextEditingController(text: 'BOS');
+  final salaryController = TextEditingController();
+  final guaranteedController = TextEditingController();
+  final deadMoneyController = TextEditingController(text: '0');
+  final capHoldsController = TextEditingController(text: '0');
+  final draftHoldsController = TextEditingController(text: '0');
+  final rosterChargesController = TextEditingController(text: '0');
+  final outgoingController = TextEditingController(text: '0');
+  final incomingController = TextEditingController(text: '0');
+  final draftOwnerController = TextEditingController(text: 'BOS');
+  final draftOriginalController = TextEditingController(text: 'BOS');
+  final draftYearController = TextEditingController(text: '2028');
+  final draftProtectionController = TextEditingController(text: 'Unspecified');
+
+  List<NbaContractYear> contracts = [];
+  List<NbaDraftAsset> draftAssets = [];
+  String tab = 'Contracts';
+  String season = '2026-27';
+  ContractGuarantee guarantee = ContractGuarantee.full;
+  ContractOption option = ContractOption.none;
+  bool noTradeClause = false;
+  int draftRound = 1;
+  bool loaded = false;
 
   @override
   void initState() {
     super.initState();
-    _loadScenario();
+    _restore();
   }
 
-  Future<void> _loadScenario() async {
-    final saved = await localStore.loadStringMap(ProductLocalStore.frontOfficeScenarioKey);
-    if (!mounted || saved.isEmpty) return;
+  @override
+  void dispose() {
+    final controllers = <TextEditingController>[
+      playerController,
+      teamController,
+      salaryController,
+      guaranteedController,
+      deadMoneyController,
+      capHoldsController,
+      draftHoldsController,
+      rosterChargesController,
+      outgoingController,
+      incomingController,
+      draftOwnerController,
+      draftOriginalController,
+      draftYearController,
+      draftProtectionController,
+    ];
+    for (final controller in controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _restore() async {
+    final raw = await store.loadString(_storageKey);
+    if (raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          contracts = [
+            for (final item in (decoded['contracts'] as List? ?? const []))
+              if (item is Map)
+                NbaContractYear.fromJson(
+                  item.map((key, value) => MapEntry(key.toString(), value)),
+                ),
+          ];
+          draftAssets = [
+            for (final item in (decoded['draftAssets'] as List? ?? const []))
+              if (item is Map)
+                NbaDraftAsset.fromJson(
+                  item.map((key, value) => MapEntry(key.toString(), value)),
+                ),
+          ];
+          season = decoded['season']?.toString() ?? season;
+          teamController.text = decoded['teamId']?.toString() ?? 'BOS';
+          deadMoneyController.text = decoded['deadMoney']?.toString() ?? '0';
+          capHoldsController.text = decoded['capHolds']?.toString() ?? '0';
+          draftHoldsController.text = decoded['draftHolds']?.toString() ?? '0';
+          rosterChargesController.text =
+              decoded['rosterCharges']?.toString() ?? '0';
+        }
+      } catch (_) {
+        contracts = [];
+        draftAssets = [];
+      }
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() => loaded = true);
+  }
+
+  Future<void> _persist() async {
+    await store.saveString(
+      _storageKey,
+      jsonEncode({
+        'season': season,
+        'teamId': teamController.text.trim().toUpperCase(),
+        'deadMoney': deadMoneyController.text,
+        'capHolds': capHoldsController.text,
+        'draftHolds': draftHoldsController.text,
+        'rosterCharges': rosterChargesController.text,
+        'contracts': [for (final item in contracts) item.toJson()],
+        'draftAssets': [for (final item in draftAssets) item.toJson()],
+      }),
+    );
+  }
+
+  void _addContract() {
+    final player = playerController.text.trim();
+    final team = teamController.text.trim().toUpperCase();
+    final salary = _millions(salaryController.text);
+    final guaranteed = guaranteedController.text.trim().isEmpty
+        ? salary
+        : _millions(guaranteedController.text);
+    if (player.isEmpty || team.isEmpty || salary <= 0) {
+      _show('Enter a player, team and positive salary.');
+      return;
+    }
+    final slug = player
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+    final id =
+        '${team}_${season}_${slug}_${DateTime.now().microsecondsSinceEpoch}';
     setState(() {
-      teamA = saved['teamA'] ?? teamA;
-      teamB = saved['teamB'] ?? teamB;
-      savedScenario = saved['summary'] ?? '';
+      contracts = [
+        ...contracts,
+        NbaContractYear(
+          id: id,
+          playerLabel: player,
+          teamId: team,
+          season: season,
+          salary: salary,
+          guaranteedAmount: guaranteed,
+          guarantee: guarantee,
+          option: option,
+          noTradeClause: noTradeClause,
+        ),
+      ];
+      playerController.clear();
+      salaryController.clear();
+      guaranteedController.clear();
+      noTradeClause = false;
     });
+    _persist();
   }
 
-  Future<void> _saveScenario(String summary) async {
-    setState(() => savedScenario = summary);
-    await localStore.saveStringMap(ProductLocalStore.frontOfficeScenarioKey, {'teamA': teamA, 'teamB': teamB, 'summary': summary});
+  void _addDraftAsset() {
+    final owner = draftOwnerController.text.trim().toUpperCase();
+    final original = draftOriginalController.text.trim().toUpperCase();
+    final year = int.tryParse(draftYearController.text.trim()) ?? 0;
+    if (owner.isEmpty || original.isEmpty || year < 2024) {
+      _show('Enter valid owner, original team and draft year.');
+      return;
+    }
+    final id =
+        '${owner}_${original}_${year}_R${draftRound}_${DateTime.now().microsecondsSinceEpoch}';
+    setState(() {
+      draftAssets = [
+        ...draftAssets,
+        NbaDraftAsset(
+          id: id,
+          currentOwner: owner,
+          originalTeam: original,
+          year: year,
+          round: draftRound,
+          protections: draftProtectionController.text.trim().isEmpty
+              ? 'Unspecified'
+              : draftProtectionController.text.trim(),
+        ),
+      ];
+    });
+    _persist();
+  }
+
+  NbaTeamLedgerInputs _inputs() {
+    return NbaTeamLedgerInputs(
+      teamId: teamController.text.trim().toUpperCase(),
+      season: season,
+      deadMoney: _millions(deadMoneyController.text),
+      capHolds: _millions(capHoldsController.text),
+      draftCapHolds: _millions(draftHoldsController.text),
+      incompleteRosterCharges: _millions(rosterChargesController.text),
+    );
+  }
+
+  Future<void> _routeContracts(String target) async {
+    final payload = engine.packageContracts(
+      contracts: contracts,
+      targetRoute: target,
+      sourceSnapshot: 'User-entered contract ledger · $season',
+    );
+    RoutePayloadScope.maybeOf(context)?.setActivePayload(
+      payload,
+      origin: 'Front Office Ledger',
+    );
+    if (target == 'Workspace') {
+      final result = await workspaceImporter.importPayload(payload);
+      if (!mounted) {
+        return;
+      }
+      _show(result.summary);
+    } else {
+      _show('${payload.rowCount} contract rows published to $target.');
+    }
+  }
+
+  Future<void> _routeDraftAssets(String target) async {
+    final payload = engine.packageDraftAssets(
+      assets: draftAssets,
+      targetRoute: target,
+    );
+    RoutePayloadScope.maybeOf(context)?.setActivePayload(
+      payload,
+      origin: 'Front Office Draft Ledger',
+    );
+    if (target == 'Workspace') {
+      final result = await workspaceImporter.importPayload(payload);
+      if (!mounted) {
+        return;
+      }
+      _show(result.summary);
+    } else {
+      _show('${payload.rowCount} draft assets published to $target.');
+    }
+  }
+
+  void _show(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<NbaTerminalSeedSnapshot>(
-      future: const NbaTerminalSeedRepository().load(),
+    if (!loaded) {
+      return const _Panel(
+        child: Text(
+          'Loading front-office ledger...',
+          style: TextStyle(color: _muted),
+        ),
+      );
+    }
+    return FutureBuilder<List<NbaCapEnvironment>>(
+      future: const NbaFinancialRepository().loadCapEnvironments(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) return const _Surface(child: Text('Loading front-office lab...', style: TextStyle(color: _muted)));
-        if (snapshot.hasError) return _Surface(child: Text('Scenario data unavailable: ${snapshot.error}', style: const TextStyle(color: _muted)));
-        final data = snapshot.data!;
-        final teams = _teamIds(data);
-        if (!teams.contains(teamA)) teamA = teams.isEmpty ? teamA : teams.first;
-        if (!teams.contains(teamB)) teamB = teams.length > 1 ? teams[1] : teamA;
-        final rosterA = _roster(data, teamA);
-        final rosterB = _roster(data, teamB);
-        final outgoingA = rosterA.take(3).toList();
-        final outgoingB = rosterB.take(3).toList();
-        final valueA = outgoingA.fold<double>(0, (sum, row) => sum + _scenarioValue(row));
-        final valueB = outgoingB.fold<double>(0, (sum, row) => sum + _scenarioValue(row));
-        final summary = '$teamA sends ${outgoingA.map((row) => _txt(row['player_label'])).join(', ')} for $teamB package ${outgoingB.map((row) => _txt(row['player_label'])).join(', ')}. Value balance: ${_d(valueA)} vs ${_d(valueB)}.';
-
-        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _HeroBand(teamA: teamA, teamB: teamB, valueA: valueA, valueB: valueB),
-          const SizedBox(height: 18),
-          _Surface(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const _SectionHeader('Scenario controls', 'A first front-office simulator shell using the 2024-25 generated player/team data. Real salary/cap/CBA feeds come later.'),
-              const SizedBox(height: 14),
-              Wrap(spacing: 14, runSpacing: 14, children: [
-                _TeamPicker(label: 'Team A', value: teamA, teams: teams, onChanged: (value) => setState(() => teamA = value ?? teamA)),
-                _TeamPicker(label: 'Team B', value: teamB, teams: teams, onChanged: (value) => setState(() => teamB = value ?? teamB)),
-                FilledButton.icon(onPressed: () => _saveScenario(summary), icon: const Icon(Icons.save_rounded), label: const Text('Save scenario locally')),
-              ]),
-              if (savedScenario.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _InfoStrip(icon: Icons.bookmark_rounded, text: 'Saved scenario: $savedScenario'),
-              ],
-            ]),
-          ),
-          const SizedBox(height: 18),
-          LayoutBuilder(builder: (context, constraints) {
-            final compact = constraints.maxWidth < 950;
-            final left = _TradePackage(team: teamA, outgoing: outgoingA, incoming: outgoingB, value: valueA, otherValue: valueB);
-            final right = _TradePackage(team: teamB, outgoing: outgoingB, incoming: outgoingA, value: valueB, otherValue: valueA);
-            return compact ? Column(children: [left, const SizedBox(height: 18), right]) : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: left), const SizedBox(width: 18), Expanded(child: right)]);
-          }),
-          const SizedBox(height: 18),
-          _Surface(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
-              _SectionHeader('What this becomes', 'The full version should beat cap/trade tools by combining financial legality with basketball impact and community reaction.'),
-              SizedBox(height: 12),
-              _ChecklistItem('Contract cards, salary matching, apron/tax status, exceptions, options, guarantees, and trade restrictions.'),
-              _ChecklistItem('Rotation fit, on/off impact, lineup consequences, timeline fit, fantasy impact, and player development context.'),
-              _ChecklistItem('Fan voting, realism score, team winner, comment thread, article draft, and export to workspace.'),
-              _ChecklistItem('Scenario objects that can be saved, compared, shared, revised, and attached to team/player pages.'),
-            ]),
-          ),
-        ]);
+        if (!snapshot.hasData) {
+          return const _Panel(
+            child: Text(
+              'Loading official cap environments...',
+              style: TextStyle(color: _muted),
+            ),
+          );
+        }
+        final environments = snapshot.data!;
+        final environment = environments.firstWhere(
+          (item) => item.season == season,
+          orElse: () => environments.last,
+        );
+        final summary = engine.summarize(
+          contracts: contracts,
+          inputs: _inputs(),
+          environment: environment,
+        );
+        final impact = engine.modelTransaction(
+          current: summary,
+          outgoingSalary: _millions(outgoingController.text),
+          incomingSalary: _millions(incomingController.text),
+          environment: environment,
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Hero(
+              summary: summary,
+              contractCount: contracts.length,
+              draftCount: draftAssets.length,
+            ),
+            const SizedBox(height: 18),
+            _controlPanel(environments),
+            const SizedBox(height: 18),
+            _activePanel(environment, summary, impact),
+            const SizedBox(height: 18),
+            _accuracyPanel(environment),
+          ],
+        );
       },
+    );
+  }
+
+  Widget _controlPanel(List<NbaCapEnvironment> environments) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _Header(
+            'Ledger controls',
+            'Select the team and operating season, then work across contracts, cap reconciliation, draft assets and transaction impact.',
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              SizedBox(
+                width: 190,
+                child: DropdownButtonFormField<String>(
+                  value: season,
+                  isExpanded: true,
+                  decoration: _input('Season'),
+                  items: [
+                    for (final item in environments)
+                      DropdownMenuItem(
+                        value: item.season,
+                        child: Text(item.season),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => season = value);
+                      _persist();
+                    }
+                  },
+                ),
+              ),
+              SizedBox(
+                width: 170,
+                child: TextField(
+                  controller: teamController,
+                  decoration: _input('Team ID'),
+                  onChanged: (_) {
+                    setState(() {});
+                    _persist();
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final item in const [
+                'Contracts',
+                'Cap Reconciliation',
+                'Draft Assets',
+                'Transaction Impact',
+              ])
+                ChoiceChip(
+                  label: Text(item),
+                  selected: tab == item,
+                  onSelected: (_) => setState(() => tab = item),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _activePanel(
+    NbaCapEnvironment environment,
+    TeamLedgerSummary summary,
+    TransactionImpact impact,
+  ) {
+    switch (tab) {
+      case 'Cap Reconciliation':
+        return _capPanel(environment, summary);
+      case 'Draft Assets':
+        return _draftPanel();
+      case 'Transaction Impact':
+        return _transactionPanel(summary, impact);
+      default:
+        return _contractsPanel(summary);
+    }
+  }
+
+  Widget _contractsPanel(TeamLedgerSummary summary) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _Header(
+            'Contract-year ledger',
+            'Add modeled annual salary rows with guarantee and option metadata. No live contract data is inferred.',
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              SizedBox(
+                width: 220,
+                child: TextField(
+                  controller: playerController,
+                  decoration: _input('Player'),
+                ),
+              ),
+              SizedBox(
+                width: 140,
+                child: TextField(
+                  controller: salaryController,
+                  keyboardType: TextInputType.number,
+                  decoration: _input('Salary · millions'),
+                ),
+              ),
+              SizedBox(
+                width: 170,
+                child: TextField(
+                  controller: guaranteedController,
+                  keyboardType: TextInputType.number,
+                  decoration: _input('Guaranteed · millions'),
+                ),
+              ),
+              SizedBox(
+                width: 170,
+                child: DropdownButtonFormField<ContractGuarantee>(
+                  value: guarantee,
+                  decoration: _input('Guarantee'),
+                  items: [
+                    for (final item in ContractGuarantee.values)
+                      DropdownMenuItem(
+                        value: item,
+                        child: Text(item.name),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => guarantee = value);
+                    }
+                  },
+                ),
+              ),
+              SizedBox(
+                width: 180,
+                child: DropdownButtonFormField<ContractOption>(
+                  value: option,
+                  decoration: _input('Option'),
+                  items: [
+                    for (final item in ContractOption.values)
+                      DropdownMenuItem(
+                        value: item,
+                        child: Text(item.name),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => option = value);
+                    }
+                  },
+                ),
+              ),
+              FilterChip(
+                label: const Text('No-trade clause'),
+                selected: noTradeClause,
+                onSelected: (value) => setState(() => noTradeClause = value),
+              ),
+              FilledButton.icon(
+                onPressed: _addContract,
+                icon: const Icon(Icons.add),
+                label: const Text('Add contract'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _routeButtons(_routeContracts),
+          const SizedBox(height: 14),
+          _contractTable(),
+          const SizedBox(height: 14),
+          _findings(summary.findings),
+        ],
+      ),
+    );
+  }
+
+  Widget _contractTable() {
+    return _table(
+      columns: const [
+        'Player',
+        'Team',
+        'Season',
+        'Salary',
+        'Guaranteed',
+        'Guarantee',
+        'Option',
+        'NTC',
+        '',
+      ],
+      rows: [
+        for (final item in contracts)
+          [
+            item.playerLabel,
+            item.teamId,
+            item.season,
+            _money(item.salary),
+            _money(item.guaranteedAmount),
+            item.guarantee.name,
+            item.option.name,
+            item.noTradeClause ? 'Yes' : 'No',
+            item.id,
+          ],
+      ],
+      onDelete: (id) {
+        setState(() {
+          contracts = contracts.where((item) => item.id != id).toList();
+        });
+        _persist();
+      },
+    );
+  }
+
+  Widget _capPanel(
+    NbaCapEnvironment environment,
+    TeamLedgerSummary summary,
+  ) {
+    final inputs = <MapEntry<String, TextEditingController>>[
+      MapEntry('Dead money', deadMoneyController),
+      MapEntry('Cap holds', capHoldsController),
+      MapEntry('Draft holds', draftHoldsController),
+      MapEntry('Roster charges', rosterChargesController),
+    ];
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _Header(
+            'Cap reconciliation',
+            'Reconcile modeled contracts with dead money, cap holds, draft holds and incomplete-roster charges.',
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final item in inputs)
+                SizedBox(
+                  width: 180,
+                  child: TextField(
+                    controller: item.value,
+                    keyboardType: TextInputType.number,
+                    decoration: _input('${item.key} · millions'),
+                    onChanged: (_) {
+                      setState(() {});
+                      _persist();
+                    },
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _metrics([
+            _Metric('Active salary', _money(summary.activeSalary),
+                '${summary.rosterCount} rows'),
+            _Metric('Guaranteed', _money(summary.guaranteedSalary),
+                'modeled guarantees'),
+            _Metric('Other charges', _money(summary.nonContractCharges),
+                'holds and charges'),
+            _Metric('Team salary', _money(summary.teamSalary),
+                summary.position.tierLabel),
+            _Metric('Cap room', _signed(summary.position.capRoom), 'vs cap'),
+            _Metric('Tax room', _signed(summary.position.taxRoom), 'vs tax'),
+            _Metric('First apron', _signed(summary.position.firstApronRoom),
+                'remaining'),
+            _Metric('Second apron', _signed(summary.position.secondApronRoom),
+                'remaining'),
+          ]),
+          const SizedBox(height: 14),
+          Text(
+            'Official ${environment.season}: cap ${_money(environment.salaryCap)} · tax ${_money(environment.taxLevel)} · first apron ${_money(environment.firstApron)} · second apron ${_money(environment.secondApron)}.',
+            style: const TextStyle(color: _muted, height: 1.4),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _draftPanel() {
+    final findings = engine.validateDraftAssets(draftAssets);
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _Header(
+            'Draft asset ledger',
+            'Track modeled ownership, original team, round and protections. Source verification remains mandatory.',
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              SizedBox(
+                width: 130,
+                child: TextField(
+                  controller: draftOwnerController,
+                  decoration: _input('Owner'),
+                ),
+              ),
+              SizedBox(
+                width: 140,
+                child: TextField(
+                  controller: draftOriginalController,
+                  decoration: _input('Original team'),
+                ),
+              ),
+              SizedBox(
+                width: 130,
+                child: TextField(
+                  controller: draftYearController,
+                  keyboardType: TextInputType.number,
+                  decoration: _input('Year'),
+                ),
+              ),
+              SizedBox(
+                width: 120,
+                child: DropdownButtonFormField<int>(
+                  value: draftRound,
+                  decoration: _input('Round'),
+                  items: const [
+                    DropdownMenuItem(value: 1, child: Text('1')),
+                    DropdownMenuItem(value: 2, child: Text('2')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => draftRound = value);
+                    }
+                  },
+                ),
+              ),
+              SizedBox(
+                width: 260,
+                child: TextField(
+                  controller: draftProtectionController,
+                  decoration: _input('Protections / conveyance'),
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: _addDraftAsset,
+                icon: const Icon(Icons.add),
+                label: const Text('Add asset'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _routeButtons(_routeDraftAssets),
+          const SizedBox(height: 14),
+          _table(
+            columns: const [
+              'Owner',
+              'Original',
+              'Year',
+              'Round',
+              'Protections',
+              '',
+            ],
+            rows: [
+              for (final item in draftAssets)
+                [
+                  item.currentOwner,
+                  item.originalTeam,
+                  '${item.year}',
+                  '${item.round}',
+                  item.protections,
+                  item.id,
+                ],
+            ],
+            onDelete: (id) {
+              setState(() {
+                draftAssets =
+                    draftAssets.where((item) => item.id != id).toList();
+              });
+              _persist();
+            },
+          ),
+          const SizedBox(height: 14),
+          _findings(findings),
+        ],
+      ),
+    );
+  }
+
+  Widget _transactionPanel(
+    TeamLedgerSummary summary,
+    TransactionImpact impact,
+  ) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _Header(
+            'Transaction impact',
+            'Model salary movement and post-transaction cap position. This is reconciliation, not legal approval.',
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              SizedBox(
+                width: 190,
+                child: TextField(
+                  controller: outgoingController,
+                  keyboardType: TextInputType.number,
+                  decoration: _input('Outgoing · millions'),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              SizedBox(
+                width: 190,
+                child: TextField(
+                  controller: incomingController,
+                  keyboardType: TextInputType.number,
+                  decoration: _input('Incoming · millions'),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _metrics([
+            _Metric('Current salary', _money(summary.teamSalary),
+                summary.position.tierLabel),
+            _Metric('Outgoing', _money(impact.outgoingSalary), 'modeled'),
+            _Metric('Incoming', _money(impact.incomingSalary), 'modeled'),
+            _Metric('Post salary', _money(impact.postTransactionSalary),
+                impact.position.tierLabel),
+            _Metric('Cap room', _signed(impact.position.capRoom), 'post trade'),
+            _Metric('Second apron', _signed(impact.position.secondApronRoom),
+                'post trade'),
+          ]),
+          const SizedBox(height: 14),
+          if (impact.reviewFlags.isEmpty)
+            const _Notice(
+              text:
+                  'No basic reconciliation flags. Full salary matching, aggregation, hard-cap and exception review is still required.',
+              danger: false,
+            )
+          else
+            for (final flag in impact.reviewFlags)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _Notice(text: flag, danger: true),
+              ),
+        ],
+      ),
+    );
+  }
+
+  Widget _routeButtons(Future<void> Function(String) handler) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        OutlinedButton.icon(
+          onPressed: () => handler('Workspace'),
+          icon: const Icon(Icons.grid_on),
+          label: const Text('Send to Workspace'),
+        ),
+        OutlinedButton.icon(
+          onPressed: () => handler('Python Lab'),
+          icon: const Icon(Icons.code),
+          label: const Text('Send to Python Lab'),
+        ),
+      ],
+    );
+  }
+
+  Widget _table({
+    required List<String> columns,
+    required List<List<String>> rows,
+    required ValueChanged<String> onDelete,
+  }) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        headingRowColor: WidgetStateProperty.all(_soft),
+        columns: [
+          for (final column in columns)
+            DataColumn(
+              label: Text(
+                column,
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+        ],
+        rows: [
+          for (final row in rows)
+            DataRow(
+              cells: [
+                for (var index = 0; index < row.length; index++)
+                  DataCell(
+                    index == row.length - 1
+                        ? IconButton(
+                            onPressed: () => onDelete(row[index]),
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: _red,
+                            ),
+                          )
+                        : Text(row[index]),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _findings(List<LedgerFinding> findings) {
+    if (findings.isEmpty) {
+      return const _Notice(
+        text: 'No structural ledger findings.',
+        danger: false,
+      );
+    }
+    return Column(
+      children: [
+        for (final finding in findings)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _Notice(
+              text: '${finding.code}: ${finding.message}',
+              danger: finding.severity == 'error',
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _metrics(List<_Metric> metrics) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth < 620
+            ? constraints.maxWidth
+            : (constraints.maxWidth - 24) / 3;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final metric in metrics)
+              SizedBox(
+                width: width,
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: _soft,
+                    border: Border.all(color: _line),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        metric.label.toUpperCase(),
+                        style: const TextStyle(
+                          color: _muted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        metric.value,
+                        style: const TextStyle(
+                          color: _ink,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      Text(
+                        metric.caption,
+                        style: const TextStyle(color: _muted, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _accuracyPanel(NbaCapEnvironment environment) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _Header(
+            'Accuracy boundary',
+            'The current NBA–NBPA CBA took effect July 1, 2023. This studio preserves source and modeling boundaries rather than presenting incomplete rules as authoritative.',
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'League thresholds are sourced from ${environment.sourceLabel}. Contract rows, draft assets, holds and transaction inputs are user modeled until connected to verified ledgers.',
+            style: const TextStyle(color: _muted, height: 1.45),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Still required for complete legality: salary-matching bands, aggregation restrictions, hard-cap triggers, sign-and-trades, base-year compensation, poison-pill treatment, exceptions, cash limits, option dates, guarantee dates and Stepien/conveyance logic.',
+            style: TextStyle(color: _muted, height: 1.45),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _HeroBand extends StatelessWidget {
-  const _HeroBand({required this.teamA, required this.teamB, required this.valueA, required this.valueB});
-  final String teamA;
-  final String teamB;
-  final double valueA;
-  final double valueB;
+class _Hero extends StatelessWidget {
+  const _Hero({
+    required this.summary,
+    required this.contractCount,
+    required this.draftCount,
+  });
+
+  final TeamLedgerSummary summary;
+  final int contractCount;
+  final int draftCount;
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(32), gradient: const LinearGradient(colors: [_navy, _blue, _orange]), boxShadow: const [BoxShadow(color: Color(0x24071A33), blurRadius: 32, offset: Offset(0, 16))]),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('FRONT OFFICE LAB', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1.4)),
-          const SizedBox(height: 12),
-          Text('$teamA ↔ $teamB scenario engine', style: const TextStyle(color: Colors.white, fontSize: 39, height: 1.04, fontWeight: FontWeight.w900, letterSpacing: -0.8)),
-          const SizedBox(height: 12),
-          const SizedBox(width: 840, child: Text('This is the first version of the front-office simulator: not a fake cap sheet, but a product shell for trades, contracts, roster fit, fantasy impact, community reaction, and workspace export.', style: TextStyle(color: Color(0xFFEAF2FF), fontSize: 16, height: 1.45, fontWeight: FontWeight.w600))),
-          const SizedBox(height: 18),
-          Wrap(spacing: 10, runSpacing: 10, children: [_GlassChip('VALUE ${_d(valueA)} / ${_d(valueB)}'), const _GlassChip('CAP DATA SLOT'), const _GlassChip('ROTATION FIT'), const _GlassChip('COMMUNITY VOTE'), const _GlassChip('WORKSPACE EXPORT')]),
-        ]),
-      );
-}
-
-class _TradePackage extends StatelessWidget {
-  const _TradePackage({required this.team, required this.outgoing, required this.incoming, required this.value, required this.otherValue});
-  final String team;
-  final List<Map<String, dynamic>> outgoing;
-  final List<Map<String, dynamic>> incoming;
-  final double value;
-  final double otherValue;
-
-  @override
-  Widget build(BuildContext context) => _Surface(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            CircleAvatar(backgroundColor: const Color(0xFFEFF6FF), child: Text(team, style: const TextStyle(color: _blue, fontWeight: FontWeight.w900, fontSize: 11))),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('$team scenario', style: const TextStyle(color: _ink, fontSize: 22, fontWeight: FontWeight.w900)),
-              Text(value >= otherValue ? 'Value-positive proxy package' : 'Needs more value or picks', style: const TextStyle(color: _muted, fontWeight: FontWeight.w700)),
-            ])),
-          ]),
-          const SizedBox(height: 16),
-          _MetricGrid(items: [
-            _Metric('Outgoing value', _d(value), 'basketball proxy'),
-            _Metric('Incoming value', _d(otherValue), 'basketball proxy'),
-            _Metric('Balance', _d(value - otherValue), 'positive helps this side'),
-          ]),
-          const SizedBox(height: 14),
-          _PlayerTable(title: 'Outgoing package', rows: outgoing),
-          const SizedBox(height: 12),
-          _PlayerTable(title: 'Incoming package', rows: incoming),
-          const SizedBox(height: 12),
-          _InfoStrip(icon: Icons.info_outline_rounded, text: 'Value is a transparent placeholder: PPG + 0.4×MPG + 1.5×BPM. Salary and CBA validation are intentionally marked as future data slots.'),
-        ]),
-      );
-}
-
-class _TeamPicker extends StatelessWidget {
-  const _TeamPicker({required this.label, required this.value, required this.teams, required this.onChanged});
-  final String label;
-  final String value;
-  final List<String> teams;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-        width: 220,
-        child: DropdownButtonFormField<String>(
-          value: teams.contains(value) ? value : (teams.isEmpty ? null : teams.first),
-          decoration: InputDecoration(labelText: label, filled: true, fillColor: _soft, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _line))),
-          items: [for (final team in teams) DropdownMenuItem(value: team, child: Text(team, style: const TextStyle(fontWeight: FontWeight.w900)))],
-          onChanged: onChanged,
-        ),
-      );
-}
-
-class _PlayerTable extends StatelessWidget {
-  const _PlayerTable({required this.title, required this.rows});
-  final String title;
-  final List<Map<String, dynamic>> rows;
-
-  @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 16)),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(border: Border.all(color: _line), borderRadius: BorderRadius.circular(16)),
-          child: Column(children: [
-            const _TableRow(cells: ['Player', 'PPG', 'MPG', 'BPM', 'Value'], header: true),
-            for (final row in rows) _TableRow(cells: [_txt(row['player_label']), _d(row['points_per_game']), _d(row['minutes_per_game']), _d(row['avg_bpm']), _d(_scenarioValue(row))]),
-          ]),
-        ),
-      ]);
-}
-
-class _TableRow extends StatelessWidget {
-  const _TableRow({required this.cells, this.header = false});
-  final List<String> cells;
-  final bool header;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        color: header ? _soft : Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        child: Row(children: [
-          for (final cell in cells)
-            Expanded(flex: cell == cells.first ? 2 : 1, child: Text(cell, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: header ? _muted : _ink, fontWeight: header ? FontWeight.w900 : FontWeight.w700, fontSize: 12))),
-        ]),
-      );
-}
-
-class _MetricGrid extends StatelessWidget {
-  const _MetricGrid({required this.items});
-  final List<_Metric> items;
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(builder: (context, constraints) {
-        final width = constraints.maxWidth < 720 ? constraints.maxWidth : (constraints.maxWidth - 24) / 3;
-        return Wrap(spacing: 12, runSpacing: 12, children: [for (final item in items) SizedBox(width: width, child: _MetricCard(item))]);
-      });
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard(this.item);
-  final _Metric item;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: _soft, border: Border.all(color: _line), borderRadius: BorderRadius.circular(16)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(item.label.toUpperCase(), style: const TextStyle(color: _muted, fontSize: 10, letterSpacing: 0.8, fontWeight: FontWeight.w900)),
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        gradient: const LinearGradient(colors: [_navy, _blue, _orange]),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'FRONT OFFICE LEDGER',
+            style: TextStyle(
+              color: Colors.white70,
+              fontWeight: FontWeight.w900,
+              fontSize: 12,
+              letterSpacing: 1.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${summary.teamId.isEmpty ? 'TEAM' : summary.teamId} · ${summary.season}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 38,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text(item.value, style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 21)),
-          Text(item.caption, style: const TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w700)),
-        ]),
-      );
+          const Text(
+            'Persistent contracts, cap charges, draft assets and transaction readiness—without fabricating live payroll data.',
+            style: TextStyle(
+              color: Color(0xFFEAF2FF),
+              fontSize: 15,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 9,
+            runSpacing: 9,
+            children: [
+              _Pill('$contractCount CONTRACT ROWS'),
+              _Pill('$draftCount DRAFT ASSETS'),
+              _Pill(_money(summary.teamSalary)),
+              _Pill(summary.position.tierLabel.toUpperCase()),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _InfoStrip extends StatelessWidget {
-  const _InfoStrip({required this.icon, required this.text});
-  final IconData icon;
-  final String text;
+class _Panel extends StatelessWidget {
+  const _Panel({required this.child});
 
-  @override
-  Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: const Color(0xFFFFF7ED), border: Border.all(color: const Color(0xFFFFD9B8)), borderRadius: BorderRadius.circular(16)),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(icon, color: _orange, size: 18), const SizedBox(width: 10), Expanded(child: Text(text, style: const TextStyle(color: _muted, height: 1.35, fontWeight: FontWeight.w700)))]),
-      );
-}
-
-class _ChecklistItem extends StatelessWidget {
-  const _ChecklistItem(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Padding(padding: EdgeInsets.only(top: 3), child: Icon(Icons.check_circle_rounded, color: _green, size: 18)),
-          const SizedBox(width: 10),
-          Expanded(child: Text(text, style: const TextStyle(color: _muted, height: 1.35, fontWeight: FontWeight.w700))),
-        ]),
-      );
-}
-
-class _GlassChip extends StatelessWidget {
-  const _GlassChip(this.label);
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(color: Colors.white.withOpacity(0.14), borderRadius: BorderRadius.circular(999), border: Border.all(color: Colors.white.withOpacity(0.26))),
-        child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.8)),
-      );
-}
-
-class _Surface extends StatelessWidget {
-  const _Surface({required this.child});
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: _line), boxShadow: const [BoxShadow(color: Color(0x0F071A33), blurRadius: 22, offset: Offset(0, 10))]),
-        child: child,
-      );
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: _line),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F071A33),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title, this.subtitle);
+class _Header extends StatelessWidget {
+  const _Header(this.title, this.subtitle);
+
   final String title;
   final String subtitle;
 
   @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: const TextStyle(color: _ink, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.2)),
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: _ink,
+            fontSize: 21,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
         const SizedBox(height: 4),
-        Text(subtitle, style: const TextStyle(color: _muted, height: 1.35, fontWeight: FontWeight.w600)),
-      ]);
+        Text(
+          subtitle,
+          style: const TextStyle(color: _muted, height: 1.4),
+        ),
+      ],
+    );
+  }
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _Notice extends StatelessWidget {
+  const _Notice({required this.text, required this.danger});
+
+  final String text;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: danger ? const Color(0xFFFFF1F2) : const Color(0xFFECFDF3),
+        border: Border.all(
+          color: danger ? const Color(0xFFFDA4AF) : const Color(0xFF86EFAC),
+        ),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: danger ? _red : _green,
+          height: 1.35,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
 }
 
 class _Metric {
   const _Metric(this.label, this.value, this.caption);
+
   final String label;
   final String value;
   final String caption;
 }
 
-List<String> _teamIds(NbaTerminalSeedSnapshot data) => data.teamRecords.map((row) => _txt(row['team_id'])).where((team) => team.isNotEmpty).toSet().toList()..sort();
-
-List<Map<String, dynamic>> _roster(NbaTerminalSeedSnapshot data, String teamId) {
-  final rows = data.playerSeasonTotals.where((row) => _txt(row['team_ids']).contains(teamId)).toList();
-  rows.sort((a, b) => _scenarioValue(b).compareTo(_scenarioValue(a)));
-  return rows;
+InputDecoration _input(String label) {
+  return InputDecoration(
+    labelText: label,
+    filled: true,
+    fillColor: _soft,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: _line),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: _line),
+    ),
+  );
 }
 
-double _scenarioValue(Map<String, dynamic> row) => _num(row['points_per_game']) + 0.4 * _num(row['minutes_per_game']) + 1.5 * _num(row['avg_bpm']);
-
-String _txt(Object? value) => value == null ? '' : '$value';
-
-double _num(Object? value) {
-  if (value is num) return value.toDouble();
-  return double.tryParse('$value') ?? 0;
+double _millions(String raw) {
+  return (double.tryParse(raw.trim()) ?? 0) * 1000000;
 }
 
-String _d(Object? value) => _num(value).toStringAsFixed(1);
+String _money(double value) {
+  return '\$${(value / 1000000).toStringAsFixed(3)}M';
+}
+
+String _signed(double value) {
+  final sign = value >= 0 ? '+' : '−';
+  return '$sign\$${(value.abs() / 1000000).toStringAsFixed(3)}M';
+}
