@@ -1,0 +1,34 @@
+name: Capture Role Platform Findings
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/role-platform-transaction-workflows
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get >/dev/null
+      - name: Capture findings
+        shell: bash
+        run: |
+          set +e
+          flutter analyze > /tmp/analyze.log 2>&1
+          grep -E "^(error|warning|info) •|[0-9]+ issues? found|No issues found" /tmp/analyze.log > docs/temp_role_platform_analyzer.txt || tail -n 120 /tmp/analyze.log > docs/temp_role_platform_analyzer.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/temp_role_platform_analyzer.txt
+          git commit -m "Capture role platform analyzer findings"
+          git push origin HEAD:agent/role-platform-transaction-workflows
