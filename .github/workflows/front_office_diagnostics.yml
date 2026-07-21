@@ -1,28 +1,25 @@
-name: Front Office Repair
+name: Front Office Diagnostics
 
 on:
   pull_request:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  repair:
-    if: github.actor != 'github-actions[bot]'
+  analyze:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
-      - name: Check out implementation branch
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           ref: agent/front-office-ledger-sprint
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-      - name: Apply exact analyzer repair
+      - name: Apply exact interpolation repair
         shell: bash
         run: |
           python3 - <<'PY'
@@ -35,22 +32,23 @@ jobs:
               raise SystemExit(f'Expected exactly one interpolation target, found {text.count(old)}')
           path.write_text(text.replace(old, new))
           PY
-      - name: Resolve dependencies
-        run: flutter pub get
-      - name: Format repaired file
-        run: dart format lib/screens/product_front_office_scenario_screen.dart
-      - name: Analyze project
-        run: flutter analyze
-      - name: Run complete test suite
-        run: flutter test
-      - name: Build release web application
-        run: flutter build web --release
-      - name: Commit validated repair
+      - run: flutter pub get
+      - run: dart format lib/screens/product_front_office_scenario_screen.dart
+      - name: Capture analyzer transcript
         shell: bash
         run: |
-          rm .github/workflows/front_office_diagnostics.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add lib/screens/product_front_office_scenario_screen.dart .github/workflows/front_office_diagnostics.yml
-          git commit -m "Repair and validate front office ledger"
-          git push origin HEAD:agent/front-office-ledger-sprint
+          set +e
+          flutter analyze > analyzer.log 2>&1
+          status=$?
+          cat analyzer.log
+          echo "$status" > analyzer.status
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: front-office-analyzer-v2
+          path: |
+            analyzer.log
+            analyzer.status
+          retention-days: 3
+      - name: Fail when analysis fails
+        run: test "$(cat analyzer.status)" = "0"
