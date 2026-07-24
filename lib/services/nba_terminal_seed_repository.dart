@@ -72,8 +72,7 @@ class NbaTerminalSeedRepository {
       _loadList(resolvedBasePath, 'player_season_totals.json'),
       _loadObject(resolvedBasePath, 'player_leaders.json'),
       _loadObject(resolvedBasePath, 'player_game_highs.json'),
-      _loadOptionalList(resolvedBasePath, 'player_game_logs.json')
-          .then((rows) => rows ?? _loadList(resolvedBasePath, 'player_game_logs_top.json')),
+      _loadPlayerLogs(resolvedBasePath),
       _loadList(resolvedBasePath, 'search_index.json'),
       _loadObject(resolvedBasePath, 'data_dictionary.json'),
       _loadOptionalObject(resolvedBasePath, 'validation_report.json'),
@@ -103,6 +102,17 @@ class NbaTerminalSeedRepository {
       assetPath: resolvedBasePath,
       usedFallback: usedFallback,
     );
+  }
+
+  Future<List<Map<String, dynamic>>> _loadPlayerLogs(
+    String resolvedBasePath,
+  ) async {
+    final complete = await _loadOptionalList(
+      resolvedBasePath,
+      'player_game_logs.json',
+    );
+    if (complete != null) return complete;
+    return _loadList(resolvedBasePath, 'player_game_logs_top.json');
   }
 
   Future<Map<String, dynamic>> _loadObject(
