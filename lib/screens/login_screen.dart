@@ -14,22 +14,49 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final emailController = TextEditingController(text: 'analyst@sportsterminal.local');
-  final passwordController = TextEditingController(text: 'demo123');
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  final displayNameController = TextEditingController();
+  final organizationNameController = TextEditingController();
+
   bool obscurePassword = true;
+  bool createAccount = false;
+  bool organizationAccount = false;
 
   @override
   void dispose() {
     emailController.dispose();
     passwordController.dispose();
+    displayNameController.dispose();
+    organizationNameController.dispose();
     super.dispose();
   }
 
-  void _submit() {
-    widget.controller.signIn(
+  Future<void> _submit() async {
+    FocusScope.of(context).unfocus();
+    if (createAccount) {
+      await widget.controller.signUp(
+        email: emailController.text,
+        password: passwordController.text,
+        displayName: displayNameController.text,
+        organizationAccount: organizationAccount,
+        organizationName: organizationNameController.text,
+      );
+      return;
+    }
+    await widget.controller.signIn(
       email: emailController.text,
       password: passwordController.text,
     );
+  }
+
+  void _setMode(bool nextCreateAccount) {
+    widget.controller.clearError();
+    setState(() => createAccount = nextCreateAccount);
+  }
+
+  void _useDemo(AppSession session) {
+    widget.controller.signInAsDemo(session);
   }
 
   @override
@@ -40,38 +67,39 @@ class _LoginScreenState extends State<LoginScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxWidth < 900;
+            final overview = const _LoginOverview();
+            final form = AnimatedBuilder(
+              animation: widget.controller,
+              builder: (context, _) => _LoginForm(
+                controller: widget.controller,
+                emailController: emailController,
+                passwordController: passwordController,
+                displayNameController: displayNameController,
+                organizationNameController: organizationNameController,
+                createAccount: createAccount,
+                organizationAccount: organizationAccount,
+                obscurePassword: obscurePassword,
+                onModeChanged: _setMode,
+                onOrganizationChanged: (value) {
+                  setState(() => organizationAccount = value);
+                },
+                onTogglePassword: () {
+                  setState(() => obscurePassword = !obscurePassword);
+                },
+                onSubmit: _submit,
+                onDemoSelected: _useDemo,
+              ),
+            );
             final content = compact
                 ? Column(
-                    children: [
-                      const _LoginOverview(),
-                      const SizedBox(height: 18),
-                      _LoginForm(
-                        controller: widget.controller,
-                        emailController: emailController,
-                        passwordController: passwordController,
-                        obscurePassword: obscurePassword,
-                        onTogglePassword: () => setState(() => obscurePassword = !obscurePassword),
-                        onSubmit: _submit,
-                        onDemoSelected: widget.controller.signInAsDemo,
-                      ),
-                    ],
+                    children: [overview, const SizedBox(height: 18), form],
                   )
                 : Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Expanded(child: _LoginOverview()),
                       const SizedBox(width: 24),
-                      Expanded(
-                        child: _LoginForm(
-                          controller: widget.controller,
-                          emailController: emailController,
-                          passwordController: passwordController,
-                          obscurePassword: obscurePassword,
-                          onTogglePassword: () => setState(() => obscurePassword = !obscurePassword),
-                          onSubmit: _submit,
-                          onDemoSelected: widget.controller.signInAsDemo,
-                        ),
-                      ),
+                      Expanded(child: form),
                     ],
                   );
 
@@ -111,47 +139,68 @@ class _LoginOverview extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: terminalBorder),
             ),
-            child: const Icon(Icons.sports_basketball, color: terminalAccent, size: 28),
+            child: const Icon(
+              Icons.sports_basketball,
+              color: terminalAccent,
+              size: 28,
+            ),
           ),
           const SizedBox(height: 18),
           const Text(
             'Sports Terminal',
-            style: TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 34,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const SizedBox(height: 8),
           const Text(
-            'A user-facing NBA research terminal with organization-scoped workspaces, controlled internal outputs, source-aware analysis, and separate platform administration.',
-            style: TextStyle(color: terminalTextSoft, height: 1.55, fontSize: 15),
+            'The professional NBA research and transaction operating system—built around a certified 2025–26 data release, structured analysis, personal work, and organization decision workflows.',
+            style: TextStyle(
+              color: terminalTextSoft,
+              height: 1.55,
+              fontSize: 15,
+            ),
           ),
           const SizedBox(height: 22),
           const Wrap(
             spacing: 10,
             runSpacing: 10,
             children: [
-              InfoPill(label: 'User Mode'),
-              InfoPill(label: 'Organization Scope'),
-              InfoPill(label: 'Internal Spreadsheet'),
-              InfoPill(label: 'Controlled SQL'),
-              InfoPill(label: 'No Raw Download'),
+              InfoPill(label: '2025–26 Launch'),
+              InfoPill(label: 'Individual Terminal'),
+              InfoPill(label: 'Organization Terminal'),
+              InfoPill(label: 'Source-Aware Data'),
+              InfoPill(label: 'Structured Workflows'),
             ],
           ),
           const SizedBox(height: 24),
           const Divider(color: terminalBorder),
           const SizedBox(height: 18),
           const _FeatureLine(
-            icon: Icons.person_outline,
-            title: 'User mode is separate',
-            description: 'Regular users see research, entity, workflow, and workspace surfaces—not Build Lab or Data Ops.',
+            icon: Icons.query_stats_rounded,
+            title: 'Research that becomes work',
+            description:
+                'Player, team, game, cap, contract, draft, and trade objects can move directly into workspaces and governed transaction cases.',
           ),
           const _FeatureLine(
-            icon: Icons.apartment_outlined,
-            title: 'Organization-scoped work',
-            description: 'Workbooks and SQL documents are attached to the signed-in organization in the current local prototype.',
+            icon: Icons.apartment_rounded,
+            title: 'Individual and organization products',
+            description:
+                'Personal analysis and shared organization review use one connected workflow while preserving role-specific tools and permissions.',
           ),
           const _FeatureLine(
-            icon: Icons.security_outlined,
-            title: 'Internal-only output policy',
-            description: 'Data moves into internal spreadsheets, SQL workspaces, reports, and saved views rather than unrestricted CSV downloads.',
+            icon: Icons.cloud_done_rounded,
+            title: 'Remote-first with local resilience',
+            description:
+                'Customer sessions and collaboration use the launch backend when available; analytical work retains a local fallback during development or temporary outages.',
+          ),
+          const _FeatureLine(
+            icon: Icons.verified_user_rounded,
+            title: 'No fabricated launch claims',
+            description:
+                'The app exposes dataset certification and launch blockers instead of presenting modeled or incomplete data as sourced professional intelligence.',
           ),
         ],
       ),
@@ -160,7 +209,11 @@ class _LoginOverview extends StatelessWidget {
 }
 
 class _FeatureLine extends StatelessWidget {
-  const _FeatureLine({required this.icon, required this.title, required this.description});
+  const _FeatureLine({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
 
   final IconData icon;
   final String title;
@@ -179,9 +232,21 @@ class _FeatureLine extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(description, style: const TextStyle(color: terminalTextSoft, height: 1.4)),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    color: terminalTextSoft,
+                    height: 1.4,
+                  ),
+                ),
               ],
             ),
           ),
@@ -196,7 +261,13 @@ class _LoginForm extends StatelessWidget {
     required this.controller,
     required this.emailController,
     required this.passwordController,
+    required this.displayNameController,
+    required this.organizationNameController,
+    required this.createAccount,
+    required this.organizationAccount,
     required this.obscurePassword,
+    required this.onModeChanged,
+    required this.onOrganizationChanged,
     required this.onTogglePassword,
     required this.onSubmit,
     required this.onDemoSelected,
@@ -205,102 +276,250 @@ class _LoginForm extends StatelessWidget {
   final AuthController controller;
   final TextEditingController emailController;
   final TextEditingController passwordController;
+  final TextEditingController displayNameController;
+  final TextEditingController organizationNameController;
+  final bool createAccount;
+  final bool organizationAccount;
   final bool obscurePassword;
+  final ValueChanged<bool> onModeChanged;
+  final ValueChanged<bool> onOrganizationChanged;
   final VoidCallback onTogglePassword;
   final VoidCallback onSubmit;
   final ValueChanged<AppSession> onDemoSelected;
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
-        return TerminalCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Sign in', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 6),
-              const Text(
-                'Local development authentication. Real account persistence and invitations will require the backend phase.',
-                style: TextStyle(color: terminalTextSoft, height: 1.45),
+    return TerminalCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(
+                value: false,
+                label: Text('Sign in'),
+                icon: Icon(Icons.login_rounded),
               ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                style: const TextStyle(color: Colors.white),
-                decoration: _fieldDecoration('Email', Icons.mail_outline),
+              ButtonSegment(
+                value: true,
+                label: Text('Create account'),
+                icon: Icon(Icons.person_add_alt_1_rounded),
               ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: passwordController,
-                obscureText: obscurePassword,
-                style: const TextStyle(color: Colors.white),
-                onSubmitted: (_) => onSubmit(),
-                decoration: _fieldDecoration('Password', Icons.lock_outline).copyWith(
-                  suffixIcon: IconButton(
-                    onPressed: onTogglePassword,
-                    icon: Icon(obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                  ),
-                ),
-              ),
-              if (controller.error != null) ...[
-                const SizedBox(height: 12),
-                Text(controller.error!, style: const TextStyle(color: Color(0xFFFF8A80))),
-              ],
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: onSubmit,
-                  icon: const Icon(Icons.login),
-                  label: const Text('Enter Sports Terminal'),
-                ),
-              ),
-              const SizedBox(height: 22),
-              const Divider(color: terminalBorder),
-              const SizedBox(height: 16),
-              const Text('Demo roles', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 10),
-              for (final session in controller.demoSessions)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () => onDemoSelected(session),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(13),
-                      decoration: BoxDecoration(
-                        color: terminalPanelDark,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: terminalBorder),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.account_circle_outlined, color: terminalAccent),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(session.role.label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                                const SizedBox(height: 2),
-                                Text(session.email, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: terminalTextSoft, fontSize: 12)),
-                              ],
-                            ),
-                          ),
-                          const Icon(Icons.arrow_forward, color: terminalTextMuted, size: 18),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
             ],
+            selected: {createAccount},
+            onSelectionChanged: controller.busy
+                ? null
+                : (values) => onModeChanged(values.first),
           ),
-        );
-      },
+          const SizedBox(height: 18),
+          Text(
+            createAccount ? 'Create your terminal' : 'Welcome back',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            createAccount
+                ? 'Create an individual research account or an organization workspace. The launch backend issues a durable session immediately.'
+                : 'Sign in through the launch account service. Development demo roles remain available below when the backend is offline.',
+            style: const TextStyle(color: terminalTextSoft, height: 1.45),
+          ),
+          if (createAccount) ...[
+            const SizedBox(height: 18),
+            TextField(
+              controller: displayNameController,
+              enabled: !controller.busy,
+              textInputAction: TextInputAction.next,
+              style: const TextStyle(color: Colors.white),
+              decoration: _fieldDecoration(
+                'Display name',
+                Icons.badge_outlined,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              value: organizationAccount,
+              title: const Text(
+                'Create an organization terminal',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              subtitle: const Text(
+                'Includes shared cases, members, assignments, approvals, and organization operations.',
+                style: TextStyle(color: terminalTextSoft),
+              ),
+              onChanged: controller.busy ? null : onOrganizationChanged,
+            ),
+            if (organizationAccount) ...[
+              const SizedBox(height: 8),
+              TextField(
+                controller: organizationNameController,
+                enabled: !controller.busy,
+                textInputAction: TextInputAction.next,
+                style: const TextStyle(color: Colors.white),
+                decoration: _fieldDecoration(
+                  'Organization name',
+                  Icons.apartment_rounded,
+                ),
+              ),
+            ],
+          ],
+          const SizedBox(height: 14),
+          TextField(
+            controller: emailController,
+            enabled: !controller.busy,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            autofillHints: const [AutofillHints.email],
+            style: const TextStyle(color: Colors.white),
+            decoration: _fieldDecoration('Email', Icons.mail_outline),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: passwordController,
+            enabled: !controller.busy,
+            obscureText: obscurePassword,
+            autofillHints: createAccount
+                ? const [AutofillHints.newPassword]
+                : const [AutofillHints.password],
+            style: const TextStyle(color: Colors.white),
+            onSubmitted: (_) => controller.busy ? null : onSubmit(),
+            decoration:
+                _fieldDecoration('Password', Icons.lock_outline).copyWith(
+              helperText: createAccount
+                  ? 'At least 10 characters with mixed case and a number.'
+                  : null,
+              helperStyle: const TextStyle(color: terminalTextMuted),
+              suffixIcon: IconButton(
+                onPressed: controller.busy ? null : onTogglePassword,
+                icon: Icon(
+                  obscurePassword
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
+              ),
+            ),
+          ),
+          if (controller.error != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF3A1F26),
+                border: Border.all(color: const Color(0xFF9B4455)),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                controller.error!,
+                style: const TextStyle(color: Color(0xFFFFB4C0)),
+              ),
+            ),
+          ],
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: controller.busy ? null : onSubmit,
+              icon: controller.busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      createAccount
+                          ? Icons.person_add_alt_1_rounded
+                          : Icons.login_rounded,
+                    ),
+              label: Text(
+                controller.busy
+                    ? 'Connecting…'
+                    : createAccount
+                        ? 'Create Sports Terminal account'
+                        : 'Enter Sports Terminal',
+              ),
+            ),
+          ),
+          const SizedBox(height: 22),
+          const Divider(color: terminalBorder),
+          const SizedBox(height: 16),
+          const Text(
+            'Development demo roles',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'These bypass the account server and should be disabled in a public production build.',
+            style: TextStyle(color: terminalTextSoft, fontSize: 12),
+          ),
+          const SizedBox(height: 10),
+          for (final session in controller.demoSessions)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: controller.busy ? null : () => onDemoSelected(session),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(13),
+                  decoration: BoxDecoration(
+                    color: terminalPanelDark,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: terminalBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.account_circle_outlined,
+                        color: terminalAccent,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              session.role.label,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              session.email,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: terminalTextSoft,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward,
+                        color: terminalTextMuted,
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -319,6 +538,10 @@ InputDecoration _fieldDecoration(String label, IconData icon) {
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
       borderSide: const BorderSide(color: terminalAccent),
+    ),
+    disabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: terminalBorder),
     ),
   );
 }
