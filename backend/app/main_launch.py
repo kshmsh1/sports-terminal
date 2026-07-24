@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+from . import launch_api as launch_module
 from .auth_api import init_auth_db, router as auth_router
 from .launch_api import init_launch_db, router as launch_router
+from .launch_security import ensure_organization
 from .main import app
+
+# Harden the helper used by launch endpoints before the first request. Product
+# writes may create a missing organization, but they cannot promote an existing
+# case owner, commenter, or assignee to organization owner as a side effect.
+launch_module._ensure_organization = ensure_organization
 
 # Keep the existing prototype API intact while promoting the launch contracts to
 # the default development entrypoint. This lets the Flutter client migrate
