@@ -4,35 +4,95 @@
   "primaryLeague": "NBA",
   "dataPolicy": "real-data-only",
   "missingValuePolicy": "null-not-zero",
-  "currentMode": "schema-first historical build",
+  "launchProfile": "nba-2025-26-professional",
+  "supportedLaunchSeason": "2025-26",
+  "activeDevelopmentSeason": "2024-25",
+  "currentMode": "season-aware launch build with validated fallback",
+  "releasePolicy": {
+    "candidatePath": "assets/data/nba/terminal_seed/nba_2026",
+    "fallbackPath": "assets/data/nba/terminal_seed/nba_2025",
+    "activationRule": "The candidate season is activated only after warehouse, seed, supplemental export, launch validation, backend smoke, Flutter analysis, tests, and release web build pass.",
+    "commercialBoundary": "Data rights and customer-facing attribution must be approved separately before public launch."
+  },
   "datasets": [
+    {
+      "id": "nba-2025-26-launch-release",
+      "status": "pending-build",
+      "domain": "release",
+      "season": "2025-26",
+      "sourcePosture": "local normalized warehouse; commercial rights review required",
+      "normalizedTarget": "assets/data/nba/terminal_seed/nba_2026/release_manifest.json"
+    },
     {
       "id": "nba-team-directory",
       "status": "connected",
       "domain": "teams",
-      "sourcePosture": "stable reference data",
-      "normalizedTarget": "assets/data/nba/teams/teams.json"
-    },
-    {
-      "id": "nba-season-catalog",
-      "status": "connected",
-      "domain": "seasons",
-      "sourcePosture": "generated reference catalog",
-      "normalizedTarget": "assets/data/nba/seasons/seasons.json"
+      "sourcePosture": "normalized source-backed reference data",
+      "normalizedTarget": "assets/data/nba/terminal_seed/<active-season>/teams.json"
     },
     {
       "id": "nba-player-identity-index",
-      "status": "next",
+      "status": "connected",
       "domain": "players",
-      "sourcePosture": "official-source-preferred",
-      "normalizedTarget": "assets/data/nba/players/player_profiles.json"
+      "sourcePosture": "normalized source-backed identities with stable IDs",
+      "normalizedTarget": "assets/data/nba/terminal_seed/<active-season>/players.json"
     },
     {
-      "id": "nba-player-traditional-season-stats",
-      "status": "planned",
+      "id": "nba-games",
+      "status": "connected",
+      "domain": "games",
+      "sourcePosture": "normalized game records with source URLs",
+      "normalizedTarget": "assets/data/nba/terminal_seed/<active-season>/games.json"
+    },
+    {
+      "id": "nba-player-season-totals",
+      "status": "connected",
       "domain": "stats",
-      "sourcePosture": "official-source-preferred",
-      "normalizedTarget": "assets/data/nba/stats/player_traditional_by_season.json"
+      "sourcePosture": "derived from normalized player game statistics",
+      "normalizedTarget": "assets/data/nba/terminal_seed/<active-season>/player_season_totals.json"
+    },
+    {
+      "id": "nba-complete-player-game-logs",
+      "status": "launch-pipeline",
+      "domain": "stats",
+      "sourcePosture": "complete materialized player game rows",
+      "normalizedTarget": "assets/data/nba/terminal_seed/nba_2026/player_game_logs.json"
+    },
+    {
+      "id": "nba-team-game-logs",
+      "status": "connected",
+      "domain": "stats",
+      "sourcePosture": "one row per team-game",
+      "normalizedTarget": "assets/data/nba/terminal_seed/<active-season>/team_game_logs.json"
+    },
+    {
+      "id": "nba-play-by-play",
+      "status": "warehouse-connected",
+      "domain": "games",
+      "sourcePosture": "normalized warehouse events; backend delivery required for customer scale",
+      "normalizedTarget": "data/warehouse/nba_<season>.sqlite"
+    },
+    {
+      "id": "nba-cap-environments",
+      "status": "connected",
+      "domain": "finance",
+      "sourcePosture": "official NBA releases",
+      "normalizedTarget": "assets/data/nba/finance/cap_environments.json"
+    },
+    {
+      "id": "nba-contracts-and-team-payrolls",
+      "status": "modeled-only",
+      "domain": "finance",
+      "sourcePosture": "customer launch requires sourced contract and team ledger records",
+      "normalizedTarget": "future backend financial warehouse"
+    },
+    {
+      "id": "nba-draft-asset-ownership",
+      "status": "modeled-only",
+      "domain": "transactions",
+      "sourcePosture": "customer launch requires verified ownership, protections, swaps, and conveyance chains",
+      "normalizedTarget": "future backend transaction warehouse"
     }
-  ]
+  ],
+  "updatedAt": "2026-07-24T00:00:00Z"
 }
