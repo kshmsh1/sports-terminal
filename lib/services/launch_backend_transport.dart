@@ -78,9 +78,13 @@ class LaunchBackendTransport {
         path: '${base.path.replaceFirst(RegExp(r'/+$'), '')}$relative',
         queryParameters: query.isEmpty ? null : query,
       );
+      final token = await _store.loadString(
+        ProductLocalStore.launchAuthTokenKey,
+      );
       final headers = <String, String>{
         'Accept': 'application/json',
         if (body != null) 'Content-Type': 'application/json',
+        if (token.isNotEmpty) 'Authorization': 'Bearer $token',
       };
       final encoded = body == null ? null : jsonEncode(body);
       final timeout = body == null
