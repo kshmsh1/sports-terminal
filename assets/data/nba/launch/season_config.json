@@ -1,0 +1,24 @@
+{
+  "launchProfile": "nba-2025-26-professional",
+  "supportedSeason": "2025-26",
+  "seasonEndYear": 2026,
+  "candidateAssetPath": "assets/data/nba/terminal_seed/nba_2026",
+  "fallbackAssetPath": "assets/data/nba/terminal_seed/nba_2025",
+  "datasetStatus": "pending-build",
+  "allowFallback": true,
+  "customerModules": {
+    "nbaHub": "launch",
+    "stats": "launch",
+    "workspace": "launch-candidate",
+    "capLab": "launch",
+    "tradeMachine": "modeled-beta",
+    "frontOffice": "modeled-beta",
+    "transactionCases": "launch-candidate",
+    "organizationWorkflows": "launch-candidate",
+    "dataStudio": "launch-without-python-execution",
+    "fantasy": "experimental",
+    "community": "disabled",
+    "messages": "disabled"
+  },
+  "updatedAt": "2026-07-24T00:00:00Z"
+}
