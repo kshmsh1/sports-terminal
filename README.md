@@ -1,42 +1,108 @@
 # Sports Terminal
 
-Sports Terminal is an NBA-first Flutter web app for building a serious sports research and workflow terminal. The current build is local-first and uses normalized JSON assets, source-aware empty states, Build Lab governance screens, and reusable workflow contracts before any heavier backend work.
+Sports Terminal is an NBA-first Flutter web terminal for professional research, structured analysis, cap and transaction modeling, personal work management, and organization review workflows.
 
-## Current product shape
+The current product has three distinct experiences:
 
-The app is organized around Core Terminal, Workspace, and Network layers.
+- **Individual Terminal** for personal research, workspaces, transaction cases, collaboration, and saved analysis.
+- **Organization Terminal** for shared cases, assignments, approvals, members, activity, and organization operations.
+- **Platform Admin Terminal** for internal product, data, and platform operations.
 
-Core Terminal covers dashboard, search, players, teams, seasons, stats, standings, playoffs, games, rosters, awards, draft, transactions, contracts, compare, reports, saved views, alerts, and action routing.
+## Product foundation
 
-Workspace covers table templates, column packages, metric packages, formula recipes, join recipes, report blocks, export previews, saved views, and source-backed workflow payloads.
+The connected customer products include:
 
-Network covers fantasy, community, creator analysis, shared spaces, and future collaboration surfaces. These are designed now but gated behind the core NBA data model and future account architecture.
+- NBA Stats Center;
+- player, team, and game Hub;
+- structured NBA Object Router;
+- Workspace;
+- Data & Code Studio;
+- official Cap Lab;
+- Trade Machine;
+- Front Office contract, cap, draft, and transaction ledgers;
+- personal and organization transaction command centers;
+- comments, assignments, activity, notifications, and approval workflows;
+- role-aware Home metrics and customer launch status.
+
+The shared `RoutePayload` contract lets NBA datasets and modeled scenarios move between product surfaces without screen-specific copy logic.
 
 ## Data policy
 
-No fake sports records should be added to make the UI look full. Connected data can be shown. Source-pending data should stay blank, empty, or clearly labeled. The terminal should preserve source state, missing-data behavior, field provenance, and route blockers.
+Sports Terminal does not add fake production data to make screens appear complete.
 
-The strongest connected surfaces today are Teams and Seasons. Many other modules are connected-empty or source-pending by design while player identity, stat imports, game records, standings, playoffs, awards, rosters, draft, transactions, and contract paths are hardened.
+- Connected data may be shown.
+- Source-pending data remains blank or visibly modeled.
+- Missing values remain null rather than invented zeroes.
+- Every release preserves source state, validation, generation time, and blockers.
+- Commercial data rights and attribution are external launch requirements and are never represented as complete without approval.
 
-## Recent build expansion
+## Single-season launch profile
 
-Recent build turns expanded shared registry screens into operational command boards with metrics, filtered execution queues, category concentration, and status distribution. Platform Endgame now captures terminal objects, command routing, workspace-first workflows, source-backed reporting, saved views, alerts, chart objects, and field-level provenance. Terminal Operating Layer now includes object, route payload, selection, formula, join, chart, report, persistence, import orchestration, validation, privacy, and packaging layers. Action Center now includes object rails, source drawers, release readiness reports, join recipes, column packages, comparison-to-report routes, and source snapshots.
+The first customer launch is scoped to the complete **2025–26 NBA season**.
 
-## MVP exit condition
+The Flutter client is season-aware:
 
-The NBA MVP is ready when a user can search real NBA entities, inspect linked detail pages, route selected objects into actions, manipulate data in workspaces, compare entities, generate basic reports, save views, preview alerts, export source-aware outputs, and understand source status without fake data.
+- candidate release: `assets/data/nba/terminal_seed/nba_2026`;
+- validated development fallback: `assets/data/nba/terminal_seed/nba_2025`;
+- activation config: `assets/data/nba/launch/season_config.json`.
 
-## Running locally
+The 2025–26 release is activated only after the warehouse, seed, complete player game logs, launch certification, backend smoke test, Flutter analysis, complete test suite, and release web build pass.
+
+## Run the Flutter product
 
 ```bash
 flutter pub get
 flutter run -d chrome
 ```
 
-## Build priorities
+## Run the launch backend
 
-1. Harden selected-row and terminal-object contracts on connected Team and Season tables.
-2. Create first non-empty Workspace Studio payloads from Team Directory and Season Catalog.
-3. Build first report, export, saved-view, compare, and action payloads from connected rows and operational registries.
-4. Start the player identity import path before high-volume stat, award, roster, draft, transaction, fantasy, or scouting workflows.
-5. Preserve source trust, null policy, and validation behavior as first-class product surfaces.
+```bash
+bash scripts/dev_backend.sh
+```
+
+The launch entrypoint extends the original FastAPI backend with:
+
+- organizations and memberships;
+- server-backed personal and shared transaction cases;
+- activity and notifications;
+- organization member records;
+- saved structured sports objects;
+- data-release certification;
+- launch checks and readiness.
+
+When the backend is reachable, the existing Flutter transaction repositories synchronize remotely across browser sessions. When it is unavailable, the product retains its local fallback.
+
+## Build the complete 2025–26 launch release
+
+```bash
+bash scripts/overnight_launch_build.sh
+```
+
+The raw Basketball Reference catalog must already exist at:
+
+```text
+raw/basketball_reference/catalog.sqlite
+```
+
+A known local raw-catalog command can be supplied with:
+
+```bash
+bash scripts/overnight_launch_build.sh \
+  --prepare-raw-command '<your existing raw-catalog command>'
+```
+
+The pipeline never activates a failed dataset. Timestamped logs and the machine-readable final report are written under `data/launch_reports/`.
+
+## External launch requirements
+
+The repository cannot fabricate or complete external commercial steps. Public launch still requires:
+
+- a real authentication provider and secure sessions;
+- managed Postgres or equivalent hosted storage;
+- payment-provider credentials and billing webhooks;
+- approved data-source rights and attribution policy;
+- deployment, secrets, monitoring, backups, rate limits, and incident operations;
+- moderation operations before public Community or Messages are enabled.
+
+The `/v2/launch/readiness` endpoint reports these separately from code and data work so the application never labels itself launch-ready while an external blocker remains.

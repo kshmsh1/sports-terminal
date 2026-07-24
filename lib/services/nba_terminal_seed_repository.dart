@@ -4,26 +4,81 @@ import 'package:flutter/foundation.dart' show FlutterError;
 import 'package:flutter/services.dart' show rootBundle;
 
 class NbaTerminalSeedRepository {
-  const NbaTerminalSeedRepository({this.basePath = 'assets/data/nba/terminal_seed/nba_2025'});
+  const NbaTerminalSeedRepository({
+    this.basePath,
+    this.configPath = 'assets/data/nba/launch/season_config.json',
+  });
 
-  final String basePath;
+  final String? basePath;
+  final String configPath;
 
   Future<NbaTerminalSeedSnapshot> load() async {
+    final config = await _loadConfig();
+    final candidate = basePath ??
+        config['candidateAssetPath']?.toString() ??
+        'assets/data/nba/terminal_seed/nba_2026';
+    final fallback = config['fallbackAssetPath']?.toString() ??
+        'assets/data/nba/terminal_seed/nba_2025';
+    final allowFallback = config['allowFallback'] != false;
+
+    try {
+      return await _loadFrom(
+        candidate,
+        launchConfig: config,
+        usedFallback: false,
+      );
+    } catch (_) {
+      if (!allowFallback || candidate == fallback) rethrow;
+      return _loadFrom(
+        fallback,
+        launchConfig: config,
+        usedFallback: true,
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>> _loadConfig() async {
+    try {
+      final raw = await rootBundle.loadString(configPath);
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) return decoded.cast<String, dynamic>();
+    } on FlutterError {
+      // Older tests and development builds may not include launch config yet.
+    } catch (_) {
+      // A malformed launch config should not make the validated fallback seed
+      // unavailable to the rest of the terminal.
+    }
+    return const {
+      'supportedSeason': '2025-26',
+      'candidateAssetPath': 'assets/data/nba/terminal_seed/nba_2026',
+      'fallbackAssetPath': 'assets/data/nba/terminal_seed/nba_2025',
+      'datasetStatus': 'missing-config',
+      'allowFallback': true,
+    };
+  }
+
+  Future<NbaTerminalSeedSnapshot> _loadFrom(
+    String resolvedBasePath, {
+    required Map<String, dynamic> launchConfig,
+    required bool usedFallback,
+  }) async {
     final documents = await Future.wait<dynamic>([
-      _loadObject('manifest.json'),
-      _loadList('teams.json'),
-      _loadList('players.json'),
-      _loadList('games.json'),
-      _loadList('team_records.json'),
-      _loadList('team_game_logs.json'),
-      _loadList('player_season_totals.json'),
-      _loadObject('player_leaders.json'),
-      _loadObject('player_game_highs.json'),
-      _loadList('player_game_logs_top.json'),
-      _loadList('search_index.json'),
-      _loadObject('data_dictionary.json'),
-      _loadOptionalObject('validation_report.json'),
-      _loadOptionalObject('asset_manifest.json'),
+      _loadObject(resolvedBasePath, 'manifest.json'),
+      _loadList(resolvedBasePath, 'teams.json'),
+      _loadList(resolvedBasePath, 'players.json'),
+      _loadList(resolvedBasePath, 'games.json'),
+      _loadList(resolvedBasePath, 'team_records.json'),
+      _loadList(resolvedBasePath, 'team_game_logs.json'),
+      _loadList(resolvedBasePath, 'player_season_totals.json'),
+      _loadObject(resolvedBasePath, 'player_leaders.json'),
+      _loadObject(resolvedBasePath, 'player_game_highs.json'),
+      _loadPlayerLogs(resolvedBasePath),
+      _loadList(resolvedBasePath, 'search_index.json'),
+      _loadObject(resolvedBasePath, 'data_dictionary.json'),
+      _loadOptionalObject(resolvedBasePath, 'validation_report.json'),
+      _loadOptionalObject(resolvedBasePath, 'asset_manifest.json'),
+      _loadOptionalObject(resolvedBasePath, 'release_manifest.json'),
+      _loadOptionalList(resolvedBasePath, 'standings.json'),
     ]);
 
     return NbaTerminalSeedSnapshot(
@@ -41,25 +96,64 @@ class NbaTerminalSeedRepository {
       dataDictionary: documents[11] as Map<String, dynamic>,
       validationReport: documents[12] as Map<String, dynamic>?,
       assetManifest: documents[13] as Map<String, dynamic>?,
+      releaseManifest: documents[14] as Map<String, dynamic>?,
+      standings: documents[15] as List<Map<String, dynamic>>? ?? const [],
+      launchConfig: launchConfig,
+      assetPath: resolvedBasePath,
+      usedFallback: usedFallback,
     );
   }
 
-  Future<Map<String, dynamic>> _loadObject(String filename) async {
-    final raw = await rootBundle.loadString('$basePath/$filename');
+  Future<List<Map<String, dynamic>>> _loadPlayerLogs(
+    String resolvedBasePath,
+  ) async {
+    final complete = await _loadOptionalList(
+      resolvedBasePath,
+      'player_game_logs.json',
+    );
+    if (complete != null) return complete;
+    return _loadList(resolvedBasePath, 'player_game_logs_top.json');
+  }
+
+  Future<Map<String, dynamic>> _loadObject(
+    String resolvedBasePath,
+    String filename,
+  ) async {
+    final raw = await rootBundle.loadString('$resolvedBasePath/$filename');
     return (jsonDecode(raw) as Map).cast<String, dynamic>();
   }
 
-  Future<Map<String, dynamic>?> _loadOptionalObject(String filename) async {
+  Future<Map<String, dynamic>?> _loadOptionalObject(
+    String resolvedBasePath,
+    String filename,
+  ) async {
     try {
-      return await _loadObject(filename);
+      return await _loadObject(resolvedBasePath, filename);
     } on FlutterError {
       return null;
     }
   }
 
-  Future<List<Map<String, dynamic>>> _loadList(String filename) async {
-    final raw = await rootBundle.loadString('$basePath/$filename');
-    return [for (final item in jsonDecode(raw) as List) (item as Map).cast<String, dynamic>()];
+  Future<List<Map<String, dynamic>>> _loadList(
+    String resolvedBasePath,
+    String filename,
+  ) async {
+    final raw = await rootBundle.loadString('$resolvedBasePath/$filename');
+    return [
+      for (final item in jsonDecode(raw) as List)
+        (item as Map).cast<String, dynamic>(),
+    ];
+  }
+
+  Future<List<Map<String, dynamic>>?> _loadOptionalList(
+    String resolvedBasePath,
+    String filename,
+  ) async {
+    try {
+      return await _loadList(resolvedBasePath, filename);
+    } on FlutterError {
+      return null;
+    }
   }
 }
 
@@ -79,6 +173,11 @@ class NbaTerminalSeedSnapshot {
     required this.dataDictionary,
     required this.validationReport,
     required this.assetManifest,
+    this.releaseManifest,
+    this.standings = const [],
+    this.launchConfig = const {},
+    this.assetPath = '',
+    this.usedFallback = false,
   });
 
   final Map<String, dynamic> manifest;
@@ -95,12 +194,30 @@ class NbaTerminalSeedSnapshot {
   final Map<String, dynamic> dataDictionary;
   final Map<String, dynamic>? validationReport;
   final Map<String, dynamic>? assetManifest;
+  final Map<String, dynamic>? releaseManifest;
+  final List<Map<String, dynamic>> standings;
+  final Map<String, dynamic> launchConfig;
+  final String assetPath;
+  final bool usedFallback;
 
-  String get validationStatus => validationReport?['status']?.toString() ?? 'missing';
+  String get validationStatus =>
+      validationReport?['status']?.toString() ?? 'missing';
+
+  String get supportedSeason =>
+      launchConfig['supportedSeason']?.toString() ?? '2025-26';
+
+  String get datasetStatus {
+    if (usedFallback) return 'fallback-development-seed';
+    return releaseManifest?['status']?.toString() ??
+        launchConfig['datasetStatus']?.toString() ??
+        validationStatus;
+  }
 
   String get warehouseGeneratedAt {
     final build = manifest['warehouseBuild'];
-    if (build is Map && build['generatedAt'] != null) return build['generatedAt'].toString();
+    if (build is Map && build['generatedAt'] != null) {
+      return build['generatedAt'].toString();
+    }
     return '—';
   }
 

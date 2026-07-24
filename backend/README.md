@@ -1,22 +1,13 @@
 # Sports Terminal Backend
 
-This directory is the first executable backend for the launch product. It now uses FastAPI with a local durable SQLite database so backend state can survive server restarts while the product contract is shaped before production hosting, auth, billing, observability, and a managed database are chosen.
+The repository now has two compatible FastAPI layers:
 
-## What exists now
+- `app.main` preserves the original local prototype API.
+- `app.main_launch` is the default development entrypoint and adds launch-oriented organization, transaction workflow, saved-object, data-release, and readiness contracts on top of the original API.
 
-- FastAPI service entry point: `backend/app/main.py`
-- Local durable SQLite database: `backend/.data/sports_terminal.db` by default
-- Dependency list: `backend/requirements.txt`
-- Backend-local dev runner: `backend/scripts/dev.sh`
-- Repo-root dev runner: `scripts/dev_backend.sh`
-- Backend-local smoke test: `backend/scripts/smoke_test.py`
-- Repo-root smoke test runner: `scripts/smoke_backend.sh`
-- Database schema draft: `backend/schema_v1.sql`
-- Product/backend architecture docs in `docs/`
+The service still uses local SQLite by default so the complete product contract can run without external infrastructure. The launch API is deliberately written so that the database can later move behind managed Postgres without changing the Flutter transaction-case model.
 
-## Local run on macOS
-
-Your shell may not have `python` or `pip` aliases. Use `python3` / `python -m pip`, or use the helper scripts.
+## Run locally
 
 From the repository root:
 
@@ -24,84 +15,103 @@ From the repository root:
 bash scripts/dev_backend.sh
 ```
 
-From the `backend/` directory:
+Or from `backend/`:
 
 ```bash
 bash scripts/dev.sh
 ```
 
-Manual version:
+Both commands run:
 
-```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+```text
+uvicorn app.main_launch:app --reload --port 8000
 ```
 
-Then open:
+Useful endpoints:
 
 ```text
 http://127.0.0.1:8000/health
 http://127.0.0.1:8000/docs
 http://127.0.0.1:8000/launch/readiness
+http://127.0.0.1:8000/v2/launch/config
+http://127.0.0.1:8000/v2/launch/readiness
 ```
 
-## Smoke test
+## Launch API coverage
 
-Run the backend in one terminal. In a second terminal, from the repository root:
+The `/v2` API adds:
+
+- organizations and membership roles;
+- personal and organization transaction-case snapshots;
+- organization activity streams;
+- per-user notifications;
+- organization member/reviewer records;
+- saved structured sports objects;
+- NBA data-release registration and certification;
+- launch checks and a consolidated readiness response.
+
+The current Flutter transaction repositories are remote-first. When this API is reachable they synchronize through the shared SQLite database across browser sessions. When it is unavailable the product continues through its existing local fallback.
+
+## Backend contract test
 
 ```bash
-bash scripts/smoke_backend.sh
+cd backend
+python scripts/launch_contract_test.py
 ```
 
-Or from the `backend/` directory:
+The contract test uses a temporary database and verifies organizations, personal/shared cases, activities, notifications, member records, data releases, and launch readiness.
+
+## Complete 2025–26 overnight build
+
+From the repository root:
 
 ```bash
-source .venv/bin/activate
-python scripts/smoke_test.py
+bash scripts/overnight_launch_build.sh
 ```
 
-The smoke test creates a unique demo user, favorites OKC, adds a player watchlist row, creates a workbook/cell, creates a community post, and checks readiness.
+The command:
 
-## Useful environment variables
+1. builds the season-end-year 2026 warehouse from the local raw catalog;
+2. exports the compact terminal seed;
+3. exports complete player game logs and launch supplements;
+4. performs launch-specific reconciliation checks;
+5. activates `nba_2026` assets only after validation passes;
+6. compiles and smoke-tests the launch backend;
+7. runs Flutter analysis, tests, and the release web build;
+8. writes timestamped logs and a machine-readable launch report under `data/launch_reports/`.
+
+The raw catalog must already exist at `raw/basketball_reference/catalog.sqlite`, or a known preparation command can be supplied through:
+
+```bash
+bash scripts/overnight_launch_build.sh \
+  --prepare-raw-command '<your existing raw-catalog command>'
+```
+
+The pipeline never activates a failed dataset.
+
+## Environment variables
 
 ```bash
 export SPORTS_TERMINAL_DB_PATH="/absolute/path/to/sports_terminal.db"
-export SPORTS_TERMINAL_CORS_ORIGINS="http://localhost:3000,http://localhost:8000,http://localhost:5000"
+export SPORTS_TERMINAL_CORS_ORIGINS="http://localhost:5000,http://localhost:8000"
+export SPORTS_TERMINAL_AUTH_PROVIDER="external-provider-name"
+export DATABASE_URL="postgresql://..."
+export SPORTS_TERMINAL_PAYMENT_PROVIDER="external-provider-name"
+export SPORTS_TERMINAL_DATA_RIGHTS_APPROVED="true"
+export SPORTS_TERMINAL_PUBLIC_COMMUNITY="false"
 ```
 
-If `SPORTS_TERMINAL_DB_PATH` is omitted, the API writes to `backend/.data/sports_terminal.db`.
+The final five variables are launch-readiness signals. The repository does not fabricate external provider integration or legal approval.
 
-## API areas covered
+## Production boundaries
 
-| Area | Skeleton status |
-| --- | --- |
-| Health/readiness | `/health`, `/launch/readiness` |
-| Users/profile/settings | create user, list/read users, read/update profile, read/update settings |
-| Favorites/watchlists | favorite teams, favorite players, player watchlists, personalization snapshot |
-| Workspace | create workbook, read workbook, update cells |
-| Community | boards, posts, comments, post reactions |
-| Moderation | reports and report listing |
-| Messaging | conversations, user conversation list, messages |
-| CMS/articles | draft/list/get/publish/archive articles |
-| Billing | plans and subscription placeholder |
-| Admin/data ops | feature flags, data sources, pipeline-run records |
+The launch contracts are materially stronger than the previous local-only workflow, but public production still requires external work that cannot be completed inside this repository alone:
 
-## Production blockers
+- managed Postgres or an equivalent hosted database;
+- real authentication and secure sessions;
+- provider-backed billing and entitlement webhooks;
+- approved data rights and trademark/media policies;
+- deployment, secrets, monitoring, rate limits, backups, and restore drills;
+- moderation and safety operations before public community or messaging.
 
-This backend is more useful than the earlier in-memory skeleton, but it is still not production-ready. Before launch it needs:
-
-- Replace local SQLite with managed Postgres or equivalent durable hosted storage.
-- Add migrations instead of relying only on startup schema creation.
-- Add real auth, sessions/JWTs, password/provider handling, email verification, and account recovery.
-- Add role-based authorization for user, moderator, admin, and operator actions.
-- Add moderation workflows, block/mute/report safety, and audit trails before public community or messaging.
-- Add billing provider integration and entitlement enforcement.
-- Add logging, monitoring, backups, secrets management, rate limits, and deployment config.
-
-## Product rule
-
-Do not ship public community or messaging without moderation, report queues, block/mute controls, and operator audit logs.
+Community and messaging should remain disabled until moderation, report queues, block/mute controls, and operator audit logs are production-ready.

@@ -46,4 +46,6 @@ fi
 
 python -m pip install --upgrade pip
 python -m pip install --upgrade -r requirements.txt
-uvicorn app.main:app --reload --port "${PORT:-8000}"
+
+export SPORTS_TERMINAL_CORS_ORIGINS="${SPORTS_TERMINAL_CORS_ORIGINS:-http://localhost:3000,http://localhost:5000,http://localhost:8000,http://127.0.0.1:5000,http://127.0.0.1:8000}"
+uvicorn app.main_launch:app --reload --port "${PORT:-8000}"
