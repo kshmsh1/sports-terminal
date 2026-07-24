@@ -99,7 +99,26 @@ jobs:
         run: exit 1
 
       - name: Run test suite
-        run: flutter test
+        id: flutter_tests
+        shell: bash
+        run: |
+          set +e
+          flutter test 2>&1 | tee flutter_test.log
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Retain Flutter test diagnostics
+        if: steps.flutter_tests.outputs.status != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-test-diagnostics
+          path: flutter_test.log
+          retention-days: 7
+
+      - name: Stop on Flutter test failure
+        if: steps.flutter_tests.outputs.status != '0'
+        run: exit 1
 
       - name: Build web application
         run: flutter build web --release
