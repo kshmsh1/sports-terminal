@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from . import launch_api as launch_module
 from .auth_api import router as auth_router
+from .auth_guard import enforce_launch_auth
 from .launch_api import router as launch_router
 from .launch_security import ensure_organization
 from .main import app
@@ -16,13 +17,18 @@ launch_module._ensure_organization = ensure_organization
 # the default development entrypoint. This lets the Flutter client migrate
 # endpoint-by-endpoint without duplicating the original service.
 app.title = "Sports Terminal Launch API"
-app.version = "0.5.0"
+app.version = "0.6.0"
 app.description = (
     "Launch-oriented Sports Terminal API for authentication, NBA data releases, "
     "users, organizations, transaction workflows, versioned sports workspaces, "
     "saved sports objects, content, messaging, billing placeholders, and "
     "platform operations."
 )
+
+# Local development remains permissive by default. Staging and public services
+# enable SPORTS_TERMINAL_ENFORCE_AUTH=true; the Flutter client already sends its
+# stored bearer token to every remote-first product repository.
+app.middleware("http")(enforce_launch_auth)
 
 # Each router owns its startup database initialization through its registered
 # lifespan hooks. Including the routers is sufficient across current FastAPI
