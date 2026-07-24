@@ -12,7 +12,8 @@ class ProductLocalStore {
   static const profileSettingsKey = 'sports_terminal.profile.settings';
   static const workbookCellsKey = 'sports_terminal.workspace.cells';
   static const workbookSheetKey = 'sports_terminal.workspace.sheet';
-  static const workspaceImportMetadataKey = 'sports_terminal.workspace.import_metadata';
+  static const workspaceImportMetadataKey =
+      'sports_terminal.workspace.import_metadata';
   static const nbaModeKey = 'sports_terminal.nba.mode';
   static const nbaSelectedPlayerKey = 'sports_terminal.nba.selected_player';
   static const nbaSelectedTeamKey = 'sports_terminal.nba.selected_team';
@@ -23,17 +24,26 @@ class ProductLocalStore {
   static const backendLastSyncKey = 'sports_terminal.backend.last_sync';
   static const backendBaseUrlKey = 'sports_terminal.backend.base_url';
   static const backendWorkbookIdKey = 'sports_terminal.backend.workbook_id';
-  static const backendConversationIdKey = 'sports_terminal.backend.conversation_id';
+  static const backendConversationIdKey =
+      'sports_terminal.backend.conversation_id';
   static const launchRemoteSyncEnabledKey =
       'sports_terminal.launch.remote_sync_enabled';
-  static const frontOfficeScenarioKey = 'sports_terminal.front_office.scenario';
+  static const launchAuthTokenKey = 'sports_terminal.launch.auth_token';
+  static const launchAuthSessionKey = 'sports_terminal.launch.auth_session';
+  static const launchAuthExpiresAtKey =
+      'sports_terminal.launch.auth_expires_at';
+  static const frontOfficeScenarioKey =
+      'sports_terminal.front_office.scenario';
   static const statsQueryKey = 'sports_terminal.stats.query';
   static const tradeMachineStateKey = 'sports_terminal.trade_machine.state';
-  static const routePayloadActiveKey = 'sports_terminal.routes.active_payload';
+  static const routePayloadActiveKey =
+      'sports_terminal.routes.active_payload';
   static const routePayloadHistoryKey = 'sports_terminal.routes.history';
   static const objectRouterStateKey = 'sports_terminal.object_router.state';
-  static const pythonNotebookCodeKey = 'sports_terminal.python.notebook_code';
-  static const pythonNotebookOutputKey = 'sports_terminal.python.notebook_output';
+  static const pythonNotebookCodeKey =
+      'sports_terminal.python.notebook_code';
+  static const pythonNotebookOutputKey =
+      'sports_terminal.python.notebook_output';
   static const capLabStateKey = 'sports_terminal.cap_lab.state';
 
   Future<bool> loadBool(String key, {bool fallback = false}) async {
@@ -70,7 +80,9 @@ class ProductLocalStore {
     if (encoded == null || encoded.isEmpty) return Set<String>.from(fallback);
     try {
       final decoded = jsonDecode(encoded);
-      if (decoded is List) return decoded.map((value) => value.toString()).toSet();
+      if (decoded is List) {
+        return decoded.map((value) => value.toString()).toSet();
+      }
     } catch (_) {
       return Set<String>.from(fallback);
     }
@@ -89,7 +101,9 @@ class ProductLocalStore {
   }) async {
     final preferences = await SharedPreferences.getInstance();
     final encoded = preferences.getString(key);
-    if (encoded == null || encoded.isEmpty) return Map<String, String>.from(fallback);
+    if (encoded == null || encoded.isEmpty) {
+      return Map<String, String>.from(fallback);
+    }
     try {
       final decoded = jsonDecode(encoded);
       if (decoded is Map) {
