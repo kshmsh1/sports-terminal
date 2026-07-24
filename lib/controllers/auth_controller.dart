@@ -76,31 +76,38 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> signIn({
+  FutureOr<bool> signIn({
     required String email,
     required String password,
-  }) async {
+  }) {
     if (_busy) return false;
-    _setBusy(true);
     final normalizedEmail = email.trim().toLowerCase();
-    final remote = await _authClient.signIn(
-      email: normalizedEmail,
-      password: password,
-    );
-    if (remote.succeeded) {
-      _session = remote.session;
+    final demo = _demoAccounts[normalizedEmail];
+    if (demo != null && demo.password == password) {
+      _session = demo.session;
       _error = null;
       _busy = false;
       _hydrated = true;
       notifyListeners();
       return true;
     }
+    return _signInRemote(
+      normalizedEmail: normalizedEmail,
+      password: password,
+    );
+  }
 
-    final demo = _demoAccounts[normalizedEmail];
-    if (!remote.available &&
-        demo != null &&
-        demo.password == password) {
-      _session = demo.session;
+  Future<bool> _signInRemote({
+    required String normalizedEmail,
+    required String password,
+  }) async {
+    _setBusy(true);
+    final remote = await _authClient.signIn(
+      email: normalizedEmail,
+      password: password,
+    );
+    if (remote.succeeded) {
+      _session = remote.session;
       _error = null;
       _busy = false;
       _hydrated = true;
