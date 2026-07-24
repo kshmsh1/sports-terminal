@@ -161,7 +161,7 @@ class ProductLocalStore {
         },
       );
       final response = await http
-          .get(uri, headers: const {'Accept': 'application/json'})
+          .get(uri, headers: _remoteHeaders(preferences))
           .timeout(const Duration(milliseconds: 850));
       if (response.statusCode != 200) return null;
       final decoded = jsonDecode(response.body);
@@ -202,10 +202,7 @@ class ProductLocalStore {
       await http
           .put(
             uri,
-            headers: const {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-            },
+            headers: _remoteHeaders(preferences, json: true),
             body: jsonEncode({
               'actor_user_id': context.userId,
               'scope': context.scope,
@@ -224,6 +221,18 @@ class ProductLocalStore {
     } catch (_) {
       // Remote synchronization is best effort and never blocks spreadsheet edits.
     }
+  }
+
+  Map<String, String> _remoteHeaders(
+    SharedPreferences preferences, {
+    bool json = false,
+  }) {
+    final token = preferences.getString(launchAuthTokenKey) ?? '';
+    return {
+      'Accept': 'application/json',
+      if (json) 'Content-Type': 'application/json',
+      if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
   }
 
   _WorkspaceContext? _workspaceContext(SharedPreferences preferences) {
