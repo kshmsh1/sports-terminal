@@ -1,0 +1,24 @@
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      SPORTS_TERMINAL_DB_PATH: /data/sports_terminal.db
+      SPORTS_TERMINAL_CORS_ORIGINS: http://localhost:5000,http://127.0.0.1:5000
+      SPORTS_TERMINAL_ENFORCE_AUTH: "true"
+      SPORTS_TERMINAL_RATE_LIMITS: "true"
+      SPORTS_TERMINAL_HSTS: "false"
+      SPORTS_TERMINAL_DATA_RIGHTS_APPROVED: "false"
+      SPORTS_TERMINAL_PUBLIC_COMMUNITY: "false"
+      SPORTS_TERMINAL_NBA_RELEASE_ROOT: /releases
+      WEB_CONCURRENCY: "2"
+    volumes:
+      - sports_terminal_data:/data
+      - ./assets/data/nba/terminal_seed:/releases:ro
+    restart: unless-stopped
+
+volumes:
+  sports_terminal_data:
