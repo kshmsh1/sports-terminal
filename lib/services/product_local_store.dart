@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProductLocalStore {
@@ -64,6 +66,13 @@ class ProductLocalStore {
   Future<void> saveString(String key, String value) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(key, value);
+    if (key == workbookSheetKey) {
+      final cells = _decodeStringMap(
+        preferences.getString(workbookCellsKey),
+        const {},
+      );
+      unawaited(_syncRemoteWorkbook(preferences, cells));
+    }
   }
 
   Future<void> remove(String key) async {
@@ -100,7 +109,25 @@ class ProductLocalStore {
     Map<String, String> fallback = const {},
   }) async {
     final preferences = await SharedPreferences.getInstance();
-    final encoded = preferences.getString(key);
+    if (key == workbookCellsKey) {
+      final remote = await _loadRemoteWorkbook(preferences);
+      if (remote != null) return remote;
+    }
+    return _decodeStringMap(preferences.getString(key), fallback);
+  }
+
+  Future<void> saveStringMap(String key, Map<String, String> values) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(key, jsonEncode(values));
+    if (key == workbookCellsKey) {
+      unawaited(_syncRemoteWorkbook(preferences, values));
+    }
+  }
+
+  Map<String, String> _decodeStringMap(
+    String? encoded,
+    Map<String, String> fallback,
+  ) {
     if (encoded == null || encoded.isEmpty) {
       return Map<String, String>.from(fallback);
     }
@@ -117,8 +144,135 @@ class ProductLocalStore {
     return Map<String, String>.from(fallback);
   }
 
-  Future<void> saveStringMap(String key, Map<String, String> values) async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(key, jsonEncode(values));
+  Future<Map<String, String>?> _loadRemoteWorkbook(
+    SharedPreferences preferences,
+  ) async {
+    final context = _workspaceContext(preferences);
+    if (context == null) return null;
+    try {
+      final uri = _backendUri(
+        preferences,
+        '/v2/workspaces/primary',
+        {
+          'owner_user_id': context.userId,
+          'scope': context.scope,
+          if (context.organizationId.isNotEmpty)
+            'organization_id': context.organizationId,
+        },
+      );
+      final response = await http
+          .get(uri, headers: const {'Accept': 'application/json'})
+          .timeout(const Duration(milliseconds: 850));
+      if (response.statusCode != 200) return null;
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map) return null;
+      final sheets = decoded['sheets'];
+      if (sheets is! Map || sheets.isEmpty) return null;
+      final activeSheet = decoded['active_sheet']?.toString() ??
+          preferences.getString(workbookSheetKey) ??
+          sheets.keys.first.toString();
+      final selected = sheets[activeSheet] ?? sheets.values.first;
+      if (selected is! Map) return null;
+      final cells = selected.map(
+        (key, value) => MapEntry(key.toString(), value?.toString() ?? ''),
+      );
+      await preferences.setString(workbookCellsKey, jsonEncode(cells));
+      await preferences.setString(workbookSheetKey, activeSheet);
+      return cells;
+    } on TimeoutException {
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
+
+  Future<void> _syncRemoteWorkbook(
+    SharedPreferences preferences,
+    Map<String, String> cells,
+  ) async {
+    final context = _workspaceContext(preferences);
+    if (context == null) return;
+    final sheet = preferences.getString(workbookSheetKey) ?? 'Sheet 1';
+    try {
+      final uri = _backendUri(
+        preferences,
+        '/v2/workspaces/primary',
+        const {},
+      );
+      await http
+          .put(
+            uri,
+            headers: const {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'actor_user_id': context.userId,
+              'scope': context.scope,
+              'owner_user_id': context.userId,
+              'organization_id': context.organizationId,
+              'title': context.scope == 'organization'
+                  ? 'Organization Sports Workbook'
+                  : 'My Sports Workbook',
+              'active_sheet': sheet,
+              'sheets': {sheet: cells},
+            }),
+          )
+          .timeout(const Duration(seconds: 2));
+    } on TimeoutException {
+      // The local workbook is still the durable offline fallback.
+    } catch (_) {
+      // Remote synchronization is best effort and never blocks spreadsheet edits.
+    }
+  }
+
+  _WorkspaceContext? _workspaceContext(SharedPreferences preferences) {
+    if (preferences.getBool(launchRemoteSyncEnabledKey) == false) return null;
+    final rawSession = preferences.getString(launchAuthSessionKey);
+    if (rawSession == null || rawSession.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(rawSession);
+      if (decoded is! Map) return null;
+      final userId = decoded['userId']?.toString() ?? '';
+      if (userId.isEmpty) return null;
+      final role = decoded['role']?.toString() ?? 'analyst';
+      final organizationId = decoded['organizationId']?.toString() ?? '';
+      final organizationWorkspace =
+          role == 'organizationAdmin' && organizationId.isNotEmpty;
+      return _WorkspaceContext(
+        userId: userId,
+        organizationId: organizationWorkspace ? organizationId : '',
+        scope: organizationWorkspace ? 'organization' : 'personal',
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Uri _backendUri(
+    SharedPreferences preferences,
+    String path,
+    Map<String, String> query,
+  ) {
+    final baseUrl = preferences.getString(backendBaseUrlKey) ??
+        'http://127.0.0.1:8000';
+    final base = Uri.parse(baseUrl.trim().replaceFirst(RegExp(r'/+$'), ''));
+    final relative = path.startsWith('/') ? path : '/$path';
+    return base.replace(
+      path: '${base.path.replaceFirst(RegExp(r'/+$'), '')}$relative',
+      queryParameters: query.isEmpty ? null : query,
+    );
+  }
+}
+
+class _WorkspaceContext {
+  const _WorkspaceContext({
+    required this.userId,
+    required this.organizationId,
+    required this.scope,
+  });
+
+  final String userId;
+  final String organizationId;
+  final String scope;
 }
