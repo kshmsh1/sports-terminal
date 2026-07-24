@@ -65,7 +65,8 @@ class LaunchBackendTransport {
       ProductLocalStore.backendBaseUrlKey,
       fallback: 'http://127.0.0.1:8000',
     );
-    final normalizedBase = configuredBase.trim().replaceFirst(RegExp(r'/+$'), '');
+    final normalizedBase =
+        configuredBase.trim().replaceFirst(RegExp(r'/+$'), '');
     if (normalizedBase.isEmpty) {
       return const LaunchBackendResponse(available: false);
     }
@@ -91,12 +92,15 @@ class LaunchBackendTransport {
           response = await http
               .put(uri, headers: headers, body: encoded)
               .timeout(timeout);
+          break;
         case 'POST':
           response = await http
               .post(uri, headers: headers, body: encoded)
               .timeout(timeout);
+          break;
         case 'DELETE':
           response = await http.delete(uri, headers: headers).timeout(timeout);
+          break;
         default:
           response = await http.get(uri, headers: headers).timeout(timeout);
       }
