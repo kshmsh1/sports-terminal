@@ -37,8 +37,28 @@ jobs:
         run: python -m compileall -q backend/app tools
 
       - name: Test launch backend contracts
+        id: backend_contract
         working-directory: backend
-        run: python scripts/launch_contract_test.py
+        shell: bash
+        run: |
+          set +e
+          python scripts/launch_contract_test.py > backend_contract.log 2>&1
+          status=$?
+          cat backend_contract.log
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Retain backend contract diagnostics
+        if: steps.backend_contract.outputs.status != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-contract-diagnostics
+          path: backend/backend_contract.log
+          retention-days: 7
+
+      - name: Stop on backend contract failure
+        if: steps.backend_contract.outputs.status != '0'
+        run: exit 1
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
