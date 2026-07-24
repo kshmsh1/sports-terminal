@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../models/transaction_case.dart';
 import '../models/transaction_workflow.dart';
+import 'launch_backend_transport.dart';
 import 'product_local_store.dart';
 import 'transaction_workflow_repository.dart';
 
@@ -10,11 +11,14 @@ class TransactionCaseRepository {
     ProductLocalStore store = const ProductLocalStore(),
     TransactionWorkflowRepository workflow =
         const TransactionWorkflowRepository(),
+    LaunchBackendTransport transport = const LaunchBackendTransport(),
   })  : _store = store,
-        _workflow = workflow;
+        _workflow = workflow,
+        _transport = transport;
 
   final ProductLocalStore _store;
   final TransactionWorkflowRepository _workflow;
+  final LaunchBackendTransport _transport;
 
   String personalKey(String userId) =>
       'sports_terminal.transaction_cases.personal.$userId.v1';
@@ -22,26 +26,60 @@ class TransactionCaseRepository {
   String organizationKey(String organizationId) =>
       'sports_terminal.transaction_cases.organization.$organizationId.v1';
 
-  Future<List<TransactionCase>> loadPersonal(String userId) {
-    return _load(personalKey(userId));
+  Future<List<TransactionCase>> loadPersonal(String userId) async {
+    final remote = await _transport.getJson(
+      '/v2/transaction-cases',
+      query: {
+        'owner_user_id': userId,
+        'scope': 'personal',
+      },
+    );
+    final decoded = _decodeRemote(remote);
+    if (decoded != null) {
+      await _saveLocal(personalKey(userId), decoded);
+      return decoded;
+    }
+    return _loadLocal(personalKey(userId));
   }
 
-  Future<List<TransactionCase>> loadOrganization(String organizationId) {
-    return _load(organizationKey(organizationId));
+  Future<List<TransactionCase>> loadOrganization(String organizationId) async {
+    final remote = await _transport.getJson(
+      '/v2/transaction-cases',
+      query: {
+        'organization_id': organizationId,
+        'scope': 'organization',
+      },
+    );
+    final decoded = _decodeRemote(remote);
+    if (decoded != null) {
+      await _saveLocal(organizationKey(organizationId), decoded);
+      return decoded;
+    }
+    return _loadLocal(organizationKey(organizationId));
   }
 
   Future<void> savePersonal(
     String userId,
     List<TransactionCase> cases,
-  ) {
-    return _save(personalKey(userId), cases);
+  ) async {
+    await _saveLocal(personalKey(userId), cases);
+    for (final item in cases) {
+      await _remoteUpsert(item, scope: 'personal', actorUserId: userId);
+    }
   }
 
   Future<void> saveOrganization(
     String organizationId,
     List<TransactionCase> cases,
-  ) {
-    return _save(organizationKey(organizationId), cases);
+  ) async {
+    await _saveLocal(organizationKey(organizationId), cases);
+    for (final item in cases) {
+      await _remoteUpsert(
+        item.copyWith(isOrganizationVisible: true),
+        scope: 'organization',
+        actorUserId: _actorFor(item),
+      );
+    }
   }
 
   Future<void> upsertPersonal(
@@ -49,7 +87,13 @@ class TransactionCaseRepository {
     TransactionCase transactionCase,
   ) async {
     final cases = await loadPersonal(userId);
-    await savePersonal(userId, _upsert(cases, transactionCase));
+    final next = _upsert(cases, transactionCase);
+    await _saveLocal(personalKey(userId), next);
+    await _remoteUpsert(
+      transactionCase,
+      scope: 'personal',
+      actorUserId: userId,
+    );
   }
 
   Future<void> upsertOrganization(
@@ -59,26 +103,34 @@ class TransactionCaseRepository {
     final cases = await loadOrganization(organizationId);
     final previous = _findCase(cases, transactionCase.id);
     final shared = transactionCase.copyWith(isOrganizationVisible: true);
-    await saveOrganization(organizationId, _upsert(cases, shared));
+    await _saveLocal(organizationKey(organizationId), _upsert(cases, shared));
+    await _remoteUpsert(
+      shared,
+      scope: 'organization',
+      actorUserId: _actorFor(shared),
+    );
     await _recordDecisionChange(previous: previous, current: shared);
   }
 
   Future<void> publishToOrganization(TransactionCase transactionCase) async {
-    await upsertOrganization(
-      transactionCase.organizationId,
-      transactionCase.copyWith(isOrganizationVisible: true),
-    );
-    await upsertPersonal(
-      transactionCase.ownerUserId,
-      transactionCase.copyWith(isOrganizationVisible: true),
-    );
+    final shared = transactionCase.copyWith(isOrganizationVisible: true);
+    await upsertOrganization(shared.organizationId, shared);
+    await upsertPersonal(shared.ownerUserId, shared);
   }
 
   Future<void> removePersonal(String userId, String caseId) async {
     final cases = await loadPersonal(userId);
-    await savePersonal(
-      userId,
+    await _saveLocal(
+      personalKey(userId),
       cases.where((item) => item.id != caseId).toList(),
+    );
+    await _transport.deleteJson(
+      '/v2/transaction-cases/$caseId',
+      query: {
+        'actor_user_id': userId,
+        'owner_user_id': userId,
+        'scope': 'personal',
+      },
     );
   }
 
@@ -87,10 +139,57 @@ class TransactionCaseRepository {
     String caseId,
   ) async {
     final cases = await loadOrganization(organizationId);
-    await saveOrganization(
-      organizationId,
+    final existing = _findCase(cases, caseId);
+    await _saveLocal(
+      organizationKey(organizationId),
       cases.where((item) => item.id != caseId).toList(),
     );
+    await _transport.deleteJson(
+      '/v2/transaction-cases/$caseId',
+      query: {
+        'actor_user_id': existing == null ? '' : _actorFor(existing),
+        'organization_id': organizationId,
+        'scope': 'organization',
+      },
+    );
+  }
+
+  Future<void> _remoteUpsert(
+    TransactionCase item, {
+    required String scope,
+    required String actorUserId,
+  }) async {
+    await _transport.putJson(
+      '/v2/transaction-cases/${Uri.encodeComponent(item.id)}',
+      {
+        'actor_user_id': actorUserId.isEmpty ? item.ownerUserId : actorUserId,
+        'scope': scope,
+        'case': item.toJson(),
+      },
+    );
+  }
+
+  List<TransactionCase>? _decodeRemote(LaunchBackendResponse response) {
+    if (!response.available || response.data is! List) return null;
+    final cases = <TransactionCase>[];
+    for (final item in response.data! as List) {
+      if (item is Map) {
+        cases.add(
+          TransactionCase.fromJson(
+            item.map((key, value) => MapEntry(key.toString(), value)),
+          ),
+        );
+      }
+    }
+    cases.sort((a, b) => b.updatedAtIso.compareTo(a.updatedAtIso));
+    return cases;
+  }
+
+  String _actorFor(TransactionCase item) {
+    for (final approval in item.approvals.reversed) {
+      if (approval.approverId.isNotEmpty) return approval.approverId;
+    }
+    return item.ownerUserId;
   }
 
   Future<void> _recordDecisionChange({
@@ -99,9 +198,8 @@ class TransactionCaseRepository {
   }) async {
     final currentDecision = _latestResolvedApproval(current);
     if (currentDecision == null) return;
-    final previousDecision = previous == null
-        ? null
-        : _latestResolvedApproval(previous);
+    final previousDecision =
+        previous == null ? null : _latestResolvedApproval(previous);
     if (previousDecision?.decision == currentDecision.decision &&
         previousDecision?.updatedAtIso == currentDecision.updatedAtIso) {
       return;
@@ -170,7 +268,7 @@ class TransactionCaseRepository {
     return null;
   }
 
-  Future<List<TransactionCase>> _load(String key) async {
+  Future<List<TransactionCase>> _loadLocal(String key) async {
     final raw = await _store.loadString(key);
     if (raw.trim().isEmpty) return const [];
     try {
@@ -190,7 +288,7 @@ class TransactionCaseRepository {
     }
   }
 
-  Future<void> _save(String key, List<TransactionCase> cases) async {
+  Future<void> _saveLocal(String key, List<TransactionCase> cases) async {
     final sorted = [...cases]
       ..sort((a, b) => b.updatedAtIso.compareTo(a.updatedAtIso));
     await _store.saveString(
