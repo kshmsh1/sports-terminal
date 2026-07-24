@@ -25,6 +25,7 @@ class _SportsTerminalAppState extends State<SportsTerminalApp> {
   void initState() {
     super.initState();
     routePayloadController.hydrate();
+    authController.hydrate();
   }
 
   @override
