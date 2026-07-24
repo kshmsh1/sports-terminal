@@ -42,6 +42,12 @@ try:
             upsert_transaction_case,
         )
         from app.main import init_db
+        from app.workspace_api import (
+            WorkspaceUpsert,
+            get_primary_workspace,
+            list_workspace_versions,
+            upsert_primary_workspace,
+        )
 
         checkpoint("initialize")
         init_db()
@@ -78,6 +84,48 @@ try:
         )
         assert organization_auth["user"]["role"] == "organization_admin"
         assert organization_auth["organizations"][0]["membership_role"] == "owner"
+
+        checkpoint("versioned customer workspace")
+        individual_user_id = individual_auth["user"]["id"]
+        workspace = upsert_primary_workspace(
+            WorkspaceUpsert(
+                actor_user_id=individual_user_id,
+                scope="personal",
+                owner_user_id=individual_user_id,
+                title="Launch Analyst Workbook",
+                active_sheet="Watchlist",
+                sheets={
+                    "Watchlist": {
+                        "A1": "Player",
+                        "B1": "PPG",
+                        "A2": "Shai Gilgeous-Alexander",
+                        "B2": "32.7",
+                    }
+                },
+            )
+        )
+        assert workspace["version"] == 1
+        assert workspace["sheets"]["Watchlist"]["B2"] == "32.7"
+        workspace = upsert_primary_workspace(
+            WorkspaceUpsert(
+                actor_user_id=individual_user_id,
+                scope="personal",
+                owner_user_id=individual_user_id,
+                title="Launch Analyst Workbook",
+                active_sheet="Watchlist",
+                sheets={
+                    "Watchlist": {
+                        "A1": "Player",
+                        "B1": "PPG",
+                        "A2": "Shai Gilgeous-Alexander",
+                        "B2": "33.0",
+                    }
+                },
+            )
+        )
+        assert workspace["version"] == 2
+        assert get_primary_workspace(individual_user_id)["version"] == 2
+        assert len(list_workspace_versions(individual_user_id)) == 2
 
         checkpoint("organization creation")
         organization = create_organization(
@@ -224,6 +272,7 @@ try:
         assert readiness["data_release"]["season"] == "2025-26"
         assert "transaction_case_snapshots" in readiness["tables"]
         assert "auth_credentials" in readiness["tables"]
+        assert "workspace_snapshots" in readiness["tables"]
 
     print("Sports Terminal launch backend contract test passed.")
 except Exception as error:
