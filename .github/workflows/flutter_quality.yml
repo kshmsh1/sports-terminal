@@ -44,6 +44,10 @@ jobs:
           set +e
           PYTHONPATH=. python scripts/launch_contract_test.py > backend_contract.log 2>&1
           status=$?
+          if [ "$status" -eq 0 ]; then
+            PYTHONPATH=. python scripts/http_contract_test.py >> backend_contract.log 2>&1
+            status=$?
+          fi
           cat backend_contract.log
           echo "status=$status" >> "$GITHUB_OUTPUT"
           exit 0
