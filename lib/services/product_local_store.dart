@@ -24,6 +24,8 @@ class ProductLocalStore {
   static const backendBaseUrlKey = 'sports_terminal.backend.base_url';
   static const backendWorkbookIdKey = 'sports_terminal.backend.workbook_id';
   static const backendConversationIdKey = 'sports_terminal.backend.conversation_id';
+  static const launchRemoteSyncEnabledKey =
+      'sports_terminal.launch.remote_sync_enabled';
   static const frontOfficeScenarioKey = 'sports_terminal.front_office.scenario';
   static const statsQueryKey = 'sports_terminal.stats.query';
   static const tradeMachineStateKey = 'sports_terminal.trade_machine.state';
