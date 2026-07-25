@@ -192,7 +192,7 @@ else
   printf '%s\t%s\t%s\n' "nba_2025_26_release_skipped" "0" "0" >> "$SUMMARY"
 fi
 
-if command -v docker >/dev/null 2>&1 && command -v docker compose >/dev/null 2>&1; then
+if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
   log_step docker_compose_config docker compose config
   if [[ "$RUN_DOCKER" == true ]]; then
     log_step docker_backend_build docker compose build backend
