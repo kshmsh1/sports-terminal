@@ -7,7 +7,9 @@ from pathlib import Path
 # domain hardening, middleware registration and router imports match deployment.
 from app import main_launch as _main_launch  # noqa: F401
 
-runpy.run_path(
-    str(Path(__file__).with_name("customer_ops_contract_test.py")),
-    run_name="__main__",
-)
+scripts = Path(__file__).parent
+for script in (
+    "customer_ops_contract_test.py",
+    "customer_ops_tools_contract_test.py",
+):
+    runpy.run_path(str(scripts / script), run_name="__main__")
