@@ -53,7 +53,7 @@ jobs:
             status=$?
           fi
           if [ "$status" -eq 0 ]; then
-            PYTHONPATH=. python scripts/customer_ops_contract_test.py >> backend_contract.log 2>&1
+            PYTHONPATH=. python scripts/run_customer_ops_contract_test.py >> backend_contract.log 2>&1
             status=$?
           fi
           if [ "$status" -eq 0 ]; then
