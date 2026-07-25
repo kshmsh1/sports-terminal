@@ -3,11 +3,14 @@ from __future__ import annotations
 from . import launch_api as launch_module
 from .auth_api import router as auth_router
 from .auth_guard import enforce_launch_auth
+from .front_office_api import router as front_office_router
 from .launch_api import router as launch_router
 from .launch_security import ensure_organization
 from .main import app
 from .nba_data_api import router as nba_data_router
 from .operations import launch_operations_middleware
+from .python_runtime_api import router as python_runtime_router
+from .trust_safety_api import router as trust_safety_router
 from .workspace_api import router as workspace_router
 
 # Harden the helper used by launch endpoints before the first request. Product
@@ -19,12 +22,12 @@ launch_module._ensure_organization = ensure_organization
 # the default development entrypoint. This lets the Flutter client migrate
 # endpoint-by-endpoint without duplicating the original service.
 app.title = "Sports Terminal Launch API"
-app.version = "0.8.0"
+app.version = "1.0.0"
 app.description = (
     "Launch-oriented Sports Terminal API for authentication, certified NBA data, "
-    "users, organizations, transaction workflows, versioned sports workspaces, "
-    "saved sports objects, content, messaging, billing placeholders, and "
-    "platform operations."
+    "canonical contracts and draft assets, transaction ledgers, moderated community "
+    "and messaging, isolated Python analysis, organizations, versioned workspaces, "
+    "saved sports objects, content, and platform operations."
 )
 
 # Local development remains permissive by default. Staging and public services
@@ -41,3 +44,6 @@ app.include_router(auth_router)
 app.include_router(launch_router)
 app.include_router(workspace_router)
 app.include_router(nba_data_router)
+app.include_router(front_office_router)
+app.include_router(trust_safety_router)
+app.include_router(python_runtime_router)
