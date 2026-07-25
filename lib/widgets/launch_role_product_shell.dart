@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../controllers/internal_workspace_controller.dart';
 import '../models/app_session.dart';
+import '../screens/product_automation_governance_screen.dart';
 import '../services/launch_backend_transport.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/product_local_store.dart';
@@ -89,6 +90,39 @@ class _LaunchRoleProductShellState extends State<LaunchRoleProductShell> {
     });
   }
 
+  Future<void> _showAutomationCenter() {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => Dialog.fullscreen(
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(
+              widget.session.role.canManageOrganization
+                  ? 'Organization Control Plane'
+                  : 'My Automation Center',
+            ),
+            leading: IconButton(
+              tooltip: 'Close',
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close_rounded),
+            ),
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1420),
+                child: ProductAutomationGovernanceScreen(
+                  session: widget.session,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _showDetails(_LaunchProductStatus status) {
     return showDialog<void>(
       context: context,
@@ -119,7 +153,7 @@ class _LaunchRoleProductShellState extends State<LaunchRoleProductShell> {
                   value: _remoteEnabled,
                   title: const Text('Remote-first collaboration'),
                   subtitle: const Text(
-                    'Use the launch backend for cases, activity, notifications, and organization members when it is reachable.',
+                    'Use the launch backend for cases, activity, notifications, organization members, automation and governance when it is reachable.',
                   ),
                   onChanged: _setRemoteEnabled,
                 ),
@@ -170,73 +204,94 @@ class _LaunchRoleProductShellState extends State<LaunchRoleProductShell> {
           right: 18,
           bottom: 18,
           child: SafeArea(
-            child: FutureBuilder<_LaunchProductStatus>(
-              future: _statusFuture,
-              builder: (context, snapshot) {
-                final status = snapshot.data;
-                final loading = status == null;
-                final backendOnline = status?.backendOnline == true;
-                final fallback = status?.usedFallback == true;
-                final label = loading
-                    ? 'Checking launch status'
-                    : '${status.supportedSeason} · ${fallback ? 'DEV DATA' : 'CERTIFIED'} · ${backendOnline ? 'SHARED' : 'LOCAL'}';
-                return Material(
-                  elevation: 12,
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(999),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(999),
-                    onTap: status == null ? null : () => _showDetails(status),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF071A33),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: 'automation-center',
+                  onPressed: _showAutomationCenter,
+                  icon: Icon(
+                    widget.session.role.canManageOrganization
+                        ? Icons.admin_panel_settings_rounded
+                        : Icons.auto_awesome_motion_rounded,
+                  ),
+                  label: Text(
+                    widget.session.role.canManageOrganization
+                        ? 'Control Plane'
+                        : 'Automation',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                FutureBuilder<_LaunchProductStatus>(
+                  future: _statusFuture,
+                  builder: (context, snapshot) {
+                    final status = snapshot.data;
+                    final loading = status == null;
+                    final backendOnline = status?.backendOnline == true;
+                    final fallback = status?.usedFallback == true;
+                    final label = loading
+                        ? 'Checking launch status'
+                        : '${status.supportedSeason} · ${fallback ? 'DEV DATA' : 'CERTIFIED'} · ${backendOnline ? 'SHARED' : 'LOCAL'}';
+                    return Material(
+                      elevation: 12,
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(999),
+                      child: InkWell(
                         borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: fallback
-                              ? const Color(0xFFFFB547)
-                              : const Color(0xFF6EE7B7),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (loading)
-                            const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          else
-                            Icon(
-                              backendOnline
-                                  ? Icons.cloud_done_rounded
-                                  : Icons.cloud_off_rounded,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                          const SizedBox(width: 8),
-                          Text(
-                            label,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: .3,
+                        onTap: status == null ? null : () => _showDetails(status),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF071A33),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: fallback
+                                  ? const Color(0xFFFFB547)
+                                  : const Color(0xFF6EE7B7),
                             ),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (loading)
+                                const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              else
+                                Icon(
+                                  backendOnline
+                                      ? Icons.cloud_done_rounded
+                                      : Icons.cloud_off_rounded,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                              const SizedBox(width: 8),
+                              Text(
+                                label,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: .3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                );
-              },
+                    );
+                  },
+                ),
+              ],
             ),
           ),
         ),
