@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from .launch_api import _ensure_shadow_user, init_launch_db
-from .main import connect, decode_json, encode_json, make_id, now_iso
+from .main import connect, decode_json, encode_json, init_db, make_id, now_iso
 
 router = APIRouter(prefix="/v2/workspaces", tags=["workspaces"])
 
@@ -42,6 +42,10 @@ class WorkspacePermissionUpsert(BaseModel):
 
 
 def init_workspace_db() -> None:
+    # Workspace may be the first service touched in a new deployment. Initialize
+    # both the base users/content schema and the launch organization schema before
+    # creating foreign keys into those tables.
+    init_db()
     init_launch_db()
     with connect() as connection:
         connection.executescript(
@@ -91,14 +95,22 @@ def init_workspace_db() -> None:
 def _scope_key(scope: str, owner_user_id: str, organization_id: str) -> str:
     if scope == "organization":
         if not organization_id:
-            raise HTTPException(status_code=400, detail="Organization workspace requires an organization ID")
+            raise HTTPException(
+                status_code=400,
+                detail="Organization workspace requires an organization ID",
+            )
         return f"organization:{organization_id}"
     if not owner_user_id:
-        raise HTTPException(status_code=400, detail="Personal workspace requires an owner user ID")
+        raise HTTPException(
+            status_code=400,
+            detail="Personal workspace requires an owner user ID",
+        )
     return f"personal:{owner_user_id}"
 
 
-def _normalized_sheets(value: dict[str, dict[str, str]]) -> dict[str, dict[str, str]]:
+def _normalized_sheets(
+    value: dict[str, dict[str, str]],
+) -> dict[str, dict[str, str]]:
     output: dict[str, dict[str, str]] = {}
     for raw_sheet, raw_cells in value.items():
         sheet = str(raw_sheet).strip()[:31] or "Sheet 1"
@@ -120,10 +132,17 @@ def _normalized_sheets(value: dict[str, dict[str, str]]) -> dict[str, dict[str, 
     return output or {"Sheet 1": {}}
 
 
-def _serialize(row: sqlite3.Row, permissions: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+def _serialize(
+    row: sqlite3.Row,
+    permissions: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     return {
         "id": row["scope_key"],
-        "scope": "organization" if str(row["scope_key"]).startswith("organization:") else "personal",
+        "scope": (
+            "organization"
+            if str(row["scope_key"]).startswith("organization:")
+            else "personal"
+        ),
         "owner_user_id": row["owner_user_id"],
         "organization_id": row["organization_id"] or "",
         "title": row["title"],
@@ -136,9 +155,17 @@ def _serialize(row: sqlite3.Row, permissions: list[dict[str, Any]] | None = None
     }
 
 
-def _permission_rows(connection: sqlite3.Connection, scope_key: str) -> list[dict[str, Any]]:
+def _permission_rows(
+    connection: sqlite3.Connection,
+    scope_key: str,
+) -> list[dict[str, Any]]:
     rows = connection.execute(
-        "SELECT user_id, permission, granted_by_user_id, created_at, updated_at FROM workspace_permissions WHERE scope_key = ? ORDER BY permission DESC, updated_at DESC",
+        """
+        SELECT user_id, permission, granted_by_user_id, created_at, updated_at
+        FROM workspace_permissions
+        WHERE scope_key = ?
+        ORDER BY permission DESC, updated_at DESC
+        """,
         (scope_key,),
     ).fetchall()
     return [dict(row) for row in rows]
@@ -181,7 +208,9 @@ def _write_workspace(
     if selected_sheet not in normalized:
         selected_sheet = next(iter(normalized))
     snapshot = {
-        "scope": "organization" if scope_key.startswith("organization:") else "personal",
+        "scope": (
+            "organization" if scope_key.startswith("organization:") else "personal"
+        ),
         "owner_user_id": owner_user_id,
         "organization_id": organization_id,
         "title": title,
@@ -197,10 +226,14 @@ def _write_workspace(
           scope_key, owner_user_id, organization_id, title, active_sheet,
           sheets_json, version, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(scope_key) DO UPDATE SET owner_user_id = excluded.owner_user_id,
-          organization_id = excluded.organization_id, title = excluded.title,
-          active_sheet = excluded.active_sheet, sheets_json = excluded.sheets_json,
-          version = excluded.version, updated_at = excluded.updated_at
+        ON CONFLICT(scope_key) DO UPDATE SET
+          owner_user_id = excluded.owner_user_id,
+          organization_id = excluded.organization_id,
+          title = excluded.title,
+          active_sheet = excluded.active_sheet,
+          sheets_json = excluded.sheets_json,
+          version = excluded.version,
+          updated_at = excluded.updated_at
         """,
         (
             scope_key,
@@ -215,7 +248,11 @@ def _write_workspace(
         ),
     )
     connection.execute(
-        "INSERT INTO workspace_versions (id, scope_key, version, actor_user_id, snapshot_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        """
+        INSERT INTO workspace_versions (
+          id, scope_key, version, actor_user_id, snapshot_json, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        """,
         (
             f"{scope_key}:v{version}",
             scope_key,
@@ -263,7 +300,10 @@ def get_primary_workspace(
             (scope_key,),
         ).fetchone()
         if row is None:
-            raise HTTPException(status_code=404, detail="Workspace has not been created yet")
+            raise HTTPException(
+                status_code=404,
+                detail="Workspace has not been created yet",
+            )
         return _serialize(row, _permission_rows(connection, scope_key))
 
 
@@ -271,8 +311,15 @@ def get_primary_workspace(
 def upsert_primary_workspace(payload: WorkspaceUpsert) -> dict[str, Any]:
     init_workspace_db()
     if payload.scope not in {"personal", "organization"}:
-        raise HTTPException(status_code=400, detail="Workspace scope must be personal or organization")
-    scope_key = _scope_key(payload.scope, payload.owner_user_id, payload.organization_id)
+        raise HTTPException(
+            status_code=400,
+            detail="Workspace scope must be personal or organization",
+        )
+    scope_key = _scope_key(
+        payload.scope,
+        payload.owner_user_id,
+        payload.organization_id,
+    )
     with connect() as connection:
         return _write_workspace(
             connection,
@@ -290,20 +337,36 @@ def upsert_primary_workspace(payload: WorkspaceUpsert) -> dict[str, Any]:
 @router.post("/primary/restore")
 def restore_primary_workspace(payload: WorkspaceRestore) -> dict[str, Any]:
     init_workspace_db()
-    scope_key = _scope_key(payload.scope, payload.owner_user_id, payload.organization_id)
+    scope_key = _scope_key(
+        payload.scope,
+        payload.owner_user_id,
+        payload.organization_id,
+    )
     with connect() as connection:
         version_row = connection.execute(
-            "SELECT snapshot_json FROM workspace_versions WHERE scope_key = ? AND version = ?",
+            """
+            SELECT snapshot_json FROM workspace_versions
+            WHERE scope_key = ? AND version = ?
+            """,
             (scope_key, payload.version),
         ).fetchone()
         if version_row is None:
-            raise HTTPException(status_code=404, detail="Workspace version not found")
+            raise HTTPException(
+                status_code=404,
+                detail="Workspace version not found",
+            )
         snapshot = decode_json(version_row["snapshot_json"], {})
         if not isinstance(snapshot, dict):
-            raise HTTPException(status_code=500, detail="Workspace version snapshot is invalid")
+            raise HTTPException(
+                status_code=500,
+                detail="Workspace version snapshot is invalid",
+            )
         sheets = snapshot.get("sheets")
         if not isinstance(sheets, dict):
-            raise HTTPException(status_code=500, detail="Workspace version does not contain sheets")
+            raise HTTPException(
+                status_code=500,
+                detail="Workspace version does not contain sheets",
+            )
         return _write_workspace(
             connection,
             scope_key=scope_key,
@@ -312,7 +375,11 @@ def restore_primary_workspace(payload: WorkspaceRestore) -> dict[str, Any]:
             organization_id=payload.organization_id,
             title=str(snapshot.get("title") or "Sports Terminal Workbook"),
             active_sheet=str(snapshot.get("active_sheet") or "Sheet 1"),
-            sheets={str(key): value for key, value in sheets.items() if isinstance(value, dict)},
+            sheets={
+                str(key): value
+                for key, value in sheets.items()
+                if isinstance(value, dict)
+            },
             expected_version=payload.expected_current_version,
             restore_from_version=payload.version,
         )
@@ -328,7 +395,13 @@ def list_workspace_versions(
     scope_key = _scope_key(scope, owner_user_id, organization_id)
     with connect() as connection:
         rows = connection.execute(
-            "SELECT id, version, actor_user_id, snapshot_json, created_at FROM workspace_versions WHERE scope_key = ? ORDER BY version DESC LIMIT 50",
+            """
+            SELECT id, version, actor_user_id, snapshot_json, created_at
+            FROM workspace_versions
+            WHERE scope_key = ?
+            ORDER BY version DESC
+            LIMIT 50
+            """,
             (scope_key,),
         ).fetchall()
         return [
@@ -356,24 +429,53 @@ def list_workspace_permissions(
 
 
 @router.put("/primary/permissions")
-def upsert_workspace_permission(payload: WorkspacePermissionUpsert) -> dict[str, Any]:
+def upsert_workspace_permission(
+    payload: WorkspacePermissionUpsert,
+) -> dict[str, Any]:
     init_workspace_db()
     if payload.permission not in {"viewer", "editor", "owner"}:
-        raise HTTPException(status_code=422, detail="Workspace permission must be viewer, editor or owner")
-    scope_key = _scope_key(payload.scope, payload.owner_user_id, payload.organization_id)
+        raise HTTPException(
+            status_code=422,
+            detail="Workspace permission must be viewer, editor or owner",
+        )
+    scope_key = _scope_key(
+        payload.scope,
+        payload.owner_user_id,
+        payload.organization_id,
+    )
     timestamp = now_iso()
     with connect() as connection:
-        _ensure_shadow_user(connection, payload.actor_user_id, payload.actor_user_id, "analyst")
-        _ensure_shadow_user(connection, payload.user_id, payload.user_id, "analyst")
+        _ensure_shadow_user(
+            connection,
+            payload.actor_user_id,
+            payload.actor_user_id,
+            "analyst",
+        )
+        _ensure_shadow_user(
+            connection,
+            payload.user_id,
+            payload.user_id,
+            "analyst",
+        )
         connection.execute(
             """
             INSERT INTO workspace_permissions (
-              scope_key, user_id, permission, granted_by_user_id, created_at, updated_at
+              scope_key, user_id, permission, granted_by_user_id,
+              created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(scope_key, user_id) DO UPDATE SET permission = excluded.permission,
-              granted_by_user_id = excluded.granted_by_user_id, updated_at = excluded.updated_at
+            ON CONFLICT(scope_key, user_id) DO UPDATE SET
+              permission = excluded.permission,
+              granted_by_user_id = excluded.granted_by_user_id,
+              updated_at = excluded.updated_at
             """,
-            (scope_key, payload.user_id, payload.permission, payload.actor_user_id, timestamp, timestamp),
+            (
+                scope_key,
+                payload.user_id,
+                payload.permission,
+                payload.actor_user_id,
+                timestamp,
+                timestamp,
+            ),
         )
         connection.commit()
     return {
@@ -397,11 +499,23 @@ def remove_workspace_permission(
     init_workspace_db()
     scope_key = _scope_key(scope, owner_user_id, organization_id)
     if actor_user_id == user_id:
-        raise HTTPException(status_code=422, detail="Use account or organization controls to remove the current owner")
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Use account or organization controls to remove the current owner"
+            ),
+        )
     with connect() as connection:
         connection.execute(
-            "DELETE FROM workspace_permissions WHERE scope_key = ? AND user_id = ?",
+            """
+            DELETE FROM workspace_permissions
+            WHERE scope_key = ? AND user_id = ?
+            """,
             (scope_key, user_id),
         )
         connection.commit()
-    return {"removed": True, "scope_key": scope_key, "user_id": user_id}
+    return {
+        "removed": True,
+        "scope_key": scope_key,
+        "user_id": user_id,
+    }
