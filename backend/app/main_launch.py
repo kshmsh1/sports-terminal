@@ -6,7 +6,11 @@ from . import workspace_api as workspace_module
 from .auth_api import router as auth_router
 from .auth_guard import enforce_launch_auth
 from .front_office_api import router as front_office_router
-from .front_office_hardening import record_dimensions
+from .front_office_hardening import (
+    hardened_reconciliation,
+    hardened_upsert,
+    record_dimensions,
+)
 from .launch_api import router as launch_router
 from .launch_security import ensure_organization
 from .main import app
@@ -21,10 +25,19 @@ from .workspace_hardening import hardened_workspace_initializer
 # missing organization, but they cannot promote an existing case owner,
 # commenter, or assignee to organization owner as a side effect. Draft assets
 # use a deterministic draft-year storage dimension instead of requiring a
-# fabricated operating season. Workspace initialization is self-sufficient on a
-# clean database and cannot depend on another endpoint running first.
+# fabricated operating season. Registry IDs remain bound to one object type,
+# every ledger team participates in reconciliation, and Workspace initialization
+# is self-sufficient on a clean database.
 launch_module._ensure_organization = ensure_organization
 front_office_module._record_dimensions = record_dimensions
+front_office_module.upsert_front_office_record = hardened_upsert(
+    front_office_module.upsert_front_office_record,
+    front_office_module.init_front_office_db,
+)
+front_office_module.front_office_reconciliation = hardened_reconciliation(
+    front_office_module.front_office_reconciliation,
+    front_office_module.list_front_office_records,
+)
 workspace_module.init_workspace_db = hardened_workspace_initializer(
     workspace_module.init_workspace_db
 )
