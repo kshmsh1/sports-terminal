@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
+from .customer_operations_api import init_customer_operations_db
 from .front_office_api import init_front_office_db
 from .main import connect, now_iso
 from .trust_safety_api import init_trust_safety_db
@@ -25,6 +26,7 @@ def platform_completion_status() -> dict[str, Any]:
     init_front_office_db()
     init_trust_safety_db()
     init_workspace_db()
+    init_customer_operations_db()
     with connect() as connection:
         tables = {
             row["name"]
@@ -93,6 +95,25 @@ def platform_completion_status() -> dict[str, Any]:
                 connection,
                 "workspace_permissions",
             ),
+            "onboarding_states": _table_count(connection, "onboarding_states"),
+            "entitlement_states": _table_count(connection, "entitlement_states"),
+            "customer_notifications": _table_count(connection, "customer_notifications"),
+            "unread_customer_notifications": _table_count(
+                connection,
+                "customer_notifications",
+                "WHERE is_read = 0",
+            ),
+            "open_support_cases": _table_count(
+                connection,
+                "support_cases",
+                "WHERE status NOT IN ('resolved', 'closed')",
+            ),
+            "support_comments": _table_count(connection, "support_case_comments"),
+            "active_service_incidents": _table_count(
+                connection,
+                "service_incidents",
+                "WHERE status != 'resolved'",
+            ),
         }
 
     internal_modules = {
@@ -111,6 +132,14 @@ def platform_completion_status() -> dict[str, Any]:
         "workspace_restore": "implemented",
         "workspace_permissions": "implemented",
         "isolated_python_runtime": "implemented",
+        "personal_onboarding": "implemented",
+        "organization_onboarding": "implemented",
+        "provider_neutral_entitlements": "implemented",
+        "notification_preferences": "implemented",
+        "customer_notification_inbox": "implemented",
+        "support_case_workflows": "implemented",
+        "organization_incident_management": "implemented",
+        "customer_operations_snapshot": "implemented",
     }
     required_tables = {
         "front_office_records",
@@ -125,6 +154,13 @@ def platform_completion_status() -> dict[str, Any]:
         "workspace_snapshots",
         "workspace_versions",
         "workspace_permissions",
+        "onboarding_states",
+        "entitlement_states",
+        "notification_preferences_v2",
+        "customer_notifications",
+        "support_cases",
+        "support_case_comments",
+        "service_incidents",
     }
     missing_tables = sorted(required_tables - tables)
     source_blockers: list[str] = []
@@ -156,6 +192,14 @@ def platform_completion_status() -> dict[str, Any]:
         == "true",
         "moderation_operations_staffed": os.getenv(
             "SPORTS_TERMINAL_MODERATION_STAFFED"
+        )
+        == "true",
+        "customer_support_staffed": os.getenv(
+            "SPORTS_TERMINAL_SUPPORT_STAFFED"
+        )
+        == "true",
+        "incident_response_staffed": os.getenv(
+            "SPORTS_TERMINAL_INCIDENT_RESPONSE_STAFFED"
         )
         == "true",
     }
