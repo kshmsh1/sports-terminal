@@ -71,13 +71,15 @@ class RoutePayload {
   String get selectedRowsLabel => selectedRows.join(', ');
   String get blockersLabel => blockers.isEmpty ? 'None' : blockers.join(', ');
   String get actionsLabel => availableActions.join(', ');
-  String get routeKey => '${sourceObjectType.toLowerCase()}:$sourceObjectId→$targetRoute';
+  String get routeKey =>
+      '${sourceObjectType.toLowerCase()}:$sourceObjectId→$targetRoute';
   String get conciseDebugLabel => '$displayLabel → $targetRoute';
   bool get hasBlockers => blockers.isNotEmpty;
   bool get hasStructuredRows => rows.isNotEmpty && columns.isNotEmpty;
   int get rowCount => rows.length;
   int get columnCount => columns.length;
-  String get createdAtLabel => createdAtIso.isEmpty ? 'Unspecified' : createdAtIso;
+  String get createdAtLabel =>
+      createdAtIso.isEmpty ? 'Unspecified' : createdAtIso;
 
   RoutePayload copyWith({
     String? sourceObjectType,
@@ -212,6 +214,33 @@ class RoutePayload {
         'columnCount': columnCount,
         'metadata': metadata,
       };
+}
+
+/// Presentation-safe accessors for UI surfaces that intentionally accept an
+/// optional active route package. Non-null payloads keep their native values;
+/// null payloads receive stable empty-state values without repeated null checks.
+extension NullableRoutePayloadPresentation on RoutePayload? {
+  RoutePayload? get _value => this;
+
+  String get displayLabel {
+    final value = _value;
+    return value == null ? 'No active package' : value.displayLabel;
+  }
+
+  String get sourceSnapshot {
+    final value = _value;
+    return value == null ? 'No source selected' : value.sourceSnapshot;
+  }
+
+  int get rowCount {
+    final value = _value;
+    return value == null ? 0 : value.rowCount;
+  }
+
+  int get columnCount {
+    final value = _value;
+    return value == null ? 0 : value.columnCount;
+  }
 }
 
 List<String> _stringList(dynamic value) {
