@@ -6,6 +6,7 @@ from .auth_api import router as auth_router
 from .auth_guard import enforce_launch_auth
 from .authorization_guard import enforce_launch_authorization
 from .completion_status_api import router as completion_status_router
+from .customer_ops_api import router as customer_ops_router
 from .front_office_api import router as front_office_router
 from .front_office_hardened_routes import router as front_office_hardened_router
 from .front_office_hardening import (
@@ -40,12 +41,13 @@ front_office_module.front_office_reconciliation = hardened_reconciliation(
 )
 
 app.title = "Sports Terminal Launch API"
-app.version = "1.0.0"
+app.version = "1.1.0"
 app.description = (
     "Launch-oriented Sports Terminal API for authentication, certified NBA data, "
     "canonical contracts and draft assets, transaction ledgers, moderated community "
-    "and messaging, isolated Python analysis, organizations, versioned workspaces, "
-    "saved sports objects, content, and platform operations."
+    "and messaging, isolated Python analysis, subscriptions and entitlements, "
+    "customer support, privacy operations, provider outboxes, service reliability, "
+    "organizations, versioned workspaces, saved sports objects, and platform operations."
 )
 
 # Middleware is intentionally registered before routers are included. Production
@@ -67,3 +69,4 @@ app.include_router(front_office_router)
 app.include_router(trust_safety_router)
 app.include_router(python_runtime_router)
 app.include_router(completion_status_router)
+app.include_router(customer_ops_router)
