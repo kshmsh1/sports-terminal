@@ -70,6 +70,7 @@ def rows_for_user(
     direct_columns = [
         column
         for column in (
+            "id" if table == "users" else "",
             "user_id",
             "owner_user_id",
             "requester_user_id",
@@ -80,7 +81,7 @@ def rows_for_user(
             "invited_by_user_id",
             "accepting_user_id",
         )
-        if column in columns
+        if column and column in columns
     ]
     if not direct_columns:
         return []
@@ -185,9 +186,21 @@ def build_export(database: Path, user_id: str) -> dict[str, Any]:
                     existing.append(item)
                     seen.add(identifier)
 
-        ticket_ids = [str(item["id"]) for item in collections.get("support_tickets", []) if item.get("id")]
-        privacy_ids = [str(item["id"]) for item in collections.get("privacy_requests", []) if item.get("id")]
-        post_ids = [str(item["id"]) for item in collections.get("posts", []) if item.get("id")]
+        ticket_ids = [
+            str(item["id"])
+            for item in collections.get("support_tickets", [])
+            if item.get("id")
+        ]
+        privacy_ids = [
+            str(item["id"])
+            for item in collections.get("privacy_requests", [])
+            if item.get("id")
+        ]
+        post_ids = [
+            str(item["id"])
+            for item in collections.get("posts", [])
+            if item.get("id")
+        ]
         conversation_ids = [
             str(item["conversation_id"])
             for item in collections.get("conversation_members", [])
