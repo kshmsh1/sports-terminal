@@ -45,6 +45,14 @@ jobs:
           PYTHONPATH=. python scripts/launch_contract_test.py > backend_contract.log 2>&1
           status=$?
           if [ "$status" -eq 0 ]; then
+            PYTHONPATH=. python scripts/run_platform_completion_contract_test.py >> backend_contract.log 2>&1
+            status=$?
+          fi
+          if [ "$status" -eq 0 ]; then
+            PYTHONPATH=. python scripts/workspace_completion_contract_test.py >> backend_contract.log 2>&1
+            status=$?
+          fi
+          if [ "$status" -eq 0 ]; then
             PYTHONPATH=. python scripts/http_contract_test.py >> backend_contract.log 2>&1
             status=$?
           fi
