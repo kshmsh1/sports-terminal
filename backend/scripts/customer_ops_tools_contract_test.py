@@ -19,6 +19,22 @@ from app.launch_api import _ensure_shadow_user
 from app.main import connect
 
 
+def parse_json_stream(value: str) -> dict[str, object]:
+    decoder = json.JSONDecoder()
+    index = 0
+    documents: list[object] = []
+    while index < len(value):
+        while index < len(value) and value[index].isspace():
+            index += 1
+        if index >= len(value):
+            break
+        document, index = decoder.raw_decode(value, index)
+        documents.append(document)
+    if not documents or not isinstance(documents[-1], dict):
+        raise AssertionError(f"Command did not return a final JSON report:\n{value}")
+    return documents[-1]
+
+
 def run(command: list[str], cwd: Path) -> dict[str, object]:
     completed = subprocess.run(
         command,
@@ -33,7 +49,7 @@ def run(command: list[str], cwd: Path) -> dict[str, object]:
             f"Command failed ({completed.returncode}): {' '.join(command)}\n"
             f"STDOUT:\n{completed.stdout}\nSTDERR:\n{completed.stderr}"
         )
-    return json.loads(completed.stdout)
+    return parse_json_stream(completed.stdout)
 
 
 repo_root = Path(__file__).resolve().parents[2]
