@@ -162,6 +162,49 @@ with tempfile.TemporaryDirectory(prefix="sports-terminal-http-") as temp_dir:
             assert status == 200, loaded
             assert loaded["sheets"]["Sheet 1"]["B1"] == "2025-26"
 
+            status, _, launch_center = request(
+                "GET",
+                "/v2/customer-operations/snapshot",
+                token=token,
+                query={
+                    "actor_user_id": user_id,
+                    "scope": "personal",
+                    "owner_user_id": user_id,
+                },
+            )
+            assert status == 200, launch_center
+            assert launch_center["scope"] == "personal"
+            assert launch_center["entitlement"]["plan_id"] == "individual"
+
+            status, _, onboarding = request(
+                "PUT",
+                "/v2/customer-operations/onboarding",
+                token=token,
+                body={
+                    "actor_user_id": user_id,
+                    "scope": "personal",
+                    "owner_user_id": user_id,
+                    "organization_id": "",
+                    "completed_steps": ["profile", "workspace"],
+                    "dismissed_steps": [],
+                    "metadata": {"contract": "http"},
+                },
+            )
+            assert status == 200, onboarding
+            assert onboarding["completed_steps"] == ["profile", "workspace"]
+
+            status, _, mismatched_owner = request(
+                "GET",
+                "/v2/customer-operations/snapshot",
+                token=token,
+                query={
+                    "actor_user_id": user_id,
+                    "scope": "personal",
+                    "owner_user_id": "different-user",
+                },
+            )
+            assert status == 403, mismatched_owner
+
             status, _, session_check = request(
                 "GET",
                 "/v2/auth/session",
