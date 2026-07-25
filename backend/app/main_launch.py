@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from . import front_office_api as front_office_module
 from . import launch_api as launch_module
 from .auth_api import router as auth_router
 from .auth_guard import enforce_launch_auth
 from .front_office_api import router as front_office_router
+from .front_office_hardening import record_dimensions
 from .launch_api import router as launch_router
 from .launch_security import ensure_organization
 from .main import app
@@ -13,10 +15,13 @@ from .python_runtime_api import router as python_runtime_router
 from .trust_safety_api import router as trust_safety_router
 from .workspace_api import router as workspace_router
 
-# Harden the helper used by launch endpoints before the first request. Product
-# writes may create a missing organization, but they cannot promote an existing
-# case owner, commenter, or assignee to organization owner as a side effect.
+# Harden launch helpers before the first request. Product writes may create a
+# missing organization, but they cannot promote an existing case owner,
+# commenter, or assignee to organization owner as a side effect. Draft assets
+# use a deterministic draft-year storage dimension instead of requiring a
+# fabricated operating season.
 launch_module._ensure_organization = ensure_organization
+front_office_module._record_dimensions = record_dimensions
 
 # Keep the existing prototype API intact while promoting the launch contracts to
 # the default development entrypoint. This lets the Flutter client migrate
