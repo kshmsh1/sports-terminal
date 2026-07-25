@@ -15,6 +15,7 @@ with tempfile.TemporaryDirectory(prefix="sports-terminal-customer-ops-") as temp
         OnboardingUpdate,
         SupportCaseCreate,
         SupportCommentCreate,
+        add_support_comment,
         create_incident,
         create_notification,
         create_support_case,
@@ -22,10 +23,10 @@ with tempfile.TemporaryDirectory(prefix="sports-terminal-customer-ops-") as temp
         init_customer_operations_db,
         mark_all_notifications_read,
         update_onboarding,
-        add_support_comment,
     )
-    from app.main import connect, now_iso
+    from app.main import connect, init_db, now_iso
 
+    init_db()
     init_customer_operations_db()
     timestamp = now_iso()
     with connect() as connection:
