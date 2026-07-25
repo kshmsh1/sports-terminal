@@ -5,6 +5,7 @@ import '../models/transaction_case.dart';
 import '../services/transaction_case_repository.dart';
 import '../services/transaction_workflow_repository.dart';
 import 'product_arena_home_screen.dart';
+import 'product_launch_center_screen.dart';
 
 const _navy = Color(0xFF071A33);
 const _blue = Color(0xFF2563EB);
@@ -56,8 +57,8 @@ class ProductRoleHomeScreen extends StatelessWidget {
                   const SizedBox(height: 5),
                   Text(
                     organizationMode
-                        ? 'Shared transaction workload and review pressure now appear directly on the organization home surface.'
-                        : 'Your cases, pending reviews and unread transaction updates now appear directly on the individual home surface.',
+                        ? 'Shared transaction workload, customer operations, launch readiness and review pressure now appear directly on the organization home surface.'
+                        : 'Your cases, setup progress, plan access, support and unread updates now appear directly on the individual home surface.',
                     style: const TextStyle(color: _muted, height: 1.4),
                   ),
                   const SizedBox(height: 14),
@@ -92,6 +93,11 @@ class ProductRoleHomeScreen extends StatelessWidget {
                   ],
                 ],
               ),
+            ),
+            const SizedBox(height: 18),
+            ProductLaunchCenterScreen(
+              session: session,
+              organizationMode: organizationMode,
             ),
             const SizedBox(height: 18),
             ProductArenaHomeScreen(session: session),
