@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sports-terminal.local/schemas/front_office_catalog.schema.json",
+  "title": "Sports Terminal Front Office Catalog",
+  "type": "object",
+  "required": ["season", "generated_at", "contracts", "team_positions", "draft_assets", "ledger"],
+  "properties": {
+    "season": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"},
+    "generated_at": {"type": "string"},
+    "source_notes": {"type": "array", "items": {"type": "string"}},
+    "contracts": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/contract"}
+    },
+    "team_positions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/teamPosition"}
+    },
+    "draft_assets": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/draftAsset"}
+    },
+    "ledger": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/ledgerRecord"}
+    }
+  },
+  "$defs": {
+    "provenance": {
+      "type": "object",
+      "required": ["source_status"],
+      "properties": {
+        "source_status": {"enum": ["modeled", "uploaded", "verified"]},
+        "source_label": {"type": "string"},
+        "source_url": {"type": "string"},
+        "source_document_id": {"type": "string"},
+        "as_of_date": {"type": "string"},
+        "notes": {"type": "string"},
+        "metadata": {"type": "object"}
+      }
+    },
+    "contractYear": {
+      "type": "object",
+      "required": ["season", "salary"],
+      "properties": {
+        "season": {"type": "string"},
+        "salary": {"type": "number", "minimum": 0},
+        "guaranteed_amount": {"type": "number", "minimum": 0},
+        "likely_incentives": {"type": "number", "minimum": 0},
+        "unlikely_incentives": {"type": "number", "minimum": 0},
+        "dead_money": {"type": "number", "minimum": 0},
+        "option_type": {"enum": ["none", "player", "team", "early_termination", "qualifying_offer", "two_way"]},
+        "option_deadline": {"type": "string"},
+        "guarantee_date": {"type": "string"},
+        "cap_charge_override": {"type": ["number", "null"], "minimum": 0}
+      }
+    },
+    "contract": {
+      "allOf": [
+        {"$ref": "#/$defs/provenance"},
+        {
+          "type": "object",
+          "required": ["id", "player_id", "player_name", "team_id", "season", "years"],
+          "properties": {
+            "id": {"type": "string", "minLength": 1},
+            "player_id": {"type": "string", "minLength": 1},
+            "player_name": {"type": "string", "minLength": 1},
+            "team_id": {"type": "string", "minLength": 2},
+            "season": {"type": "string"},
+            "contract_type": {"type": "string"},
+            "years": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/contractYear"}},
+            "no_trade_clause": {"type": "boolean"},
+            "trade_bonus_percent": {"type": "number", "minimum": 0, "maximum": 100},
+            "bird_rights": {"type": "string"},
+            "two_way": {"type": "boolean"}
+          }
+        }
+      ]
+    },
+    "exception": {
+      "type": "object",
+      "required": ["name", "amount"],
+      "properties": {
+        "name": {"type": "string"},
+        "amount": {"type": "number", "minimum": 0},
+        "expires_on": {"type": "string"},
+        "hard_cap_trigger": {"type": "string"},
+        "notes": {"type": "string"}
+      }
+    },
+    "teamPosition": {
+      "allOf": [
+        {"$ref": "#/$defs/provenance"},
+        {
+          "type": "object",
+          "required": ["id", "team_id", "season", "salary_cap", "luxury_tax", "first_apron", "second_apron"],
+          "properties": {
+            "id": {"type": "string", "minLength": 1},
+            "team_id": {"type": "string", "minLength": 2},
+            "season": {"type": "string"},
+            "salary_cap": {"type": "number", "minimum": 0},
+            "luxury_tax": {"type": "number", "minimum": 0},
+            "first_apron": {"type": "number", "minimum": 0},
+            "second_apron": {"type": "number", "minimum": 0},
+            "active_salary": {"type": "number", "minimum": 0},
+            "cap_holds": {"type": "number", "minimum": 0},
+            "dead_money": {"type": "number", "minimum": 0},
+            "incomplete_roster_charges": {"type": "number", "minimum": 0},
+            "hard_cap": {"type": "number", "minimum": 0},
+            "cash_sent": {"type": "number", "minimum": 0},
+            "cash_received": {"type": "number", "minimum": 0},
+            "exceptions": {"type": "array", "items": {"$ref": "#/$defs/exception"}}
+          }
+        }
+      ]
+    },
+    "protection": {
+      "type": "object",
+      "required": ["year", "condition"],
+      "properties": {
+        "year": {"type": "integer"},
+        "condition": {"type": "string"},
+        "fallback": {"type": "string"}
+      }
+    },
+    "draftAsset": {
+      "allOf": [
+        {"$ref": "#/$defs/provenance"},
+        {
+          "type": "object",
+          "required": ["id", "current_team_id", "original_team_id", "draft_year", "round"],
+          "properties": {
+            "id": {"type": "string", "minLength": 1},
+            "current_team_id": {"type": "string"},
+            "original_team_id": {"type": "string"},
+            "draft_year": {"type": "integer", "minimum": 2020, "maximum": 2045},
+            "round": {"type": "integer", "minimum": 1, "maximum": 2},
+            "asset_type": {"enum": ["pick", "swap", "conditional", "second_round_pool"]},
+            "description": {"type": "string"},
+            "protections": {"type": "array", "items": {"$ref": "#/$defs/protection"}},
+            "swap_terms": {"type": "string"},
+            "conveyance_chain": {"type": "array", "items": {"type": "string"}},
+            "encumbered": {"type": "boolean"},
+            "stepien_eligible": {"type": "boolean"}
+          }
+        }
+      ]
+    },
+    "salaryMovement": {
+      "type": "object",
+      "required": ["team_id", "label", "direction", "amount"],
+      "properties": {
+        "team_id": {"type": "string"},
+        "player_id": {"type": "string"},
+        "label": {"type": "string"},
+        "direction": {"enum": ["incoming", "outgoing", "retained", "waived"]},
+        "amount": {"type": "number", "minimum": 0},
+        "season": {"type": "string"}
+      }
+    },
+    "ledgerRecord": {
+      "allOf": [
+        {"$ref": "#/$defs/provenance"},
+        {
+          "type": "object",
+          "required": ["id", "season", "transaction_type", "teams", "summary"],
+          "properties": {
+            "id": {"type": "string", "minLength": 1},
+            "organization_id": {"type": "string"},
+            "case_id": {"type": "string"},
+            "season": {"type": "string"},
+            "transaction_type": {"type": "string"},
+            "effective_date": {"type": "string"},
+            "status": {"type": "string"},
+            "teams": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+            "summary": {"type": "string", "minLength": 1},
+            "contract_ids": {"type": "array", "items": {"type": "string"}},
+            "draft_asset_ids": {"type": "array", "items": {"type": "string"}},
+            "salary_movements": {"type": "array", "items": {"$ref": "#/$defs/salaryMovement"}},
+            "assumptions": {"type": "array", "items": {"type": "string"}},
+            "approvals": {"type": "array", "items": {"type": "object"}}
+          }
+        }
+      ]
+    }
+  }
+}
