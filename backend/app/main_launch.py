@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from . import front_office_api as front_office_module
 from . import launch_api as launch_module
-from . import workspace_api as workspace_module
 from .auth_api import router as auth_router
 from .auth_guard import enforce_launch_auth
+from .authorization_guard import enforce_launch_authorization
 from .completion_status_api import router as completion_status_router
 from .front_office_api import router as front_office_router
+from .front_office_hardened_routes import router as front_office_hardened_router
 from .front_office_hardening import (
     hardened_reconciliation,
     hardened_upsert,
@@ -20,15 +21,13 @@ from .operations import launch_operations_middleware
 from .python_runtime_api import router as python_runtime_router
 from .trust_safety_api import router as trust_safety_router
 from .workspace_api import router as workspace_router
-from .workspace_hardening import hardened_workspace_initializer
 
 # Harden launch helpers before the first request. Product writes may create a
 # missing organization, but they cannot promote an existing case owner,
 # commenter, or assignee to organization owner as a side effect. Draft assets
 # use a deterministic draft-year storage dimension instead of requiring a
-# fabricated operating season. Registry IDs remain bound to one object type,
-# every ledger team participates in reconciliation, and Workspace initialization
-# is self-sufficient on a clean database.
+# fabricated operating season. Registry IDs remain bound to one object type and
+# every ledger team participates in reconciliation.
 launch_module._ensure_organization = ensure_organization
 front_office_module._record_dimensions = record_dimensions
 front_office_module.upsert_front_office_record = hardened_upsert(
@@ -39,13 +38,7 @@ front_office_module.front_office_reconciliation = hardened_reconciliation(
     front_office_module.front_office_reconciliation,
     front_office_module.list_front_office_records,
 )
-workspace_module.init_workspace_db = hardened_workspace_initializer(
-    workspace_module.init_workspace_db
-)
 
-# Keep the existing prototype API intact while promoting the launch contracts to
-# the default development entrypoint. This lets the Flutter client migrate
-# endpoint-by-endpoint without duplicating the original service.
 app.title = "Sports Terminal Launch API"
 app.version = "1.0.0"
 app.description = (
@@ -55,20 +48,21 @@ app.description = (
     "saved sports objects, content, and platform operations."
 )
 
-# Local development remains permissive by default. Staging and public services
-# enable SPORTS_TERMINAL_ENFORCE_AUTH=true; the Flutter client already sends its
-# stored bearer token to every remote-first product repository. Rate limiting,
-# HSTS, and structured request logging can be enabled through environment flags.
+# Middleware is intentionally registered before routers are included. Production
+# environments enable SPORTS_TERMINAL_ENFORCE_AUTH=true; local development can
+# remain permissive while still exercising the same request pipeline.
 app.middleware("http")(enforce_launch_auth)
 app.middleware("http")(launch_operations_middleware)
+app.middleware("http")(enforce_launch_authorization)
 
-# Each router owns its startup database initialization through its registered
-# lifespan hooks. Including the routers is sufficient across current FastAPI
-# versions and avoids relying on the removed app.add_event_handler method.
+# The hardened front-office router is registered before the compatibility router
+# so the public HTTP boundary receives the same ID-binding and reconciliation
+# guarantees as direct backend consumers.
 app.include_router(auth_router)
 app.include_router(launch_router)
 app.include_router(workspace_router)
 app.include_router(nba_data_router)
+app.include_router(front_office_hardened_router)
 app.include_router(front_office_router)
 app.include_router(trust_safety_router)
 app.include_router(python_runtime_router)
