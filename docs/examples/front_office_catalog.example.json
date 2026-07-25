@@ -1,0 +1,116 @@
+{
+  "season": "2025-26",
+  "generated_at": "2026-07-24T00:00:00Z",
+  "source_notes": [
+    "Illustrative schema example only. Replace every record with licensed or otherwise approved source data before registration."
+  ],
+  "contracts": [
+    {
+      "id": "contract-example-player",
+      "player_id": "example-player",
+      "player_name": "Example Player",
+      "team_id": "CHI",
+      "season": "2025-26",
+      "contract_type": "standard",
+      "years": [
+        {
+          "season": "2025-26",
+          "salary": 25000000,
+          "guaranteed_amount": 25000000,
+          "likely_incentives": 0,
+          "unlikely_incentives": 0,
+          "dead_money": 0,
+          "option_type": "none",
+          "option_deadline": "",
+          "guarantee_date": "",
+          "cap_charge_override": null
+        }
+      ],
+      "no_trade_clause": false,
+      "trade_bonus_percent": 0,
+      "bird_rights": "unknown",
+      "two_way": false,
+      "source_status": "modeled",
+      "source_label": "Illustrative example",
+      "source_url": "",
+      "source_document_id": "",
+      "as_of_date": "2026-07-24",
+      "notes": "Do not treat this example as an actual contract.",
+      "metadata": {}
+    }
+  ],
+  "team_positions": [
+    {
+      "id": "position-example-chi-2025-26",
+      "team_id": "CHI",
+      "season": "2025-26",
+      "salary_cap": 154647000,
+      "luxury_tax": 187895000,
+      "first_apron": 195945000,
+      "second_apron": 207824000,
+      "active_salary": 25000000,
+      "cap_holds": 0,
+      "dead_money": 0,
+      "incomplete_roster_charges": 0,
+      "hard_cap": 0,
+      "cash_sent": 0,
+      "cash_received": 0,
+      "exceptions": [],
+      "source_status": "modeled",
+      "source_label": "Illustrative example",
+      "source_url": "",
+      "source_document_id": "",
+      "as_of_date": "2026-07-24",
+      "notes": "Do not treat this example as a complete team position.",
+      "metadata": {}
+    }
+  ],
+  "draft_assets": [
+    {
+      "id": "asset-example-chi-2029-1",
+      "current_team_id": "CHI",
+      "original_team_id": "CHI",
+      "draft_year": 2029,
+      "round": 1,
+      "asset_type": "pick",
+      "description": "Illustrative 2029 first-round pick",
+      "protections": [],
+      "swap_terms": "",
+      "conveyance_chain": [],
+      "encumbered": false,
+      "stepien_eligible": true,
+      "source_status": "modeled",
+      "source_label": "Illustrative example",
+      "source_url": "",
+      "source_document_id": "",
+      "as_of_date": "2026-07-24",
+      "notes": "Do not treat this example as actual pick ownership.",
+      "metadata": {}
+    }
+  ],
+  "ledger": [
+    {
+      "id": "ledger-example-1",
+      "organization_id": "",
+      "case_id": "",
+      "season": "2025-26",
+      "transaction_type": "trade",
+      "effective_date": "",
+      "status": "modeled",
+      "teams": ["CHI"],
+      "summary": "Illustrative transaction ledger entry.",
+      "contract_ids": ["contract-example-player"],
+      "draft_asset_ids": ["asset-example-chi-2029-1"],
+      "salary_movements": [],
+      "assumptions": ["Illustrative record only."],
+      "approvals": [],
+      "source_status": "modeled",
+      "source_label": "Illustrative example",
+      "source_url": "",
+      "source_document_id": "",
+      "as_of_date": "2026-07-24",
+      "notes": "Do not register this example as verified data.",
+      "metadata": {}
+    }
+  ]
+}
