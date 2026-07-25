@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from . import customer_ops_api as customer_ops_module
 from . import front_office_api as front_office_module
 from . import launch_api as launch_module
 from .auth_api import router as auth_router
@@ -7,6 +8,7 @@ from .auth_guard import enforce_launch_auth
 from .authorization_guard import enforce_launch_authorization
 from .completion_status_api import router as completion_status_router
 from .customer_ops_api import router as customer_ops_router
+from .customer_ops_hardening import hardened_customer_ops_initializer
 from .front_office_api import router as front_office_router
 from .front_office_hardened_routes import router as front_office_hardened_router
 from .front_office_hardening import (
@@ -28,8 +30,13 @@ from .workspace_api import router as workspace_router
 # commenter, or assignee to organization owner as a side effect. Draft assets
 # use a deterministic draft-year storage dimension instead of requiring a
 # fabricated operating season. Registry IDs remain bound to one object type and
-# every ledger team participates in reconciliation.
+# every ledger team participates in reconciliation. Customer operations can be
+# the first product domain touched in a clean deployment and still seeds the
+# base user and plan catalog it references.
 launch_module._ensure_organization = ensure_organization
+customer_ops_module.init_customer_ops_db = hardened_customer_ops_initializer(
+    customer_ops_module.init_customer_ops_db,
+)
 front_office_module._record_dimensions = record_dimensions
 front_office_module.upsert_front_office_record = hardened_upsert(
     front_office_module.upsert_front_office_record,
