@@ -5,6 +5,7 @@ from . import launch_api as launch_module
 from . import workspace_api as workspace_module
 from .auth_api import router as auth_router
 from .auth_guard import enforce_launch_auth
+from .completion_status_api import router as completion_status_router
 from .front_office_api import router as front_office_router
 from .front_office_hardening import (
     hardened_reconciliation,
@@ -71,3 +72,4 @@ app.include_router(nba_data_router)
 app.include_router(front_office_router)
 app.include_router(trust_safety_router)
 app.include_router(python_runtime_router)
+app.include_router(completion_status_router)
