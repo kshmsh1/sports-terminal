@@ -11,5 +11,6 @@ scripts = Path(__file__).parent
 for script in (
     "customer_ops_contract_test.py",
     "customer_ops_tools_contract_test.py",
+    "customer_invitation_status_contract_test.py",
 ):
     runpy.run_path(str(scripts / script), run_name="__main__")
