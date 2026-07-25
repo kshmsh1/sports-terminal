@@ -92,16 +92,17 @@ class PythonExecutionResponse(BaseModel):
 
 
 class _SafetyVisitor(ast.NodeVisitor):
-    def __init__(self) -> None:
+    def __init__(self, defined_functions: set[str]) -> None:
         self.errors: list[str] = []
-        self.defined_functions: set[str] = set()
+        self.defined_functions = defined_functions
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> Any:
         if node.name.startswith("__"):
             self.errors.append("Dunder function names are not allowed.")
-        self.defined_functions.add(node.name)
         if len(node.args.args) > 12:
-            self.errors.append("Functions may accept at most 12 positional arguments.")
+            self.errors.append(
+                "Functions may accept at most 12 positional arguments."
+            )
         self.generic_visit(node)
 
     def visit_Name(self, node: ast.Name) -> Any:
@@ -111,7 +112,10 @@ class _SafetyVisitor(ast.NodeVisitor):
 
     def visit_Call(self, node: ast.Call) -> Any:
         if not isinstance(node.func, ast.Name):
-            self.errors.append("Only direct calls to approved helpers or notebook-defined functions are allowed.")
+            self.errors.append(
+                "Only direct calls to approved helpers or notebook-defined "
+                "functions are allowed."
+            )
         else:
             name = node.func.id
             if name not in _ALLOWED_CALLS and name not in self.defined_functions:
@@ -122,7 +126,10 @@ class _SafetyVisitor(ast.NodeVisitor):
 
     def generic_visit(self, node: ast.AST) -> Any:
         if isinstance(node, _DISALLOWED_NODES):
-            self.errors.append(f"Syntax is not allowed in the notebook runtime: {type(node).__name__}")
+            self.errors.append(
+                "Syntax is not allowed in the notebook runtime: "
+                f"{type(node).__name__}"
+            )
             return None
         return super().generic_visit(node)
 
@@ -136,7 +143,12 @@ def validate_python_code(code: str) -> list[str]:
         tree = ast.parse(code, mode="exec")
     except SyntaxError as error:
         return [f"Syntax error on line {error.lineno}: {error.msg}"]
-    visitor = _SafetyVisitor()
+    defined_functions = {
+        node.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef)
+    }
+    visitor = _SafetyVisitor(defined_functions)
     visitor.visit(tree)
     return list(dict.fromkeys(visitor.errors))
 
@@ -146,35 +158,61 @@ def _resource_limiter() -> None:
         import resource
 
         resource.setrlimit(resource.RLIMIT_CPU, (4, 4))
-        resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))
-        resource.setrlimit(resource.RLIMIT_FSIZE, (1 * 1024 * 1024, 1 * 1024 * 1024))
+        resource.setrlimit(
+            resource.RLIMIT_AS,
+            (256 * 1024 * 1024, 256 * 1024 * 1024),
+        )
+        resource.setrlimit(
+            resource.RLIMIT_FSIZE,
+            (1 * 1024 * 1024, 1 * 1024 * 1024),
+        )
         resource.setrlimit(resource.RLIMIT_NOFILE, (16, 16))
         resource.setrlimit(resource.RLIMIT_NPROC, (0, 0))
     except Exception:
-        # Wall-clock timeout, isolated mode, AST validation and a temporary working
-        # directory remain active on platforms without POSIX resource controls.
+        # Wall-clock timeout, isolated mode, AST validation and a temporary
+        # working directory remain active on platforms without POSIX controls.
         return
 
 
-def execute_python_notebook(payload: PythonExecutionRequest) -> PythonExecutionResponse:
+def execute_python_notebook(
+    payload: PythonExecutionRequest,
+) -> PythonExecutionResponse:
     errors = validate_python_code(payload.code)
     if errors:
-        raise HTTPException(status_code=422, detail={"message": "Notebook code was rejected by the sandbox policy", "errors": errors})
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Notebook code was rejected by the sandbox policy",
+                "errors": errors,
+            },
+        )
 
     rows = payload.rows[:_MAX_ROWS]
     columns = payload.columns[:_MAX_COLUMNS]
     warnings: list[str] = []
     if len(payload.rows) > _MAX_ROWS:
-        warnings.append(f"Input was truncated to {_MAX_ROWS} rows for interactive execution.")
+        warnings.append(
+            f"Input was truncated to {_MAX_ROWS} rows for interactive execution."
+        )
     if len(payload.columns) > _MAX_COLUMNS:
-        warnings.append(f"Input was truncated to {_MAX_COLUMNS} columns for interactive execution.")
+        warnings.append(
+            f"Input was truncated to {_MAX_COLUMNS} columns for interactive execution."
+        )
 
-    request_bytes = json.dumps({"code": payload.code, "rows": rows, "columns": columns}, separators=(",", ":")).encode("utf-8")
+    request_bytes = json.dumps(
+        {"code": payload.code, "rows": rows, "columns": columns},
+        separators=(",", ":"),
+    ).encode("utf-8")
     if len(request_bytes) > _MAX_INPUT_BYTES:
-        raise HTTPException(status_code=413, detail="Notebook input exceeds the interactive runtime payload limit")
+        raise HTTPException(
+            status_code=413,
+            detail="Notebook input exceeds the interactive runtime payload limit",
+        )
 
     started = time.perf_counter()
-    with tempfile.TemporaryDirectory(prefix="sports-terminal-python-") as temporary_directory:
+    with tempfile.TemporaryDirectory(
+        prefix="sports-terminal-python-"
+    ) as temporary_directory:
         environment = {
             "PATH": os.environ.get("PATH", ""),
             "PYTHONIOENCODING": "utf-8",
@@ -194,7 +232,13 @@ def execute_python_notebook(payload: PythonExecutionRequest) -> PythonExecutionR
             )
         except subprocess.TimeoutExpired as error:
             duration_ms = int((time.perf_counter() - started) * 1000)
-            raise HTTPException(status_code=408, detail={"message": "Notebook execution exceeded the time limit", "duration_ms": duration_ms}) from error
+            raise HTTPException(
+                status_code=408,
+                detail={
+                    "message": "Notebook execution exceeded the time limit",
+                    "duration_ms": duration_ms,
+                },
+            ) from error
 
     duration_ms = int((time.perf_counter() - started) * 1000)
     stdout = completed.stdout[:_MAX_OUTPUT_BYTES]
@@ -203,11 +247,21 @@ def execute_python_notebook(payload: PythonExecutionRequest) -> PythonExecutionR
         warnings.append("Notebook output was truncated.")
     if completed.returncode != 0:
         detail = stderr.decode("utf-8", errors="replace").strip()
-        raise HTTPException(status_code=422, detail={"message": "Notebook execution failed", "error": detail[-8000:], "duration_ms": duration_ms})
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Notebook execution failed",
+                "error": detail[-8000:],
+                "duration_ms": duration_ms,
+            },
+        )
     try:
         response = json.loads(stdout.decode("utf-8"))
     except Exception as error:
-        raise HTTPException(status_code=500, detail="Sandbox returned an invalid response") from error
+        raise HTTPException(
+            status_code=500,
+            detail="Sandbox returned an invalid response",
+        ) from error
     return PythonExecutionResponse(
         status="completed",
         stdout=str(response.get("stdout") or "")[:_MAX_OUTPUT_BYTES],
@@ -233,11 +287,22 @@ def runtime_capabilities() -> dict[str, Any]:
         "max_rows": _MAX_ROWS,
         "max_columns": _MAX_COLUMNS,
         "max_timeout_seconds": 5,
-        "helpers": ["column", "numeric", "mean", "median", "percentile", "group_by"],
-        "result_contract": "Assign a JSON-compatible value to the variable result.",
+        "helpers": [
+            "column",
+            "numeric",
+            "mean",
+            "median",
+            "percentile",
+            "group_by",
+        ],
+        "result_contract": (
+            "Assign a JSON-compatible value to the variable result."
+        ),
     }
 
 
 @router.post("/execute", response_model=PythonExecutionResponse)
-def execute_notebook(payload: PythonExecutionRequest) -> PythonExecutionResponse:
+def execute_notebook(
+    payload: PythonExecutionRequest,
+) -> PythonExecutionResponse:
     return execute_python_notebook(payload)
