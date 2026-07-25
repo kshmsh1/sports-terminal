@@ -11,6 +11,10 @@ from fastapi.responses import JSONResponse, Response
 
 from .main import connect, now_iso
 
+_PUBLIC_PREFIXES = (
+    "/v2/auth/",
+    "/v2/launch/readiness",
+)
 _ADMIN_PREFIXES = (
     "/v2/trust/moderation/",
     "/v2/completion/",
@@ -28,13 +32,13 @@ _SELF_QUERY_KEYS = {
     "viewer_user_id",
     "user_id",
     "recipient_user_id",
+    "owner_user_id",
 }
 _SELF_BODY_KEYS = {
     "actor_user_id",
     "viewer_user_id",
-    "user_id",
-    "recipient_user_id",
     "created_by_user_id",
+    "owner_user_id",
 }
 
 
@@ -49,10 +53,7 @@ def _token(request: Request) -> str:
     return authorization.split(" ", 1)[1].strip()
 
 
-def _table_columns(
-    connection: sqlite3.Connection,
-    table: str,
-) -> set[str]:
+def _table_columns(connection: sqlite3.Connection, table: str) -> set[str]:
     return {
         str(row["name"])
         for row in connection.execute(f"PRAGMA table_info({table})").fetchall()
@@ -110,10 +111,7 @@ def _session_identity(token: str) -> dict[str, str] | None:
             if "organization_id" in user_columns and user["organization_id"]:
                 organization_id = str(user["organization_id"])
         if not organization_id and "organization_memberships" in tables:
-            membership_columns = _table_columns(
-                connection,
-                "organization_memberships",
-            )
+            membership_columns = _table_columns(connection, "organization_memberships")
             organization_column = (
                 "organization_id"
                 if "organization_id" in membership_columns
@@ -123,7 +121,8 @@ def _session_identity(token: str) -> dict[str, str] | None:
             )
             if organization_column:
                 membership = connection.execute(
-                    f"SELECT * FROM organization_memberships WHERE user_id = ? ORDER BY created_at ASC LIMIT 1",
+                    "SELECT * FROM organization_memberships "
+                    "WHERE user_id = ? ORDER BY joined_at ASC LIMIT 1",
                     (user_id,),
                 ).fetchone()
                 if membership is not None:
@@ -158,11 +157,7 @@ def _platform(role: str) -> bool:
     return role == "platform_admin"
 
 
-def _claim_mismatch(
-    payload: dict[str, Any],
-    keys: set[str],
-    user_id: str,
-) -> str:
+def _claim_mismatch(payload: dict[str, Any], keys: set[str], user_id: str) -> str:
     for key in keys:
         value = payload.get(key)
         if value is None or str(value).strip() == "":
@@ -191,11 +186,11 @@ async def enforce_launch_authorization(
 ) -> Response:
     if not _enabled() or not request.url.path.startswith("/v2/"):
         return await call_next(request)
+    if any(request.url.path.startswith(prefix) for prefix in _PUBLIC_PREFIXES):
+        return await call_next(request)
 
     identity = _session_identity(_token(request))
     if identity is None:
-        # The authentication middleware owns the primary 401 response. This is a
-        # defense-in-depth fallback if middleware order changes.
         return _error(401, "A valid Sports Terminal session is required")
     request.state.user_id = identity["user_id"]
     request.state.user_role = identity["role"]
@@ -217,7 +212,11 @@ async def enforce_launch_authorization(
             return _error(403, "Organization administrator access is required")
 
     query = {key: value for key, value in request.query_params.items()}
-    mismatch = _claim_mismatch(query, _SELF_QUERY_KEYS, user_id)
+    mismatch = "" if _platform(role) else _claim_mismatch(
+        query,
+        _SELF_QUERY_KEYS,
+        user_id,
+    )
     if mismatch:
         return _error(
             403,
@@ -225,7 +224,7 @@ async def enforce_launch_authorization(
         )
 
     path_claim = _path_claim(path)
-    if path_claim is not None and path_claim[1] != user_id:
+    if path_claim is not None and path_claim[1] != user_id and not _platform(role):
         return _error(403, "The requested user resource does not belong to this session")
 
     if method in {"POST", "PUT", "PATCH", "DELETE"}:
@@ -236,7 +235,11 @@ async def enforce_launch_authorization(
             except json.JSONDecodeError:
                 decoded = None
             if isinstance(decoded, dict):
-                mismatch = _claim_mismatch(decoded, _SELF_BODY_KEYS, user_id)
+                mismatch = "" if _platform(role) else _claim_mismatch(
+                    decoded,
+                    _SELF_BODY_KEYS,
+                    user_id,
+                )
                 if mismatch:
                     return _error(
                         403,
