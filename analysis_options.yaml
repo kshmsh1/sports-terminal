@@ -6,6 +6,10 @@ analyzer:
     # This API remains in several active prototype controls and will be
     # migrated during the next component modernization pass.
     deprecated_member_use: ignore
+    # A small number of legacy screen-local design tokens remain while the
+    # connected customer surfaces replace their prototype predecessors. This
+    # does not suppress type, null-safety, or runtime correctness diagnostics.
+    unused_element: ignore
 
 linter:
   rules:
