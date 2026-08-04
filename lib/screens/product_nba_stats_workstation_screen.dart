@@ -78,8 +78,9 @@ class _ProductNbaStatsWorkstationScreenState
     setState(() {
       try {
         final decoded = jsonDecode(favoriteRaw);
-        if (decoded is List)
+        if (decoded is List) {
           _favorites.addAll(decoded.map((item) => item.toString()));
+        }
       } catch (_) {}
       try {
         final decoded = jsonDecode(customRaw);
@@ -137,8 +138,9 @@ class _ProductNbaStatsWorkstationScreenState
     }
     if (key == LogicalKeyboardKey.keyC && _selected != null) {
       setState(() {
-        if (!_compareIds.add(_selected!.playerId))
+        if (!_compareIds.add(_selected!.playerId)) {
           _compareIds.remove(_selected!.playerId);
+        }
       });
       return KeyEventResult.handled;
     }
@@ -1699,8 +1701,9 @@ class _CustomViewDialogState extends State<_CustomViewDialog> {
                           ),
                           onChanged: (value) => setState(() {
                             if (value == true) {
-                              if (!selected.contains(metric.key))
+                              if (!selected.contains(metric.key)) {
                                 selected.add(metric.key);
+                              }
                             } else {
                               selected.remove(metric.key);
                             }

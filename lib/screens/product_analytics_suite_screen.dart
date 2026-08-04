@@ -66,8 +66,9 @@ class _ProductAnalyticsSuiteScreenState
         final teams = engine.groupByTeam(rows).keys.toList()..sort();
         if (teams.isNotEmpty) {
           if (!teams.contains(teamA)) teamA = teams.first;
-          if (!teams.contains(teamB))
+          if (!teams.contains(teamB)) {
             teamB = teams.length > 1 ? teams[1] : teams.first;
+          }
         }
 
         return Container(

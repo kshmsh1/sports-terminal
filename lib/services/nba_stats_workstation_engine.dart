@@ -544,30 +544,38 @@ class NbaStatsWorkstationEngine {
       if (query.isNotEmpty &&
           !'${row.player} ${row.team} ${row.position}'.toLowerCase().contains(
             query,
-          ))
+          )) {
         return false;
+      }
       if (filters.team != 'All' &&
-          !row.team.split(RegExp(r'[,/ ]+')).contains(filters.team))
+          !row.team.split(RegExp(r'[,/ ]+')).contains(filters.team)) {
         return false;
-      if (filters.position != 'All' && row.position != filters.position)
+      }
+      if (filters.position != 'All' && row.position != filters.position) {
         return false;
+      }
       if ((row.value('gp') ?? 0) < filters.minGames) return false;
       final minutes = row.value('min') ?? 0;
       if (minutes < filters.minMinutes) return false;
       final age = row.value('age');
-      if (filters.minAge != null && (age == null || age < filters.minAge!))
+      if (filters.minAge != null && (age == null || age < filters.minAge!)) {
         return false;
-      if (filters.maxAge != null && (age == null || age > filters.maxAge!))
+      }
+      if (filters.maxAge != null && (age == null || age > filters.maxAge!)) {
         return false;
-      if (filters.favoriteOnly && !favorites.contains(row.playerId))
+      }
+      if (filters.favoriteOnly && !favorites.contains(row.playerId)) {
         return false;
+      }
       if (filters.metricKey != null) {
         final value = row.value(filters.metricKey!);
         if (value == null) return false;
-        if (filters.metricMinimum != null && value < filters.metricMinimum!)
+        if (filters.metricMinimum != null && value < filters.metricMinimum!) {
           return false;
-        if (filters.metricMaximum != null && value > filters.metricMaximum!)
+        }
+        if (filters.metricMaximum != null && value > filters.metricMaximum!) {
           return false;
+        }
       }
       return true;
     }).toList();
@@ -856,8 +864,9 @@ class NbaStatsWorkstationEngine {
       final entries = <MapEntry<String, double>>[];
       for (final row in rows) {
         final value = row.value(metric.key);
-        if (value != null && value.isFinite)
+        if (value != null && value.isFinite) {
           entries.add(MapEntry(row.playerId, value));
+        }
       }
       entries.sort((a, b) => a.value.compareTo(b.value));
       if (entries.isEmpty) continue;
@@ -947,8 +956,9 @@ String _position(Map<String, dynamic> raw, Map<String, dynamic> profile) {
   for (final candidate in const ['PG', 'SG', 'SF', 'PF', 'C']) {
     if (normalized == candidate ||
         normalized.startsWith('$candidate-') ||
-        normalized.endsWith('-$candidate'))
+        normalized.endsWith('-$candidate')) {
       return candidate;
+    }
   }
   if (normalized.contains('GUARD')) return 'G';
   if (normalized.contains('FORWARD')) return 'F';
