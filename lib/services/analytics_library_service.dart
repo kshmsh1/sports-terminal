@@ -61,20 +61,23 @@ class AnalyticsLibraryService {
     bool pinned = false,
     int? expectedVersion,
   }) async {
+    final body = <String, dynamic>{
+      ..._scopeBody(session),
+      'asset_type': assetType,
+      'title': title,
+      'description': description,
+      'visibility': visibility,
+      'configuration': configuration,
+      'source_snapshot': sourceSnapshot,
+      'tags': tags,
+      'pinned': pinned,
+    };
+    if (expectedVersion != null) {
+      body['expected_version'] = expectedVersion;
+    }
     final response = await _transport.putJson(
       '/v2/analytics-library/assets/$id',
-      {
-        ..._scopeBody(session),
-        'asset_type': assetType,
-        'title': title,
-        'description': description,
-        'visibility': visibility,
-        'configuration': configuration,
-        'source_snapshot': sourceSnapshot,
-        'tags': tags,
-        'pinned': pinned,
-        if (expectedVersion != null) 'expected_version': expectedVersion,
-      },
+      body,
     );
     return response.succeeded ? _map(response.data) : null;
   }
