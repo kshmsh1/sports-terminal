@@ -21,8 +21,11 @@ with tempfile.TemporaryDirectory(prefix="sports-terminal-analytics-library-") as
         record_recent,
         upsert_asset,
     )
-    from app.launch_api import MembershipUpsert, create_organization, upsert_membership
-    from app.launch_api import OrganizationCreate
+    from app.launch_api import MembershipUpsert, OrganizationCreate
+    from app.launch_api import create_organization, upsert_membership
+    from app.main import init_db
+
+    init_db()
 
     owner = "analytics-owner"
     analyst = "analytics-analyst"
@@ -103,7 +106,11 @@ with tempfile.TemporaryDirectory(prefix="sports-terminal-analytics-library-") as
             asset_type="team_board",
             title="Front office team board",
             visibility="organization",
-            configuration={"teams": ["BOS", "OKC"], "x": "win_pct", "y": "margin"},
+            configuration={
+                "teams": ["BOS", "OKC"],
+                "x": "win_pct",
+                "y": "margin",
+            },
             expected_version=0,
         ),
     )
