@@ -6,75 +6,75 @@ void main() {
   const engine = NbaStatsWorkstationEngine();
 
   NbaTerminalSeedSnapshot snapshot() => NbaTerminalSeedSnapshot(
-        manifest: const {},
-        teams: const [],
-        players: const [
-          {'player_id': 'alpha', 'position': 'PG'},
-          {'player_id': 'beta', 'position': 'C'},
-        ],
-        games: const [],
-        teamRecords: const [],
-        teamGameLogs: const [],
-        playerSeasonTotals: const [
-          {
-            'player_id': 'alpha',
-            'player_label': 'Alpha Guard',
-            'team_ids': 'AAA',
-            'age': 25,
-            'games': 10,
-            'minutes': 300,
-            'points': 200,
-            'assists': 80,
-            'rebounds': 40,
-            'offensive_rebounds': 5,
-            'defensive_rebounds': 35,
-            'steals': 20,
-            'blocks': 2,
-            'turnovers': 30,
-            'personal_fouls': 18,
-            'field_goals_made': 70,
-            'field_goal_attempts': 140,
-            'three_pointers_made': 20,
-            'three_point_attempts': 50,
-            'free_throws_made': 40,
-            'free_throw_attempts': 50,
-            'plus_minus': 50,
-            'avg_bpm': 5.5,
-          },
-          {
-            'player_id': 'beta',
-            'player_label': 'Beta Center',
-            'team_ids': 'BBB',
-            'age': 29,
-            'games': 10,
-            'minutes': 250,
-            'points': 120,
-            'assists': 20,
-            'rebounds': 100,
-            'offensive_rebounds': 30,
-            'defensive_rebounds': 70,
-            'steals': 5,
-            'blocks': 25,
-            'turnovers': 20,
-            'personal_fouls': 28,
-            'field_goals_made': 50,
-            'field_goal_attempts': 90,
-            'three_pointers_made': 0,
-            'three_point_attempts': 0,
-            'free_throws_made': 20,
-            'free_throw_attempts': 40,
-            'plus_minus': 10,
-            'avg_bpm': 2.0,
-          },
-        ],
-        playerLeaders: const {},
-        playerGameHighs: const {},
-        playerGameLogsTop: const [],
-        searchIndex: const [],
-        dataDictionary: const {},
-        validationReport: const {'status': 'pass'},
-        assetManifest: const {},
-      );
+    manifest: const {},
+    teams: const [],
+    players: const [
+      {'player_id': 'alpha', 'position': 'PG'},
+      {'player_id': 'beta', 'position': 'C'},
+    ],
+    games: const [],
+    teamRecords: const [],
+    teamGameLogs: const [],
+    playerSeasonTotals: const [
+      {
+        'player_id': 'alpha',
+        'player_label': 'Alpha Guard',
+        'team_ids': 'AAA',
+        'age': 25,
+        'games': 10,
+        'minutes': 300,
+        'points': 200,
+        'assists': 80,
+        'rebounds': 40,
+        'offensive_rebounds': 5,
+        'defensive_rebounds': 35,
+        'steals': 20,
+        'blocks': 2,
+        'turnovers': 30,
+        'personal_fouls': 18,
+        'field_goals_made': 70,
+        'field_goal_attempts': 140,
+        'three_pointers_made': 20,
+        'three_point_attempts': 50,
+        'free_throws_made': 40,
+        'free_throw_attempts': 50,
+        'plus_minus': 50,
+        'avg_bpm': 5.5,
+      },
+      {
+        'player_id': 'beta',
+        'player_label': 'Beta Center',
+        'team_ids': 'BBB',
+        'age': 29,
+        'games': 10,
+        'minutes': 250,
+        'points': 120,
+        'assists': 20,
+        'rebounds': 100,
+        'offensive_rebounds': 30,
+        'defensive_rebounds': 70,
+        'steals': 5,
+        'blocks': 25,
+        'turnovers': 20,
+        'personal_fouls': 28,
+        'field_goals_made': 50,
+        'field_goal_attempts': 90,
+        'three_pointers_made': 0,
+        'three_point_attempts': 0,
+        'free_throws_made': 20,
+        'free_throw_attempts': 40,
+        'plus_minus': 10,
+        'avg_bpm': 2.0,
+      },
+    ],
+    playerLeaders: const {},
+    playerGameHighs: const {},
+    playerGameLogsTop: const [],
+    searchIndex: const [],
+    dataDictionary: const {},
+    validationReport: const {'status': 'pass'},
+    assetManifest: const {},
+  );
 
   test('builds per-game counting and derived efficiency fields', () {
     final rows = engine.buildRows(snapshot());
@@ -92,15 +92,20 @@ void main() {
   });
 
   test('supports totals, per-36, per-48 and possession bases', () {
-    final total = engine.buildRows(snapshot(), basis: NbaStatsBasis.totals)
+    final total = engine
+        .buildRows(snapshot(), basis: NbaStatsBasis.totals)
         .firstWhere((row) => row.playerId == 'alpha');
-    final per36 = engine.buildRows(snapshot(), basis: NbaStatsBasis.per36)
+    final per36 = engine
+        .buildRows(snapshot(), basis: NbaStatsBasis.per36)
         .firstWhere((row) => row.playerId == 'alpha');
-    final per48 = engine.buildRows(snapshot(), basis: NbaStatsBasis.per48)
+    final per48 = engine
+        .buildRows(snapshot(), basis: NbaStatsBasis.per48)
         .firstWhere((row) => row.playerId == 'alpha');
-    final per75 = engine.buildRows(snapshot(), basis: NbaStatsBasis.per75)
+    final per75 = engine
+        .buildRows(snapshot(), basis: NbaStatsBasis.per75)
         .firstWhere((row) => row.playerId == 'alpha');
-    final per100 = engine.buildRows(snapshot(), basis: NbaStatsBasis.per100)
+    final per100 = engine
+        .buildRows(snapshot(), basis: NbaStatsBasis.per100)
         .firstWhere((row) => row.playerId == 'alpha');
 
     expect(total.value('pts'), 200);

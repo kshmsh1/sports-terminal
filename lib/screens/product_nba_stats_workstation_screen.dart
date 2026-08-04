@@ -31,7 +31,8 @@ class ProductNbaStatsWorkstationScreen extends StatefulWidget {
 class _ProductNbaStatsWorkstationScreenState
     extends State<ProductNbaStatsWorkstationScreen> {
   static const _favoritesKey = 'sports_terminal.stats_workstation.favorites.v1';
-  static const _customViewsKey = 'sports_terminal.stats_workstation.custom_views.v1';
+  static const _customViewsKey =
+      'sports_terminal.stats_workstation.custom_views.v1';
   static const _viewKey = 'sports_terminal.stats_workstation.view.v1';
 
   final ProductLocalStore _store = const ProductLocalStore();
@@ -77,7 +78,8 @@ class _ProductNbaStatsWorkstationScreenState
     setState(() {
       try {
         final decoded = jsonDecode(favoriteRaw);
-        if (decoded is List) _favorites.addAll(decoded.map((item) => item.toString()));
+        if (decoded is List)
+          _favorites.addAll(decoded.map((item) => item.toString()));
       } catch (_) {}
       try {
         final decoded = jsonDecode(customRaw);
@@ -92,7 +94,8 @@ class _ProductNbaStatsWorkstationScreenState
         }
       } catch (_) {}
       if (savedView.isNotEmpty &&
-          (nbaDefaultViews.containsKey(savedView) || _customViews.containsKey(savedView))) {
+          (nbaDefaultViews.containsKey(savedView) ||
+              _customViews.containsKey(savedView))) {
         _activeView = savedView;
       }
     });
@@ -113,7 +116,9 @@ class _ProductNbaStatsWorkstationScreenState
   }
 
   List<String> get _metricKeys =>
-      _customViews[_activeView] ?? nbaDefaultViews[_activeView] ?? nbaDefaultViews['Overview']!;
+      _customViews[_activeView] ??
+      nbaDefaultViews[_activeView] ??
+      nbaDefaultViews['Overview']!;
 
   KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
@@ -132,7 +137,8 @@ class _ProductNbaStatsWorkstationScreenState
     }
     if (key == LogicalKeyboardKey.keyC && _selected != null) {
       setState(() {
-        if (!_compareIds.add(_selected!.playerId)) _compareIds.remove(_selected!.playerId);
+        if (!_compareIds.add(_selected!.playerId))
+          _compareIds.remove(_selected!.playerId);
       });
       return KeyEventResult.handled;
     }
@@ -171,10 +177,8 @@ class _ProductNbaStatsWorkstationScreenState
   Future<void> _openFilters() async {
     final result = await showDialog<NbaStatsFilters>(
       context: context,
-      builder: (context) => _FilterDialog(
-        filters: _filters,
-        metrics: nbaStatMetrics,
-      ),
+      builder: (context) =>
+          _FilterDialog(filters: _filters, metrics: nbaStatMetrics),
     );
     if (result == null || !mounted) return;
     setState(() {
@@ -184,9 +188,9 @@ class _ProductNbaStatsWorkstationScreenState
   }
 
   Future<void> _openGlossary() => showDialog<void>(
-        context: context,
-        builder: (context) => const _GlossaryDialog(),
-      );
+    context: context,
+    builder: (context) => const _GlossaryDialog(),
+  );
 
   Future<void> _openCustomViewEditor() async {
     final existing = _customViews[_activeView] ?? _metricKeys;
@@ -209,12 +213,18 @@ class _ProductNbaStatsWorkstationScreenState
   Future<void> _openComparison() async {
     if (_compareIds.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select at least two players to compare.')),
+        const SnackBar(
+          content: Text('Select at least two players to compare.'),
+        ),
       );
       return;
     }
     final snapshot = await _seedFuture;
-    final rows = _engine.buildRows(snapshot, basis: _basis, seasonType: _seasonType);
+    final rows = _engine.buildRows(
+      snapshot,
+      basis: _basis,
+      seasonType: _seasonType,
+    );
     if (!mounted) return;
     await showDialog<void>(
       context: context,
@@ -226,7 +236,10 @@ class _ProductNbaStatsWorkstationScreenState
     );
   }
 
-  Future<void> _openChartStudio(List<NbaStatsRow> rows, NbaTerminalSeedSnapshot snapshot) {
+  Future<void> _openChartStudio(
+    List<NbaStatsRow> rows,
+    NbaTerminalSeedSnapshot snapshot,
+  ) {
     return showDialog<void>(
       context: context,
       builder: (context) => _ChartStudio(
@@ -239,15 +252,23 @@ class _ProductNbaStatsWorkstationScreenState
   }
 
   Future<void> _copyRows(List<NbaStatsRow> rows) async {
-    final headers = ['Player', 'Team', 'Position', ..._metricKeys.map((key) => _engine.metric(key).shortLabel)];
+    final headers = [
+      'Player',
+      'Team',
+      'Position',
+      ..._metricKeys.map((key) => _engine.metric(key).shortLabel),
+    ];
     final output = <String>[headers.join('\t')];
     for (final row in rows) {
-      output.add([
-        row.player,
-        row.team,
-        row.position,
-        for (final key in _metricKeys) _engine.formatValue(key, row.value(key)),
-      ].join('\t'));
+      output.add(
+        [
+          row.player,
+          row.team,
+          row.position,
+          for (final key in _metricKeys)
+            _engine.formatValue(key, row.value(key)),
+        ].join('\t'),
+      );
     }
     await Clipboard.setData(ClipboardData(text: output.join('\n')));
     if (!mounted) return;
@@ -266,15 +287,27 @@ class _ProductNbaStatsWorkstationScreenState
         future: _seedFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const _DarkSurface(child: Text('Loading Stats Workstation…', style: TextStyle(color: _muted)));
+            return const _DarkSurface(
+              child: Text(
+                'Loading Stats Workstation…',
+                style: TextStyle(color: _muted),
+              ),
+            );
           }
           if (snapshot.hasError || snapshot.data == null) {
             return _DarkSurface(
-              child: Text('Stats unavailable: ${snapshot.error}', style: const TextStyle(color: _red)),
+              child: Text(
+                'Stats unavailable: ${snapshot.error}',
+                style: const TextStyle(color: _red),
+              ),
             );
           }
           final data = snapshot.data!;
-          var rows = _engine.buildRows(data, basis: _basis, seasonType: _seasonType);
+          var rows = _engine.buildRows(
+            data,
+            basis: _basis,
+            seasonType: _seasonType,
+          );
           rows = _engine.filterRows(
             rows,
             _filters.copyWith(search: _searchController.text),
@@ -285,11 +318,17 @@ class _ProductNbaStatsWorkstationScreenState
           final safePage = math.min(_page, totalPages - 1);
           final start = safePage * _pageSize;
           final end = math.min(rows.length, start + _pageSize);
-          final pageRows = start < rows.length ? rows.sublist(start, end) : <NbaStatsRow>[];
+          final pageRows = start < rows.length
+              ? rows.sublist(start, end)
+              : <NbaStatsRow>[];
           _selected ??= pageRows.isEmpty ? null : pageRows.first;
           final teams = <String>{'All'};
           for (final row in rows) {
-            teams.addAll(row.team.split(RegExp(r'[,/ ]+')).where((team) => team.isNotEmpty && team != '—'));
+            teams.addAll(
+              row.team
+                  .split(RegExp(r'[,/ ]+'))
+                  .where((team) => team.isNotEmpty && team != '—'),
+            );
           }
 
           return Container(
@@ -343,11 +382,15 @@ class _ProductNbaStatsWorkstationScreenState
                   onChart: () => _openChartStudio(rows, data),
                   onCopy: () => _copyRows(rows),
                   onFavoriteOnly: () => setState(() {
-                    _filters = _filters.copyWith(favoriteOnly: !_filters.favoriteOnly);
+                    _filters = _filters.copyWith(
+                      favoriteOnly: !_filters.favoriteOnly,
+                    );
                     _page = 0;
                   }),
-                  onDensityDown: () => setState(() => _density = math.max(.75, _density - .1)),
-                  onDensityUp: () => setState(() => _density = math.min(1.35, _density + .1)),
+                  onDensityDown: () =>
+                      setState(() => _density = math.max(.75, _density - .1)),
+                  onDensityUp: () =>
+                      setState(() => _density = math.min(1.35, _density + .1)),
                 ),
                 const SizedBox(height: 8),
                 LayoutBuilder(
@@ -382,10 +425,18 @@ class _ProductNbaStatsWorkstationScreenState
                       row: _selected,
                       metricKeys: _metricKeys,
                       engine: _engine,
-                      inComparison: _selected != null && _compareIds.contains(_selected!.playerId),
-                      favorite: _selected != null && _favorites.contains(_selected!.playerId),
-                      onCompare: _selected == null ? null : () => _toggleCompare(_selected!),
-                      onFavorite: _selected == null ? null : () => _toggleFavorite(_selected!),
+                      inComparison:
+                          _selected != null &&
+                          _compareIds.contains(_selected!.playerId),
+                      favorite:
+                          _selected != null &&
+                          _favorites.contains(_selected!.playerId),
+                      onCompare: _selected == null
+                          ? null
+                          : () => _toggleCompare(_selected!),
+                      onFavorite: _selected == null
+                          ? null
+                          : () => _toggleFavorite(_selected!),
                     );
                     if (wide) {
                       return SizedBox(
@@ -417,13 +468,19 @@ class _ProductNbaStatsWorkstationScreenState
                   page: safePage,
                   totalPages: totalPages,
                   pageSize: _pageSize,
-                  estimatedPossessions: pageRows.any((row) => row.possessionsEstimated),
+                  estimatedPossessions: pageRows.any(
+                    (row) => row.possessionsEstimated,
+                  ),
                   onPageSize: (value) => setState(() {
                     _pageSize = value;
                     _page = 0;
                   }),
-                  onPrevious: safePage > 0 ? () => setState(() => _page = safePage - 1) : null,
-                  onNext: safePage + 1 < totalPages ? () => setState(() => _page = safePage + 1) : null,
+                  onPrevious: safePage > 0
+                      ? () => setState(() => _page = safePage - 1)
+                      : null,
+                  onNext: safePage + 1 < totalPages
+                      ? () => setState(() => _page = safePage + 1)
+                      : null,
                 ),
               ],
             ),
@@ -457,35 +514,35 @@ class _PrimaryToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _ToolbarSurface(
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            const _YearControl(),
-            _Segmented<NbaStatsSeasonType>(
-              value: seasonType,
-              options: NbaStatsSeasonType.values,
-              label: (value) => value.label,
-              onChanged: onSeason,
-            ),
-            _CompactDrop(
-              value: team,
-              values: teams,
-              width: 130,
-              hint: 'Select team',
-              onChanged: onTeam,
-            ),
-            for (final item in const ['All', 'PG', 'SG', 'SF', 'PF', 'C'])
-              _ToolbarChip(
-                label: item == 'All' ? 'ALL POS' : item,
-                selected: position == item,
-                onTap: () => onPosition(item),
-              ),
-            const _ToolbarChip(label: '2025–26 DATA', selected: true),
-          ],
+    child: Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        const _YearControl(),
+        _Segmented<NbaStatsSeasonType>(
+          value: seasonType,
+          options: NbaStatsSeasonType.values,
+          label: (value) => value.label,
+          onChanged: onSeason,
         ),
-      );
+        _CompactDrop(
+          value: team,
+          values: teams,
+          width: 130,
+          hint: 'Select team',
+          onChanged: onTeam,
+        ),
+        for (final item in const ['All', 'PG', 'SG', 'SF', 'PF', 'C'])
+          _ToolbarChip(
+            label: item == 'All' ? 'ALL POS' : item,
+            selected: position == item,
+            onTap: () => onPosition(item),
+          ),
+        const _ToolbarChip(label: '2025–26 DATA', selected: true),
+      ],
+    ),
+  );
 }
 
 class _ViewTabs extends StatelessWidget {
@@ -503,29 +560,29 @@ class _ViewTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _ToolbarSurface(
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              for (final item in [...nbaDefaultViews.keys, ...customViews])
-                Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: _ToolbarChip(
-                    label: item,
-                    selected: active == item,
-                    onTap: () => onChanged(item),
-                  ),
-                ),
-              const SizedBox(width: 4),
-              IconButton(
-                tooltip: 'Create or edit a custom view',
-                onPressed: onEdit,
-                icon: const Icon(Icons.add_box_outlined, color: _yellow, size: 20),
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final item in [...nbaDefaultViews.keys, ...customViews])
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: _ToolbarChip(
+                label: item,
+                selected: active == item,
+                onTap: () => onChanged(item),
               ),
-            ],
+            ),
+          const SizedBox(width: 4),
+          IconButton(
+            tooltip: 'Create or edit a custom view',
+            onPressed: onEdit,
+            icon: const Icon(Icons.add_box_outlined, color: _yellow, size: 20),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }
 
 class _ActionToolbar extends StatelessWidget {
@@ -567,49 +624,99 @@ class _ActionToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _ToolbarSurface(
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            const Text('SPORTS TERMINAL', style: TextStyle(color: _yellow, fontWeight: FontWeight.w900, letterSpacing: -.4)),
-            _Segmented<NbaStatsBasis>(
-              value: basis,
-              options: NbaStatsBasis.values,
-              label: (value) => value.label,
-              onChanged: onBasis,
-              compact: true,
-            ),
-            SizedBox(
-              width: 190,
-              height: 38,
-              child: TextField(
-                controller: controller,
-                onChanged: onSearch,
-                style: const TextStyle(color: _text, fontSize: 12),
-                decoration: InputDecoration(
-                  hintText: 'Search players…',
-                  hintStyle: const TextStyle(color: _muted),
-                  prefixIcon: const Icon(Icons.search, color: _muted, size: 18),
-                  filled: true,
-                  fillColor: _bg,
-                  contentPadding: EdgeInsets.zero,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: BorderSide.none),
-                ),
+    child: Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        const Text(
+          'SPORTS TERMINAL',
+          style: TextStyle(
+            color: _yellow,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -.4,
+          ),
+        ),
+        _Segmented<NbaStatsBasis>(
+          value: basis,
+          options: NbaStatsBasis.values,
+          label: (value) => value.label,
+          onChanged: onBasis,
+          compact: true,
+        ),
+        SizedBox(
+          width: 190,
+          height: 38,
+          child: TextField(
+            controller: controller,
+            onChanged: onSearch,
+            style: const TextStyle(color: _text, fontSize: 12),
+            decoration: InputDecoration(
+              hintText: 'Search players…',
+              hintStyle: const TextStyle(color: _muted),
+              prefixIcon: const Icon(Icons.search, color: _muted, size: 18),
+              filled: true,
+              fillColor: _bg,
+              contentPadding: EdgeInsets.zero,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(7),
+                borderSide: BorderSide.none,
               ),
             ),
-            _IconAction(icon: Icons.scatter_plot_rounded, tooltip: 'Chart studio', onTap: onChart),
-            _IconAction(icon: Icons.compare_arrows_rounded, tooltip: 'Compare selected players ($compareCount)', onTap: onCompare, badge: compareCount),
-            _IconAction(icon: favoriteOnly ? Icons.star_rounded : Icons.star_border_rounded, tooltip: 'Favorites only', onTap: onFavoriteOnly, active: favoriteOnly),
-            _IconAction(icon: Icons.filter_alt_outlined, tooltip: 'Filters (F)', onTap: onFilters),
-            _IconAction(icon: Icons.menu_book_outlined, tooltip: 'Stats glossary (G)', onTap: onGlossary),
-            _IconAction(icon: Icons.copy_all_outlined, tooltip: 'Copy all filtered rows', onTap: onCopy),
-            _CompactDrop(value: identityMode, values: const ['Initials', 'None'], width: 105, hint: 'Identity', onChanged: onIdentity),
-            _IconAction(icon: Icons.text_decrease, tooltip: 'Smaller cells (W)', onTap: onDensityDown),
-            _IconAction(icon: Icons.text_increase, tooltip: 'Larger cells (E)', onTap: onDensityUp),
-          ],
+          ),
         ),
-      );
+        _IconAction(
+          icon: Icons.scatter_plot_rounded,
+          tooltip: 'Chart studio',
+          onTap: onChart,
+        ),
+        _IconAction(
+          icon: Icons.compare_arrows_rounded,
+          tooltip: 'Compare selected players ($compareCount)',
+          onTap: onCompare,
+          badge: compareCount,
+        ),
+        _IconAction(
+          icon: favoriteOnly ? Icons.star_rounded : Icons.star_border_rounded,
+          tooltip: 'Favorites only',
+          onTap: onFavoriteOnly,
+          active: favoriteOnly,
+        ),
+        _IconAction(
+          icon: Icons.filter_alt_outlined,
+          tooltip: 'Filters (F)',
+          onTap: onFilters,
+        ),
+        _IconAction(
+          icon: Icons.menu_book_outlined,
+          tooltip: 'Stats glossary (G)',
+          onTap: onGlossary,
+        ),
+        _IconAction(
+          icon: Icons.copy_all_outlined,
+          tooltip: 'Copy all filtered rows',
+          onTap: onCopy,
+        ),
+        _CompactDrop(
+          value: identityMode,
+          values: const ['Initials', 'None'],
+          width: 105,
+          hint: 'Identity',
+          onChanged: onIdentity,
+        ),
+        _IconAction(
+          icon: Icons.text_decrease,
+          tooltip: 'Smaller cells (W)',
+          onTap: onDensityDown,
+        ),
+        _IconAction(
+          icon: Icons.text_increase,
+          tooltip: 'Larger cells (E)',
+          onTap: onDensityUp,
+        ),
+      ],
+    ),
+  );
 }
 
 class _StatsTable extends StatelessWidget {
@@ -651,10 +758,19 @@ class _StatsTable extends StatelessWidget {
     final metricWidth = 82.0 * density;
     final rightWidth = metricWidth * metricKeys.length;
     return Container(
-      decoration: BoxDecoration(color: _panel, border: Border.all(color: _line), borderRadius: BorderRadius.circular(9)),
+      decoration: BoxDecoration(
+        color: _panel,
+        border: Border.all(color: _line),
+        borderRadius: BorderRadius.circular(9),
+      ),
       clipBehavior: Clip.antiAlias,
       child: rows.isEmpty
-          ? const Center(child: Text('No players match the current season, position and filters.', style: TextStyle(color: _muted)))
+          ? const Center(
+              child: Text(
+                'No players match the current season, position and filters.',
+                style: TextStyle(color: _muted),
+              ),
+            )
           : SingleChildScrollView(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -723,17 +839,37 @@ class _IdentityHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        height: height,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: const BoxDecoration(color: _panel2, border: Border(bottom: BorderSide(color: _line))),
-        child: const Row(
-          children: [
-            SizedBox(width: 28),
-            Expanded(child: Text('PLAYER', style: TextStyle(color: _muted, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: .8))),
-            Text('TEAM · POS', style: TextStyle(color: _muted, fontSize: 9, fontWeight: FontWeight.w800)),
-          ],
+    height: height,
+    padding: const EdgeInsets.symmetric(horizontal: 10),
+    decoration: const BoxDecoration(
+      color: _panel2,
+      border: Border(bottom: BorderSide(color: _line)),
+    ),
+    child: const Row(
+      children: [
+        SizedBox(width: 28),
+        Expanded(
+          child: Text(
+            'PLAYER',
+            style: TextStyle(
+              color: _muted,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: .8,
+            ),
+          ),
         ),
-      );
+        Text(
+          'TEAM · POS',
+          style: TextStyle(
+            color: _muted,
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _IdentityCell extends StatelessWidget {
@@ -761,63 +897,94 @@ class _IdentityCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MouseRegion(
-        onEnter: (_) => onTap(),
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            height: height,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              color: selected ? const Color(0xFF2B3549) : _panel,
-              border: const Border(bottom: BorderSide(color: _line, width: .6)),
-            ),
-            child: Row(
-              children: [
-                InkWell(
-                  onTap: onCompare,
-                  child: Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: comparing ? _yellow : const Color(0xFF607089)),
-                      color: comparing ? const Color(0x33FFCB45) : Colors.transparent,
-                    ),
-                    child: comparing ? const Icon(Icons.check, size: 12, color: _yellow) : null,
-                  ),
-                ),
-                const SizedBox(width: 7),
-                if (identityMode == 'Initials') ...[
-                  CircleAvatar(
-                    radius: math.min(17, height * .3),
-                    backgroundColor: const Color(0xFF33425B),
-                    child: Text(_initials(row.player), style: const TextStyle(color: _text, fontSize: 9, fontWeight: FontWeight.w900)),
-                  ),
-                  const SizedBox(width: 7),
-                ],
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(row.player, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _text, fontSize: 12, fontWeight: FontWeight.w900)),
-                      const SizedBox(height: 2),
-                      Text('${row.team} · ${row.position}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _muted, fontSize: 9)),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints.tightFor(width: 24, height: 24),
-                  tooltip: favorite ? 'Remove favorite' : 'Favorite',
-                  onPressed: onFavorite,
-                  icon: Icon(favorite ? Icons.star_rounded : Icons.star_border_rounded, color: favorite ? _yellow : _muted, size: 15),
-                ),
-              ],
-            ),
-          ),
+    onEnter: (_) => onTap(),
+    child: InkWell(
+      onTap: onTap,
+      child: Container(
+        height: height,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF2B3549) : _panel,
+          border: const Border(bottom: BorderSide(color: _line, width: .6)),
         ),
-      );
+        child: Row(
+          children: [
+            InkWell(
+              onTap: onCompare,
+              child: Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: comparing ? _yellow : const Color(0xFF607089),
+                  ),
+                  color: comparing
+                      ? const Color(0x33FFCB45)
+                      : Colors.transparent,
+                ),
+                child: comparing
+                    ? const Icon(Icons.check, size: 12, color: _yellow)
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 7),
+            if (identityMode == 'Initials') ...[
+              CircleAvatar(
+                radius: math.min(17, height * .3),
+                backgroundColor: const Color(0xFF33425B),
+                child: Text(
+                  _initials(row.player),
+                  style: const TextStyle(
+                    color: _text,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 7),
+            ],
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    row.player,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _text,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${row.team} · ${row.position}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: _muted, fontSize: 9),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 24, height: 24),
+              tooltip: favorite ? 'Remove favorite' : 'Favorite',
+              onPressed: onFavorite,
+              icon: Icon(
+                favorite ? Icons.star_rounded : Icons.star_border_rounded,
+                color: favorite ? _yellow : _muted,
+                size: 15,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _MetricsHeader extends StatelessWidget {
@@ -841,36 +1008,68 @@ class _MetricsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        height: height,
-        decoration: const BoxDecoration(color: _panel2, border: Border(bottom: BorderSide(color: _line))),
-        child: Row(
-          children: [
-            for (final key in keys)
-              InkWell(
-                onTap: () => onSort(key),
-                child: Container(
-                  width: width,
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                  decoration: const BoxDecoration(border: Border(right: BorderSide(color: _line, width: .5))),
-                  child: Column(
+    height: height,
+    decoration: const BoxDecoration(
+      color: _panel2,
+      border: Border(bottom: BorderSide(color: _line)),
+    ),
+    child: Row(
+      children: [
+        for (final key in keys)
+          InkWell(
+            onTap: () => onSort(key),
+            child: Container(
+              width: width,
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              decoration: const BoxDecoration(
+                border: Border(right: BorderSide(color: _line, width: .5)),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    engine.metric(key).group.toUpperCase(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: _muted,
+                      fontSize: 7,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .4,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(engine.metric(key).group.toUpperCase(), textAlign: TextAlign.center, style: const TextStyle(color: _muted, fontSize: 7, fontWeight: FontWeight.w900, letterSpacing: .4)),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Flexible(child: Text(engine.metric(key).shortLabel, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis, style: TextStyle(color: sortKey == key ? _yellow : _text, fontSize: 10, fontWeight: FontWeight.w900))),
-                          if (sortKey == key) Icon(descending ? Icons.arrow_drop_down : Icons.arrow_drop_up, color: _yellow, size: 14),
-                        ],
+                      Flexible(
+                        child: Text(
+                          engine.metric(key).shortLabel,
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: sortKey == key ? _yellow : _text,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ),
+                      if (sortKey == key)
+                        Icon(
+                          descending
+                              ? Icons.arrow_drop_down
+                              : Icons.arrow_drop_up,
+                          color: _yellow,
+                          size: 14,
+                        ),
                     ],
                   ),
-                ),
+                ],
               ),
-          ],
-        ),
-      );
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 class _MetricsRow extends StatelessWidget {
@@ -894,34 +1093,41 @@ class _MetricsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        child: Container(
-          height: height,
-          color: selected ? const Color(0xFF2B3549) : _panel,
-          child: Row(
-            children: [
-              for (final key in keys)
-                Container(
-                  width: width,
-                  decoration: const BoxDecoration(
-                    border: Border(
-                      right: BorderSide(color: _line, width: .5),
-                      bottom: BorderSide(color: _line, width: .6),
+    onTap: onTap,
+    child: Container(
+      height: height,
+      color: selected ? const Color(0xFF2B3549) : _panel,
+      child: Row(
+        children: [
+          for (final key in keys)
+            Container(
+              width: width,
+              decoration: const BoxDecoration(
+                border: Border(
+                  right: BorderSide(color: _line, width: .5),
+                  bottom: BorderSide(color: _line, width: .6),
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    engine.formatValue(key, row.value(key)),
+                    style: const TextStyle(
+                      color: _text,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(engine.formatValue(key, row.value(key)), style: const TextStyle(color: _text, fontSize: 12, fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 2),
-                      _PercentileMark(value: row.percentiles[key]),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-      );
+                  const SizedBox(height: 2),
+                  _PercentileMark(value: row.percentiles[key]),
+                ],
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _PlayerInspector extends StatelessWidget {
@@ -947,7 +1153,13 @@ class _PlayerInspector extends StatelessWidget {
   Widget build(BuildContext context) {
     if (row == null) {
       return const _DarkSurface(
-        child: Center(child: Text('Hover or select a player to inspect every visible metric.', textAlign: TextAlign.center, style: TextStyle(color: _muted))),
+        child: Center(
+          child: Text(
+            'Hover or select a player to inspect every visible metric.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: _muted),
+          ),
+        ),
       );
     }
     return _DarkSurface(
@@ -956,18 +1168,53 @@ class _PlayerInspector extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(14),
-            decoration: const BoxDecoration(color: _panel2, border: Border(bottom: BorderSide(color: _line))),
+            decoration: const BoxDecoration(
+              color: _panel2,
+              border: Border(bottom: BorderSide(color: _line)),
+            ),
             child: Row(
               children: [
-                CircleAvatar(radius: 23, backgroundColor: const Color(0xFF394965), child: Text(_initials(row!.player), style: const TextStyle(color: _text, fontWeight: FontWeight.w900))),
+                CircleAvatar(
+                  radius: 23,
+                  backgroundColor: const Color(0xFF394965),
+                  child: Text(
+                    _initials(row!.player),
+                    style: const TextStyle(
+                      color: _text,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(row!.player, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _text, fontSize: 15, fontWeight: FontWeight.w900)),
-                    Text('${row!.team} · ${row!.position}', style: const TextStyle(color: _muted, fontSize: 10)),
-                  ]),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        row!.player,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _text,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      Text(
+                        '${row!.team} · ${row!.position}',
+                        style: const TextStyle(color: _muted, fontSize: 10),
+                      ),
+                    ],
+                  ),
                 ),
-                IconButton(onPressed: onFavorite, icon: Icon(favorite ? Icons.star : Icons.star_border, color: favorite ? _yellow : _muted, size: 18)),
+                IconButton(
+                  onPressed: onFavorite,
+                  icon: Icon(
+                    favorite ? Icons.star : Icons.star_border,
+                    color: favorite ? _yellow : _muted,
+                    size: 18,
+                  ),
+                ),
               ],
             ),
           ),
@@ -978,9 +1225,15 @@ class _PlayerInspector extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: onCompare,
-                    icon: Icon(inComparison ? Icons.check : Icons.compare_arrows, size: 16),
+                    icon: Icon(
+                      inComparison ? Icons.check : Icons.compare_arrows,
+                      size: 16,
+                    ),
                     label: Text(inComparison ? 'Selected' : 'Compare'),
-                    style: OutlinedButton.styleFrom(foregroundColor: _yellow, side: const BorderSide(color: _line)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _yellow,
+                      side: const BorderSide(color: _line),
+                    ),
                   ),
                 ),
               ],
@@ -1000,7 +1253,14 @@ class _PlayerInspector extends StatelessWidget {
                   if (row!.possessionsEstimated)
                     const Padding(
                       padding: EdgeInsets.all(8),
-                      child: Text('Possession-based fields use the displayed transparent estimate where direct possessions are absent.', style: TextStyle(color: _yellow, fontSize: 9, height: 1.35)),
+                      child: Text(
+                        'Possession-based fields use the displayed transparent estimate where direct possessions are absent.',
+                        style: TextStyle(
+                          color: _yellow,
+                          fontSize: 9,
+                          height: 1.35,
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -1013,25 +1273,49 @@ class _PlayerInspector extends StatelessWidget {
 }
 
 class _InspectorMetric extends StatelessWidget {
-  const _InspectorMetric({required this.metric, required this.value, required this.percentile});
+  const _InspectorMetric({
+    required this.metric,
+    required this.value,
+    required this.percentile,
+  });
   final NbaStatMetric metric;
   final String value;
   final double? percentile;
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
-        decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(7), border: Border.all(color: _line)),
-        child: Row(
-          children: [
-            Expanded(child: Text(metric.shortLabel, style: const TextStyle(color: _muted, fontSize: 10, fontWeight: FontWeight.w800))),
-            Text(value, style: const TextStyle(color: _text, fontSize: 12, fontWeight: FontWeight.w900)),
-            const SizedBox(width: 7),
-            _PercentilePill(value: percentile),
-          ],
+    margin: const EdgeInsets.only(bottom: 4),
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+    decoration: BoxDecoration(
+      color: _bg,
+      borderRadius: BorderRadius.circular(7),
+      border: Border.all(color: _line),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            metric.shortLabel,
+            style: const TextStyle(
+              color: _muted,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ),
-      );
+        Text(
+          value,
+          style: const TextStyle(
+            color: _text,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(width: 7),
+        _PercentilePill(value: percentile),
+      ],
+    ),
+  );
 }
 
 class _FooterBar extends StatelessWidget {
@@ -1061,23 +1345,63 @@ class _FooterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _ToolbarSurface(
-        child: Row(
-          children: [
-            Container(width: 7, height: 7, decoration: const BoxDecoration(color: _yellow, shape: BoxShape.circle)),
-            const SizedBox(width: 8),
-            Text('$start–$end OF $total RECORDS', style: const TextStyle(color: _muted, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: .5)),
-            if (estimatedPossessions) ...[
-              const SizedBox(width: 12),
-              const Flexible(child: Text('* possession values may use transparent estimates', overflow: TextOverflow.ellipsis, style: TextStyle(color: _yellow, fontSize: 9))),
-            ],
-            const Spacer(),
-            _CompactDrop<int>(value: pageSize, values: const [25, 50, 100, 250], width: 76, hint: 'Rows', onChanged: onPageSize),
-            IconButton(onPressed: onPrevious, icon: const Icon(Icons.chevron_left, color: _text)),
-            Text('${page + 1}/$totalPages', style: const TextStyle(color: _text, fontSize: 10, fontWeight: FontWeight.w800)),
-            IconButton(onPressed: onNext, icon: const Icon(Icons.chevron_right, color: _text)),
-          ],
+    child: Row(
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: const BoxDecoration(
+            color: _yellow,
+            shape: BoxShape.circle,
+          ),
         ),
-      );
+        const SizedBox(width: 8),
+        Text(
+          '$start–$end OF $total RECORDS',
+          style: const TextStyle(
+            color: _muted,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: .5,
+          ),
+        ),
+        if (estimatedPossessions) ...[
+          const SizedBox(width: 12),
+          const Flexible(
+            child: Text(
+              '* possession values may use transparent estimates',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: _yellow, fontSize: 9),
+            ),
+          ),
+        ],
+        const Spacer(),
+        _CompactDrop<int>(
+          value: pageSize,
+          values: const [25, 50, 100, 250],
+          width: 76,
+          hint: 'Rows',
+          onChanged: onPageSize,
+        ),
+        IconButton(
+          onPressed: onPrevious,
+          icon: const Icon(Icons.chevron_left, color: _text),
+        ),
+        Text(
+          '${page + 1}/$totalPages',
+          style: const TextStyle(
+            color: _text,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        IconButton(
+          onPressed: onNext,
+          icon: const Icon(Icons.chevron_right, color: _text),
+        ),
+      ],
+    ),
+  );
 }
 
 class _FilterDialog extends StatefulWidget {
@@ -1101,18 +1425,37 @@ class _FilterDialogState extends State<_FilterDialog> {
   @override
   void initState() {
     super.initState();
-    minGames = TextEditingController(text: widget.filters.minGames.toStringAsFixed(0));
-    minMinutes = TextEditingController(text: widget.filters.minMinutes.toStringAsFixed(0));
-    minAge = TextEditingController(text: widget.filters.minAge?.toString() ?? '');
-    maxAge = TextEditingController(text: widget.filters.maxAge?.toString() ?? '');
-    metricMin = TextEditingController(text: widget.filters.metricMinimum?.toString() ?? '');
-    metricMax = TextEditingController(text: widget.filters.metricMaximum?.toString() ?? '');
+    minGames = TextEditingController(
+      text: widget.filters.minGames.toStringAsFixed(0),
+    );
+    minMinutes = TextEditingController(
+      text: widget.filters.minMinutes.toStringAsFixed(0),
+    );
+    minAge = TextEditingController(
+      text: widget.filters.minAge?.toString() ?? '',
+    );
+    maxAge = TextEditingController(
+      text: widget.filters.maxAge?.toString() ?? '',
+    );
+    metricMin = TextEditingController(
+      text: widget.filters.metricMinimum?.toString() ?? '',
+    );
+    metricMax = TextEditingController(
+      text: widget.filters.metricMaximum?.toString() ?? '',
+    );
     metricKey = widget.filters.metricKey;
   }
 
   @override
   void dispose() {
-    for (final controller in [minGames, minMinutes, minAge, maxAge, metricMin, metricMax]) {
+    for (final controller in [
+      minGames,
+      minMinutes,
+      minAge,
+      maxAge,
+      metricMin,
+      metricMax,
+    ]) {
       controller.dispose();
     }
     super.dispose();
@@ -1120,55 +1463,104 @@ class _FilterDialogState extends State<_FilterDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        backgroundColor: _panel,
-        title: const Text('Inline filters', style: TextStyle(color: _text)),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
+    backgroundColor: _panel,
+    title: const Text('Inline filters', style: TextStyle(color: _text)),
+    content: SizedBox(
+      width: 520,
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            Row(
               children: [
-                Row(children: [Expanded(child: _NumberField(label: 'Minimum games', controller: minGames)), const SizedBox(width: 10), Expanded(child: _NumberField(label: 'Minimum minutes', controller: minMinutes))]),
-                const SizedBox(height: 10),
-                Row(children: [Expanded(child: _NumberField(label: 'Minimum age', controller: minAge)), const SizedBox(width: 10), Expanded(child: _NumberField(label: 'Maximum age', controller: maxAge))]),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  value: metricKey,
-                  dropdownColor: _panel2,
-                  style: const TextStyle(color: _text),
-                  decoration: _darkInput('Metric filter'),
-                  items: [for (final metric in widget.metrics) DropdownMenuItem(value: metric.key, child: Text('${metric.group} · ${metric.label}'))],
-                  onChanged: (value) => setState(() => metricKey = value),
+                Expanded(
+                  child: _NumberField(
+                    label: 'Minimum games',
+                    controller: minGames,
+                  ),
                 ),
-                const SizedBox(height: 10),
-                Row(children: [Expanded(child: _NumberField(label: 'Metric minimum', controller: metricMin)), const SizedBox(width: 10), Expanded(child: _NumberField(label: 'Metric maximum', controller: metricMax))]),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _NumberField(
+                    label: 'Minimum minutes',
+                    controller: minMinutes,
+                  ),
+                ),
               ],
             ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _NumberField(label: 'Minimum age', controller: minAge),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _NumberField(label: 'Maximum age', controller: maxAge),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              value: metricKey,
+              dropdownColor: _panel2,
+              style: const TextStyle(color: _text),
+              decoration: _darkInput('Metric filter'),
+              items: [
+                for (final metric in widget.metrics)
+                  DropdownMenuItem(
+                    value: metric.key,
+                    child: Text('${metric.group} · ${metric.label}'),
+                  ),
+              ],
+              onChanged: (value) => setState(() => metricKey = value),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _NumberField(
+                    label: 'Metric minimum',
+                    controller: metricMin,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _NumberField(
+                    label: 'Metric maximum',
+                    controller: metricMax,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () =>
+            Navigator.of(context).pop(const NbaStatsFilters(minGames: 1)),
+        child: const Text('Reset'),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.of(context).pop(
+          widget.filters.copyWith(
+            minGames: double.tryParse(minGames.text) ?? 0,
+            minMinutes: double.tryParse(minMinutes.text) ?? 0,
+            minAge: double.tryParse(minAge.text),
+            maxAge: double.tryParse(maxAge.text),
+            clearMinAge: minAge.text.trim().isEmpty,
+            clearMaxAge: maxAge.text.trim().isEmpty,
+            metricKey: metricKey,
+            metricMinimum: double.tryParse(metricMin.text),
+            metricMaximum: double.tryParse(metricMax.text),
+            clearMetric: metricKey == null,
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(const NbaStatsFilters(minGames: 1)),
-            child: const Text('Reset'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(
-              widget.filters.copyWith(
-                minGames: double.tryParse(minGames.text) ?? 0,
-                minMinutes: double.tryParse(minMinutes.text) ?? 0,
-                minAge: double.tryParse(minAge.text),
-                maxAge: double.tryParse(maxAge.text),
-                clearMinAge: minAge.text.trim().isEmpty,
-                clearMaxAge: maxAge.text.trim().isEmpty,
-                metricKey: metricKey,
-                metricMinimum: double.tryParse(metricMin.text),
-                metricMaximum: double.tryParse(metricMax.text),
-                clearMetric: metricKey == null,
-              ),
-            ),
-            child: const Text('Apply filters'),
-          ),
-        ],
-      );
+        child: const Text('Apply filters'),
+      ),
+    ],
+  );
 }
 
 class _GlossaryDialog extends StatelessWidget {
@@ -1176,30 +1568,58 @@ class _GlossaryDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        backgroundColor: _panel,
-        title: const Text('Stats glossary', style: TextStyle(color: _text)),
-        content: SizedBox(
-          width: 720,
-          height: 620,
-          child: ListView(
-            children: [
-              for (final group in nbaStatMetrics.map((metric) => metric.group).toSet()) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 16, 8, 6),
-                  child: Text(group.toUpperCase(), style: const TextStyle(color: _yellow, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1)),
+    backgroundColor: _panel,
+    title: const Text('Stats glossary', style: TextStyle(color: _text)),
+    content: SizedBox(
+      width: 720,
+      height: 620,
+      child: ListView(
+        children: [
+          for (final group
+              in nbaStatMetrics.map((metric) => metric.group).toSet()) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 16, 8, 6),
+              child: Text(
+                group.toUpperCase(),
+                style: const TextStyle(
+                  color: _yellow,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
                 ),
-                for (final metric in nbaStatMetrics.where((metric) => metric.group == group))
-                  ListTile(
-                    dense: true,
-                    title: Text('${metric.shortLabel} · ${metric.label}', style: const TextStyle(color: _text, fontWeight: FontWeight.w800)),
-                    subtitle: Text([metric.description, metric.sourceNote].where((item) => item.isNotEmpty).join(' '), style: const TextStyle(color: _muted)),
+              ),
+            ),
+            for (final metric in nbaStatMetrics.where(
+              (metric) => metric.group == group,
+            ))
+              ListTile(
+                dense: true,
+                title: Text(
+                  '${metric.shortLabel} · ${metric.label}',
+                  style: const TextStyle(
+                    color: _text,
+                    fontWeight: FontWeight.w800,
                   ),
-              ],
-            ],
-          ),
-        ),
-        actions: [FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close'))],
-      );
+                ),
+                subtitle: Text(
+                  [
+                    metric.description,
+                    metric.sourceNote,
+                  ].where((item) => item.isNotEmpty).join(' '),
+                  style: const TextStyle(color: _muted),
+                ),
+              ),
+          ],
+        ],
+      ),
+    ),
+    actions: [
+      FilledButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Close'),
+      ),
+    ],
+  );
 }
 
 class _CustomViewResult {
@@ -1209,7 +1629,10 @@ class _CustomViewResult {
 }
 
 class _CustomViewDialog extends StatefulWidget {
-  const _CustomViewDialog({required this.initialName, required this.initialKeys});
+  const _CustomViewDialog({
+    required this.initialName,
+    required this.initialKeys,
+  });
   final String initialName;
   final List<String> initialKeys;
 
@@ -1236,133 +1659,217 @@ class _CustomViewDialogState extends State<_CustomViewDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        backgroundColor: _panel,
-        title: const Text('Custom stat view', style: TextStyle(color: _text)),
-        content: SizedBox(
-          width: 680,
-          height: 650,
-          child: Column(
-            children: [
-              TextField(controller: name, style: const TextStyle(color: _text), decoration: _darkInput('View name')),
-              const SizedBox(height: 10),
-              const Text('Select metrics below. Drag selected metrics to reorder columns.', style: TextStyle(color: _muted)),
-              const SizedBox(height: 10),
-              Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: ListView(
-                        children: [
-                          for (final metric in nbaStatMetrics)
-                            CheckboxListTile(
-                              dense: true,
-                              value: selected.contains(metric.key),
-                              activeColor: _yellow,
-                              checkColor: _bg,
-                              title: Text('${metric.group} · ${metric.shortLabel}', style: const TextStyle(color: _text, fontSize: 12)),
-                              subtitle: Text(metric.label, style: const TextStyle(color: _muted, fontSize: 10)),
-                              onChanged: (value) => setState(() {
-                                if (value == true) {
-                                  if (!selected.contains(metric.key)) selected.add(metric.key);
-                                } else {
-                                  selected.remove(metric.key);
-                                }
-                              }),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const VerticalDivider(color: _line),
-                    Expanded(
-                      child: ReorderableListView(
-                        children: [
-                          for (final key in selected)
-                            ListTile(
-                              key: ValueKey(key),
-                              dense: true,
-                              leading: const Icon(Icons.drag_handle, color: _muted),
-                              title: Text(nbaStatMetrics.firstWhere((metric) => metric.key == key).shortLabel, style: const TextStyle(color: _text)),
-                            ),
-                        ],
-                        onReorder: (oldIndex, newIndex) => setState(() {
-                          if (newIndex > oldIndex) newIndex--;
-                          final item = selected.removeAt(oldIndex);
-                          selected.insert(newIndex, item);
-                        }),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+    backgroundColor: _panel,
+    title: const Text('Custom stat view', style: TextStyle(color: _text)),
+    content: SizedBox(
+      width: 680,
+      height: 650,
+      child: Column(
+        children: [
+          TextField(
+            controller: name,
+            style: const TextStyle(color: _text),
+            decoration: _darkInput('View name'),
           ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: selected.isEmpty
-                ? null
-                : () {
-                    final resolved = name.text.trim().isEmpty ? 'Custom ${DateTime.now().millisecondsSinceEpoch % 1000}' : name.text.trim();
-                    Navigator.of(context).pop(_CustomViewResult(resolved, selected));
-                  },
-            child: const Text('Save view'),
+          const SizedBox(height: 10),
+          const Text(
+            'Select metrics below. Drag selected metrics to reorder columns.',
+            style: TextStyle(color: _muted),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: ListView(
+                    children: [
+                      for (final metric in nbaStatMetrics)
+                        CheckboxListTile(
+                          dense: true,
+                          value: selected.contains(metric.key),
+                          activeColor: _yellow,
+                          checkColor: _bg,
+                          title: Text(
+                            '${metric.group} · ${metric.shortLabel}',
+                            style: const TextStyle(color: _text, fontSize: 12),
+                          ),
+                          subtitle: Text(
+                            metric.label,
+                            style: const TextStyle(color: _muted, fontSize: 10),
+                          ),
+                          onChanged: (value) => setState(() {
+                            if (value == true) {
+                              if (!selected.contains(metric.key))
+                                selected.add(metric.key);
+                            } else {
+                              selected.remove(metric.key);
+                            }
+                          }),
+                        ),
+                    ],
+                  ),
+                ),
+                const VerticalDivider(color: _line),
+                Expanded(
+                  child: ReorderableListView(
+                    children: [
+                      for (final key in selected)
+                        ListTile(
+                          key: ValueKey(key),
+                          dense: true,
+                          leading: const Icon(Icons.drag_handle, color: _muted),
+                          title: Text(
+                            nbaStatMetrics
+                                .firstWhere((metric) => metric.key == key)
+                                .shortLabel,
+                            style: const TextStyle(color: _text),
+                          ),
+                        ),
+                    ],
+                    onReorder: (oldIndex, newIndex) => setState(() {
+                      if (newIndex > oldIndex) newIndex--;
+                      final item = selected.removeAt(oldIndex);
+                      selected.insert(newIndex, item);
+                    }),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
-      );
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        onPressed: selected.isEmpty
+            ? null
+            : () {
+                final resolved = name.text.trim().isEmpty
+                    ? 'Custom ${DateTime.now().millisecondsSinceEpoch % 1000}'
+                    : name.text.trim();
+                Navigator.of(
+                  context,
+                ).pop(_CustomViewResult(resolved, selected));
+              },
+        child: const Text('Save view'),
+      ),
+    ],
+  );
 }
 
 class _ComparisonDialog extends StatelessWidget {
-  const _ComparisonDialog({required this.rows, required this.metrics, required this.engine});
+  const _ComparisonDialog({
+    required this.rows,
+    required this.metrics,
+    required this.engine,
+  });
   final List<NbaStatsRow> rows;
   final List<String> metrics;
   final NbaStatsWorkstationEngine engine;
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        backgroundColor: _panel,
-        title: Text('Side-by-side comparison · ${rows.length} players', style: const TextStyle(color: _text)),
-        content: SizedBox(
-          width: 980,
-          height: 650,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: 180 + rows.length * 170,
-              child: ListView(
+    backgroundColor: _panel,
+    title: Text(
+      'Side-by-side comparison · ${rows.length} players',
+      style: const TextStyle(color: _text),
+    ),
+    content: SizedBox(
+      width: 980,
+      height: 650,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: 180 + rows.length * 170,
+          child: ListView(
+            children: [
+              Row(
                 children: [
-                  Row(children: [const SizedBox(width: 180), for (final row in rows) SizedBox(width: 170, child: Padding(padding: const EdgeInsets.all(10), child: Text(row.player, textAlign: TextAlign.center, style: const TextStyle(color: _text, fontWeight: FontWeight.w900))))]),
-                  for (final key in metrics)
-                    Container(
-                      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: _line))),
-                      child: Row(
-                        children: [
-                          SizedBox(width: 180, child: Padding(padding: const EdgeInsets.all(10), child: Text(engine.metric(key).label, style: const TextStyle(color: _muted, fontWeight: FontWeight.w800)))),
-                          for (final row in rows)
-                            SizedBox(
-                              width: 170,
-                              child: Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: Column(children: [
-                                  Text(engine.formatValue(key, row.value(key)), style: const TextStyle(color: _text, fontWeight: FontWeight.w900)),
-                                  _PercentilePill(value: row.percentiles[key]),
-                                ]),
-                              ),
-                            ),
-                        ],
+                  const SizedBox(width: 180),
+                  for (final row in rows)
+                    SizedBox(
+                      width: 170,
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Text(
+                          row.player,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: _text,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ),
                     ),
                 ],
               ),
-            ),
+              for (final key in metrics)
+                Container(
+                  decoration: const BoxDecoration(
+                    border: Border(bottom: BorderSide(color: _line)),
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 180,
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Text(
+                            engine.metric(key).label,
+                            style: const TextStyle(
+                              color: _muted,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                      for (final row in rows)
+                        SizedBox(
+                          width: 170,
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Column(
+                              children: [
+                                Text(
+                                  engine.formatValue(key, row.value(key)),
+                                  style: const TextStyle(
+                                    color: _text,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                _PercentilePill(value: row.percentiles[key]),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
           ),
         ),
-        actions: [FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close'))],
-      );
+      ),
+    ),
+    actions: [
+      FilledButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Close'),
+      ),
+    ],
+  );
 }
 
 class _ChartStudio extends StatefulWidget {
-  const _ChartStudio({required this.rows, required this.snapshot, required this.engine, required this.selected});
+  const _ChartStudio({
+    required this.rows,
+    required this.snapshot,
+    required this.engine,
+    required this.selected,
+  });
   final List<NbaStatsRow> rows;
   final NbaTerminalSeedSnapshot snapshot;
   final NbaStatsWorkstationEngine engine;
@@ -1382,7 +1889,9 @@ class _ChartStudioState extends State<_ChartStudio> {
   @override
   void initState() {
     super.initState();
-    playerId = widget.selected?.playerId ?? (widget.rows.isEmpty ? null : widget.rows.first.playerId);
+    playerId =
+        widget.selected?.playerId ??
+        (widget.rows.isEmpty ? null : widget.rows.first.playerId);
   }
 
   @override
@@ -1392,7 +1901,9 @@ class _ChartStudioState extends State<_ChartStudio> {
         if (row.value(x) != null && row.value(y) != null)
           _ScatterPoint(row.value(x)!, row.value(y)!, row.player),
     ];
-    final logs = widget.snapshot.playerGameLogsTop.where((row) => _rawText(row, const ['player_id', 'id']) == playerId).toList();
+    final logs = widget.snapshot.playerGameLogsTop
+        .where((row) => _rawText(row, const ['player_id', 'id']) == playerId)
+        .toList();
     final trend = <double>[];
     for (final row in logs.reversed) {
       final value = _rawNumber(row, _gameMetricAliases(trendMetric));
@@ -1407,37 +1918,87 @@ class _ChartStudioState extends State<_ChartStudio> {
         height: 650,
         child: Column(
           children: [
-            Row(children: [
-              _Segmented<String>(value: mode, options: const ['Scatter', 'Game Trend'], label: (value) => value, onChanged: (value) => setState(() => mode = value)),
-              const SizedBox(width: 12),
-              if (mode == 'Scatter') ...[
-                Expanded(child: _MetricDrop(value: x, label: 'X axis', onChanged: (value) => setState(() => x = value))),
-                const SizedBox(width: 8),
-                Expanded(child: _MetricDrop(value: y, label: 'Y axis', onChanged: (value) => setState(() => y = value))),
-              ] else ...[
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: playerId,
-                    dropdownColor: _panel2,
-                    style: const TextStyle(color: _text),
-                    decoration: _darkInput('Player'),
-                    items: [for (final row in widget.rows.take(100)) DropdownMenuItem(value: row.playerId, child: Text(row.player))],
-                    onChanged: (value) => setState(() => playerId = value),
-                  ),
+            Row(
+              children: [
+                _Segmented<String>(
+                  value: mode,
+                  options: const ['Scatter', 'Game Trend'],
+                  label: (value) => value,
+                  onChanged: (value) => setState(() => mode = value),
                 ),
-                const SizedBox(width: 8),
-                Expanded(child: _MetricDrop(value: trendMetric, label: 'Game metric', limited: const ['pts', 'reb', 'ast', 'stl', 'blk', 'plus_minus'], onChanged: (value) => setState(() => trendMetric = value))),
+                const SizedBox(width: 12),
+                if (mode == 'Scatter') ...[
+                  Expanded(
+                    child: _MetricDrop(
+                      value: x,
+                      label: 'X axis',
+                      onChanged: (value) => setState(() => x = value),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _MetricDrop(
+                      value: y,
+                      label: 'Y axis',
+                      onChanged: (value) => setState(() => y = value),
+                    ),
+                  ),
+                ] else ...[
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: playerId,
+                      dropdownColor: _panel2,
+                      style: const TextStyle(color: _text),
+                      decoration: _darkInput('Player'),
+                      items: [
+                        for (final row in widget.rows.take(100))
+                          DropdownMenuItem(
+                            value: row.playerId,
+                            child: Text(row.player),
+                          ),
+                      ],
+                      onChanged: (value) => setState(() => playerId = value),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _MetricDrop(
+                      value: trendMetric,
+                      label: 'Game metric',
+                      limited: const [
+                        'pts',
+                        'reb',
+                        'ast',
+                        'stl',
+                        'blk',
+                        'plus_minus',
+                      ],
+                      onChanged: (value) => setState(() => trendMetric = value),
+                    ),
+                  ),
+                ],
               ],
-            ]),
+            ),
             const SizedBox(height: 12),
             Expanded(
               child: Container(
-                decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: _line)),
+                decoration: BoxDecoration(
+                  color: _bg,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _line),
+                ),
                 padding: const EdgeInsets.all(18),
                 child: CustomPaint(
                   painter: mode == 'Scatter'
-                      ? _ScatterPainter(points: points, xLabel: widget.engine.metric(x).shortLabel, yLabel: widget.engine.metric(y).shortLabel)
-                      : _LinePainter(values: trend, label: widget.engine.metric(trendMetric).shortLabel),
+                      ? _ScatterPainter(
+                          points: points,
+                          xLabel: widget.engine.metric(x).shortLabel,
+                          yLabel: widget.engine.metric(y).shortLabel,
+                        )
+                      : _LinePainter(
+                          values: trend,
+                          label: widget.engine.metric(trendMetric).shortLabel,
+                        ),
                   child: const SizedBox.expand(),
                 ),
               ),
@@ -1452,7 +2013,12 @@ class _ChartStudioState extends State<_ChartStudio> {
           ],
         ),
       ),
-      actions: [FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close'))],
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
     );
   }
 }
@@ -1465,28 +2031,46 @@ class _ScatterPoint {
 }
 
 class _ScatterPainter extends CustomPainter {
-  const _ScatterPainter({required this.points, required this.xLabel, required this.yLabel});
+  const _ScatterPainter({
+    required this.points,
+    required this.xLabel,
+    required this.yLabel,
+  });
   final List<_ScatterPoint> points;
   final String xLabel;
   final String yLabel;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final axis = Paint()..color = _line..strokeWidth = 1;
+    final axis = Paint()
+      ..color = _line
+      ..strokeWidth = 1;
     final dot = Paint()..color = _cyan.withValues(alpha: .75);
     const left = 50.0;
     const bottom = 34.0;
     final plot = Rect.fromLTRB(left, 16, size.width - 12, size.height - bottom);
-    canvas.drawLine(Offset(plot.left, plot.bottom), Offset(plot.right, plot.bottom), axis);
-    canvas.drawLine(Offset(plot.left, plot.top), Offset(plot.left, plot.bottom), axis);
+    canvas.drawLine(
+      Offset(plot.left, plot.bottom),
+      Offset(plot.right, plot.bottom),
+      axis,
+    );
+    canvas.drawLine(
+      Offset(plot.left, plot.top),
+      Offset(plot.left, plot.bottom),
+      axis,
+    );
     if (points.isEmpty) return;
     final minX = points.map((point) => point.x).reduce(math.min);
     final maxX = points.map((point) => point.x).reduce(math.max);
     final minY = points.map((point) => point.y).reduce(math.min);
     final maxY = points.map((point) => point.y).reduce(math.max);
     for (final point in points) {
-      final px = plot.left + (point.x - minX) / math.max(.000001, maxX - minX) * plot.width;
-      final py = plot.bottom - (point.y - minY) / math.max(.000001, maxY - minY) * plot.height;
+      final px =
+          plot.left +
+          (point.x - minX) / math.max(.000001, maxX - minX) * plot.width;
+      final py =
+          plot.bottom -
+          (point.y - minY) / math.max(.000001, maxY - minY) * plot.height;
       canvas.drawCircle(Offset(px, py), 4, dot);
     }
     _paintLabel(canvas, xLabel, Offset(plot.center.dx - 12, size.height - 18));
@@ -1494,7 +2078,10 @@ class _ScatterPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ScatterPainter oldDelegate) => oldDelegate.points != points || oldDelegate.xLabel != xLabel || oldDelegate.yLabel != yLabel;
+  bool shouldRepaint(covariant _ScatterPainter oldDelegate) =>
+      oldDelegate.points != points ||
+      oldDelegate.xLabel != xLabel ||
+      oldDelegate.yLabel != yLabel;
 }
 
 class _LinePainter extends CustomPainter {
@@ -1504,22 +2091,43 @@ class _LinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final axis = Paint()..color = _line..strokeWidth = 1;
-    final line = Paint()..color = _yellow..strokeWidth = 2.5..style = PaintingStyle.stroke;
+    final axis = Paint()
+      ..color = _line
+      ..strokeWidth = 1;
+    final line = Paint()
+      ..color = _yellow
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke;
     final dot = Paint()..color = _yellow;
     const left = 50.0;
     const bottom = 34.0;
     final plot = Rect.fromLTRB(left, 16, size.width - 12, size.height - bottom);
-    canvas.drawLine(Offset(plot.left, plot.bottom), Offset(plot.right, plot.bottom), axis);
-    canvas.drawLine(Offset(plot.left, plot.top), Offset(plot.left, plot.bottom), axis);
+    canvas.drawLine(
+      Offset(plot.left, plot.bottom),
+      Offset(plot.right, plot.bottom),
+      axis,
+    );
+    canvas.drawLine(
+      Offset(plot.left, plot.top),
+      Offset(plot.left, plot.bottom),
+      axis,
+    );
     if (values.isEmpty) return;
     final minY = values.reduce(math.min);
     final maxY = values.reduce(math.max);
     final path = Path();
     for (var index = 0; index < values.length; index++) {
-      final px = plot.left + (values.length == 1 ? .5 : index / (values.length - 1)) * plot.width;
-      final py = plot.bottom - (values[index] - minY) / math.max(.000001, maxY - minY) * plot.height;
-      if (index == 0) path.moveTo(px, py); else path.lineTo(px, py);
+      final px =
+          plot.left +
+          (values.length == 1 ? .5 : index / (values.length - 1)) * plot.width;
+      final py =
+          plot.bottom -
+          (values[index] - minY) / math.max(.000001, maxY - minY) * plot.height;
+      if (index == 0) {
+        path.moveTo(px, py);
+      } else {
+        path.lineTo(px, py);
+      }
       canvas.drawCircle(Offset(px, py), 3.2, dot);
     }
     canvas.drawPath(path, line);
@@ -1527,19 +2135,32 @@ class _LinePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _LinePainter oldDelegate) => oldDelegate.values != values || oldDelegate.label != label;
+  bool shouldRepaint(covariant _LinePainter oldDelegate) =>
+      oldDelegate.values != values || oldDelegate.label != label;
 }
 
 void _paintLabel(Canvas canvas, String text, Offset offset) {
   final painter = TextPainter(
-    text: TextSpan(text: text, style: const TextStyle(color: _muted, fontSize: 10, fontWeight: FontWeight.w800)),
+    text: TextSpan(
+      text: text,
+      style: const TextStyle(
+        color: _muted,
+        fontSize: 10,
+        fontWeight: FontWeight.w800,
+      ),
+    ),
     textDirection: TextDirection.ltr,
   )..layout();
   painter.paint(canvas, offset);
 }
 
 class _MetricDrop extends StatelessWidget {
-  const _MetricDrop({required this.value, required this.label, required this.onChanged, this.limited});
+  const _MetricDrop({
+    required this.value,
+    required this.label,
+    required this.onChanged,
+    this.limited,
+  });
   final String value;
   final String label;
   final ValueChanged<String> onChanged;
@@ -1547,14 +2168,25 @@ class _MetricDrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final metrics = limited ?? nbaStatMetrics.map((metric) => metric.key).toList();
+    final metrics =
+        limited ?? nbaStatMetrics.map((metric) => metric.key).toList();
     return DropdownButtonFormField<String>(
       value: metrics.contains(value) ? value : metrics.first,
       dropdownColor: _panel2,
       style: const TextStyle(color: _text),
       decoration: _darkInput(label),
-      items: [for (final key in metrics) DropdownMenuItem(value: key, child: Text(nbaStatMetrics.firstWhere((metric) => metric.key == key).label))],
-      onChanged: (value) { if (value != null) onChanged(value); },
+      items: [
+        for (final key in metrics)
+          DropdownMenuItem(
+            value: key,
+            child: Text(
+              nbaStatMetrics.firstWhere((metric) => metric.key == key).label,
+            ),
+          ),
+      ],
+      onChanged: (value) {
+        if (value != null) onChanged(value);
+      },
     );
   }
 }
@@ -1563,18 +2195,46 @@ class _YearControl extends StatelessWidget {
   const _YearControl();
   @override
   Widget build(BuildContext context) => Container(
-        height: 34,
-        decoration: BoxDecoration(color: _panel3, borderRadius: BorderRadius.circular(7)),
-        child: const Row(mainAxisSize: MainAxisSize.min, children: [
-          Padding(padding: EdgeInsets.symmetric(horizontal: 9), child: Icon(Icons.chevron_left, color: _muted, size: 16)),
-          Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: Text('2025–26', style: TextStyle(color: _text, fontSize: 11, fontWeight: FontWeight.w900))),
-          Padding(padding: EdgeInsets.symmetric(horizontal: 9), child: Icon(Icons.chevron_right, color: _muted, size: 16)),
-        ]),
-      );
+    height: 34,
+    decoration: BoxDecoration(
+      color: _panel3,
+      borderRadius: BorderRadius.circular(7),
+    ),
+    child: const Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 9),
+          child: Icon(Icons.chevron_left, color: _muted, size: 16),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            '2025–26',
+            style: TextStyle(
+              color: _text,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 9),
+          child: Icon(Icons.chevron_right, color: _muted, size: 16),
+        ),
+      ],
+    ),
+  );
 }
 
 class _Segmented<T> extends StatelessWidget {
-  const _Segmented({required this.value, required this.options, required this.label, required this.onChanged, this.compact = false});
+  const _Segmented({
+    required this.value,
+    required this.options,
+    required this.label,
+    required this.onChanged,
+    this.compact = false,
+  });
   final T value;
   final List<T> options;
   final String Function(T) label;
@@ -1583,28 +2243,45 @@ class _Segmented<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(color: _panel3, borderRadius: BorderRadius.circular(8)),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final option in options)
-              InkWell(
-                onTap: () => onChanged(option),
+    padding: const EdgeInsets.all(3),
+    decoration: BoxDecoration(
+      color: _panel3,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final option in options)
+          InkWell(
+            onTap: () => onChanged(option),
+            borderRadius: BorderRadius.circular(6),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 7 : 11,
+                vertical: compact ? 5 : 7,
+              ),
+              decoration: BoxDecoration(
+                color: value == option
+                    ? const Color(0xFF4A4433)
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: compact ? 7 : 11, vertical: compact ? 5 : 7),
-                  decoration: BoxDecoration(
-                    color: value == option ? const Color(0xFF4A4433) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(6),
-                    border: value == option ? Border.all(color: const Color(0xFF8E7736)) : null,
-                  ),
-                  child: Text(label(option), style: TextStyle(color: value == option ? _yellow : _muted, fontSize: compact ? 8 : 10, fontWeight: FontWeight.w900)),
+                border: value == option
+                    ? Border.all(color: const Color(0xFF8E7736))
+                    : null,
+              ),
+              child: Text(
+                label(option),
+                style: TextStyle(
+                  color: value == option ? _yellow : _muted,
+                  fontSize: compact ? 8 : 10,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
-          ],
-        ),
-      );
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 class _ToolbarChip extends StatelessWidget {
@@ -1615,22 +2292,37 @@ class _ToolbarChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(6),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: selected ? const Color(0xFF4A4433) : _panel3,
         borderRadius: BorderRadius.circular(6),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xFF4A4433) : _panel3,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: selected ? const Color(0xFF8E7736) : Colors.transparent),
-          ),
-          child: Text(label, style: TextStyle(color: selected ? _yellow : _muted, fontSize: 9, fontWeight: FontWeight.w900)),
+        border: Border.all(
+          color: selected ? const Color(0xFF8E7736) : Colors.transparent,
         ),
-      );
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: selected ? _yellow : _muted,
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    ),
+  );
 }
 
 class _CompactDrop<T> extends StatelessWidget {
-  const _CompactDrop({required this.value, required this.values, required this.width, required this.hint, required this.onChanged});
+  const _CompactDrop({
+    required this.value,
+    required this.values,
+    required this.width,
+    required this.hint,
+    required this.onChanged,
+  });
   final T value;
   final List<T> values;
   final double width;
@@ -1639,27 +2331,48 @@ class _CompactDrop<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: width,
-        height: 36,
-        child: DropdownButtonFormField<T>(
-          value: values.contains(value) ? value : values.first,
-          dropdownColor: _panel2,
-          style: const TextStyle(color: _text, fontSize: 10, fontWeight: FontWeight.w800),
-          decoration: InputDecoration(
-            hintText: hint,
-            filled: true,
-            fillColor: _panel3,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 9, vertical: 0),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: BorderSide.none),
-          ),
-          items: [for (final item in values) DropdownMenuItem<T>(value: item, child: Text('$item', overflow: TextOverflow.ellipsis))],
-          onChanged: (next) { if (next != null) onChanged(next); },
+    width: width,
+    height: 36,
+    child: DropdownButtonFormField<T>(
+      value: values.contains(value) ? value : values.first,
+      dropdownColor: _panel2,
+      style: const TextStyle(
+        color: _text,
+        fontSize: 10,
+        fontWeight: FontWeight.w800,
+      ),
+      decoration: InputDecoration(
+        hintText: hint,
+        filled: true,
+        fillColor: _panel3,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 9, vertical: 0),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide.none,
         ),
-      );
+      ),
+      items: [
+        for (final item in values)
+          DropdownMenuItem<T>(
+            value: item,
+            child: Text('$item', overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: (next) {
+        if (next != null) onChanged(next);
+      },
+    ),
+  );
 }
 
 class _IconAction extends StatelessWidget {
-  const _IconAction({required this.icon, required this.tooltip, required this.onTap, this.badge = 0, this.active = false});
+  const _IconAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.badge = 0,
+    this.active = false,
+  });
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
@@ -1668,24 +2381,51 @@ class _IconAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Tooltip(
-        message: tooltip,
-        child: InkWell(
-          onTap: onTap,
+    message: tooltip,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(7),
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFF4A4433) : _panel3,
           borderRadius: BorderRadius.circular(7),
-          child: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(color: active ? const Color(0xFF4A4433) : _panel3, borderRadius: BorderRadius.circular(7), border: Border.all(color: active ? const Color(0xFF8E7736) : _line)),
-            child: Stack(
-              children: [
-                Center(child: Icon(icon, color: active ? _yellow : _muted, size: 18)),
-                if (badge > 0)
-                  Positioned(right: 2, top: 2, child: Container(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1), decoration: BoxDecoration(color: _yellow, borderRadius: BorderRadius.circular(8)), child: Text('$badge', style: const TextStyle(color: _bg, fontSize: 7, fontWeight: FontWeight.w900)))),
-              ],
-            ),
-          ),
+          border: Border.all(color: active ? const Color(0xFF8E7736) : _line),
         ),
-      );
+        child: Stack(
+          children: [
+            Center(
+              child: Icon(icon, color: active ? _yellow : _muted, size: 18),
+            ),
+            if (badge > 0)
+              Positioned(
+                right: 2,
+                top: 2,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _yellow,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$badge',
+                    style: const TextStyle(
+                      color: _bg,
+                      fontSize: 7,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _ToolbarSurface extends StatelessWidget {
@@ -1693,24 +2433,35 @@ class _ToolbarSurface extends StatelessWidget {
   final Widget child;
   @override
   Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(7),
-        decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(9), border: Border.all(color: _line)),
-        child: child,
-      );
+    width: double.infinity,
+    padding: const EdgeInsets.all(7),
+    decoration: BoxDecoration(
+      color: _panel,
+      borderRadius: BorderRadius.circular(9),
+      border: Border.all(color: _line),
+    ),
+    child: child,
+  );
 }
 
 class _DarkSurface extends StatelessWidget {
-  const _DarkSurface({required this.child, this.padding = const EdgeInsets.all(14)});
+  const _DarkSurface({
+    required this.child,
+    this.padding = const EdgeInsets.all(14),
+  });
   final Widget child;
   final EdgeInsets padding;
   @override
   Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: padding,
-        decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(9), border: Border.all(color: _line)),
-        child: child,
-      );
+    width: double.infinity,
+    padding: padding,
+    decoration: BoxDecoration(
+      color: _panel,
+      borderRadius: BorderRadius.circular(9),
+      border: Border.all(color: _line),
+    ),
+    child: child,
+  );
 }
 
 class _PercentileMark extends StatelessWidget {
@@ -1719,8 +2470,17 @@ class _PercentileMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (value == null) return const SizedBox(height: 9);
-    final color = value! >= 80 ? _yellow : value! >= 55 ? _green : value! <= 20 ? _cyan : _muted;
-    return Text(value!.round().toString(), style: TextStyle(color: color, fontSize: 7, fontWeight: FontWeight.w900));
+    final color = value! >= 80
+        ? _yellow
+        : value! >= 55
+        ? _green
+        : value! <= 20
+        ? _cyan
+        : _muted;
+    return Text(
+      value!.round().toString(),
+      style: TextStyle(color: color, fontSize: 7, fontWeight: FontWeight.w900),
+    );
   }
 }
 
@@ -1730,12 +2490,29 @@ class _PercentilePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (value == null) return const SizedBox(width: 30);
-    final color = value! >= 80 ? _yellow : value! >= 55 ? _green : value! <= 20 ? _cyan : _muted;
+    final color = value! >= 80
+        ? _yellow
+        : value! >= 55
+        ? _green
+        : value! <= 20
+        ? _cyan
+        : _muted;
     return Container(
       width: 34,
       padding: const EdgeInsets.symmetric(vertical: 3),
-      decoration: BoxDecoration(color: color.withValues(alpha: .14), borderRadius: BorderRadius.circular(10)),
-      child: Text(value!.round().toString(), textAlign: TextAlign.center, style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.w900)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .14),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        value!.round().toString(),
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: color,
+          fontSize: 8,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
     );
   }
 }
@@ -1746,24 +2523,33 @@ class _NumberField extends StatelessWidget {
   final TextEditingController controller;
   @override
   Widget build(BuildContext context) => TextField(
-        controller: controller,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        style: const TextStyle(color: _text),
-        decoration: _darkInput(label),
-      );
+    controller: controller,
+    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+    style: const TextStyle(color: _text),
+    decoration: _darkInput(label),
+  );
 }
 
 InputDecoration _darkInput(String label) => InputDecoration(
-      labelText: label,
-      labelStyle: const TextStyle(color: _muted),
-      filled: true,
-      fillColor: _bg,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: _line)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: _line)),
-    );
+  labelText: label,
+  labelStyle: const TextStyle(color: _muted),
+  filled: true,
+  fillColor: _bg,
+  border: OutlineInputBorder(
+    borderRadius: BorderRadius.circular(8),
+    borderSide: const BorderSide(color: _line),
+  ),
+  enabledBorder: OutlineInputBorder(
+    borderRadius: BorderRadius.circular(8),
+    borderSide: const BorderSide(color: _line),
+  ),
+);
 
 String _initials(String value) {
-  final parts = value.split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
+  final parts = value
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList();
   if (parts.isEmpty) return 'NBA';
   return parts.take(2).map((part) => part[0]).join().toUpperCase();
 }
@@ -1781,7 +2567,9 @@ double? _rawNumber(Map<String, dynamic> row, List<String> keys) {
     final value = row[key];
     if (value is num) return value.toDouble();
     if (value != null) {
-      final parsed = double.tryParse(value.toString().replaceAll(',', '').replaceAll('%', ''));
+      final parsed = double.tryParse(
+        value.toString().replaceAll(',', '').replaceAll('%', ''),
+      );
       if (parsed != null) return parsed;
     }
   }
@@ -1789,11 +2577,11 @@ double? _rawNumber(Map<String, dynamic> row, List<String> keys) {
 }
 
 List<String> _gameMetricAliases(String metric) => switch (metric) {
-      'pts' => const ['pts', 'points'],
-      'reb' => const ['trb', 'reb', 'rebounds'],
-      'ast' => const ['ast', 'assists'],
-      'stl' => const ['stl', 'steals'],
-      'blk' => const ['blk', 'blocks'],
-      'plus_minus' => const ['plus_minus', 'plusMinus'],
-      _ => [metric],
-    };
+  'pts' => const ['pts', 'points'],
+  'reb' => const ['trb', 'reb', 'rebounds'],
+  'ast' => const ['ast', 'assists'],
+  'stl' => const ['stl', 'steals'],
+  'blk' => const ['blk', 'blocks'],
+  'plus_minus' => const ['plus_minus', 'plusMinus'],
+  _ => [metric],
+};
