@@ -8,6 +8,8 @@ The workstation supports regular-season, playoff and combined data segments when
 
 Built-in views cover profile, counting, shooting, efficiency, impact, defense and advanced fields. Users can create persistent custom views, reorder columns, favorite players, build comparison groups, filter numerically, inspect metric definitions, export TSV, and launch scatter or game-trend charts.
 
+Desktop hotkeys include `F` for filters, `G` for the glossary, `C` to add the selected player to comparison, `Z` to open comparison, `W` and `E` to change density, and `Esc` to clear the active selection state. Compact layouts preserve the desktop workstation through horizontal scrolling instead of replacing the research table with a lower-information card view.
+
 Possession-based values use direct source possessions when present. When they are absent, the workstation uses the visible estimate `FGA + 0.44 × FTA − OREB + TOV`; if the box-score components are also unavailable, it uses a clearly marked minutes-based fallback. Estimated values are never represented as sourced tracking data.
 
 ## Analytics Suite
