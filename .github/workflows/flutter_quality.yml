@@ -61,6 +61,10 @@ jobs:
             status=$?
           fi
           if [ "$status" -eq 0 ]; then
+            PYTHONPATH=. python scripts/analytics_library_contract_test.py >> backend_contract.log 2>&1
+            status=$?
+          fi
+          if [ "$status" -eq 0 ]; then
             PYTHONPATH=. python scripts/http_contract_test.py >> backend_contract.log 2>&1
             status=$?
           fi
