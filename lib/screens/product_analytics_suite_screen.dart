@@ -228,7 +228,7 @@ class _SuiteHeader extends StatelessWidget {
             ),
           ],
         ),
-        const Spacer(),
+        const SizedBox(width: 24),
         Text(
           active,
           style: const TextStyle(
