@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from . import front_office_api as front_office_module
 from . import launch_api as launch_module
+from .analytics_library_api import router as analytics_library_router
 from .auth_api import router as auth_router
 from .auth_guard import enforce_launch_auth
 from .authorization_guard import enforce_launch_authorization
@@ -36,12 +37,13 @@ front_office_module.front_office_reconciliation = hardened_reconciliation(
 )
 
 app.title = "Sports Terminal Launch API"
-app.version = "1.2.0"
+app.version = "1.3.0"
 app.description = (
     "Launch-oriented Sports Terminal API for authentication, certified NBA data, "
     "canonical contracts and draft assets, transaction ledgers, moderated community "
     "and messaging, isolated Python analysis, customer operations, launch automation, "
-    "organization governance, versioned workspaces, saved sports objects, and platform operations."
+    "organization governance, persistent analytics libraries, versioned workspaces, "
+    "saved sports objects, and platform operations."
 )
 
 app.middleware("http")(enforce_launch_auth)
@@ -58,4 +60,5 @@ app.include_router(trust_safety_router)
 app.include_router(python_runtime_router)
 app.include_router(customer_operations_router)
 app.include_router(automation_governance_router)
+app.include_router(analytics_library_router)
 app.include_router(completion_status_router)
