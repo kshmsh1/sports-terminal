@@ -140,9 +140,13 @@ with tempfile.TemporaryDirectory(prefix="sports-terminal-analytics-library-") as
             context={"basis": "per_75"},
         )
     )
-    assert len(list_recent(analyst)) == 1
+    assert len(list_recent(analyst, limit=30)) == 1
 
-    personal_assets = list_assets(analyst, query="efficiency")
+    personal_assets = list_assets(
+        analyst,
+        query="efficiency",
+        limit=200,
+    )
     assert len(personal_assets) == 1
     assert get_asset("view-1")["title"] == "Scoring, creation and efficiency"
 
