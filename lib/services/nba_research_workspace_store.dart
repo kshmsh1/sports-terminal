@@ -264,9 +264,10 @@ class NbaResearchWorkspaceStore {
     final now = DateTime.now().toUtc();
     final organizationScope = session.role.canManageOrganization &&
         session.organizationId.isNotEmpty;
+    final resolvedTitle = (title ?? '').trim();
     return NbaResearchWorkspace(
       id: 'research-${now.microsecondsSinceEpoch}',
-      title: (title ?? '').trim().isNotEmpty ? title!.trim() : kind.label,
+      title: resolvedTitle.isNotEmpty ? resolvedTitle : kind.label,
       description: kind.description,
       kind: kind,
       status: NbaResearchWorkspaceStatus.active,
