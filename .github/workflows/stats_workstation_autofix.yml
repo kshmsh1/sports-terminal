@@ -1,0 +1,80 @@
+name: Stats Workstation Autofix
+
+on:
+  push:
+    branches: [agent/stats-workstation-analytics-suite]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stats-workstation-autofix
+  cancel-in-progress: true
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/stats-workstation-analytics-suite
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Apply deterministic fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          engine = Path('lib/services/nba_stats_workstation_engine.dart')
+          text = engine.read_text()
+          text = text.replace(
+              "var possessions = directPossessions ?? math.max(0, fga + .44 * fta - offensiveRebounds + turnovers);",
+              "var possessions = directPossessions ?? math.max(0.0, fga + .44 * fta - offensiveRebounds + turnovers).toDouble();",
+          )
+          text = text.replace(
+              "final twoPm = math.max(0, fgm - threePm);",
+              "final twoPm = math.max(0.0, fgm - threePm).toDouble();",
+          )
+          text = text.replace(
+              "final twoPa = math.max(0, fga - threePa);",
+              "final twoPa = math.max(0.0, fga - threePa).toDouble();",
+          )
+          engine.write_text(text)
+
+          for path in [
+              Path('lib/screens/product_analytics_suite_screen.dart'),
+              Path('lib/screens/product_nba_stats_workstation_screen.dart'),
+          ]:
+              text = path.read_text()
+              text = text.replace(
+                  "if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);",
+                  "if (i == 0) {\n          path.moveTo(x, y);\n        } else {\n          path.lineTo(x, y);\n        }",
+              )
+              text = text.replace(
+                  "if (index == 0) path.moveTo(px, py); else path.lineTo(px, py);",
+                  "if (index == 0) {\n        path.moveTo(px, py);\n      } else {\n        path.lineTo(px, py);\n      }",
+              )
+              path.write_text(text)
+          PY
+          dart format \
+            lib/services/nba_stats_workstation_engine.dart \
+            lib/screens/product_nba_stats_workstation_screen.dart \
+            lib/screens/product_analytics_suite_screen.dart \
+            test/nba_stats_workstation_engine_test.dart
+      - name: Commit fixes
+        run: |
+          if git diff --quiet; then
+            echo "No autofix changes required."
+            exit 0
+          fi
+          git config user.name "sports-terminal-ci"
+          git config user.email "sports-terminal-ci@users.noreply.github.com"
+          git add lib/services/nba_stats_workstation_engine.dart \
+            lib/screens/product_nba_stats_workstation_screen.dart \
+            lib/screens/product_analytics_suite_screen.dart \
+            test/nba_stats_workstation_engine_test.dart
+          git commit -m "Fix and format stats workstation integration"
+          git push origin HEAD:agent/stats-workstation-analytics-suite
