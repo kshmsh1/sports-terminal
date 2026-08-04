@@ -44,8 +44,17 @@ jobs:
           )
           engine.write_text(text)
 
+          analytics = Path('lib/screens/product_analytics_suite_screen.dart')
+          analytics_text = analytics.read_text()
+          analytics_text = analytics_text.replace(
+              "            const Spacer(),",
+              "            const SizedBox(width: 24),",
+              1,
+          )
+          analytics.write_text(analytics_text)
+
           for path in [
-              Path('lib/screens/product_analytics_suite_screen.dart'),
+              analytics,
               Path('lib/screens/product_nba_stats_workstation_screen.dart'),
           ]:
               text = path.read_text()
