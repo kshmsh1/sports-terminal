@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: flutter-quality-${{ github.ref }}
@@ -22,35 +22,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-        with:
-          ref: agent/stats-workstation-analytics-suite
-          fetch-depth: 0
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - name: Apply Dart safe fixes and commit branch
-        run: |
-          flutter pub get
-          dart fix --apply
-          dart format \
-            lib/services/nba_stats_workstation_engine.dart \
-            lib/screens/product_nba_stats_workstation_screen.dart \
-            lib/screens/product_analytics_suite_screen.dart \
-            test/nba_stats_workstation_engine_test.dart
-          if ! git diff --quiet; then
-            git config user.name "sports-terminal-ci"
-            git config user.email "sports-terminal-ci@users.noreply.github.com"
-            git add lib/services/nba_stats_workstation_engine.dart \
-              lib/screens/product_nba_stats_workstation_screen.dart \
-              lib/screens/product_analytics_suite_screen.dart \
-              test/nba_stats_workstation_engine_test.dart
-            git commit -m "Apply strict Dart fixes to NBA analytics suite"
-            git push origin HEAD:agent/stats-workstation-analytics-suite
-          fi
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -108,6 +79,12 @@ jobs:
       - name: Stop on backend contract failure
         if: steps.backend_contract.outputs.status != '0'
         run: exit 1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
 
       - name: Show Flutter version
         run: flutter --version
