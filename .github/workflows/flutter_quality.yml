@@ -40,7 +40,6 @@ jobs:
           else:
               path.write_text(text.replace(old, new, 1))
           PY
-          dart format lib/screens/product_analytics_suite_screen.dart
           if ! git diff --quiet; then
             git config user.name "sports-terminal-ci"
             git config user.email "sports-terminal-ci@users.noreply.github.com"
