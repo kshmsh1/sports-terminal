@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: flutter-quality-${{ github.ref }}
@@ -22,31 +22,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-        with:
-          ref: agent/stats-workstation-analytics-suite
-          fetch-depth: 0
-
-      - name: Repair analytics header and commit branch
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('lib/screens/product_analytics_suite_screen.dart')
-          text = path.read_text()
-          old = "        const Spacer(),\n        Text(\n          active,"
-          new = "        const SizedBox(width: 24),\n        Text(\n          active,"
-          if old not in text:
-              print('Analytics header is already repaired.')
-          else:
-              path.write_text(text.replace(old, new, 1))
-          PY
-          if ! git diff --quiet; then
-            git config user.name "sports-terminal-ci"
-            git config user.email "sports-terminal-ci@users.noreply.github.com"
-            git add lib/screens/product_analytics_suite_screen.dart
-            git commit -m "Fix Analytics Suite responsive header"
-            git push origin HEAD:agent/stats-workstation-analytics-suite
-          fi
 
       - name: Set up Python
         uses: actions/setup-python@v6
