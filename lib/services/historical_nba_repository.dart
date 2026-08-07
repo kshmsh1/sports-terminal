@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'nba_terminal_seed_repository.dart';
 import 'product_local_store.dart';
 
 class HistoricalNbaRepository {
@@ -50,7 +51,12 @@ class HistoricalNbaRepository {
     double minMinutes = 0,
     int offset = 0,
     int limit = 1000,
-  }) {
+  }) async {
+    await const NbaTerminalSeedRepository().selectHistorical(
+      season,
+      league: league,
+      seasonType: seasonType,
+    );
     return _get(
       '/v2/nba/history/leaderboard',
       query: {
@@ -75,6 +81,12 @@ class HistoricalNbaRepository {
     String team = '',
     int limit = 100,
   }) async {
+    if (season.isNotEmpty) {
+      await const NbaTerminalSeedRepository().selectHistorical(
+        season,
+        league: league.isEmpty ? 'NBA' : league,
+      );
+    }
     final payload = await _get(
       '/v2/nba/history/players',
       query: {
@@ -153,17 +165,25 @@ class HistoricalNbaRepository {
     String seasonType = 'regular',
     String teamKey = '',
     int limit = 250,
-  }) =>
-      _get(
-        '/v2/nba/history/games',
-        query: {
-          if (season.isNotEmpty) 'season': season,
-          'league': league,
-          'season_type': seasonType,
-          if (teamKey.isNotEmpty) 'team_key': teamKey,
-          'limit': limit.toString(),
-        },
+  }) async {
+    if (season.isNotEmpty) {
+      await const NbaTerminalSeedRepository().selectHistorical(
+        season,
+        league: league,
+        seasonType: seasonType,
       );
+    }
+    return _get(
+      '/v2/nba/history/games',
+      query: {
+        if (season.isNotEmpty) 'season': season,
+        'league': league,
+        'season_type': seasonType,
+        if (teamKey.isNotEmpty) 'team_key': teamKey,
+        'limit': limit.toString(),
+      },
+    );
+  }
 
   Future<Map<String, dynamic>> playByPlay(
     String gameKey, {
