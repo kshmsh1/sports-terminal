@@ -51,13 +51,40 @@ app.middleware("http")(enforce_launch_auth)
 app.middleware("http")(launch_operations_middleware)
 app.middleware("http")(enforce_launch_authorization)
 
+
+def _attach_router_routes(router) -> None:
+    """Attach an already-prefixed dynamically composed router without snapshot loss.
+
+    The historical router is augmented at import time with deep-research APIRoute
+    objects. Attaching the final route objects directly keeps that dynamic composition
+    intact and, critically, preserves their position before the generic
+    /v2/nba/{season}/{dataset} route.
+    """
+    existing = {
+        (
+            getattr(route, "path", ""),
+            tuple(sorted(getattr(route, "methods", set()) or set())),
+        )
+        for route in app.router.routes
+    }
+    for route in router.routes:
+        signature = (
+            getattr(route, "path", ""),
+            tuple(sorted(getattr(route, "methods", set()) or set())),
+        )
+        if signature in existing:
+            continue
+        app.router.routes.append(route)
+        existing.add(signature)
+
+
 app.include_router(auth_router)
 app.include_router(launch_router)
 app.include_router(workspace_router)
 # Historical routes must be registered before /v2/nba/{season}/{dataset}; otherwise
 # the dynamic certified-release route can interpret "history" as a season value.
-app.include_router(historical_nba_router)
-app.include_router(historical_nba_compat_router)
+_attach_router_routes(historical_nba_router)
+_attach_router_routes(historical_nba_compat_router)
 app.include_router(nba_data_router)
 app.include_router(front_office_hardened_router)
 app.include_router(front_office_router)
