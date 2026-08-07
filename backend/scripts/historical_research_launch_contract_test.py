@@ -18,6 +18,10 @@ def load_fixture_module(repo_root: Path):
     return module
 
 
+def route_paths(router) -> list[str]:
+    return sorted(getattr(route, "path", "") for route in router.routes)
+
+
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[2]
     fixture = load_fixture_module(repo_root)
@@ -33,6 +37,8 @@ def main() -> int:
         # This mirrors backend/scripts/launch_contract_test.py and uvicorn:
         # compose the launch entrypoint before importing endpoint modules directly.
         from app import main_launch as launch  # noqa: PLC0415
+        from app import historical_nba_api as canonical  # noqa: PLC0415
+        from app import historical_nba_compat_api as compat  # noqa: PLC0415
         from app import historical_nba_research_api as research  # noqa: PLC0415
 
         paths = {getattr(route, "path", "") for route in launch.app.routes}
@@ -48,8 +54,16 @@ def main() -> int:
         }
         missing = sorted(required - paths)
         assert not missing, {
+            "launch_file": getattr(launch, "__file__", ""),
+            "launch_title": launch.app.title,
+            "launch_version": launch.app.version,
             "missing_routes": missing,
             "history_paths": sorted(path for path in paths if "/v2/nba/history" in path),
+            "canonical_router_paths": route_paths(canonical.router),
+            "compat_router_paths": route_paths(compat.router),
+            "research_router_paths": route_paths(research.router),
+            "launch_router_is_canonical_router": getattr(launch, "historical_nba_router", None) is canonical.router,
+            "launch_compat_is_compat_router": getattr(launch, "historical_nba_compat_router", None) is compat.router,
         }
 
         summary = research.historical_research_summary()
