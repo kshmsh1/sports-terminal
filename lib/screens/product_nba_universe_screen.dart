@@ -169,7 +169,7 @@ class _ProductNbaUniverseScreenState extends State<ProductNbaUniverseScreen> {
     final seasonType = seasonRow['season_type']?.toString() ?? 'regular';
     final selected = _selected ?? const <String, dynamic>{};
     final player = _kind == _UniverseEntityKind.players;
-    final context = await _contexts.activateHistorical(
+    final activeContext = await _contexts.activateHistorical(
       season: season,
       league: league,
       seasonType: seasonType,
@@ -180,13 +180,13 @@ class _ProductNbaUniverseScreenState extends State<ProductNbaUniverseScreen> {
     );
     if (!mounted) return;
     setState(() {
-      _contextFuture = Future.value(context);
+      _contextFuture = Future.value(activeContext);
       _recentFuture = _contexts.recent();
     });
-    ScaffoldMessenger.of(context: this.context).showSnackBar(
+    ScaffoldMessenger.of(this.context).showSnackBar(
       SnackBar(
         content: Text(
-          '${context.scopeLabel}${context.entityLabel.isEmpty ? '' : ' · ${context.entityLabel}'} is now the active NBA research context.',
+          '${activeContext.scopeLabel}${activeContext.entityLabel.isEmpty ? '' : ' · ${activeContext.entityLabel}'} is now the active NBA research context.',
         ),
       ),
     );
@@ -204,10 +204,10 @@ class _ProductNbaUniverseScreenState extends State<ProductNbaUniverseScreen> {
   }
 
   Future<void> _restoreCurrent() async {
-    final context = await _contexts.selectCurrent();
+    final activeContext = await _contexts.selectCurrent();
     if (!mounted) return;
     setState(() {
-      _contextFuture = Future.value(context);
+      _contextFuture = Future.value(activeContext);
       _recentFuture = _contexts.recent();
     });
   }
@@ -520,11 +520,10 @@ class _ProductNbaUniverseScreenState extends State<ProductNbaUniverseScreen> {
       separatorBuilder: (context, index) => const SizedBox(height: 6),
       itemBuilder: (context, index) {
         final row = _results[index];
-        final selected = identical(row, _selected);
         return _ResultTile(
           row: row,
           kind: _kind,
-          selected: selected,
+          selected: identical(row, _selected),
           onTap: () => _openResult(row),
         );
       },
@@ -646,8 +645,7 @@ class _ProductNbaUniverseScreenState extends State<ProductNbaUniverseScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (final row in bestEra.take(10))
-                        _EraCard(row: row),
+                      for (final row in bestEra.take(10)) _EraCard(row: row),
                     ],
                   ),
               ],
