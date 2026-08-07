@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../services/nba_research_context_store.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import 'product_historical_nba_research_lab_screen.dart';
 import 'product_historical_nba_workstation_screen.dart';
 import 'product_nba_stats_workstation_screen.dart';
 
-enum _StatsCenterMode { historicalStats, historicalResearch, currentRelease }
+enum _StatsCenterMode {
+  activeContext,
+  historicalStats,
+  historicalResearch,
+  currentRelease,
+}
 
 class ProductNbaStatsCenterScreen extends StatefulWidget {
   const ProductNbaStatsCenterScreen({super.key});
@@ -19,26 +25,37 @@ class _ProductNbaStatsCenterScreenState
     extends State<ProductNbaStatsCenterScreen> {
   static const double _embeddedMinHeight = 860;
 
-  _StatsCenterMode _mode = _StatsCenterMode.historicalStats;
-  int _currentRevision = 0;
+  _StatsCenterMode _mode = _StatsCenterMode.activeContext;
+  int _revision = 0;
+  late Future<NbaResearchContext> _contextFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _contextFuture = const NbaResearchContextStore().load();
+  }
+
+  void _openActiveContext() {
+    setState(() {
+      _mode = _StatsCenterMode.activeContext;
+      _revision++;
+      _contextFuture = const NbaResearchContextStore().load();
+    });
+  }
 
   Future<void> _openCurrentRelease() async {
     await const NbaTerminalSeedRepository().selectCurrent();
     if (!mounted) return;
     setState(() {
       _mode = _StatsCenterMode.currentRelease;
-      _currentRevision++;
+      _revision++;
+      _contextFuture = const NbaResearchContextStore().load();
     });
   }
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
-          // Most terminal shells give this screen a bounded pane and it should
-          // fill that pane. Responsive/embedded hosts may place product surfaces
-          // inside a vertical scroll view; in that case Expanded would receive
-          // infinite height. Give the workstation a professional minimum canvas
-          // instead of changing its internal sizing semantics.
           final height = constraints.hasBoundedHeight
               ? constraints.maxHeight
               : _embeddedMinHeight;
@@ -55,7 +72,7 @@ class _ProductNbaStatsCenterScreenState
       );
 
   Widget _modeBar(double width) {
-    final compact = width < 1080;
+    final compact = width < 1180;
     final controls = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -69,6 +86,13 @@ class _ProductNbaStatsCenterScreenState
           ),
         ),
         const SizedBox(width: 14),
+        _ModeButton(
+          label: 'Active Context',
+          icon: Icons.hub_rounded,
+          selected: _mode == _StatsCenterMode.activeContext,
+          onTap: _openActiveContext,
+        ),
+        const SizedBox(width: 6),
         _ModeButton(
           label: 'Historical Stats',
           icon: Icons.timeline_rounded,
@@ -95,21 +119,7 @@ class _ProductNbaStatsCenterScreenState
         ),
         if (!compact) ...[
           const SizedBox(width: 16),
-          Text(
-            switch (_mode) {
-              _StatsCenterMode.historicalStats =>
-                '1946–PRESENT · CANONICAL HISTORY',
-              _StatsCenterMode.historicalResearch =>
-                'CAREERS · RECORDS · GAMES · FRANCHISES',
-              _StatsCenterMode.currentRelease => 'VALIDATED RELEASE ASSETS',
-            },
-            style: const TextStyle(
-              color: Color(0xFF8D99AA),
-              fontSize: 8,
-              fontWeight: FontWeight.w800,
-              letterSpacing: .5,
-            ),
-          ),
+          Flexible(child: _modeStatus()),
         ],
       ],
     );
@@ -128,27 +138,76 @@ class _ProductNbaStatsCenterScreenState
     );
   }
 
+  Widget _modeStatus() {
+    if (_mode == _StatsCenterMode.activeContext) {
+      return FutureBuilder<NbaResearchContext>(
+        future: _contextFuture,
+        builder: (context, snapshot) {
+          final active = snapshot.data;
+          return Text(
+            active == null
+                ? 'SHARED RESEARCH SCOPE'
+                : '${active.scopeLabel.toUpperCase()}${active.entityLabel.isEmpty ? '' : ' · ${active.entityLabel.toUpperCase()}'}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: active?.historical == true
+                  ? const Color(0xFFFFCB45)
+                  : const Color(0xFF65E3A5),
+              fontSize: 8,
+              fontWeight: FontWeight.w900,
+              letterSpacing: .5,
+            ),
+          );
+        },
+      );
+    }
+    return Text(
+      switch (_mode) {
+        _StatsCenterMode.activeContext => 'SHARED RESEARCH SCOPE',
+        _StatsCenterMode.historicalStats =>
+          '1946–PRESENT · CANONICAL HISTORY',
+        _StatsCenterMode.historicalResearch =>
+          'CAREERS · RECORDS · GAMES · FRANCHISES',
+        _StatsCenterMode.currentRelease => 'VALIDATED RELEASE ASSETS',
+      },
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+        color: Color(0xFF8D99AA),
+        fontSize: 8,
+        fontWeight: FontWeight.w800,
+        letterSpacing: .5,
+      ),
+    );
+  }
+
   Widget _modeBody() => switch (_mode) {
+        _StatsCenterMode.activeContext => _seedWorkstation('active-$_revision'),
         _StatsCenterMode.historicalStats =>
           const ProductHistoricalNbaWorkstationScreen(),
         _StatsCenterMode.historicalResearch =>
           const ProductHistoricalNbaResearchLabScreen(),
-        _StatsCenterMode.currentRelease => LayoutBuilder(
-            key: ValueKey('current-$_currentRevision'),
-            builder: (context, constraints) {
-              if (constraints.maxWidth >= 1180) {
-                return const ProductNbaStatsWorkstationScreen();
-              }
-              return const SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: 1180,
-                  child: ProductNbaStatsWorkstationScreen(),
-                ),
-              );
-            },
-          ),
+        _StatsCenterMode.currentRelease => _seedWorkstation('current-$_revision'),
       };
+
+  Widget _seedWorkstation(String key) {
+    return LayoutBuilder(
+      key: ValueKey(key),
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 1180) {
+          return const ProductNbaStatsWorkstationScreen();
+        }
+        return const SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: 1180,
+            child: ProductNbaStatsWorkstationScreen(),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _ModeButton extends StatelessWidget {
