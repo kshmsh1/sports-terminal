@@ -25,21 +25,19 @@ class HistoricalNbaRepository {
     return _mapRows(payload['rows']);
   }
 
-  Future<List<Map<String, dynamic>>> coverage({
+  Future<Map<String, dynamic>> coverage({
     String domain = '',
     String league = '',
     String season = '',
-  }) async {
-    final payload = await _get(
-      '/v2/nba/history/coverage',
-      query: {
-        if (domain.isNotEmpty) 'domain': domain,
-        if (league.isNotEmpty) 'league': league,
-        if (season.isNotEmpty) 'season': season,
-      },
-    );
-    return _mapRows(payload['rows']);
-  }
+  }) =>
+      _get(
+        '/v2/nba/history/coverage',
+        query: {
+          if (domain.isNotEmpty) 'domain': domain,
+          if (league.isNotEmpty) 'league': league,
+          if (season.isNotEmpty) 'season': season,
+        },
+      );
 
   Future<Map<String, dynamic>> leaderboard({
     required String season,
@@ -197,13 +195,15 @@ class HistoricalNbaRepository {
     );
     final token = await _store.loadString(ProductLocalStore.launchAuthTokenKey);
     try {
-      final response = await http.get(
-        uri,
-        headers: {
-          'Accept': 'application/json',
-          if (token.isNotEmpty) 'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 12));
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Accept': 'application/json',
+              if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 12));
       Object? decoded;
       if (response.body.trim().isNotEmpty) {
         try {
