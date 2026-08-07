@@ -16,3 +16,7 @@ linter:
     # Repository command-line validators and importers intentionally
     # print concise progress output.
     avoid_print: false
+    # Dart 3.12 flags conventional (_, __) callback placeholders. Existing
+    # terminal screens use the second underscore only to distinguish two
+    # intentionally unused callback parameters; this is formatting/style only.
+    unnecessary_underscores: false
