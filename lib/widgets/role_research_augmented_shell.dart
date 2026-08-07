@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../controllers/internal_workspace_controller.dart';
 import '../models/app_session.dart';
 import '../screens/product_nba_research_command_center_screen.dart';
+import '../screens/product_nba_universe_screen.dart';
+import '../services/nba_research_context_store.dart';
 import 'launch_role_product_shell.dart';
 
 class RoleResearchAugmentedShell extends StatelessWidget {
@@ -23,7 +25,7 @@ class RoleResearchAugmentedShell extends StatelessWidget {
   }) {
     return showDialog<void>(
       context: context,
-      builder: (context) => Dialog.fullscreen(
+      builder: (dialogContext) => Dialog.fullscreen(
         child: Scaffold(
           backgroundColor: const Color(0xFF0D1420),
           appBar: AppBar(
@@ -36,13 +38,76 @@ class RoleResearchAugmentedShell extends StatelessWidget {
             ),
             leading: IconButton(
               tooltip: 'Close research center',
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               icon: const Icon(Icons.close_rounded),
             ),
+            actions: [
+              IconButton(
+                tooltip: 'Open NBA Universe',
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  if (!context.mounted) return;
+                  _openUniverse(context);
+                },
+                icon: const Icon(Icons.public_rounded),
+              ),
+              const SizedBox(width: 6),
+            ],
           ),
           body: ProductNbaResearchCommandCenterScreen(
             session: session,
             initialSection: initialSection,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openUniverse(BuildContext context) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog.fullscreen(
+        child: Scaffold(
+          backgroundColor: const Color(0xFF09111C),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF121D2B),
+            foregroundColor: Colors.white,
+            title: const Text('NBA Universe'),
+            leading: IconButton(
+              tooltip: 'Close NBA Universe',
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              icon: const Icon(Icons.close_rounded),
+            ),
+            actions: [
+              IconButton(
+                tooltip: 'Open NBA Research',
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  if (!context.mounted) return;
+                  _openResearch(context);
+                },
+                icon: const Icon(Icons.query_stats_rounded),
+              ),
+              const SizedBox(width: 6),
+            ],
+          ),
+          body: ProductNbaUniverseScreen(
+            onOpenStats: () {
+              Navigator.of(dialogContext).pop();
+              if (!context.mounted) return;
+              _openResearch(
+                context,
+                initialSection: NbaResearchSection.stats,
+              );
+            },
+            onOpenAnalytics: () {
+              Navigator.of(dialogContext).pop();
+              if (!context.mounted) return;
+              _openResearch(
+                context,
+                initialSection: NbaResearchSection.analytics,
+              );
+            },
           ),
         ),
       ),
@@ -54,6 +119,7 @@ class RoleResearchAugmentedShell extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 1020;
+        final left = compact ? 18.0 : 306.0;
         return Stack(
           children: [
             LaunchRoleProductShell(
@@ -62,7 +128,7 @@ class RoleResearchAugmentedShell extends StatelessWidget {
               onSignOut: onSignOut,
             ),
             Positioned(
-              left: compact ? 18 : 306,
+              left: left,
               bottom: 18,
               child: SafeArea(
                 child: FloatingActionButton.extended(
@@ -81,7 +147,7 @@ class RoleResearchAugmentedShell extends StatelessWidget {
               ),
             ),
             Positioned(
-              left: compact ? 18 : 306,
+              left: left,
               bottom: 82,
               child: SafeArea(
                 child: Material(
@@ -129,6 +195,83 @@ class RoleResearchAugmentedShell extends StatelessWidget {
                             Icons.expand_more_rounded,
                             color: Colors.white70,
                             size: 16,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: left,
+              bottom: 128,
+              child: SafeArea(
+                child: Material(
+                  color: const Color(0xFF132338),
+                  elevation: 9,
+                  borderRadius: BorderRadius.circular(999),
+                  child: InkWell(
+                    onTap: () => _openUniverse(context),
+                    borderRadius: BorderRadius.circular(999),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.public_rounded,
+                            color: Color(0xFFFFCB45),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'NBA Universe',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          FutureBuilder<NbaResearchContext>(
+                            future: const NbaResearchContextStore().load(),
+                            builder: (context, snapshot) {
+                              final active = snapshot.data;
+                              if (active == null) {
+                                return const SizedBox.shrink();
+                              }
+                              return Container(
+                                constraints: const BoxConstraints(maxWidth: 180),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: active.historical
+                                      ? const Color(0x22FFCB45)
+                                      : const Color(0x2265E3A5),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  active.historical
+                                      ? active.season
+                                      : 'CURRENT',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: active.historical
+                                        ? const Color(0xFFFFCB45)
+                                        : const Color(0xFF65E3A5),
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),

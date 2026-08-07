@@ -100,6 +100,22 @@ class HistoricalNbaRepository {
     return _mapRows(payload['rows']);
   }
 
+  Future<List<Map<String, dynamic>>> searchTeams(
+    String query, {
+    String league = '',
+    int limit = 100,
+  }) async {
+    final payload = await _get(
+      '/v2/nba/history/teams',
+      query: {
+        if (query.trim().isNotEmpty) 'query': query.trim(),
+        if (league.isNotEmpty) 'league': league,
+        'limit': limit.toString(),
+      },
+    );
+    return _mapRows(payload['rows']);
+  }
+
   Future<Map<String, dynamic>> player(String playerKey) =>
       _get('/v2/nba/history/players/${Uri.encodeComponent(playerKey)}');
 
@@ -116,6 +132,9 @@ class HistoricalNbaRepository {
       },
     );
   }
+
+  Future<Map<String, dynamic>> teamHistory(String teamKey) =>
+      _get('/v2/nba/history/teams/${Uri.encodeComponent(teamKey)}/history');
 
   Future<Map<String, dynamic>> eraAdjusted(
     String playerKey, {
@@ -184,6 +203,9 @@ class HistoricalNbaRepository {
       },
     );
   }
+
+  Future<Map<String, dynamic>> game(String gameKey) =>
+      _get('/v2/nba/history/games/${Uri.encodeComponent(gameKey)}');
 
   Future<Map<String, dynamic>> playByPlay(
     String gameKey, {

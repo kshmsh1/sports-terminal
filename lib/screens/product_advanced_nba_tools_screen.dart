@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/historical_nba_repository.dart';
+import '../services/nba_research_context_store.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/product_local_store.dart';
 import 'product_analytics_suite_screen.dart';
@@ -17,6 +18,7 @@ class _ProductAdvancedNbaToolsScreenState
     extends State<ProductAdvancedNbaToolsScreen> {
   final NbaTerminalSeedRepository _seed = const NbaTerminalSeedRepository();
   final HistoricalNbaRepository _history = const HistoricalNbaRepository();
+  final NbaResearchContextStore _contexts = const NbaResearchContextStore();
   final ProductLocalStore _store = const ProductLocalStore();
 
   bool _historical = false;
@@ -27,10 +29,12 @@ class _ProductAdvancedNbaToolsScreenState
   String _error = '';
   int _revision = 0;
   List<String> _seasons = const [];
+  late Future<NbaResearchContext> _contextFuture;
 
   @override
   void initState() {
     super.initState();
+    _contextFuture = _contexts.load();
     _bootstrap();
   }
 
@@ -76,6 +80,7 @@ class _ProductAdvancedNbaToolsScreenState
       _seasons = seasons;
       _error = error;
       _loading = false;
+      _contextFuture = _contexts.load();
     });
     if (_historical && _season.isNotEmpty) {
       await _seed.selectHistorical(
@@ -93,6 +98,7 @@ class _ProductAdvancedNbaToolsScreenState
       _historical = false;
       _error = '';
       _revision++;
+      _contextFuture = _contexts.load();
     });
   }
 
@@ -111,6 +117,7 @@ class _ProductAdvancedNbaToolsScreenState
       _historical = true;
       _error = '';
       _revision++;
+      _contextFuture = _contexts.load();
     });
   }
 
@@ -150,6 +157,7 @@ class _ProductAdvancedNbaToolsScreenState
       setState(() {
         _loading = false;
         _revision++;
+        _contextFuture = _contexts.load();
       });
     } catch (exception) {
       if (!mounted) return;
@@ -174,6 +182,7 @@ class _ProductAdvancedNbaToolsScreenState
             league: _league,
             seasonType: _seasonType,
             error: _error,
+            contextFuture: _contextFuture,
             onCurrent: _selectCurrent,
             onHistorical: _selectHistorical,
             onSeason: _changeSeason,
@@ -202,6 +211,7 @@ class _DataScopeBar extends StatelessWidget {
     required this.league,
     required this.seasonType,
     required this.error,
+    required this.contextFuture,
     required this.onCurrent,
     required this.onHistorical,
     required this.onSeason,
@@ -216,6 +226,7 @@ class _DataScopeBar extends StatelessWidget {
   final String league;
   final String seasonType;
   final String error;
+  final Future<NbaResearchContext> contextFuture;
   final VoidCallback onCurrent;
   final VoidCallback onHistorical;
   final ValueChanged<String> onSeason;
@@ -293,6 +304,31 @@ class _DataScopeBar extends StatelessWidget {
                 ? '${season.isEmpty ? 'NO SEASON' : season} · canonical warehouse projected into original seed contract'
                 : 'validated asset / fallback seed contract',
             style: const TextStyle(color: muted, fontSize: 9),
+          ),
+          FutureBuilder<NbaResearchContext>(
+            future: contextFuture,
+            builder: (context, snapshot) {
+              final active = snapshot.data;
+              if (active == null || active.entityLabel.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0x2265B5FF),
+                  border: Border.all(color: const Color(0x5565B5FF)),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  'ENTITY · ${active.entityLabel}',
+                  style: const TextStyle(
+                    color: Color(0xFF65B5FF),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              );
+            },
           ),
           if (error.isNotEmpty)
             ConstrainedBox(
