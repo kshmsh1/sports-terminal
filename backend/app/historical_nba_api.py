@@ -4,6 +4,7 @@ import json
 import math
 import os
 import sqlite3
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,7 @@ COUNTING_METRICS = {
 }
 PERCENT_METRICS = {"fg_pct", "three_pct", "two_pct", "ft_pct", "ts_pct", "efg_pct", "usg_pct"}
 LOWER_IS_BETTER = {"tov", "drtg"}
+_MULTI_TEAM_CODES = {"TOT", "MULTI"}
 
 
 def _path() -> Path:
@@ -123,6 +125,151 @@ def _season_clause(season_type: str) -> tuple[str, list[Any]]:
     if season_type == "combined":
         return "", []
     return " AND ps.season_type = ?", [season_type]
+
+
+def _num(row: dict[str, Any], field: str) -> float | None:
+    value = row.get(field)
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_multi_team_row(row: dict[str, Any]) -> bool:
+    abbreviation = str(row.get("team_abbreviation") or "").strip().upper()
+    return abbreviation in _MULTI_TEAM_CODES or (
+        len(abbreviation) >= 3 and abbreviation.endswith("TM") and abbreviation[:-2].isdigit()
+    )
+
+
+def _weighted(rows: list[dict[str, Any]], field: str) -> float | None:
+    weighted = 0.0
+    weight_total = 0.0
+    for row in rows:
+        value = _num(row, field)
+        if value is None:
+            continue
+        weight = _num(row, "minutes") or _num(row, "games") or 1.0
+        if weight <= 0:
+            continue
+        weighted += value * weight
+        weight_total += weight
+    return weighted / weight_total if weight_total > 0 else None
+
+
+def _ratio(numerator: float | None, denominator: float | None) -> float | None:
+    if numerator is None or denominator is None or denominator <= 0:
+        return None
+    return numerator / denominator
+
+
+def _aggregate_player_rows(rows: list[dict[str, Any]], *, label: str) -> dict[str, Any]:
+    """Create one transparent season record when an upstream total row is absent.
+
+    Counting values are additive; shooting percentages are rebuilt from makes/attempts;
+    TS% and eFG% are rebuilt from canonical counting fields; non-additive advanced rates
+    use a minutes-weighted average. The synthesized row is intentionally not given a
+    canonical fact key so the UI cannot imply it has direct field-level source evidence.
+    """
+    if not rows:
+        return {}
+    base = dict(max(rows, key=lambda row: (_num(row, "minutes") or 0.0, _num(row, "games") or 0.0)))
+    additive = set(COUNTING_METRICS) | {"games", "games_started", "ws", "vorp"}
+    for field in additive:
+        values = [_num(row, field) for row in rows]
+        present = [value for value in values if value is not None]
+        base[field] = sum(present) if present else None
+
+    base["fg_pct"] = _ratio(_num(base, "fgm"), _num(base, "fga"))
+    base["three_pct"] = _ratio(_num(base, "three_pm"), _num(base, "three_pa"))
+    base["two_pct"] = _ratio(_num(base, "two_pm"), _num(base, "two_pa"))
+    base["ft_pct"] = _ratio(_num(base, "ftm"), _num(base, "fta"))
+    fga = _num(base, "fga")
+    three_pm = _num(base, "three_pm")
+    fgm = _num(base, "fgm")
+    pts = _num(base, "pts")
+    fta = _num(base, "fta")
+    base["efg_pct"] = (
+        (fgm + 0.5 * three_pm) / fga
+        if fgm is not None and three_pm is not None and fga is not None and fga > 0
+        else None
+    )
+    ts_denominator = 2 * (fga + 0.44 * fta) if fga is not None and fta is not None else None
+    base["ts_pct"] = pts / ts_denominator if pts is not None and ts_denominator and ts_denominator > 0 else None
+    minutes = _num(base, "minutes")
+    ws = _num(base, "ws")
+    base["ws48"] = ws * 48 / minutes if ws is not None and minutes is not None and minutes > 0 else None
+    for field in {"per", "obpm", "dbpm", "bpm", "usg_pct", "ortg", "drtg"}:
+        base[field] = _weighted(rows, field)
+
+    base["fact_key"] = ""
+    base["team_key"] = None
+    base["team_abbreviation"] = label
+    base["team_name"] = "Multiple teams" if label == "MULTI" else label
+    base["primary_source"] = "synthesized_from_canonical_rows"
+    base["source_count"] = max(int(row.get("source_count") or 1) for row in rows)
+    base["synthetic_aggregate"] = True
+    base["aggregate_components"] = [str(row.get("fact_key") or "") for row in rows if row.get("fact_key")]
+    base["provenance_json"] = json.dumps({"aggregation": "derived_from_canonical_component_rows"})
+    return base
+
+
+def _collapse_player_season_rows(
+    source_rows: list[dict[str, Any]],
+    *,
+    team_filtered: bool,
+    combine_segments: bool,
+) -> list[dict[str, Any]]:
+    """Return at most one league-wide leaderboard row per player.
+
+    Historical season tables commonly include a multi-team aggregate row plus individual
+    team stints. League-wide leaderboards prefer that explicit total. If no total exists,
+    Sports Terminal synthesizes one from the canonical stints. Team-filtered queries keep
+    the requested stint. A combined segment then aggregates regular/playoff segment rows.
+    """
+    by_player_segment: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in source_rows:
+        by_player_segment[(str(row.get("player_key") or ""), str(row.get("season_type") or "regular"))].append(row)
+
+    collapsed_segments: list[dict[str, Any]] = []
+    for group in by_player_segment.values():
+        if team_filtered or len(group) == 1:
+            collapsed_segments.extend(group)
+            continue
+        explicit_totals = [row for row in group if _is_multi_team_row(row)]
+        if explicit_totals:
+            collapsed_segments.append(
+                max(
+                    explicit_totals,
+                    key=lambda row: (
+                        _num(row, "games") or 0.0,
+                        _num(row, "minutes") or 0.0,
+                        int(row.get("source_count") or 0),
+                    ),
+                )
+            )
+        else:
+            collapsed_segments.append(_aggregate_player_rows(group, label="MULTI"))
+
+    if not combine_segments:
+        return collapsed_segments
+
+    by_player: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in collapsed_segments:
+        by_player[str(row.get("player_key") or "")].append(row)
+    combined: list[dict[str, Any]] = []
+    for group in by_player.values():
+        if len(group) == 1:
+            item = dict(group[0])
+            item["season_type"] = "combined"
+            combined.append(item)
+        else:
+            item = _aggregate_player_rows(group, label="ALL")
+            item["season_type"] = "combined"
+            combined.append(item)
+    return combined
 
 
 @router.get("/status")
@@ -330,9 +477,9 @@ def history_leaderboard(
       FROM canon_fact_player_season ps
       JOIN canon_dim_player p ON p.player_key=ps.player_key
       LEFT JOIN canon_dim_team t ON t.team_key=ps.team_key
-      WHERE ps.season_id=? AND ps.league_id=? AND COALESCE(ps.games,0)>=? AND COALESCE(ps.minutes,0)>=?
+      WHERE ps.season_id=? AND ps.league_id=?
     """
-    params: list[Any] = [season, league.upper(), min_games, min_minutes]
+    params: list[Any] = [season, league.upper()]
     clause, type_params = _season_clause(season_type)
     sql += clause
     params.extend(type_params)
@@ -341,6 +488,18 @@ def history_leaderboard(
         params.append(team.upper())
     with _connect() as db:
         source_rows = _rows(db.execute(sql, params).fetchall())
+
+    source_rows = _collapse_player_season_rows(
+        source_rows,
+        team_filtered=bool(team),
+        combine_segments=season_type == "combined",
+    )
+    source_rows = [
+        row
+        for row in source_rows
+        if (_num(row, "games") or 0.0) >= min_games and (_num(row, "minutes") or 0.0) >= min_minutes
+    ]
+
     projected: list[dict[str, Any]] = []
     for row in source_rows:
         scaled, estimated = _scaled(row, metric, basis)
