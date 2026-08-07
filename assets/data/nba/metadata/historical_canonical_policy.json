@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "canonicalSchemaVersion": "2026.08.07.1",
+  "description": "Source precedence, identity, season normalization and conflict policy for the Sports Terminal historical NBA canonical warehouse.",
+  "sourcePriority": {
+    "identity": ["wyatt_nbadb", "sumitro_bref_history", "gonzalo_all_time"],
+    "game": ["wyatt_nbadb", "gonzalo_all_time", "sumitro_bref_history"],
+    "play_by_play": ["wyatt_nbadb", "gonzalo_all_time", "sumitro_bref_history"],
+    "player_game": ["gonzalo_all_time", "wyatt_nbadb", "sumitro_bref_history"],
+    "player_season": ["sumitro_bref_history", "gonzalo_all_time", "wyatt_nbadb"],
+    "team_season": ["sumitro_bref_history", "gonzalo_all_time", "wyatt_nbadb"],
+    "award": ["sumitro_bref_history", "wyatt_nbadb", "gonzalo_all_time"],
+    "draft": ["sumitro_bref_history", "wyatt_nbadb", "gonzalo_all_time"],
+    "all_star": ["sumitro_bref_history", "wyatt_nbadb", "gonzalo_all_time"]
+  },
+  "identityRules": {
+    "player": [
+      "same source stable id",
+      "NBA id crosswalk",
+      "Basketball Reference id crosswalk",
+      "normalized full name + birth date/year",
+      "unique normalized full name"
+    ],
+    "team": [
+      "NBA stable team id",
+      "league + historical abbreviation + active season",
+      "normalized historical team name",
+      "manual franchise lineage alias"
+    ],
+    "game": [
+      "NBA game id",
+      "league + date + home team + away team"
+    ]
+  },
+  "seasonRules": {
+    "canonicalFormat": "YYYY-YY",
+    "nbaStatsSeasonId": {
+      "1": "preseason",
+      "2": "regular",
+      "3": "all_star",
+      "4": "playoffs",
+      "5": "all_star"
+    },
+    "fourDigitYearInterpretation": "season end year for Basketball-Reference-derived season tables"
+  },
+  "conflictPolicy": {
+    "numericAbsoluteTolerance": 0.000001,
+    "numericRelativeTolerance": 0.005,
+    "recordAllMaterialConflicts": true,
+    "retainLosingValuesInEvidence": true,
+    "fieldLevelProvenance": true
+  },
+  "modernFranchiseAliases": {
+    "ATL": "hawks", "STL": "hawks", "MLH": "hawks", "TRI": "hawks",
+    "BOS": "celtics",
+    "BKN": "nets", "NJN": "nets", "NYA": "nets", "NJA": "nets",
+    "CHA": "hornets", "CHH": "hornets", "CHO": "hornets",
+    "CHI": "bulls",
+    "CLE": "cavaliers",
+    "DAL": "mavericks",
+    "DEN": "nuggets", "DNA": "nuggets",
+    "DET": "pistons", "FTW": "pistons",
+    "GSW": "warriors", "SFW": "warriors", "PHW": "warriors",
+    "HOU": "rockets", "SDR": "rockets",
+    "IND": "pacers",
+    "LAC": "clippers", "SDC": "clippers", "BUF": "clippers",
+    "LAL": "lakers", "MNL": "lakers",
+    "MEM": "grizzlies", "VAN": "grizzlies",
+    "MIA": "heat",
+    "MIL": "bucks",
+    "MIN": "timberwolves",
+    "NOP": "pelicans", "NOH": "pelicans", "NOK": "pelicans",
+    "NYK": "knicks",
+    "OKC": "thunder", "SEA": "thunder",
+    "ORL": "magic",
+    "PHI": "76ers", "SYR": "76ers",
+    "PHX": "suns",
+    "POR": "trail_blazers",
+    "SAC": "kings", "KCK": "kings", "KCO": "kings", "CIN": "kings", "ROC": "kings",
+    "SAS": "spurs", "DLC": "spurs", "TEX": "spurs",
+    "TOR": "raptors",
+    "UTA": "jazz", "NOJ": "jazz",
+    "WAS": "wizards", "WSB": "wizards", "CAP": "wizards", "BAL": "wizards", "CHZ": "wizards", "CHP": "wizards"
+  }
+}
