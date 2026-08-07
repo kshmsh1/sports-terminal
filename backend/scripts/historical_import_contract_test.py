@@ -70,14 +70,24 @@ def write_sqlite(path: Path) -> None:
 def write_csv(path: Path) -> None:
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["Season", "Player", "Award"])
-        writer.writerow(["2024-25", "Player One", "MVP"])
-        writer.writerow(["2025-26", "Player Two", "DPOY"])
+        writer.writerow(
+            [
+                "Season",
+                "Player",
+                "Award",
+                "3P.2",
+                "3P.2",
+                "n_3p_2_2",
+                "N 3P 2 2",
+            ]
+        )
+        writer.writerow(["2024-25", "Player One", "MVP", "1", "2", "3", "4"])
+        writer.writerow(["2025-26", "Player Two", "DPOY", "5", "6", "7", "8"])
 
 
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[2]
-    importer = repo_root / "tools" / "import_historical_nba_sources.py"
+    importer = repo_root / "tools" / "run_historical_nba_import.py"
     with tempfile.TemporaryDirectory(prefix="sports-terminal-history-") as temp:
         root = Path(temp)
         registry = root / "registry.json"
@@ -134,6 +144,24 @@ def main() -> int:
             assert by_table["play_by_play"][1] == "play_by_play", by_table
             assert by_table["play_by_play"][2] == "event", by_table
             assert by_table["awards"][1] == "award", by_table
+
+            award_inventory = db.execute(
+                "SELECT warehouse_table, columns_json FROM historical_table_inventory "
+                "WHERE source_table = 'awards'"
+            ).fetchone()
+            assert award_inventory is not None
+            award_table = str(award_inventory[0])
+            columns = json.loads(award_inventory[1])
+            normalized_names = [str(column["name"]) for column in columns]
+            assert len(normalized_names) == len(set(name.casefold() for name in normalized_names)), normalized_names
+            collision_columns = [name for name in normalized_names if "3p_2" in name]
+            assert len(collision_columns) == 4, collision_columns
+
+            pragma_columns = [
+                str(row[1])
+                for row in db.execute(f'PRAGMA table_info("{award_table}")').fetchall()
+            ]
+            assert len(pragma_columns) == len(set(name.casefold() for name in pragma_columns)), pragma_columns
 
             source = db.execute(
                 "SELECT file_count, table_count, row_count FROM historical_source_registry "
