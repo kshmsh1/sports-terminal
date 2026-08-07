@@ -1,18 +1,55 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show FlutterError;
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:http/http.dart' as http;
+
+import 'product_local_store.dart';
 
 class NbaTerminalSeedRepository {
   const NbaTerminalSeedRepository({
     this.basePath,
     this.configPath = 'assets/data/nba/launch/season_config.json',
-  });
+    ProductLocalStore store = const ProductLocalStore(),
+  }) : _store = store;
+
+  static const dataScopeKey = 'sports_terminal.nba.data_scope';
+  static const historicalSeasonKey = 'sports_terminal.nba.historical_season';
+  static const historicalLeagueKey = 'sports_terminal.nba.historical_league';
+  static const historicalSeasonTypeKey =
+      'sports_terminal.nba.historical_season_type';
 
   final String? basePath;
   final String configPath;
+  final ProductLocalStore _store;
 
   Future<NbaTerminalSeedSnapshot> load() async {
+    if (basePath == null) {
+      final scope = await _store.loadString(dataScopeKey, fallback: 'current');
+      if (scope == 'historical') {
+        final season = await _store.loadString(historicalSeasonKey);
+        if (season.isNotEmpty) {
+          final league = await _store.loadString(
+            historicalLeagueKey,
+            fallback: 'NBA',
+          );
+          final seasonType = await _store.loadString(
+            historicalSeasonTypeKey,
+            fallback: 'regular',
+          );
+          return loadHistoricalSeason(
+            season,
+            league: league,
+            seasonType: seasonType,
+          );
+        }
+      }
+    }
+    return loadCurrent();
+  }
+
+  Future<NbaTerminalSeedSnapshot> loadCurrent() async {
     final config = await _loadConfig();
     final candidate = basePath ??
         config['candidateAssetPath']?.toString() ??
@@ -33,6 +70,99 @@ class NbaTerminalSeedRepository {
         fallback,
         launchConfig: config,
         usedFallback: true,
+      );
+    }
+  }
+
+  Future<void> selectCurrent() => _store.saveString(dataScopeKey, 'current');
+
+  Future<void> selectHistorical(
+    String season, {
+    String league = 'NBA',
+    String seasonType = 'regular',
+  }) async {
+    await _store.saveString(dataScopeKey, 'historical');
+    await _store.saveString(historicalSeasonKey, season);
+    await _store.saveString(historicalLeagueKey, league.toUpperCase());
+    await _store.saveString(historicalSeasonTypeKey, seasonType);
+  }
+
+  Future<NbaTerminalSeedSnapshot> loadHistoricalSeason(
+    String season, {
+    String league = 'NBA',
+    String seasonType = 'regular',
+    bool includeGameLogs = true,
+  }) async {
+    final normalizedSeason = season.trim();
+    if (normalizedSeason.isEmpty) {
+      throw const NbaTerminalSeedException('Historical season is required.');
+    }
+    final baseUrl = await _store.loadString(
+      ProductLocalStore.backendBaseUrlKey,
+      fallback: 'http://127.0.0.1:8000',
+    );
+    final normalizedBase = baseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
+    if (normalizedBase.isEmpty) {
+      throw const NbaTerminalSeedException('Sports Terminal backend URL is empty.');
+    }
+    final base = Uri.parse(normalizedBase);
+    final relative = '/v2/nba/history/seed/${Uri.encodeComponent(normalizedSeason)}';
+    final uri = base.replace(
+      path: '${base.path.replaceFirst(RegExp(r'/+$'), '')}$relative',
+      queryParameters: {
+        'league': league.trim().isEmpty ? 'NBA' : league.trim().toUpperCase(),
+        'season_type': seasonType,
+        'include_game_logs': includeGameLogs ? 'true' : 'false',
+      },
+    );
+    final token = await _store.loadString(ProductLocalStore.launchAuthTokenKey);
+    try {
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Accept': 'application/json',
+              if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 45));
+      Object? decoded;
+      if (response.body.trim().isNotEmpty) {
+        try {
+          decoded = jsonDecode(response.body);
+        } catch (_) {
+          throw NbaTerminalSeedException(
+            'Historical NBA snapshot returned non-JSON content (${response.statusCode}).',
+            statusCode: response.statusCode,
+          );
+        }
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final detail = decoded is Map && decoded['detail'] != null
+            ? decoded['detail'].toString()
+            : 'Historical NBA snapshot request failed (${response.statusCode}).';
+        throw NbaTerminalSeedException(
+          detail,
+          statusCode: response.statusCode,
+        );
+      }
+      if (decoded is! Map) {
+        throw const NbaTerminalSeedException(
+          'Historical NBA snapshot returned an unexpected response shape.',
+        );
+      }
+      return NbaTerminalSeedSnapshot.fromMap(
+        decoded.map((key, value) => MapEntry(key.toString(), value)),
+      );
+    } on TimeoutException {
+      throw const NbaTerminalSeedException(
+        'Historical NBA snapshot timed out. Confirm the local backend is running.',
+      );
+    } on NbaTerminalSeedException {
+      rethrow;
+    } catch (error) {
+      throw NbaTerminalSeedException(
+        'Historical NBA snapshot unavailable: $error',
       );
     }
   }
@@ -163,6 +293,16 @@ class NbaTerminalSeedRepository {
   }
 }
 
+class NbaTerminalSeedException implements Exception {
+  const NbaTerminalSeedException(this.message, {this.statusCode});
+
+  final String message;
+  final int? statusCode;
+
+  @override
+  String toString() => message;
+}
+
 class NbaTerminalSeedSnapshot {
   const NbaTerminalSeedSnapshot({
     required this.manifest,
@@ -185,6 +325,48 @@ class NbaTerminalSeedSnapshot {
     this.assetPath = '',
     this.usedFallback = false,
   });
+
+  factory NbaTerminalSeedSnapshot.fromMap(Map<String, dynamic> payload) {
+    return NbaTerminalSeedSnapshot(
+      manifest: _seedMap(payload['manifest']),
+      teams: _seedList(payload['teams']),
+      players: _seedList(payload['players']),
+      games: _seedList(payload['games']),
+      teamRecords: _seedList(payload['team_records'] ?? payload['teamRecords']),
+      teamGameLogs: _seedList(payload['team_game_logs'] ?? payload['teamGameLogs']),
+      playerSeasonTotals: _seedList(
+        payload['player_season_totals'] ?? payload['playerSeasonTotals'],
+      ),
+      playerLeaders: _seedMap(payload['player_leaders'] ?? payload['playerLeaders']),
+      playerGameHighs: _seedMap(
+        payload['player_game_highs'] ?? payload['playerGameHighs'],
+      ),
+      playerGameLogsTop: _seedList(
+        payload['player_game_logs_top'] ?? payload['playerGameLogsTop'],
+      ),
+      searchIndex: _seedList(payload['search_index'] ?? payload['searchIndex']),
+      dataDictionary: _seedMap(
+        payload['data_dictionary'] ?? payload['dataDictionary'],
+      ),
+      validationReport: _seedNullableMap(
+        payload['validation_report'] ?? payload['validationReport'],
+      ),
+      assetManifest: _seedNullableMap(
+        payload['asset_manifest'] ?? payload['assetManifest'],
+      ),
+      releaseManifest: _seedNullableMap(
+        payload['release_manifest'] ?? payload['releaseManifest'],
+      ),
+      standings: _seedList(payload['standings']),
+      launchConfig: _seedMap(
+        payload['launch_config'] ?? payload['launchConfig'],
+      ),
+      assetPath: payload['asset_path']?.toString() ??
+          payload['assetPath']?.toString() ??
+          '',
+      usedFallback: payload['used_fallback'] == true || payload['usedFallback'] == true,
+    );
+  }
 
   final Map<String, dynamic> manifest;
   final List<Map<String, dynamic>> teams;
@@ -219,6 +401,9 @@ class NbaTerminalSeedSnapshot {
         validationStatus;
   }
 
+  bool get isHistorical => datasetStatus == 'historical-canonical' ||
+      assetPath.startsWith('backend://v2/nba/history/');
+
   String get warehouseGeneratedAt {
     final build = manifest['warehouseBuild'];
     if (build is Map && build['generatedAt'] != null) {
@@ -239,4 +424,25 @@ class NbaTerminalSeedSnapshot {
     final files = assetManifest?['copiedFiles'];
     return files is List ? files.length : 0;
   }
+}
+
+Map<String, dynamic> _seedMap(Object? value) {
+  if (value is Map) {
+    return value.map((key, item) => MapEntry(key.toString(), item));
+  }
+  return <String, dynamic>{};
+}
+
+Map<String, dynamic>? _seedNullableMap(Object? value) {
+  if (value == null) return null;
+  return _seedMap(value);
+}
+
+List<Map<String, dynamic>> _seedList(Object? value) {
+  if (value is! List) return <Map<String, dynamic>>[];
+  return [
+    for (final item in value)
+      if (item is Map)
+        item.map((key, entry) => MapEntry(key.toString(), entry)),
+  ];
 }
