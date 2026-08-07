@@ -39,6 +39,9 @@ jobs:
       - name: Test historical NBA import contract
         run: python backend/scripts/historical_import_contract_test.py
 
+      - name: Test historical NBA canonical platform
+        run: python backend/scripts/historical_canonical_contract_test.py
+
       - name: Test launch backend contracts
         id: backend_contract
         working-directory: backend
