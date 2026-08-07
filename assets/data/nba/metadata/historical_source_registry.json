@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-07",
+  "strategy": "lossless-first historical ingestion with explicit provenance and later canonicalization",
+  "sources": [
+    {
+      "key": "wyatt_nbadb",
+      "label": "Wyatt Walsh NBA Database / nbadb",
+      "dataset": "wyattowalsh/basketball",
+      "datasetUrl": "https://www.kaggle.com/datasets/wyattowalsh/basketball",
+      "codeUrl": "https://github.com/wyattowalsh/nbadb",
+      "origin": "stats.nba.com via nba_api/nbadb",
+      "license": "CC BY-SA 4.0 dataset; nbadb code MIT",
+      "priority": 10,
+      "role": "primary game, box-score, play-by-play, tracking and official-endpoint historical warehouse",
+      "coverage": "1946-47 to present where upstream endpoint coverage exists",
+      "knownStrengths": [
+        "65,000+ games",
+        "95%+ box-score coverage",
+        "13M+ play-by-play rows",
+        "game/player/team dimensions",
+        "box scores, play-by-play, shot charts, rotations, tracking and specialty endpoint surfaces",
+        "prebuilt SQLite/DuckDB/CSV/Parquet outputs"
+      ],
+      "redistributionNote": "Preserve attribution and ShareAlike obligations for Wyatt dataset-derived redistributions. NBA.com source usage remains subject to NBA.com terms."
+    },
+    {
+      "key": "sumitro_bref_history",
+      "label": "Sumitro Datta NBA/ABA/BAA Stats",
+      "dataset": "sumitrodatta/nba-aba-baa-stats",
+      "datasetUrl": "https://www.kaggle.com/datasets/sumitrodatta/nba-aba-baa-stats",
+      "origin": "Basketball-Reference",
+      "license": "CC0-1.0 / Public Domain",
+      "priority": 20,
+      "role": "primary long-run player/team season, awards and draft historical backbone",
+      "coverage": "BAA 1947-1949, NBA 1950-present, ABA 1968-1976",
+      "knownStrengths": [
+        "player season and career identity",
+        "player totals/per-game/per-36/per-100/advanced statistics",
+        "player play-by-play and shooting splits for later eras",
+        "team totals/per-game/per-100 and opponent statistics",
+        "All-League, All-Defense, All-Rookie and All-Star selections",
+        "award voting",
+        "draft history"
+      ],
+      "redistributionNote": "CC0 source is preferred for canonical historical season-level facts when equivalent fields are available."
+    },
+    {
+      "key": "gonzalo_all_time",
+      "label": "Gonzalo Gigena NBA All Time Stats",
+      "dataset": "gonzalogigena/nba-all-time-stats",
+      "datasetUrl": "https://www.kaggle.com/datasets/gonzalogigena/nba-all-time-stats",
+      "origin": "Basketball-Reference",
+      "license": "MIT as published by dataset author",
+      "priority": 30,
+      "role": "cross-check and playoff/game-history supplement",
+      "coverage": "1947-present NBA/ABA/BAA regular season and playoffs",
+      "knownStrengths": [
+        "historical game results",
+        "basic and advanced box-score history",
+        "all-time player statistics",
+        "rookies by year",
+        "playoff coverage"
+      ],
+      "redistributionNote": "Treat as corroborating/coverage-filling source where it overlaps higher-priority canonical sources."
+    },
+    {
+      "key": "nba_api",
+      "label": "swar/nba_api",
+      "dataset": null,
+      "datasetUrl": null,
+      "codeUrl": "https://github.com/swar/nba_api",
+      "origin": "NBA.com",
+      "license": "MIT client code; NBA.com data subject to NBA.com Terms of Use",
+      "priority": 40,
+      "role": "current refresh, endpoint-specific enrichment and targeted historical backfill",
+      "coverage": "endpoint-dependent",
+      "knownStrengths": [
+        "official NBA Stats endpoint client",
+        "career/season endpoints",
+        "game logs and box scores",
+        "shot charts and tracking-era endpoints",
+        "live NBA data endpoints"
+      ],
+      "redistributionNote": "Do not assume the MIT client license grants redistribution rights to NBA.com data. Keep endpoint provenance and apply source-rights review before public release."
+    }
+  ]
+}
