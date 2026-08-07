@@ -48,7 +48,10 @@ fi
 python -m pip install --upgrade pip
 python -m pip install --upgrade -r requirements.txt
 
-export SPORTS_TERMINAL_CORS_ORIGINS="${SPORTS_TERMINAL_CORS_ORIGINS:-http://localhost:3000,http://localhost:5000,http://localhost:8000,http://127.0.0.1:5000,http://127.0.0.1:8000}"
+# Flutter's web dev server uses an ephemeral port by default. For local-only
+# development, allow any origin unless the caller supplies an explicit CORS
+# policy. Production environments should always set SPORTS_TERMINAL_CORS_ORIGINS.
+export SPORTS_TERMINAL_CORS_ORIGINS="${SPORTS_TERMINAL_CORS_ORIGINS:-*}"
 
 # A prior Sports Terminal dev server can survive when Flutter is stopped or a
 # terminal session is interrupted. Starting a second uvicorn instance then
@@ -61,19 +64,21 @@ if command -v curl >/dev/null 2>&1 && curl -fsS --max-time 1 "http://127.0.0.1:$
 fi
 
 if command -v lsof >/dev/null 2>&1; then
-  EXISTING_PID="$(lsof -tiTCP:"${PORT_VALUE}" -sTCP:LISTEN 2>/dev/null | head -n 1 || true)"
-  if [ -n "$EXISTING_PID" ]; then
+  EXISTING_PIDS="$(lsof -tiTCP:"${PORT_VALUE}" -sTCP:LISTEN 2>/dev/null || true)"
+  if [ -n "$EXISTING_PIDS" ]; then
     if command -v curl >/dev/null 2>&1 && curl -fsS --max-time 1 "http://127.0.0.1:${PORT_VALUE}/health" 2>/dev/null | grep -q 'sports-terminal-api'; then
-      echo "Stopping stale Sports Terminal backend process ${EXISTING_PID} on port ${PORT_VALUE}..."
-      kill "$EXISTING_PID" || true
-      for _ in 1 2 3 4 5; do
+      echo "Stopping stale Sports Terminal backend process(es) on port ${PORT_VALUE}: ${EXISTING_PIDS//$'\n'/ }"
+      while IFS= read -r pid; do
+        [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+      done <<< "$EXISTING_PIDS"
+      for _ in 1 2 3 4 5 6 7 8; do
         if ! lsof -tiTCP:"${PORT_VALUE}" -sTCP:LISTEN >/dev/null 2>&1; then
           break
         fi
         sleep 0.4
       done
     else
-      echo "Port ${PORT_VALUE} is already in use by another process (${EXISTING_PID})." >&2
+      echo "Port ${PORT_VALUE} is already in use by another process (${EXISTING_PIDS//$'\n'/ })." >&2
       echo "Stop that process or run with PORT=<another-port>." >&2
       exit 3
     fi
