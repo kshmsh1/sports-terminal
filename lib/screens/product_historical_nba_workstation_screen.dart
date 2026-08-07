@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -519,6 +518,17 @@ class _ProductHistoricalNbaWorkstationScreenState
               label: (value) => _metrics[value] ?? value,
               onChanged: (value) {
                 setState(() => _metric = value);
+                _loadRows();
+                if (_selected != null) _selectPlayer(_selected!);
+              },
+            ),
+            _Drop<double>(
+              value: _minGames,
+              values: const [0, 1, 5, 10, 20, 41, 58],
+              width: 105,
+              label: (value) => value == 0 ? 'No GP min' : '${value.toInt()}+ GP',
+              onChanged: (value) {
+                setState(() => _minGames = value);
                 _loadRows();
                 if (_selected != null) _selectPlayer(_selected!);
               },
