@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../controllers/internal_workspace_controller.dart';
 import '../models/app_session.dart';
+import '../screens/product_nba_historical_intelligence_screen.dart';
 import '../screens/product_nba_research_command_center_screen.dart';
 import '../screens/product_nba_universe_screen.dart';
 import '../services/nba_research_context_store.dart';
@@ -43,6 +44,15 @@ class RoleResearchAugmentedShell extends StatelessWidget {
             ),
             actions: [
               IconButton(
+                tooltip: 'Open Historical Intelligence',
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  if (!context.mounted) return;
+                  _openHistoricalIntelligence(context);
+                },
+                icon: const Icon(Icons.history_edu_rounded),
+              ),
+              IconButton(
                 tooltip: 'Open NBA Universe',
                 onPressed: () {
                   Navigator.of(dialogContext).pop();
@@ -80,6 +90,15 @@ class RoleResearchAugmentedShell extends StatelessWidget {
             ),
             actions: [
               IconButton(
+                tooltip: 'Open Historical Intelligence',
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  if (!context.mounted) return;
+                  _openHistoricalIntelligence(context);
+                },
+                icon: const Icon(Icons.history_edu_rounded),
+              ),
+              IconButton(
                 tooltip: 'Open NBA Research',
                 onPressed: () {
                   Navigator.of(dialogContext).pop();
@@ -92,6 +111,66 @@ class RoleResearchAugmentedShell extends StatelessWidget {
             ],
           ),
           body: ProductNbaUniverseScreen(
+            onOpenStats: () {
+              Navigator.of(dialogContext).pop();
+              if (!context.mounted) return;
+              _openResearch(
+                context,
+                initialSection: NbaResearchSection.stats,
+              );
+            },
+            onOpenAnalytics: () {
+              Navigator.of(dialogContext).pop();
+              if (!context.mounted) return;
+              _openResearch(
+                context,
+                initialSection: NbaResearchSection.analytics,
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openHistoricalIntelligence(BuildContext context) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog.fullscreen(
+        child: Scaffold(
+          backgroundColor: const Color(0xFF09111C),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF121D2B),
+            foregroundColor: Colors.white,
+            title: const Text('NBA Historical Intelligence'),
+            leading: IconButton(
+              tooltip: 'Close Historical Intelligence',
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              icon: const Icon(Icons.close_rounded),
+            ),
+            actions: [
+              IconButton(
+                tooltip: 'Open NBA Universe',
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  if (!context.mounted) return;
+                  _openUniverse(context);
+                },
+                icon: const Icon(Icons.public_rounded),
+              ),
+              IconButton(
+                tooltip: 'Open NBA Research',
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  if (!context.mounted) return;
+                  _openResearch(context);
+                },
+                icon: const Icon(Icons.query_stats_rounded),
+              ),
+              const SizedBox(width: 6),
+            ],
+          ),
+          body: ProductNbaHistoricalIntelligenceScreen(
             onOpenStats: () {
               Navigator.of(dialogContext).pop();
               if (!context.mounted) return;
@@ -272,6 +351,43 @@ class RoleResearchAugmentedShell extends StatelessWidget {
                                 ),
                               );
                             },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: left,
+              bottom: 174,
+              child: SafeArea(
+                child: Material(
+                  color: const Color(0xFF2A2214),
+                  elevation: 9,
+                  borderRadius: BorderRadius.circular(999),
+                  child: InkWell(
+                    onTap: () => _openHistoricalIntelligence(context),
+                    borderRadius: BorderRadius.circular(999),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.history_edu_rounded,
+                            color: Color(0xFFFFCB45),
+                            size: 16,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Historical Intelligence',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ],
                       ),
