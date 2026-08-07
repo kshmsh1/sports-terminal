@@ -48,4 +48,4 @@ jobs:
         run: python backend/scripts/historical_seed_compat_contract_test.py
 
       - name: Deep historical research contract
-        run: python backend/scripts/historical_research_contract_test.py
+        run: python backend/scripts/historical_research_launch_contract_test.py
