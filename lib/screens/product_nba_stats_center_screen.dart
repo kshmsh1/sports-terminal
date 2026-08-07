@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/nba_terminal_seed_repository.dart';
 import 'product_historical_nba_research_lab_screen.dart';
 import 'product_historical_nba_workstation_screen.dart';
 import 'product_nba_stats_workstation_screen.dart';
@@ -17,6 +18,16 @@ class ProductNbaStatsCenterScreen extends StatefulWidget {
 class _ProductNbaStatsCenterScreenState
     extends State<ProductNbaStatsCenterScreen> {
   _StatsCenterMode _mode = _StatsCenterMode.historicalStats;
+  int _currentRevision = 0;
+
+  Future<void> _openCurrentRelease() async {
+    await const NbaTerminalSeedRepository().selectCurrent();
+    if (!mounted) return;
+    setState(() {
+      _mode = _StatsCenterMode.currentRelease;
+      _currentRevision++;
+    });
+  }
 
   @override
   Widget build(BuildContext context) => Column(
@@ -59,9 +70,7 @@ class _ProductNbaStatsCenterScreenState
                   label: 'Certified Current Release',
                   icon: Icons.verified_outlined,
                   selected: _mode == _StatsCenterMode.currentRelease,
-                  onTap: () => setState(
-                    () => _mode = _StatsCenterMode.currentRelease,
-                  ),
+                  onTap: _openCurrentRelease,
                 ),
                 const Spacer(),
                 Text(
@@ -90,6 +99,7 @@ class _ProductNbaStatsCenterScreenState
               _StatsCenterMode.historicalResearch =>
                 const ProductHistoricalNbaResearchLabScreen(),
               _StatsCenterMode.currentRelease => LayoutBuilder(
+                  key: ValueKey('current-$_currentRevision'),
                   builder: (context, constraints) {
                     if (constraints.maxWidth >= 1180) {
                       return const ProductNbaStatsWorkstationScreen();
