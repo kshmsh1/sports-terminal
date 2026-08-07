@@ -16,6 +16,7 @@ from .front_office_hardening import (
     record_dimensions,
 )
 from .historical_nba_api import router as historical_nba_router
+from .historical_nba_compat_api import router as historical_nba_compat_router
 from . import historical_nba_research_mount as _historical_nba_research_mount  # noqa: F401
 from .launch_api import router as launch_router
 from .launch_security import ensure_organization
@@ -38,7 +39,7 @@ front_office_module.front_office_reconciliation = hardened_reconciliation(
 )
 
 app.title = "Sports Terminal Launch API"
-app.version = "1.4.0"
+app.version = "1.5.0"
 app.description = (
     "Launch-oriented Sports Terminal API for authentication, certified and historical NBA data, "
     "canonical contracts and draft assets, transaction ledgers, moderated community and messaging, "
@@ -56,6 +57,7 @@ app.include_router(workspace_router)
 # Historical routes must be registered before /v2/nba/{season}/{dataset}; otherwise
 # the dynamic certified-release route can interpret "history" as a season value.
 app.include_router(historical_nba_router)
+app.include_router(historical_nba_compat_router)
 app.include_router(nba_data_router)
 app.include_router(front_office_hardened_router)
 app.include_router(front_office_router)
