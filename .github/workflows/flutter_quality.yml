@@ -36,6 +36,9 @@ jobs:
       - name: Compile launch backend
         run: python -m compileall -q backend/app tools
 
+      - name: Test historical NBA import contract
+        run: python backend/scripts/historical_import_contract_test.py
+
       - name: Test launch backend contracts
         id: backend_contract
         working-directory: backend
