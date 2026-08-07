@@ -14,11 +14,42 @@ class NbaTerminalSeedRepository {
     ProductLocalStore store = const ProductLocalStore(),
   }) : _store = store;
 
+  static const dataScopeKey = 'sports_terminal.nba.data_scope';
+  static const historicalSeasonKey = 'sports_terminal.nba.historical_season';
+  static const historicalLeagueKey = 'sports_terminal.nba.historical_league';
+  static const historicalSeasonTypeKey =
+      'sports_terminal.nba.historical_season_type';
+
   final String? basePath;
   final String configPath;
   final ProductLocalStore _store;
 
   Future<NbaTerminalSeedSnapshot> load() async {
+    if (basePath == null) {
+      final scope = await _store.loadString(dataScopeKey, fallback: 'current');
+      if (scope == 'historical') {
+        final season = await _store.loadString(historicalSeasonKey);
+        if (season.isNotEmpty) {
+          final league = await _store.loadString(
+            historicalLeagueKey,
+            fallback: 'NBA',
+          );
+          final seasonType = await _store.loadString(
+            historicalSeasonTypeKey,
+            fallback: 'regular',
+          );
+          return loadHistoricalSeason(
+            season,
+            league: league,
+            seasonType: seasonType,
+          );
+        }
+      }
+    }
+    return loadCurrent();
+  }
+
+  Future<NbaTerminalSeedSnapshot> loadCurrent() async {
     final config = await _loadConfig();
     final candidate = basePath ??
         config['candidateAssetPath']?.toString() ??
@@ -41,6 +72,19 @@ class NbaTerminalSeedRepository {
         usedFallback: true,
       );
     }
+  }
+
+  Future<void> selectCurrent() => _store.saveString(dataScopeKey, 'current');
+
+  Future<void> selectHistorical(
+    String season, {
+    String league = 'NBA',
+    String seasonType = 'regular',
+  }) async {
+    await _store.saveString(dataScopeKey, 'historical');
+    await _store.saveString(historicalSeasonKey, season);
+    await _store.saveString(historicalLeagueKey, league.toUpperCase());
+    await _store.saveString(historicalSeasonTypeKey, seasonType);
   }
 
   Future<NbaTerminalSeedSnapshot> loadHistoricalSeason(
