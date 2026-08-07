@@ -70,22 +70,18 @@ class RoleResearchAugmentedShell extends StatelessWidget {
           body: ProductNbaUniverseScreen(
             onOpenStats: () {
               Navigator.of(dialogContext).pop();
-              Future<void>.delayed(
-                Duration.zero,
-                () => _openResearch(
-                  context,
-                  initialSection: NbaResearchSection.stats,
-                ),
+              if (!context.mounted) return;
+              _openResearch(
+                context,
+                initialSection: NbaResearchSection.stats,
               );
             },
             onOpenAnalytics: () {
               Navigator.of(dialogContext).pop();
-              Future<void>.delayed(
-                Duration.zero,
-                () => _openResearch(
-                  context,
-                  initialSection: NbaResearchSection.analytics,
-                ),
+              if (!context.mounted) return;
+              _openResearch(
+                context,
+                initialSection: NbaResearchSection.analytics,
               );
             },
           ),
