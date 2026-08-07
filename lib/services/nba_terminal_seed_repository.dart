@@ -129,7 +129,11 @@ class NbaTerminalSeedRepository {
   ) async {
     try {
       return await _loadObject(resolvedBasePath, filename);
-    } on FlutterError {
+    } catch (_) {
+      // Flutter Web can surface a missing bundled asset either as FlutterError
+      // or as an HTML fallback response that then throws FormatException while
+      // decoding. Optional release metadata must never make the validated seed
+      // unusable.
       return null;
     }
   }
@@ -151,7 +155,9 @@ class NbaTerminalSeedRepository {
   ) async {
     try {
       return await _loadList(resolvedBasePath, filename);
-    } on FlutterError {
+    } catch (_) {
+      // See _loadOptionalObject: missing optional web assets may decode as HTML
+      // rather than throwing FlutterError directly.
       return null;
     }
   }
