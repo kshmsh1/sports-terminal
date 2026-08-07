@@ -183,7 +183,7 @@ class _ProductNbaUniverseScreenState extends State<ProductNbaUniverseScreen> {
       _contextFuture = Future.value(activeContext);
       _recentFuture = _contexts.recent();
     });
-    ScaffoldMessenger.of(this.context).showSnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           '${activeContext.scopeLabel}${activeContext.entityLabel.isEmpty ? '' : ' · ${activeContext.entityLabel}'} is now the active NBA research context.',
