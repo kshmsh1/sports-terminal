@@ -65,7 +65,7 @@ for source in registry.get("sources", []):
     print(f"Copied {files:,} files / {size / 1_048_576:.1f} MiB to {destination}")
 PY
 
-python tools/import_historical_nba_sources.py \
+python tools/run_historical_nba_import.py \
   --registry "$REGISTRY" \
   --source-root "$SOURCE_ROOT" \
   --output "$OUTPUT" \
