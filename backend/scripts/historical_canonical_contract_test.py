@@ -90,7 +90,7 @@ def seed_sources(db: sqlite3.Connection) -> None:
         INSERT INTO s_draft VALUES ('exampl01','Example Star',2016,1,3,'EXC');
 
         CREATE TABLE g_totals(player TEXT,season INTEGER,tm TEXT,g REAL,mp REAL,pts REAL,trb REAL,ast REAL);
-        INSERT INTO g_totals VALUES ('Example Star',2024,'EXC',80,2800,2390,500,600);
+        INSERT INTO g_totals VALUES ('Example Star',2024,'EXC',80,2800,2300,500,600);
         CREATE TABLE g_adv_game(__source_row INTEGER,player TEXT,date TEXT,game_id TEXT,team TEXT,opponent TEXT,mp REAL,pts REAL,trb REAL,ast REAL,ts_percent REAL,bpm REAL);
         INSERT INTO g_adv_game VALUES (1,'Example Star','2024-01-03','G001','EXC','OTH',35,32,8,9,.650,8.0);
         """
