@@ -25,7 +25,7 @@ class RoleResearchAugmentedShell extends StatelessWidget {
   }) {
     return showDialog<void>(
       context: context,
-      builder: (context) => Dialog.fullscreen(
+      builder: (dialogContext) => Dialog.fullscreen(
         child: Scaffold(
           backgroundColor: const Color(0xFF0D1420),
           appBar: AppBar(
@@ -38,9 +38,21 @@ class RoleResearchAugmentedShell extends StatelessWidget {
             ),
             leading: IconButton(
               tooltip: 'Close research center',
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               icon: const Icon(Icons.close_rounded),
             ),
+            actions: [
+              IconButton(
+                tooltip: 'Open NBA Universe',
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  if (!context.mounted) return;
+                  _openUniverse(context);
+                },
+                icon: const Icon(Icons.public_rounded),
+              ),
+              const SizedBox(width: 6),
+            ],
           ),
           body: ProductNbaResearchCommandCenterScreen(
             session: session,
@@ -66,6 +78,18 @@ class RoleResearchAugmentedShell extends StatelessWidget {
               onPressed: () => Navigator.of(dialogContext).pop(),
               icon: const Icon(Icons.close_rounded),
             ),
+            actions: [
+              IconButton(
+                tooltip: 'Open NBA Research',
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  if (!context.mounted) return;
+                  _openResearch(context);
+                },
+                icon: const Icon(Icons.query_stats_rounded),
+              ),
+              const SizedBox(width: 6),
+            ],
           ),
           body: ProductNbaUniverseScreen(
             onOpenStats: () {
