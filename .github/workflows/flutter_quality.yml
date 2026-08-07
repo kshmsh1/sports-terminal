@@ -49,7 +49,7 @@ jobs:
         run: python backend/scripts/historical_seed_compat_contract_test.py
 
       - name: Test deep historical NBA research contract
-        run: python backend/scripts/historical_research_contract_test.py
+        run: python backend/scripts/historical_research_launch_contract_test.py
 
       - name: Test launch backend contracts
         id: backend_contract
