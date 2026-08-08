@@ -1,8 +1,8 @@
 name: Stats Semantic Refinement
 
 on:
-  push:
-    branches: [agent/stats-workstation-visual-and-metric-overhaul]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
@@ -15,6 +15,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: agent/stats-workstation-visual-and-metric-overhaul
+          fetch-depth: 0
       - name: Refine family-specific defensive rebounding and usage semantics
         run: |
           python - <<'PY'
