@@ -6,6 +6,7 @@ import '../services/transaction_case_repository.dart';
 import '../services/transaction_workflow_repository.dart';
 import 'product_arena_home_screen.dart';
 import 'product_launch_center_screen.dart';
+import 'product_nba_entity_command_center_screen.dart';
 import 'product_nba_research_command_center_screen.dart';
 
 const _navy = Color(0xFF071A33);
@@ -51,6 +52,39 @@ class ProductRoleHomeScreen extends StatelessWidget {
           body: ProductNbaResearchCommandCenterScreen(
             session: session,
             initialSection: section,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openEntityIntelligence(BuildContext context) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog.fullscreen(
+        child: Scaffold(
+          backgroundColor: const Color(0xFF08111C),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF111D2A),
+            foregroundColor: Colors.white,
+            title: const Text('NBA Entity & Season Intelligence'),
+            leading: IconButton(
+              tooltip: 'Close',
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              icon: const Icon(Icons.close_rounded),
+            ),
+          ),
+          body: ProductNbaEntityCommandCenterScreen(
+            onOpenStats: () {
+              Navigator.of(dialogContext).pop();
+              if (!context.mounted) return;
+              _openResearch(context, NbaResearchSection.stats);
+            },
+            onOpenAnalytics: () {
+              Navigator.of(dialogContext).pop();
+              if (!context.mounted) return;
+              _openResearch(context, NbaResearchSection.analytics);
+            },
           ),
         ),
       ),
@@ -154,6 +188,7 @@ class ProductRoleHomeScreen extends StatelessWidget {
               session: session,
               organizationMode: organizationMode,
               onOpen: (section) => _openResearch(context, section),
+              onOpenEntityIntelligence: () => _openEntityIntelligence(context),
             ),
             const SizedBox(height: 18),
             ProductLaunchCenterScreen(
@@ -199,11 +234,13 @@ class _ResearchAccessPanel extends StatelessWidget {
     required this.session,
     required this.organizationMode,
     required this.onOpen,
+    required this.onOpenEntityIntelligence,
   });
 
   final AppSession session;
   final bool organizationMode;
   final ValueChanged<NbaResearchSection> onOpen;
+  final VoidCallback onOpenEntityIntelligence;
 
   @override
   Widget build(BuildContext context) {
@@ -273,8 +310,8 @@ class _ResearchAccessPanel extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             organizationMode
-                ? 'Open the professional Stats Workstation, the complete NBA Analytics Suite, organization-scoped research boards and the live coverage console directly from the organization home page.'
-                : 'Open the professional Stats Workstation, the complete NBA Analytics Suite, personal research boards and the live coverage console directly from your analyst home page.',
+                ? 'Open the professional Stats Workstation, complete NBA Analytics Suite, canonical entity and season intelligence, organization-scoped research boards and live coverage console directly from the organization home page.'
+                : 'Open the professional Stats Workstation, complete NBA Analytics Suite, canonical entity and season intelligence, personal research boards and live coverage console directly from your analyst home page.',
             style: const TextStyle(
               color: Color(0xFFDCE9F8),
               height: 1.45,
@@ -289,6 +326,15 @@ class _ResearchAccessPanel extends StatelessWidget {
                 onPressed: () => onOpen(NbaResearchSection.overview),
                 icon: const Icon(Icons.dashboard_customize_rounded),
                 label: const Text('Open Research Center'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onOpenEntityIntelligence,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFFFCB45),
+                  side: const BorderSide(color: Color(0xFFFFCB45)),
+                ),
+                icon: const Icon(Icons.hub_rounded),
+                label: const Text('Entity & Season Intelligence'),
               ),
               OutlinedButton.icon(
                 onPressed: () => onOpen(NbaResearchSection.stats),
