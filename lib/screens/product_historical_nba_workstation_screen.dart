@@ -4,15 +4,15 @@ import 'package:flutter/material.dart';
 
 import '../services/historical_nba_repository.dart';
 
-const _historyBg = Color(0xFF151C29);
-const _historyPanel = Color(0xFF1D2636);
-const _historyPanel2 = Color(0xFF232D3F);
-const _historyLine = Color(0xFF354155);
-const _historyText = Color(0xFFF3F6FB);
-const _historyMuted = Color(0xFF9DA8BA);
-const _historyYellow = Color(0xFFFFCB45);
-const _historyCyan = Color(0xFF65D5FF);
-const _historyGreen = Color(0xFF63E6A6);
+const _historyBg = Color(0xFF090D12);
+const _historyPanel = Color(0xFF0F151C);
+const _historyPanel2 = Color(0xFF141C25);
+const _historyLine = Color(0xFF263342);
+const _historyText = Color(0xFFE8EDF3);
+const _historyMuted = Color(0xFF8895A5);
+const _historyYellow = Color(0xFF63A9FF);
+const _historyCyan = Color(0xFF8BC1FF);
+const _historyGreen = Color(0xFF69C99A);
 const _historyRed = Color(0xFFFF7B7B);
 
 class ProductHistoricalNbaWorkstationScreen extends StatefulWidget {
@@ -489,12 +489,12 @@ class _ProductHistoricalNbaWorkstationScreenState
             ),
             _Drop<String>(
               value: _seasonType,
-              values: const ['regular', 'playoffs', 'combined'],
+              values: const ['regular', 'playoffs'],
               width: 112,
               label: (value) => switch (value) {
-                'regular' => 'Regular',
+                'regular' => 'Regular Season',
                 'playoffs' => 'Playoffs',
-                _ => 'Combined',
+                _ => 'Regular Season',
               },
               onChanged: (value) {
                 setState(() => _seasonType = value);
