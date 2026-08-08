@@ -52,3 +52,6 @@ jobs:
 
       - name: Entity and season intelligence contract
         run: python backend/scripts/historical_entity_intelligence_contract_test.py
+
+      - name: Unified NBA terminal contract
+        run: python backend/scripts/nba_terminal_contract_test.py
