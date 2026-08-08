@@ -1,0 +1,31 @@
+name: Runtime Hotfix PR Apply
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out hotfix branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/runtime-hardening-v1
+          fetch-depth: 0
+
+      - name: Apply transformer
+        run: python tools/apply_runtime_hotfix.py
+
+      - name: Commit transformed runtime
+        shell: bash
+        run: |
+          git config user.name "sports-terminal-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add backend/scripts/dev.sh lib/screens/product_nba_terminal_screen.dart lib/screens/product_nba_stats_workstation_screen.dart lib/services/nba_terminal_seed_repository.dart scripts/dev_all.sh test/nba_terminal_debug_runtime_test.dart test/transaction_convergence_collaboration_test.dart test/transaction_decision_notification_test.dart
+          git commit -m "Harden debug runtime, layout, assets and local test isolation"
+          git push origin HEAD:agent/runtime-hardening-v1
