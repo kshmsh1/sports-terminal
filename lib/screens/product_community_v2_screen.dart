@@ -966,14 +966,22 @@ class _CreateThreadDialogState extends State<_CreateThreadDialog> {
   @override
   void initState() {
     super.initState();
+    title.addListener(_refreshValidity);
+    body.addListener(_refreshValidity);
     final slugs = widget.boards.map((item) => '${item['slug']}').toSet();
     community = slugs.contains(widget.initialCommunity)
         ? widget.initialCommunity
         : slugs.first;
   }
 
+  void _refreshValidity() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    title.removeListener(_refreshValidity);
+    body.removeListener(_refreshValidity);
     title.dispose();
     body.dispose();
     super.dispose();
