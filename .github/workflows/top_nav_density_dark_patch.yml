@@ -1,0 +1,502 @@
+name: Top Navigation Density Dark Patch
+
+on:
+  push:
+    branches: [agent/top-navigation-density-dark-nba-api-coverage]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/top-navigation-density-dark-nba-api-coverage
+      - name: Apply product shell and stats density changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          shell_path = Path('lib/widgets/connected_role_terminal_shell.dart')
+          text = shell_path.read_text()
+          text = text.replace('  bool darkMode = false;\n', '  bool darkMode = true;\n', 1)
+          text = text.replace(
+              '    final saved = await store.loadBool(ProductLocalStore.darkModeKey);\n',
+              '    final saved = await store.loadBool(\n      ProductLocalStore.darkModeKey,\n      fallback: true,\n    );\n',
+              1,
+          )
+
+          build_start = text.index(
+              '  @override\n  Widget build(BuildContext context) {\n    final palette = _TerminalPalette(darkMode);'
+          )
+          build_end = text.index('\n}\n\nclass _TerminalDestination', build_start)
+          new_build = '''  @override
+  Widget build(BuildContext context) {
+    final palette = _TerminalPalette(darkMode);
+    final items = destinations;
+    if (selectedIndex >= items.length) selectedIndex = 0;
+    final selected = items[selectedIndex];
+    return Theme(
+      data: ThemeData(
+        useMaterial3: true,
+        brightness: darkMode ? Brightness.dark : Brightness.light,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: _blue,
+          brightness: darkMode ? Brightness.dark : Brightness.light,
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 820;
+          return Scaffold(
+            backgroundColor: palette.background,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  _TerminalTopNavigation(
+                    session: widget.session,
+                    destinations: items,
+                    selectedIndex: selectedIndex,
+                    palette: palette,
+                    search: search,
+                    searchController: searchController,
+                    onSearch: (value) => setState(() => search = value),
+                    onSelected: _select,
+                    onToggleTheme: _toggleTheme,
+                    onSignOut: widget.onSignOut,
+                    darkMode: darkMode,
+                  ),
+                  Expanded(
+                    child: ColoredBox(
+                      color: palette.background,
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.fromLTRB(
+                          compact ? 12 : 20,
+                          compact ? 14 : 20,
+                          compact ? 12 : 20,
+                          32,
+                        ),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1680),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _TerminalPageHeader(
+                                  destination: selected,
+                                  palette: palette,
+                                  organizationMode: organizationMode,
+                                  onQuickOpen: _selectDestination,
+                                  destinations: items,
+                                ),
+                                const SizedBox(height: 16),
+                                selected.screen,
+                                const SizedBox(height: 28),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+'''
+          text = text[:build_start] + new_build + text[build_end:]
+
+          nav_start = text.index('class _TerminalNavigation extends StatelessWidget {')
+          nav_end = text.index('class _TerminalPageHeader extends StatelessWidget {', nav_start)
+          new_nav = '''class _TerminalTopNavigation extends StatelessWidget {
+  const _TerminalTopNavigation({
+    required this.session,
+    required this.destinations,
+    required this.selectedIndex,
+    required this.palette,
+    required this.search,
+    required this.searchController,
+    required this.onSearch,
+    required this.onSelected,
+    required this.onToggleTheme,
+    required this.onSignOut,
+    required this.darkMode,
+  });
+
+  final AppSession session;
+  final List<_TerminalDestination> destinations;
+  final int selectedIndex;
+  final _TerminalPalette palette;
+  final String search;
+  final TextEditingController searchController;
+  final ValueChanged<String> onSearch;
+  final ValueChanged<int> onSelected;
+  final VoidCallback onToggleTheme;
+  final VoidCallback onSignOut;
+  final bool darkMode;
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = search.trim().toLowerCase();
+    final visible = <MapEntry<int, _TerminalDestination>>[
+      for (var index = 0; index < destinations.length; index++)
+        if (normalized.isEmpty ||
+            '${destinations[index].label} ${destinations[index].group} ${destinations[index].description}'
+                .toLowerCase()
+                .contains(normalized))
+          MapEntry(index, destinations[index]),
+    ];
+    return Material(
+      color: palette.panel,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: palette.line)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final showSearch = constraints.maxWidth >= 720;
+                final showIdentity = constraints.maxWidth >= 1080;
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
+                  child: Row(
+                    children: [
+                      const _TerminalLogo(size: 36),
+                      const SizedBox(width: 10),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 230),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              session.role.canManageOrganization
+                                  ? session.organizationName
+                                  : 'Sports Terminal',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: palette.text,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            Text(
+                              session.role.canManageOrganization
+                                  ? 'ORGANIZATION TERMINAL'
+                                  : 'NBA OPERATING TERMINAL',
+                              style: TextStyle(
+                                color: palette.muted,
+                                fontSize: 8,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: .7,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (showSearch) ...[
+                        const SizedBox(width: 18),
+                        Expanded(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 390),
+                            child: SizedBox(
+                              height: 34,
+                              child: TextField(
+                                controller: searchController,
+                                onChanged: onSearch,
+                                style: TextStyle(color: palette.text, fontSize: 12),
+                                decoration: InputDecoration(
+                                  hintText: 'Find terminal function…',
+                                  hintStyle: TextStyle(color: palette.muted),
+                                  prefixIcon: Icon(
+                                    Icons.search_rounded,
+                                    color: palette.muted,
+                                    size: 17,
+                                  ),
+                                  suffixIcon: search.isEmpty
+                                      ? null
+                                      : IconButton(
+                                          padding: EdgeInsets.zero,
+                                          onPressed: () {
+                                            searchController.clear();
+                                            onSearch('');
+                                          },
+                                          icon: Icon(
+                                            Icons.close_rounded,
+                                            color: palette.muted,
+                                            size: 16,
+                                          ),
+                                        ),
+                                  filled: true,
+                                  fillColor: palette.search,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(7),
+                                    borderSide: BorderSide(color: palette.line),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(7),
+                                    borderSide: BorderSide(color: palette.line),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ] else
+                        const Spacer(),
+                      if (showIdentity) ...[
+                        const Spacer(),
+                        CircleAvatar(
+                          radius: 14,
+                          backgroundColor: _blue,
+                          child: Text(
+                            session.displayName.isEmpty
+                                ? 'ST'
+                                : session.displayName
+                                    .split(' ')
+                                    .take(2)
+                                    .map((part) => part.isEmpty ? '' : part[0])
+                                    .join()
+                                    .toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 150),
+                          child: Text(
+                            session.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: palette.text,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: 6),
+                      IconButton(
+                        tooltip: darkMode ? 'Use light mode' : 'Use dark mode',
+                        onPressed: onToggleTheme,
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                          darkMode
+                              ? Icons.light_mode_rounded
+                              : Icons.dark_mode_rounded,
+                          color: palette.muted,
+                          size: 18,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Sign out',
+                        onPressed: onSignOut,
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                          Icons.logout_rounded,
+                          color: palette.muted,
+                          size: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            Container(
+              height: 51,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: palette.dark
+                    ? const Color(0xFF0A1320)
+                    : const Color(0xFFF7F9FC),
+                border: Border(top: BorderSide(color: palette.line)),
+              ),
+              child: visible.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No terminal function matches “$search”.',
+                        style: TextStyle(color: palette.muted, fontSize: 11),
+                      ),
+                    )
+                  : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      itemCount: visible.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 3),
+                      itemBuilder: (context, index) {
+                        final entry = visible[index];
+                        return _TopNavigationItem(
+                          destination: entry.value,
+                          selected: entry.key == selectedIndex,
+                          palette: palette,
+                          onTap: () => onSelected(entry.key),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TopNavigationItem extends StatelessWidget {
+  const _TopNavigationItem({
+    required this.destination,
+    required this.selected,
+    required this.palette,
+    required this.onTap,
+  });
+
+  final _TerminalDestination destination;
+  final bool selected;
+  final _TerminalPalette palette;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: selected ? palette.selected : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: selected ? _blue : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  destination.icon,
+                  size: 16,
+                  color: selected ? _blue : palette.muted,
+                ),
+                const SizedBox(width: 7),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      destination.group.toUpperCase(),
+                      style: TextStyle(
+                        color: selected ? _blue : palette.muted,
+                        fontSize: 6.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .55,
+                      ),
+                    ),
+                    Text(
+                      destination.label,
+                      style: TextStyle(
+                        color: selected ? palette.text : palette.muted,
+                        fontSize: 10.5,
+                        fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+'''
+          text = text[:nav_start] + new_nav + text[nav_end:]
+          shell_path.write_text(text)
+
+          stats_path = Path('lib/screens/product_nba_stats_workstation_v2_screen.dart')
+          stats = stats_path.read_text()
+          replacements = {
+              '    const playerWidth = 238.0;': '    const playerWidth = 226.0;',
+              '    const teamWidth = 74.0;': '    const teamWidth = 70.0;',
+              '    const posWidth = 52.0;': '    const posWidth = 50.0;',
+              '    const metricWidth = 92.0;': '    const metricWidth = 86.0;',
+              '    height: 62,': '    height: 58,',
+              "        const _StaticHeader(width: 238, label: 'PLAYER'),": "        const _StaticHeader(width: 226, label: 'PLAYER'),",
+              "        const _StaticHeader(width: 74, label: 'TEAM'),": "        const _StaticHeader(width: 70, label: 'TEAM'),",
+              "        const _StaticHeader(width: 52, label: 'POS'),": "        const _StaticHeader(width: 50, label: 'POS'),",
+              '      height: 44,': '      height: 41,',
+              '            width: 238,': '            width: 226,',
+              '              padding: const EdgeInsets.only(left: 8, right: 6),': '              padding: const EdgeInsets.only(left: 7, right: 5),',
+              '                  const SizedBox(width: 8),': '                  const SizedBox(width: 7),',
+              '          _TextCell(width: 74, text: row.team),': '          _TextCell(width: 70, text: row.team),',
+              '          _TextCell(width: 52, text: row.position),': '          _TextCell(width: 50, text: row.position),',
+              '    width: 92,': '    width: 86,',
+              '        padding: const EdgeInsets.symmetric(horizontal: 5),': '        padding: const EdgeInsets.symmetric(horizontal: 4),',
+              '            const SizedBox(height: 5),': '            const SizedBox(height: 4),',
+              '      padding: const EdgeInsets.symmetric(horizontal: 8),': '      padding: const EdgeInsets.symmetric(horizontal: 6),',
+              '    width: 92,\n    height: double.infinity,': '    width: 86,\n    height: double.infinity,',
+          }
+          for old, new in replacements.items():
+              if old not in stats:
+                  raise SystemExit(f'missing stats density token: {old}')
+              stats = stats.replace(old, new)
+          stats_path.write_text(stats)
+
+          history_path = Path('lib/screens/product_historical_nba_workstation_screen.dart')
+          history = history_path.read_text()
+          old = """          Container(
+            height: 42,
+            padding: const EdgeInsets.symmetric(horizontal: 10),"""
+          new = """          Container(
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 9),"""
+          if old not in history:
+              raise SystemExit('historical header density token missing')
+          history = history.replace(old, new, 1)
+          old = """                    height: 48,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),"""
+          new = """                    height: 44,
+                    padding: const EdgeInsets.symmetric(horizontal: 9),"""
+          if old not in history:
+              raise SystemExit('historical row density token missing')
+          history = history.replace(old, new, 1)
+          history_path.write_text(history)
+
+          role_path = Path('lib/widgets/role_research_augmented_shell.dart')
+          role = role_path.read_text()
+          old = """      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 1020;
+        final left = compact ? 18.0 : 306.0;"""
+          new = """      builder: (context, _) {
+        const left = 18.0;"""
+          if old not in role:
+              raise SystemExit('research launcher sidebar offset token missing')
+          role = role.replace(old, new, 1)
+          role_path.write_text(role)
+          PY
+      - name: Commit product changes
+        shell: bash
+        run: |
+          git config user.name "sports-terminal-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add lib/widgets/connected_role_terminal_shell.dart lib/widgets/role_research_augmented_shell.dart lib/screens/product_nba_stats_workstation_v2_screen.dart lib/screens/product_historical_nba_workstation_screen.dart
+          git commit -m "Move terminal navigation to top and tighten stats density"
+          git push origin HEAD:agent/top-navigation-density-dark-nba-api-coverage
