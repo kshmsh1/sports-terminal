@@ -140,7 +140,7 @@ arrow_assignment = re.compile(r"setState\(\s*\(\)\s*=>\s*([^\n;]+)")
 for path in Path("lib").rglob("*.dart"):
     text = path.read_text()
     lines = text.splitlines()
-    for match in narrow_assignment.finditer(text):
+    for match in arrow_assignment.finditer(text):
         expression = match.group(1).strip()
         if any(
             token in expression
