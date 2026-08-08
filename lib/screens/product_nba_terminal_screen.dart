@@ -24,16 +24,16 @@ import 'product_nba_universe_screen.dart';
 import 'product_profile_persisted_screen.dart';
 import 'product_transaction_command_center_screen.dart';
 
-const _tBg = Color(0xFF06101B);
-const _tPanel = Color(0xFF0D1A28);
-const _tPanel2 = Color(0xFF142437);
-const _tLine = Color(0xFF2A4057);
-const _tText = Color(0xFFF3F7FB);
-const _tMuted = Color(0xFF9FB0C2);
-const _tGold = Color(0xFFFFCB45);
-const _tBlue = Color(0xFF6CB8FF);
-const _tGreen = Color(0xFF65E3A5);
-const _tOrange = Color(0xFFFF9A5A);
+const _tBg = Color(0xFF090D12);
+const _tPanel = Color(0xFF0F151C);
+const _tPanel2 = Color(0xFF141C25);
+const _tLine = Color(0xFF263342);
+const _tText = Color(0xFFE8EDF3);
+const _tMuted = Color(0xFF8895A5);
+const _tGold = Color(0xFF63A9FF);
+const _tBlue = Color(0xFF8BC1FF);
+const _tGreen = Color(0xFF69C99A);
+const _tOrange = Color(0xFFE2B866);
 
 class ProductNbaTerminalScreen extends StatefulWidget {
   const ProductNbaTerminalScreen({
