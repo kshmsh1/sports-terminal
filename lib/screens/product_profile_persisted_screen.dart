@@ -459,6 +459,54 @@ class _ProductPersistedProfileScreenState
   }
 }
 
+class _ReputationBadges extends StatelessWidget {
+  const _ReputationBadges({
+    required this.future,
+    required this.favoriteTeams,
+    required this.favoritePlayers,
+    required this.publicProfile,
+  });
+
+  final Future<Map<String, dynamic>?> future;
+  final int favoriteTeams;
+  final int favoritePlayers;
+  final bool publicProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: future,
+      builder: (context, snapshot) {
+        final payload = snapshot.data;
+        final raw = payload?['reputation'];
+        final reputation = raw is Map ? raw : const {};
+        final badges = reputation['badges'];
+        final score = reputation['reputation'] ?? 0;
+        return Wrap(
+          spacing: 7,
+          runSpacing: 7,
+          children: [
+            _Badge('REP $score', Icons.bolt_rounded, _blue),
+            if (favoriteTeams > 0)
+              const _Badge('TEAM LOYALIST', Icons.favorite_rounded, _green),
+            if (favoritePlayers >= 5)
+              const _Badge('SCOUT', Icons.visibility_rounded, _blue),
+            if (publicProfile)
+              const _Badge('PUBLIC PROFILE', Icons.public_rounded, _amber),
+            if (badges is List)
+              for (final badge in badges.take(4))
+                _Badge(
+                  '$badge'.toUpperCase(),
+                  Icons.verified_rounded,
+                  _green,
+                ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _Card extends StatelessWidget {
   const _Card({required this.child});
   final Widget child;
