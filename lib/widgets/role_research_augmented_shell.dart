@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../controllers/internal_workspace_controller.dart';
 import '../models/app_session.dart';
+import '../screens/product_nba_entity_command_center_screen.dart';
 import '../screens/product_nba_historical_intelligence_screen.dart';
 import '../screens/product_nba_research_command_center_screen.dart';
 import '../screens/product_nba_universe_screen.dart';
@@ -43,6 +44,15 @@ class RoleResearchAugmentedShell extends StatelessWidget {
               icon: const Icon(Icons.close_rounded),
             ),
             actions: [
+              IconButton(
+                tooltip: 'Open Entity Intelligence',
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  if (!context.mounted) return;
+                  _openEntityCenter(context);
+                },
+                icon: const Icon(Icons.hub_rounded),
+              ),
               IconButton(
                 tooltip: 'Open Historical Intelligence',
                 onPressed: () {
@@ -89,6 +99,15 @@ class RoleResearchAugmentedShell extends StatelessWidget {
               icon: const Icon(Icons.close_rounded),
             ),
             actions: [
+              IconButton(
+                tooltip: 'Open Entity Intelligence',
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  if (!context.mounted) return;
+                  _openEntityCenter(context);
+                },
+                icon: const Icon(Icons.hub_rounded),
+              ),
               IconButton(
                 tooltip: 'Open Historical Intelligence',
                 onPressed: () {
@@ -150,6 +169,15 @@ class RoleResearchAugmentedShell extends StatelessWidget {
             ),
             actions: [
               IconButton(
+                tooltip: 'Open Entity Intelligence',
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  if (!context.mounted) return;
+                  _openEntityCenter(context);
+                },
+                icon: const Icon(Icons.hub_rounded),
+              ),
+              IconButton(
                 tooltip: 'Open NBA Universe',
                 onPressed: () {
                   Navigator.of(dialogContext).pop();
@@ -186,6 +214,80 @@ class RoleResearchAugmentedShell extends StatelessWidget {
                 context,
                 initialSection: NbaResearchSection.analytics,
               );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openEntityCenter(BuildContext context) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog.fullscreen(
+        child: Scaffold(
+          backgroundColor: const Color(0xFF08111C),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF111D2A),
+            foregroundColor: Colors.white,
+            title: const Text('NBA Entity & Season Intelligence'),
+            leading: IconButton(
+              tooltip: 'Close Entity Intelligence',
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              icon: const Icon(Icons.close_rounded),
+            ),
+            actions: [
+              IconButton(
+                tooltip: 'Open NBA Universe',
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  if (!context.mounted) return;
+                  _openUniverse(context);
+                },
+                icon: const Icon(Icons.public_rounded),
+              ),
+              IconButton(
+                tooltip: 'Open Historical Intelligence',
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  if (!context.mounted) return;
+                  _openHistoricalIntelligence(context);
+                },
+                icon: const Icon(Icons.history_edu_rounded),
+              ),
+              IconButton(
+                tooltip: 'Open NBA Research',
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  if (!context.mounted) return;
+                  _openResearch(context);
+                },
+                icon: const Icon(Icons.query_stats_rounded),
+              ),
+              const SizedBox(width: 6),
+            ],
+          ),
+          body: ProductNbaEntityCommandCenterScreen(
+            onOpenStats: () {
+              Navigator.of(dialogContext).pop();
+              if (!context.mounted) return;
+              _openResearch(
+                context,
+                initialSection: NbaResearchSection.stats,
+              );
+            },
+            onOpenAnalytics: () {
+              Navigator.of(dialogContext).pop();
+              if (!context.mounted) return;
+              _openResearch(
+                context,
+                initialSection: NbaResearchSection.analytics,
+              );
+            },
+            onOpenHistoricalIntelligence: () {
+              Navigator.of(dialogContext).pop();
+              if (!context.mounted) return;
+              _openHistoricalIntelligence(context);
             },
           ),
         ),
@@ -383,6 +485,43 @@ class RoleResearchAugmentedShell extends StatelessWidget {
                           SizedBox(width: 6),
                           Text(
                             'Historical Intelligence',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: left,
+              bottom: 220,
+              child: SafeArea(
+                child: Material(
+                  color: const Color(0xFF12283B),
+                  elevation: 9,
+                  borderRadius: BorderRadius.circular(999),
+                  child: InkWell(
+                    onTap: () => _openEntityCenter(context),
+                    borderRadius: BorderRadius.circular(999),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.hub_rounded,
+                            color: Color(0xFF66B5FF),
+                            size: 16,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Entity Intelligence',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 11,
