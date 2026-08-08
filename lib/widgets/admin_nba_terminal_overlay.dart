@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/app_session.dart';
 import '../screens/product_nba_terminal_screen.dart';
+import 'nba_terminal_shortcut_scope.dart';
 
 class AdminNbaTerminalOverlay extends StatelessWidget {
   const AdminNbaTerminalOverlay({
@@ -37,27 +38,33 @@ class AdminNbaTerminalOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        child,
-        Positioned(
-          right: 18,
-          bottom: 18,
-          child: SafeArea(
-            child: FloatingActionButton.extended(
-              heroTag: 'admin-nba-terminal',
-              onPressed: () => _open(context),
-              backgroundColor: const Color(0xFF071A33),
-              foregroundColor: Colors.white,
-              icon: const Icon(Icons.terminal_rounded),
-              label: const Text(
-                'NBA Terminal',
-                style: TextStyle(fontWeight: FontWeight.w900),
+    return NbaTerminalShortcutScope(
+      onOpen: () {
+        _open(context);
+      },
+      child: Stack(
+        children: [
+          child,
+          Positioned(
+            right: 18,
+            bottom: 18,
+            child: SafeArea(
+              child: FloatingActionButton.extended(
+                heroTag: 'admin-nba-terminal',
+                tooltip: 'Open NBA Terminal · ⌘K / Ctrl+K',
+                onPressed: () => _open(context),
+                backgroundColor: const Color(0xFF071A33),
+                foregroundColor: Colors.white,
+                icon: const Icon(Icons.terminal_rounded),
+                label: const Text(
+                  'NBA Terminal',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
