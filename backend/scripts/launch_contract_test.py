@@ -5,6 +5,8 @@ import tempfile
 import traceback
 from pathlib import Path
 
+from fastapi import HTTPException
+
 
 def checkpoint(label: str) -> None:
     print(f"BACKEND_CONTRACT_CHECKPOINT: {label}", flush=True)
@@ -20,7 +22,14 @@ try:
         # bootstrap and every launch router are applied exactly as they are when
         # Uvicorn runs the product.
         from app import main_launch as _main_launch  # noqa: F401
-        from app.auth_api import SignInRequest, SignUpRequest, sign_in, sign_up
+        from app.auth_api import (
+            PRIVACY_VERSION,
+            TERMS_VERSION,
+            SignInRequest,
+            SignUpRequest,
+            sign_in,
+            sign_up,
+        )
         from app.launch_api import (
             CaseUpsert,
             DataReleaseUpsert,
@@ -53,6 +62,40 @@ try:
         init_db()
         init_launch_db()
 
+        checkpoint("legal acceptance blocks account creation")
+        try:
+            sign_up(
+                SignUpRequest(
+                    email="blocked@example.com",
+                    password="LaunchPass123",
+                    display_name="Blocked User",
+                    account_type="individual",
+                    accepted_terms=False,
+                    accepted_privacy=True,
+                    terms_version=TERMS_VERSION,
+                    privacy_version=PRIVACY_VERSION,
+                )
+            )
+            raise AssertionError("signup unexpectedly bypassed Terms acceptance")
+        except HTTPException as error:
+            assert error.status_code == 400
+        try:
+            sign_up(
+                SignUpRequest(
+                    email="stale@example.com",
+                    password="LaunchPass123",
+                    display_name="Stale Legal User",
+                    account_type="individual",
+                    accepted_terms=True,
+                    accepted_privacy=True,
+                    terms_version="stale-version",
+                    privacy_version=PRIVACY_VERSION,
+                )
+            )
+            raise AssertionError("signup unexpectedly accepted a stale Terms version")
+        except HTTPException as error:
+            assert error.status_code == 409
+
         checkpoint("first-party individual authentication")
         individual_auth = sign_up(
             SignUpRequest(
@@ -60,10 +103,17 @@ try:
                 password="LaunchPass123",
                 display_name="Launch Analyst",
                 account_type="individual",
+                accepted_terms=True,
+                accepted_privacy=True,
+                terms_version=TERMS_VERSION,
+                privacy_version=PRIVACY_VERSION,
             )
         )
         assert individual_auth["user"]["role"] == "analyst"
         assert individual_auth["token"]
+        assert individual_auth["legal"]["current"] is True
+        assert individual_auth["legal"]["accepted"]["terms"]["version"] == TERMS_VERSION
+        assert individual_auth["legal"]["accepted"]["privacy"]["version"] == PRIVACY_VERSION
         individual_login = sign_in(
             SignInRequest(
                 email="analyst@example.com",
@@ -71,6 +121,7 @@ try:
             )
         )
         assert individual_login["user"]["id"] == individual_auth["user"]["id"]
+        assert individual_login["legal"]["current"] is True
 
         checkpoint("first-party organization authentication")
         organization_auth = sign_up(
@@ -80,10 +131,15 @@ try:
                 display_name="Launch Owner",
                 account_type="organization",
                 organization_name="Launch Basketball Operations",
+                accepted_terms=True,
+                accepted_privacy=True,
+                terms_version=TERMS_VERSION,
+                privacy_version=PRIVACY_VERSION,
             )
         )
         assert organization_auth["user"]["role"] == "organization_admin"
         assert organization_auth["organizations"][0]["membership_role"] == "owner"
+        assert organization_auth["legal"]["current"] is True
 
         checkpoint("versioned customer workspace")
         individual_user_id = individual_auth["user"]["id"]
@@ -272,6 +328,7 @@ try:
         assert readiness["data_release"]["season"] == "2025-26"
         assert "transaction_case_snapshots" in readiness["tables"]
         assert "auth_credentials" in readiness["tables"]
+        assert "legal_acceptances" in readiness["tables"]
         assert "workspace_snapshots" in readiness["tables"]
 
     print("Sports Terminal launch backend contract test passed.")
