@@ -15,7 +15,7 @@ import '../screens/product_front_office_registry_screen.dart';
 import '../screens/product_nba_awards_v2_screen.dart';
 import '../screens/product_nba_public_pages_screen.dart';
 import '../screens/product_platform_content_legal_screen.dart';
-import '../screens/product_profile_persisted_screen.dart';
+import '../screens/product_profile_v3_screen.dart';
 import '../screens/product_role_home_screen.dart';
 import '../screens/product_shell_screens.dart';
 import '../screens/product_strategy_map_screen.dart';
@@ -229,7 +229,7 @@ class _ConnectedRoleTerminalShellState
           group: 'Account',
           icon: Icons.person_rounded,
           description: 'Account, identity and saved preference controls.',
-          screen: ProductPersistedProfileScreen(session: widget.session),
+          screen: ProductProfileV3Screen(session: widget.session),
         ),
         const _TerminalDestination(
           label: 'About Us',
