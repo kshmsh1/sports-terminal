@@ -54,15 +54,8 @@ python -m pip install --upgrade -r requirements.txt
 export SPORTS_TERMINAL_CORS_ORIGINS="${SPORTS_TERMINAL_CORS_ORIGINS:-*}"
 
 # A prior Sports Terminal dev server can survive when Flutter is stopped or a
-# terminal session is interrupted. Starting a second uvicorn instance then
-# fails with "Address already in use", while the frontend keeps talking to the
-# stale server. Detect that case explicitly so local development is deterministic.
-if command -v curl >/dev/null 2>&1 && curl -fsS --max-time 1 "http://127.0.0.1:${PORT_VALUE}/v2/launch/readiness" >/dev/null 2>&1; then
-  echo "Sports Terminal launch backend is already healthy on port ${PORT_VALUE}."
-  echo "Reusing the existing backend process."
-  exit 0
-fi
-
+# terminal session is interrupted. Always replace an existing Sports Terminal
+# listener so freshly-pulled frontend code never talks to stale backend code.
 if command -v lsof >/dev/null 2>&1; then
   EXISTING_PIDS="$(lsof -tiTCP:"${PORT_VALUE}" -sTCP:LISTEN 2>/dev/null || true)"
   if [ -n "$EXISTING_PIDS" ]; then
@@ -77,6 +70,14 @@ if command -v lsof >/dev/null 2>&1; then
         fi
         sleep 0.4
       done
+      REMAINING_PIDS="$(lsof -tiTCP:"${PORT_VALUE}" -sTCP:LISTEN 2>/dev/null || true)"
+      if [ -n "$REMAINING_PIDS" ]; then
+        echo "Force-stopping stale Sports Terminal backend process(es): ${REMAINING_PIDS//$'\n'/ }"
+        while IFS= read -r pid; do
+          [ -n "$pid" ] && kill -9 "$pid" 2>/dev/null || true
+        done <<< "$REMAINING_PIDS"
+        sleep 0.5
+      fi
     else
       echo "Port ${PORT_VALUE} is already in use by another process (${EXISTING_PIDS//$'\n'/ })." >&2
       echo "Stop that process or run with PORT=<another-port>." >&2

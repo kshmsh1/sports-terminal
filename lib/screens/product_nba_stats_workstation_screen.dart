@@ -395,11 +395,11 @@ class _ProductNbaStatsWorkstationScreenState
                       setState(() => _density = math.min(1.35, _density + .1)),
                 ),
                 const SizedBox(height: 8),
-                LayoutBuilder(
-                  builder: (context, constraints) {
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
                     final wide = constraints.maxWidth >= 1180;
-                    final table = Expanded(
-                      child: _StatsTable(
+                    final table = _StatsTable(
                         rows: pageRows,
                         metricKeys: _metricKeys,
                         engine: _engine,
@@ -421,7 +421,6 @@ class _ProductNbaStatsWorkstationScreenState
                         onSelected: (row) => setState(() => _selected = row),
                         onFavorite: _toggleFavorite,
                         onCompare: _toggleCompare,
-                      ),
                     );
                     final inspector = _PlayerInspector(
                       row: _selected,
@@ -441,26 +440,28 @@ class _ProductNbaStatsWorkstationScreenState
                           : () => _toggleFavorite(_selected!),
                     );
                     if (wide) {
-                      return SizedBox(
-                        height: 720,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            table,
-                            const SizedBox(width: 8),
-                            SizedBox(width: 286, child: inspector),
-                          ],
-                        ),
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(child: table),
+                          const SizedBox(width: 8),
+                          SizedBox(width: 286, child: inspector),
+                        ],
                       );
                     }
-                    return Column(
+                    return ListView(
+                      padding: EdgeInsets.zero,
                       children: [
-                        SizedBox(height: 650, child: table),
+                        SizedBox(
+                          height: math.max(420.0, constraints.maxHeight * .72),
+                          child: table,
+                        ),
                         const SizedBox(height: 8),
-                        inspector,
+                        SizedBox(height: 520, child: inspector),
                       ],
                     );
-                  },
+                    },
+                  ),
                 ),
                 const SizedBox(height: 8),
                 _FooterBar(
@@ -2338,6 +2339,8 @@ class _CompactDrop<T> extends StatelessWidget {
     height: 36,
     child: DropdownButtonFormField<T>(
       value: values.contains(value) ? value : values.first,
+      isExpanded: true,
+      icon: const Icon(Icons.arrow_drop_down_rounded, size: 14),
       dropdownColor: _panel2,
       style: const TextStyle(
         color: _text,
@@ -2348,7 +2351,7 @@ class _CompactDrop<T> extends StatelessWidget {
         hintText: hint,
         filled: true,
         fillColor: _panel3,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 9, vertical: 0),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 5, vertical: 0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(7),
           borderSide: BorderSide.none,

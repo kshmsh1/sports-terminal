@@ -1,12 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sports_terminal/models/transaction_case.dart';
+import 'package:sports_terminal/services/product_local_store.dart';
 import 'package:sports_terminal/services/transaction_case_repository.dart';
 import 'package:sports_terminal/services/transaction_workflow_repository.dart';
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues(<String, Object>{});
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      ProductLocalStore.launchRemoteSyncEnabledKey: false,
+    });
   });
 
   test('organization approval notifies the case owner and records activity', () async {

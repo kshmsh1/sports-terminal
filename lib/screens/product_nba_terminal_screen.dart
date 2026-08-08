@@ -120,7 +120,11 @@ class _ProductNbaTerminalScreenState extends State<ProductNbaTerminalScreen> {
     });
     if (query.isNotEmpty) {
       await _stateStore.recordQuery(query);
-      if (mounted) setState(() => _terminalStateFuture = _stateStore.load());
+      if (mounted) {
+        setState(() {
+          _terminalStateFuture = _stateStore.load();
+        });
+      }
     }
     if (query.length < 2) return;
     try {
@@ -142,7 +146,11 @@ class _ProductNbaTerminalScreenState extends State<ProductNbaTerminalScreen> {
 
   Future<void> _openCommand(NbaTerminalCommand command) async {
     final next = await _stateStore.recordCommand(command.id);
-    if (mounted) setState(() => _terminalStateFuture = Future.value(next));
+    if (mounted) {
+      setState(() {
+        _terminalStateFuture = Future.value(next);
+      });
+    }
     if (!mounted) return;
     switch (command.id) {
       case 'terminal':
@@ -287,15 +295,13 @@ class _ProductNbaTerminalScreenState extends State<ProductNbaTerminalScreen> {
               ),
             ],
           ),
+          // Routed product surfaces own their scrolling and flex layout. Wrapping
+          // a full-screen destination in an outer SingleChildScrollView gives its
+          // Expanded/Flexible descendants unbounded height and breaks debug layout.
           body: scroll
-              ? SingleChildScrollView(
+              ? Padding(
                   padding: const EdgeInsets.all(22),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1480),
-                      child: body,
-                    ),
-                  ),
+                  child: body,
                 )
               : body,
         ),
@@ -418,7 +424,9 @@ class _ProductNbaTerminalScreenState extends State<ProductNbaTerminalScreen> {
   Future<void> _toggleFavorite(NbaTerminalCommand command) async {
     final next = await _stateStore.toggleFavorite(command.id);
     if (!mounted) return;
-    setState(() => _terminalStateFuture = Future.value(next));
+    setState(() {
+      _terminalStateFuture = Future.value(next);
+    });
   }
 
   @override

@@ -20,7 +20,9 @@ void main() {
   );
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      ProductLocalStore.launchRemoteSyncEnabledKey: false,
+    });
   });
 
   test('discovers saved Trade Machine and Front Office product state', () async {
