@@ -77,6 +77,9 @@ const nbaTerminalStatFamilies = <NbaTerminalStatFamily>[
       'blow_by_rate', 'contest_distance', 'help_defense_pg', 'deterrence_rate',
       'switch_attrition_rate', 'closeout_speed', 'anticipation',
     ],
+    expansionOverrides: {
+      'dreb': ['contested_dreb_pg', 'uncontested_dreb_pg'],
+    },
   ),
   NbaTerminalStatFamily(
     id: 'playmaking',
@@ -344,7 +347,7 @@ final List<NbaTerminalMetric> nbaTerminalMetrics = [
   _m('la_rapm', 'Luck-Adjusted RAPM', 'LA-RAPM', 'Aggregate', 'RAPM variant using luck-adjusted scoring inputs when supplied by a model source.', raw: ['la_rapm', 'luck_adjusted_rapm'], format: NbaTerminalMetricFormat.signed, providerNative: true),
   _m('warv', 'Wins Above Replacement Value', 'WARV', 'Aggregate', 'Model estimate of wins created above a replacement-level player.', raw: ['warv', 'wins_above_replacement_value'], providerNative: true),
 
-  _m('usage', 'Usage Rate', 'USG%', 'Movement', 'Estimated share of team possessions used by the player while on court.', raw: ['usage', 'usage_pct', 'usg_pct'], engineKey: 'scoring_load', format: NbaTerminalMetricFormat.percent),
+  _m('usage', 'Usage Rate', 'USG%', 'Movement', 'Estimated share of team possessions used by the player while on court.', raw: ['usage', 'usage_pct', 'usg_pct'], format: NbaTerminalMetricFormat.percent, providerNative: true),
   _m('distance_traveled', 'Distance Traveled', 'DIST', 'Movement', 'Tracked distance covered by the player over the selected sample.', raw: ['distance_traveled', 'distance_miles', 'distance'], providerNative: true),
   _m('average_speed', 'Average Speed', 'AVG SPD', 'Movement', 'Tracked average player speed while on the floor.', raw: ['average_speed', 'avg_speed'], providerNative: true),
   _m('time_per_touch', 'Time Per Touch', 'SEC/TOUCH', 'Movement', 'Average seconds the player controls the ball per touch.', raw: ['time_per_touch', 'avg_seconds_per_touch'], format: NbaTerminalMetricFormat.seconds, providerNative: true),
