@@ -1,0 +1,52 @@
+name: Historical Stats Parity
+
+on:
+  push:
+    branches: [agent/stats-workstation-visual-and-metric-overhaul]
+
+permissions:
+  contents: write
+
+jobs:
+  parity:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/stats-workstation-visual-and-metric-overhaul
+      - name: Apply historical stats parity
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('lib/screens/product_historical_nba_workstation_screen.dart')
+          text = path.read_text()
+          replacements = {
+            "const _historyBg = Color(0xFF151C29);": "const _historyBg = Color(0xFF090D12);",
+            "const _historyPanel = Color(0xFF1D2636);": "const _historyPanel = Color(0xFF0F151C);",
+            "const _historyPanel2 = Color(0xFF232D3F);": "const _historyPanel2 = Color(0xFF141C25);",
+            "const _historyLine = Color(0xFF354155);": "const _historyLine = Color(0xFF263342);",
+            "const _historyText = Color(0xFFF3F6FB);": "const _historyText = Color(0xFFE8EDF3);",
+            "const _historyMuted = Color(0xFF9DA8BA);": "const _historyMuted = Color(0xFF8895A5);",
+            "const _historyYellow = Color(0xFFFFCB45);": "const _historyYellow = Color(0xFF63A9FF);",
+            "const _historyCyan = Color(0xFF65D5FF);": "const _historyCyan = Color(0xFF8BC1FF);",
+            "const _historyGreen = Color(0xFF63E6A6);": "const _historyGreen = Color(0xFF69C99A);",
+            "              values: const ['regular', 'playoffs', 'combined'],": "              values: const ['regular', 'playoffs'],",
+            "                'regular' => 'Regular',\n                'playoffs' => 'Playoffs',\n                _ => 'Combined',": "                'regular' => 'Regular Season',\n                'playoffs' => 'Playoffs',\n                _ => 'Regular Season',",
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected exactly one historical stats token: {old}')
+              text = text.replace(old, new)
+          if "'combined'" in text:
+              raise SystemExit('combined season type remains in historical stats workstation')
+          path.write_text(text)
+          PY
+      - name: Commit parity
+        shell: bash
+        run: |
+          git config user.name "sports-terminal-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add lib/screens/product_historical_nba_workstation_screen.dart
+          git commit -m "Split historical stats into regular season and playoffs"
+          git push origin HEAD:agent/stats-workstation-visual-and-metric-overhaul
