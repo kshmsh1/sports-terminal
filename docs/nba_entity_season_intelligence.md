@@ -115,5 +115,6 @@ CI validates:
 - season command and leader tables
 - launch route mounting
 - persistent Flutter entity watchlists
-- responsive Entity Intelligence mounting
 - Flutter analyzer, complete test suite and release web build
+
+Interactive Entity Intelligence widget tests will use an injected HTTP client/test double rather than relying on Flutter's widget-test network override; backend behavior is independently contract-tested in the historical quality gates.
