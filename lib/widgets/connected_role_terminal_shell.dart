@@ -4,6 +4,7 @@ import '../controllers/internal_workspace_controller.dart';
 import '../models/app_session.dart';
 import '../screens/product_advanced_nba_tools_screen.dart';
 import '../screens/product_backend_sync_screen.dart';
+import '../screens/product_community_v2_screen.dart';
 import '../screens/product_connected_data_studio_screen.dart';
 import '../screens/product_connected_network_screens.dart';
 import '../screens/product_connected_transaction_screens.dart';
@@ -190,8 +191,8 @@ class _ConnectedRoleTerminalShellState
           label: 'Community',
           group: 'Network',
           icon: Icons.forum_rounded,
-          description: 'Moderated threads, replies, reports, blocks and mutes.',
-          screen: ProductConnectedCommunityScreen(session: widget.session),
+          description: 'Ranked communities, threaded discussion and trust controls.',
+          screen: ProductCommunityV2Screen(session: widget.session),
         ),
         const _TerminalDestination(
           label: 'Articles',
