@@ -21,6 +21,7 @@ from . import historical_nba_research_mount as _historical_nba_research_mount  #
 from .launch_api import router as launch_router
 from .launch_security import ensure_organization
 from .main import app
+from .nba_awards_api import router as nba_awards_router
 from .nba_data_api import router as nba_data_router
 from .nba_terminal_api import router as nba_terminal_router
 from .operations import launch_operations_middleware
@@ -40,12 +41,13 @@ front_office_module.front_office_reconciliation = hardened_reconciliation(
 )
 
 app.title = "Sports Terminal Launch API"
-app.version = "1.6.0"
+app.version = "1.7.0"
 app.description = (
     "Launch-oriented Sports Terminal API for authentication, certified and historical NBA data, "
-    "canonical contracts and draft assets, transaction ledgers, moderated community and messaging, "
-    "isolated Python analysis, customer operations, launch automation, organization governance, "
-    "versioned workspaces, saved sports objects, platform operations, and the unified NBA terminal."
+    "canonical awards and voting, canonical contracts and draft assets, transaction ledgers, "
+    "moderated community and messaging, isolated Python analysis, customer operations, launch "
+    "automation, organization governance, versioned workspaces, saved sports objects, platform "
+    "operations, and the unified NBA terminal."
 )
 
 app.middleware("http")(enforce_launch_auth)
@@ -56,9 +58,9 @@ app.middleware("http")(enforce_launch_authorization)
 def _attach_router_routes(router) -> None:
     """Attach already-prefixed routes without route-snapshot loss.
 
-    Historical and terminal routes are composed before the generic
+    Historical, awards and terminal routes are composed before the generic
     /v2/nba/{season}/{dataset} route. Attaching their final APIRoute objects directly
-    preserves both dynamic historical composition and unambiguous terminal routing.
+    preserves dynamic composition and unambiguous route ordering.
     """
     existing = {
         (
@@ -81,10 +83,11 @@ def _attach_router_routes(router) -> None:
 app.include_router(auth_router)
 app.include_router(launch_router)
 app.include_router(workspace_router)
-# Historical routes must be registered before /v2/nba/{season}/{dataset}; otherwise
-# the dynamic certified-release route can interpret "history" as a season value.
+# Historical and awards routes must be registered before /v2/nba/{season}/{dataset};
+# otherwise the dynamic certified-release route can interpret their path prefix as a season.
 _attach_router_routes(historical_nba_router)
 _attach_router_routes(historical_nba_compat_router)
+_attach_router_routes(nba_awards_router)
 # Terminal routes receive the same explicit ordering guarantee. This also avoids
 # FastAPI route-snapshot behavior when the shared app object has been imported by a
 # contract harness before launch composition finishes.
