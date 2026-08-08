@@ -49,7 +49,7 @@ class _ConnectedRoleTerminalShellState
   final ProductLocalStore store = const ProductLocalStore();
   final TextEditingController searchController = TextEditingController();
   int selectedIndex = 0;
-  bool darkMode = false;
+  bool darkMode = true;
   String search = '';
 
   bool get organizationMode => widget.session.role.canManageOrganization;
@@ -265,7 +265,10 @@ class _ConnectedRoleTerminalShellState
   }
 
   Future<void> _loadTheme() async {
-    final saved = await store.loadBool(ProductLocalStore.darkModeKey);
+    final saved = await store.loadBool(
+      ProductLocalStore.darkModeKey,
+      fallback: true,
+    );
     if (!mounted) return;
     setState(() => darkMode = saved);
   }
@@ -276,16 +279,13 @@ class _ConnectedRoleTerminalShellState
     await store.saveBool(ProductLocalStore.darkModeKey, next);
   }
 
-  void _select(int index, {bool closeDrawer = false}) {
+  void _select(int index) {
     if (index < 0 || index >= destinations.length) return;
     setState(() {
       selectedIndex = index;
       search = '';
       searchController.clear();
     });
-    if (closeDrawer && Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    }
   }
 
   void _selectDestination(_TerminalDestination destination) {
@@ -310,120 +310,60 @@ class _ConnectedRoleTerminalShellState
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final compact = constraints.maxWidth < 1020;
+          final compact = constraints.maxWidth < 820;
           return Scaffold(
             backgroundColor: palette.background,
-            appBar: compact
-                ? AppBar(
-                    backgroundColor: palette.panel,
-                    foregroundColor: palette.text,
-                    title: Row(
-                      children: [
-                        const _TerminalLogo(size: 34),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            organizationMode
-                                ? widget.session.organizationName
-                                : 'Sports Terminal',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w900),
-                          ),
-                        ),
-                      ],
-                    ),
-                    actions: [
-                      IconButton(
-                        tooltip: darkMode ? 'Use light mode' : 'Use dark mode',
-                        onPressed: _toggleTheme,
-                        icon: Icon(
-                          darkMode
-                              ? Icons.light_mode_rounded
-                              : Icons.dark_mode_rounded,
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Sign out',
-                        onPressed: widget.onSignOut,
-                        icon: const Icon(Icons.logout_rounded),
-                      ),
-                    ],
-                  )
-                : null,
-            drawer: compact
-                ? Drawer(
-                    backgroundColor: palette.panel,
-                    child: SafeArea(
-                      child: _TerminalNavigation(
-                        session: widget.session,
-                        destinations: items,
-                        selectedIndex: selectedIndex,
-                        palette: palette,
-                        search: search,
-                        searchController: searchController,
-                        onSearch: (value) => setState(() => search = value),
-                        onSelected: (index) => _select(index, closeDrawer: true),
-                        onToggleTheme: _toggleTheme,
-                        onSignOut: widget.onSignOut,
-                        darkMode: darkMode,
-                      ),
-                    ),
-                  )
-                : null,
-            body: Row(
-              children: [
-                if (!compact)
-                  SizedBox(
-                    width: 288,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  _TerminalTopNavigation(
+                    session: widget.session,
+                    destinations: items,
+                    selectedIndex: selectedIndex,
+                    palette: palette,
+                    search: search,
+                    searchController: searchController,
+                    onSearch: (value) => setState(() => search = value),
+                    onSelected: _select,
+                    onToggleTheme: _toggleTheme,
+                    onSignOut: widget.onSignOut,
+                    darkMode: darkMode,
+                  ),
+                  Expanded(
                     child: ColoredBox(
-                      color: palette.panel,
-                      child: SafeArea(
-                        child: _TerminalNavigation(
-                          session: widget.session,
-                          destinations: items,
-                          selectedIndex: selectedIndex,
-                          palette: palette,
-                          search: search,
-                          searchController: searchController,
-                          onSearch: (value) => setState(() => search = value),
-                          onSelected: _select,
-                          onToggleTheme: _toggleTheme,
-                          onSignOut: widget.onSignOut,
-                          darkMode: darkMode,
+                      color: palette.background,
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.fromLTRB(
+                          compact ? 12 : 20,
+                          compact ? 14 : 20,
+                          compact ? 12 : 20,
+                          32,
                         ),
-                      ),
-                    ),
-                  ),
-                Expanded(
-                  child: ColoredBox(
-                    color: palette.background,
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.all(compact ? 16 : 28),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 1420),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _TerminalPageHeader(
-                                destination: selected,
-                                palette: palette,
-                                organizationMode: organizationMode,
-                                onQuickOpen: _selectDestination,
-                                destinations: items,
-                              ),
-                              const SizedBox(height: 18),
-                              selected.screen,
-                              const SizedBox(height: 32),
-                            ],
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1680),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _TerminalPageHeader(
+                                  destination: selected,
+                                  palette: palette,
+                                  organizationMode: organizationMode,
+                                  onQuickOpen: _selectDestination,
+                                  destinations: items,
+                                ),
+                                const SizedBox(height: 16),
+                                selected.screen,
+                                const SizedBox(height: 28),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
@@ -448,8 +388,8 @@ class _TerminalDestination {
   final Widget screen;
 }
 
-class _TerminalNavigation extends StatelessWidget {
-  const _TerminalNavigation({
+class _TerminalTopNavigation extends StatelessWidget {
+  const _TerminalTopNavigation({
     required this.session,
     required this.destinations,
     required this.selectedIndex,
@@ -486,190 +426,219 @@ class _TerminalNavigation extends StatelessWidget {
                 .contains(normalized))
           MapEntry(index, destinations[index]),
     ];
-    String? lastGroup;
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-          child: Row(
-            children: [
-              const _TerminalLogo(size: 44),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      session.role.canManageOrganization
-                          ? session.organizationName
-                          : 'Sports Terminal',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: palette.text,
-                        fontWeight: FontWeight.w900,
+    return Material(
+      color: palette.panel,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: palette.line)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final showSearch = constraints.maxWidth >= 720;
+                final showIdentity = constraints.maxWidth >= 1080;
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
+                  child: Row(
+                    children: [
+                      const _TerminalLogo(size: 36),
+                      const SizedBox(width: 10),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 230),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              session.role.canManageOrganization
+                                  ? session.organizationName
+                                  : 'Sports Terminal',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: palette.text,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            Text(
+                              session.role.canManageOrganization
+                                  ? 'ORGANIZATION TERMINAL'
+                                  : 'NBA OPERATING TERMINAL',
+                              style: TextStyle(
+                                color: palette.muted,
+                                fontSize: 8,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: .7,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Text(
-                      session.role.canManageOrganization
-                          ? 'Organization operating terminal'
-                          : 'Individual operating terminal',
-                      style: TextStyle(color: palette.muted, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: TextField(
-            controller: searchController,
-            onChanged: onSearch,
-            style: TextStyle(color: palette.text, fontSize: 13),
-            decoration: InputDecoration(
-              hintText: 'Find a terminal function...',
-              hintStyle: TextStyle(color: palette.muted),
-              prefixIcon: Icon(Icons.search_rounded, color: palette.muted),
-              suffixIcon: search.isEmpty
-                  ? null
-                  : IconButton(
-                      onPressed: () {
-                        searchController.clear();
-                        onSearch('');
-                      },
-                      icon: Icon(Icons.close_rounded, color: palette.muted),
-                    ),
-              filled: true,
-              fillColor: palette.search,
-              isDense: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: visible.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Text(
-                      'No terminal function matches “$search”.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: palette.muted),
-                    ),
-                  ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(10, 4, 10, 12),
-                  children: [
-                    for (final entry in visible) ...[
-                      if (lastGroup != entry.value.group)
-                        Builder(
-                          builder: (context) {
-                            lastGroup = entry.value.group;
-                            return Padding(
-                              padding: const EdgeInsets.fromLTRB(10, 14, 10, 5),
-                              child: Text(
-                                entry.value.group.toUpperCase(),
+                      if (showSearch) ...[
+                        const SizedBox(width: 18),
+                        Expanded(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 390),
+                            child: SizedBox(
+                              height: 34,
+                              child: TextField(
+                                controller: searchController,
+                                onChanged: onSearch,
                                 style: TextStyle(
-                                  color: palette.muted,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.1,
+                                  color: palette.text,
+                                  fontSize: 12,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Find terminal function…',
+                                  hintStyle: TextStyle(color: palette.muted),
+                                  prefixIcon: Icon(
+                                    Icons.search_rounded,
+                                    color: palette.muted,
+                                    size: 17,
+                                  ),
+                                  suffixIcon: search.isEmpty
+                                      ? null
+                                      : IconButton(
+                                          padding: EdgeInsets.zero,
+                                          onPressed: () {
+                                            searchController.clear();
+                                            onSearch('');
+                                          },
+                                          icon: Icon(
+                                            Icons.close_rounded,
+                                            color: palette.muted,
+                                            size: 16,
+                                          ),
+                                        ),
+                                  filled: true,
+                                  fillColor: palette.search,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(7),
+                                    borderSide: BorderSide(color: palette.line),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(7),
+                                    borderSide: BorderSide(color: palette.line),
+                                  ),
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                      _NavigationItem(
-                        destination: entry.value,
-                        selected: entry.key == selectedIndex,
-                        palette: palette,
-                        onTap: () => onSelected(entry.key),
-                      ),
-                    ],
-                  ],
-                ),
-        ),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: palette.line)),
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: _blue,
-                    child: Text(
-                      session.displayName.isEmpty
-                          ? 'ST'
-                          : session.displayName
-                              .split(' ')
-                              .take(2)
-                              .map((part) => part.isEmpty ? '' : part[0])
-                              .join()
-                              .toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          session.displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: palette.text,
-                            fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
-                        Text(
-                          session.role.label,
-                          style: TextStyle(color: palette.muted, fontSize: 11),
+                      ] else
+                        const Spacer(),
+                      if (showIdentity) ...[
+                        const Spacer(),
+                        CircleAvatar(
+                          radius: 14,
+                          backgroundColor: _blue,
+                          child: Text(
+                            session.displayName.isEmpty
+                                ? 'ST'
+                                : session.displayName
+                                    .split(' ')
+                                    .take(2)
+                                    .map((part) => part.isEmpty ? '' : part[0])
+                                    .join()
+                                    .toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 150),
+                          child: Text(
+                            session.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: palette.text,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                         ),
                       ],
-                    ),
+                      const SizedBox(width: 6),
+                      IconButton(
+                        tooltip: darkMode ? 'Use light mode' : 'Use dark mode',
+                        onPressed: onToggleTheme,
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                          darkMode
+                              ? Icons.light_mode_rounded
+                              : Icons.dark_mode_rounded,
+                          color: palette.muted,
+                          size: 18,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Sign out',
+                        onPressed: onSignOut,
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                          Icons.logout_rounded,
+                          color: palette.muted,
+                          size: 18,
+                        ),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    tooltip: darkMode ? 'Use light mode' : 'Use dark mode',
-                    onPressed: onToggleTheme,
-                    icon: Icon(
-                      darkMode
-                          ? Icons.light_mode_rounded
-                          : Icons.dark_mode_rounded,
-                      color: palette.muted,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Sign out',
-                    onPressed: onSignOut,
-                    icon: Icon(Icons.logout_rounded, color: palette.muted),
-                  ),
-                ],
+                );
+              },
+            ),
+            Container(
+              height: 51,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: palette.dark
+                    ? const Color(0xFF0A1320)
+                    : const Color(0xFFF7F9FC),
+                border: Border(top: BorderSide(color: palette.line)),
               ),
-            ],
-          ),
+              child: visible.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No terminal function matches “$search”.',
+                        style: TextStyle(color: palette.muted, fontSize: 11),
+                      ),
+                    )
+                  : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      itemCount: visible.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 3),
+                      itemBuilder: (context, index) {
+                        final entry = visible[index];
+                        return _TopNavigationItem(
+                          destination: entry.value,
+                          selected: entry.key == selectedIndex,
+                          palette: palette,
+                          onTap: () => onSelected(entry.key),
+                        );
+                      },
+                    ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
 
-class _NavigationItem extends StatelessWidget {
-  const _NavigationItem({
+class _TopNavigationItem extends StatelessWidget {
+  const _TopNavigationItem({
     required this.destination,
     required this.selected,
     required this.palette,
@@ -682,42 +651,56 @@ class _NavigationItem extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 3),
-        child: Material(
-          color: selected ? palette.selected : Colors.transparent,
-          borderRadius: BorderRadius.circular(11),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(11),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-              child: Row(
-                children: [
-                  Icon(
-                    destination.icon,
-                    size: 20,
-                    color: selected ? _blue : palette.muted,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
+  Widget build(BuildContext context) => Material(
+        color: selected ? palette.selected : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: selected ? _blue : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  destination.icon,
+                  size: 16,
+                  color: selected ? _blue : palette.muted,
+                ),
+                const SizedBox(width: 7),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      destination.group.toUpperCase(),
+                      style: TextStyle(
+                        color: selected ? _blue : palette.muted,
+                        fontSize: 6.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .55,
+                      ),
+                    ),
+                    Text(
                       destination.label,
                       style: TextStyle(
                         color: selected ? palette.text : palette.muted,
-                        fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-                        fontSize: 13,
+                        fontSize: 10.5,
+                        fontWeight:
+                            selected ? FontWeight.w900 : FontWeight.w700,
                       ),
                     ),
-                  ),
-                  if (selected)
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      size: 18,
-                      color: _blue,
-                    ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
@@ -872,8 +855,12 @@ class _TerminalPalette {
   Color get panel => dark ? const Color(0xFF0C1727) : Colors.white;
   Color get card => dark ? const Color(0xFF101D2E) : Colors.white;
   Color get search => dark ? const Color(0xFF142338) : const Color(0xFFF1F4F8);
-  Color get selected => dark ? const Color(0xFF172B46) : const Color(0xFFEFF6FF);
-  Color get text => dark ? const Color(0xFFF3F6FA) : const Color(0xFF102033);
-  Color get muted => dark ? const Color(0xFFA8B3C3) : const Color(0xFF667085);
-  Color get line => dark ? const Color(0xFF24364F) : const Color(0xFFE3E8F0);
+  Color get selected =>
+      dark ? const Color(0xFF172B46) : const Color(0xFFEFF6FF);
+  Color get text =>
+      dark ? const Color(0xFFF3F6FA) : const Color(0xFF102033);
+  Color get muted =>
+      dark ? const Color(0xFFA8B3C3) : const Color(0xFF667085);
+  Color get line =>
+      dark ? const Color(0xFF24364F) : const Color(0xFFE3E8F0);
 }
