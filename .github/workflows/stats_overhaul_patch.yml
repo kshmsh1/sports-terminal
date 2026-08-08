@@ -1,0 +1,31 @@
+name: Stats Overhaul Patch
+
+on:
+  push:
+    branches: [agent/stats-workstation-visual-and-metric-overhaul]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/stats-workstation-visual-and-metric-overhaul
+      - name: Apply stats patch
+        run: python tools/patch_stats_overhaul.py
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "sports-terminal-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add lib/services/nba_stats_metric_catalog.dart lib/screens/product_nba_stats_workstation_v2_screen.dart
+          if git diff --cached --quiet; then
+            echo "No patch changes required."
+            exit 0
+          fi
+          git commit -m "Refine stats metric expansion semantics"
+          git push origin HEAD:agent/stats-workstation-visual-and-metric-overhaul
