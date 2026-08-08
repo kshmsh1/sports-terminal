@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../controllers/auth_controller.dart';
 import '../models/app_session.dart';
 import '../widgets/terminal_primitives.dart';
+import 'product_legal_information_v2.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.controller});
@@ -22,6 +23,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool obscurePassword = true;
   bool createAccount = false;
   bool organizationAccount = false;
+  bool acceptedTerms = false;
+  bool acceptedPrivacy = false;
 
   @override
   void dispose() {
@@ -35,12 +38,26 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     if (createAccount) {
+      if (!acceptedTerms || !acceptedPrivacy) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Review and separately accept the Terms & Conditions and Privacy Policy before creating an account.',
+            ),
+          ),
+        );
+        return;
+      }
       await widget.controller.signUp(
         email: emailController.text,
         password: passwordController.text,
         displayName: displayNameController.text,
         organizationAccount: organizationAccount,
         organizationName: organizationNameController.text,
+        acceptedTerms: acceptedTerms,
+        acceptedPrivacy: acceptedPrivacy,
+        termsVersion: sportsTerminalTermsVersion,
+        privacyVersion: sportsTerminalPrivacyVersion,
       );
       return;
     }
@@ -57,6 +74,36 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _useDemo(AppSession session) {
     widget.controller.signInAsDemo(session);
+  }
+
+  Future<void> _openLegal(String kind) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog.fullscreen(
+        child: Scaffold(
+          backgroundColor: terminalBackground,
+          appBar: AppBar(
+            backgroundColor: terminalPanelDark,
+            foregroundColor: Colors.white,
+            title: Text(kind == 'terms' ? 'Terms & Conditions' : 'Privacy Policy'),
+            leading: IconButton(
+              tooltip: 'Close',
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              icon: const Icon(Icons.close_rounded),
+            ),
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1180),
+                child: ProductLegalInformationScreen(kind: kind),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -79,6 +126,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 createAccount: createAccount,
                 organizationAccount: organizationAccount,
                 obscurePassword: obscurePassword,
+                acceptedTerms: acceptedTerms,
+                acceptedPrivacy: acceptedPrivacy,
                 onModeChanged: _setMode,
                 onOrganizationChanged: (value) {
                   setState(() => organizationAccount = value);
@@ -86,6 +135,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 onTogglePassword: () {
                   setState(() => obscurePassword = !obscurePassword);
                 },
+                onTermsChanged: (value) => setState(() => acceptedTerms = value),
+                onPrivacyChanged: (value) => setState(() => acceptedPrivacy = value),
+                onOpenTerms: () => _openLegal('terms'),
+                onOpenPrivacy: () => _openLegal('privacy'),
                 onSubmit: _submit,
                 onDemoSelected: _useDemo,
               ),
@@ -156,7 +209,7 @@ class _LoginOverview extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            'The professional NBA research and transaction operating system—built around a certified 2025–26 data release, structured analysis, personal work, and organization decision workflows.',
+            'The NBA-first sports intelligence, transaction, publishing, community and research operating system.',
             style: TextStyle(
               color: terminalTextSoft,
               height: 1.55,
@@ -168,7 +221,7 @@ class _LoginOverview extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
-              InfoPill(label: '2025–26 Launch'),
+              InfoPill(label: 'NBA Intelligence'),
               InfoPill(label: 'Individual Terminal'),
               InfoPill(label: 'Organization Terminal'),
               InfoPill(label: 'Source-Aware Data'),
@@ -182,25 +235,25 @@ class _LoginOverview extends StatelessWidget {
             icon: Icons.query_stats_rounded,
             title: 'Research that becomes work',
             description:
-                'Player, team, game, cap, contract, draft, and trade objects can move directly into workspaces and governed transaction cases.',
+                'Player, team, game, cap, contract, draft, award, trade and community objects move into connected research and transaction workflows.',
           ),
           const _FeatureLine(
             icon: Icons.apartment_rounded,
             title: 'Individual and organization products',
             description:
-                'Personal analysis and shared organization review use one connected workflow while preserving role-specific tools and permissions.',
+                'Personal analysis and shared organization review use one connected platform while preserving role-specific access and controls.',
           ),
           const _FeatureLine(
             icon: Icons.cloud_done_rounded,
             title: 'Remote-first with local resilience',
             description:
-                'Customer sessions and collaboration use the launch backend when available; analytical work retains a local fallback during development or temporary outages.',
+                'Customer sessions and collaboration use the launch backend when available; analytical work retains resilient development fallbacks.',
           ),
           const _FeatureLine(
             icon: Icons.verified_user_rounded,
-            title: 'No fabricated launch claims',
+            title: 'Source and legal discipline',
             description:
-                'The app exposes dataset certification and launch blockers instead of presenting modeled or incomplete data as sourced professional intelligence.',
+                'The platform exposes source limitations and requires versioned Terms and Privacy acceptance rather than hiding launch requirements.',
           ),
         ],
       ),
@@ -266,9 +319,15 @@ class _LoginForm extends StatelessWidget {
     required this.createAccount,
     required this.organizationAccount,
     required this.obscurePassword,
+    required this.acceptedTerms,
+    required this.acceptedPrivacy,
     required this.onModeChanged,
     required this.onOrganizationChanged,
     required this.onTogglePassword,
+    required this.onTermsChanged,
+    required this.onPrivacyChanged,
+    required this.onOpenTerms,
+    required this.onOpenPrivacy,
     required this.onSubmit,
     required this.onDemoSelected,
   });
@@ -281,14 +340,21 @@ class _LoginForm extends StatelessWidget {
   final bool createAccount;
   final bool organizationAccount;
   final bool obscurePassword;
+  final bool acceptedTerms;
+  final bool acceptedPrivacy;
   final ValueChanged<bool> onModeChanged;
   final ValueChanged<bool> onOrganizationChanged;
   final VoidCallback onTogglePassword;
+  final ValueChanged<bool> onTermsChanged;
+  final ValueChanged<bool> onPrivacyChanged;
+  final VoidCallback onOpenTerms;
+  final VoidCallback onOpenPrivacy;
   final VoidCallback onSubmit;
   final ValueChanged<AppSession> onDemoSelected;
 
   @override
   Widget build(BuildContext context) {
+    final canCreate = acceptedTerms && acceptedPrivacy;
     return TerminalCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,7 +389,7 @@ class _LoginForm extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             createAccount
-                ? 'Create an individual research account or an organization workspace. The launch backend issues a durable session immediately.'
+                ? 'Create an individual research account or an organization workspace. Legal acceptance is versioned and recorded with account creation.'
                 : 'Sign in through the launch account service. Development demo roles remain available below when the backend is offline.',
             style: const TextStyle(color: terminalTextSoft, height: 1.45),
           ),
@@ -351,7 +417,7 @@ class _LoginForm extends StatelessWidget {
                 ),
               ),
               subtitle: const Text(
-                'Includes shared cases, members, assignments, approvals, and organization operations.',
+                'Includes shared cases, members, assignments, approvals and organization operations.',
                 style: TextStyle(color: terminalTextSoft),
               ),
               onChanged: controller.busy ? null : onOrganizationChanged,
@@ -389,7 +455,9 @@ class _LoginForm extends StatelessWidget {
                 ? const [AutofillHints.newPassword]
                 : const [AutofillHints.password],
             style: const TextStyle(color: Colors.white),
-            onSubmitted: (_) => controller.busy ? null : onSubmit(),
+            onSubmitted: (_) {
+              if (!controller.busy && (!createAccount || canCreate)) onSubmit();
+            },
             decoration:
                 _fieldDecoration('Password', Icons.lock_outline).copyWith(
               helperText: createAccount
@@ -406,6 +474,83 @@ class _LoginForm extends StatelessWidget {
               ),
             ),
           ),
+          if (createAccount) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: terminalPanelDark,
+                border: Border.all(color: terminalBorder),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Required legal acceptance',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'These are separate required acknowledgments. Open either document to read the complete current version before accepting.',
+                    style: TextStyle(color: terminalTextSoft, fontSize: 12, height: 1.4),
+                  ),
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: acceptedTerms,
+                    onChanged: controller.busy ? null : (value) => onTermsChanged(value == true),
+                    title: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        const Text('I agree to the ', style: TextStyle(color: Colors.white, fontSize: 13)),
+                        TextButton(
+                          onPressed: onOpenTerms,
+                          child: const Text('Terms & Conditions'),
+                        ),
+                        const Text(
+                          ' (required)',
+                          style: TextStyle(color: terminalTextMuted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    subtitle: const Text(
+                      'Current version: $sportsTerminalTermsVersion',
+                      style: TextStyle(color: terminalTextMuted, fontSize: 10),
+                    ),
+                  ),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: acceptedPrivacy,
+                    onChanged: controller.busy ? null : (value) => onPrivacyChanged(value == true),
+                    title: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        const Text('I acknowledge the ', style: TextStyle(color: Colors.white, fontSize: 13)),
+                        TextButton(
+                          onPressed: onOpenPrivacy,
+                          child: const Text('Privacy Policy'),
+                        ),
+                        const Text(
+                          ' (required)',
+                          style: TextStyle(color: terminalTextMuted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    subtitle: const Text(
+                      'Current version: $sportsTerminalPrivacyVersion',
+                      style: TextStyle(color: terminalTextMuted, fontSize: 10),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (controller.error != null) ...[
             const SizedBox(height: 12),
             Container(
@@ -426,7 +571,9 @@ class _LoginForm extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: controller.busy ? null : onSubmit,
+              onPressed: controller.busy || (createAccount && !canCreate)
+                  ? null
+                  : onSubmit,
               icon: controller.busy
                   ? const SizedBox(
                       width: 18,
@@ -442,7 +589,9 @@ class _LoginForm extends StatelessWidget {
                 controller.busy
                     ? 'Connecting…'
                     : createAccount
-                        ? 'Create Sports Terminal account'
+                        ? canCreate
+                            ? 'Create Sports Terminal account'
+                            : 'Accept both legal documents to continue'
                         : 'Enter Sports Terminal',
               ),
             ),
@@ -459,7 +608,7 @@ class _LoginForm extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'These bypass the account server and should be disabled in a public production build.',
+            'These bypass customer account creation for local development and must remain disabled in a public production build.',
             style: TextStyle(color: terminalTextSoft, fontSize: 12),
           ),
           const SizedBox(height: 10),
