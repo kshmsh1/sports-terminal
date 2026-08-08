@@ -79,7 +79,11 @@ class _ProductNbaEntityCommandCenterScreenState
         seasonType: _seasonType,
       );
 
-  void _refreshSeason() => setState(() => _seasonFuture = _loadSeason());
+  void _refreshSeason() {
+    setState(() {
+      _seasonFuture = _loadSeason();
+    });
+  }
 
   Future<void> _search() async {
     final query = _searchController.text.trim();
@@ -168,7 +172,9 @@ class _ProductNbaEntityCommandCenterScreenState
       gameKey: gameKey,
     );
     if (!mounted) return;
-    setState(() => _contextFuture = Future.value(active));
+    setState(() {
+      _contextFuture = Future.value(active);
+    });
     if (destination == 'stats') widget.onOpenStats?.call();
     if (destination == 'analytics') widget.onOpenAnalytics?.call();
     if (destination == 'history') widget.onOpenHistoricalIntelligence?.call();
@@ -178,7 +184,9 @@ class _ProductNbaEntityCommandCenterScreenState
     final item = _watchItem(kind, row);
     await _watchlist.toggle(item);
     if (!mounted) return;
-    setState(() => _watchlistFuture = _watchlist.load());
+    setState(() {
+        _watchlistFuture = _watchlist.load();
+      });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${item.label} watchlist updated.')),
     );
@@ -1013,7 +1021,9 @@ class _ProductNbaEntityCommandCenterScreenState
                     onPressed: () async {
                       await _watchlist.clear();
                       if (!mounted) return;
-                      setState(() => _watchlistFuture = _watchlist.load());
+                      setState(() {
+        _watchlistFuture = _watchlist.load();
+      });
                     },
                     icon: const Icon(Icons.delete_sweep_outlined, size: 16),
                     label: const Text('Clear'),
@@ -1045,7 +1055,9 @@ class _ProductNbaEntityCommandCenterScreenState
                     onPressed: () async {
                       await _watchlist.remove(item.signature);
                       if (!mounted) return;
-                      setState(() => _watchlistFuture = _watchlist.load());
+                      setState(() {
+        _watchlistFuture = _watchlist.load();
+      });
                     },
                     icon: const Icon(Icons.close_rounded),
                   ),

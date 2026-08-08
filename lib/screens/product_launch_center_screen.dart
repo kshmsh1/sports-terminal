@@ -38,7 +38,9 @@ class _ProductLaunchCenterScreenState extends State<ProductLaunchCenterScreen> {
   }
 
   void _refresh() {
-    setState(() => future = service.load(widget.session));
+    setState(() {
+      future = service.load(widget.session);
+    });
   }
 
   @override
