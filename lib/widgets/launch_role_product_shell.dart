@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../controllers/internal_workspace_controller.dart';
 import '../models/app_session.dart';
 import '../screens/product_automation_governance_screen.dart';
+import '../screens/product_nba_terminal_screen.dart';
 import '../services/launch_backend_transport.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/product_local_store.dart';
@@ -88,6 +89,28 @@ class _LaunchRoleProductShellState extends State<LaunchRoleProductShell> {
       _remoteEnabled = value;
       _statusFuture = _loadStatus();
     });
+  }
+
+  Future<void> _showNbaTerminal() {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog.fullscreen(
+        child: Scaffold(
+          backgroundColor: const Color(0xFF06101B),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF0D1A28),
+            foregroundColor: Colors.white,
+            title: const Text('Sports Terminal · NBA'),
+            leading: IconButton(
+              tooltip: 'Close NBA Terminal',
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              icon: const Icon(Icons.close_rounded),
+            ),
+          ),
+          body: ProductNbaTerminalScreen(session: widget.session),
+        ),
+      ),
+    );
   }
 
   Future<void> _showAutomationCenter() {
@@ -208,6 +231,18 @@ class _LaunchRoleProductShellState extends State<LaunchRoleProductShell> {
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisSize: MainAxisSize.min,
               children: [
+                FloatingActionButton.extended(
+                  heroTag: 'nba-terminal-command-center',
+                  onPressed: _showNbaTerminal,
+                  backgroundColor: const Color(0xFF071A33),
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.terminal_rounded),
+                  label: const Text(
+                    'NBA Terminal',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 FloatingActionButton.extended(
                   heroTag: 'automation-center',
                   onPressed: _showAutomationCenter,
