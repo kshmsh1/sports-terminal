@@ -26,6 +26,7 @@ from .nba_awards_api import router as nba_awards_router
 from .nba_data_api import router as nba_data_router
 from .nba_terminal_api import router as nba_terminal_router
 from .operations import launch_operations_middleware
+from .profile_api import router as profile_router
 from .python_runtime_api import router as python_runtime_router
 from .trust_safety_api import router as trust_safety_router
 from .workspace_api import router as workspace_router
@@ -42,7 +43,7 @@ front_office_module.front_office_reconciliation = hardened_reconciliation(
 )
 
 app.title = "Sports Terminal Launch API"
-app.version = "1.8.0"
+app.version = "1.9.0"
 app.description = (
     "Launch-oriented Sports Terminal API for authentication, certified and historical NBA data, "
     "canonical awards and voting, canonical contracts and draft assets, transaction ledgers, "
@@ -98,6 +99,7 @@ app.include_router(front_office_hardened_router)
 app.include_router(front_office_router)
 app.include_router(trust_safety_router)
 app.include_router(community_router)
+app.include_router(profile_router)
 app.include_router(python_runtime_router)
 app.include_router(customer_operations_router)
 app.include_router(automation_governance_router)
