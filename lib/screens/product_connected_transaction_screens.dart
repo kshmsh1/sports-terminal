@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/app_session.dart';
 import '../services/transaction_case_convergence_service.dart';
 import 'product_front_office_scenario_screen.dart';
-import 'product_trade_machine_screen.dart';
+import 'product_trade_machine_v2_screen.dart';
 
 const _navy = Color(0xFF071A33);
 const _blue = Color(0xFF2563EB);
@@ -30,7 +30,7 @@ class ProductConnectedTradeMachineScreen extends StatelessWidget {
       title: 'Turn the current trade scenario into a governed case.',
       body:
           'Save the scenario in the Trade Machine, then create a persistent case with its teams, routed assets, operating year and source identity.',
-      child: const ProductTradeMachineScreen(),
+      child: ProductTradeMachineV2Screen(session: session),
     );
   }
 }
@@ -152,9 +152,11 @@ class _ConnectedToolState extends State<_ConnectedTool> {
                       foregroundColor: _navy,
                     ),
                     onPressed: importing ? null : _import,
-                    icon: Icon(importing
-                        ? Icons.hourglass_top_rounded
-                        : Icons.add_task_rounded),
+                    icon: Icon(
+                      importing
+                          ? Icons.hourglass_top_rounded
+                          : Icons.add_task_rounded,
+                    ),
                     label: Text(importing ? 'Creating case...' : 'Create case'),
                   ),
                 ],
@@ -198,7 +200,11 @@ class _ConnectedToolState extends State<_ConnectedTool> {
               }
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
-                children: [Expanded(child: copy), const SizedBox(width: 18), controls],
+                children: [
+                  Expanded(child: copy),
+                  const SizedBox(width: 18),
+                  controls,
+                ],
               );
             },
           ),
