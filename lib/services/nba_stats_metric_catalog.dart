@@ -287,6 +287,7 @@ final List<NbaTerminalMetric> nbaTerminalMetrics = [
   _m('closeout_speed', 'Closeout Speed', 'CL SPEED', 'Defense', 'Tracked average speed while closing out to a shooter.', raw: ['closeout_speed', 'avg_closeout_speed'], providerNative: true),
   _m('anticipation', 'Defensive Anticipation', 'ANTICIP', 'Defense', 'Model or tracking estimate of how early a defender recognizes and reacts to developing actions.', raw: ['anticipation', 'defensive_anticipation'], providerNative: true),
   _m('anticipation', 'Defensive Anticipation', 'ANTICIP', 'Defense', 'Model or tracking estimate of how early a defender recognizes and reacts to developing actions.', raw: ['anticipation', 'defensive_anticipation'], providerNative: true),
+  _m('anticipation', 'Defensive Anticipation', 'ANTICIP', 'Defense', 'Model or tracking estimate of how early a defender recognizes and reacts to developing actions.', raw: ['anticipation', 'defensive_anticipation'], providerNative: true),
 
   _m('screen_apg', 'Screen Assists Per Game', 'SCREEN APG', 'Playmaking', 'Screens directly leading to a made field goal per game.', raw: ['screen_assists_per_game', 'screen_apg'], providerNative: true),
   _m('secondary_apg', 'Secondary Assists Per Game', '2ND APG', 'Playmaking', 'Passes immediately preceding the credited assist, also called hockey assists.', raw: ['secondary_assists_per_game', 'secondary_apg', 'hockey_assists_per_game'], providerNative: true),
