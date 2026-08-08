@@ -11,8 +11,8 @@ import '../screens/product_connected_workspace_screen.dart';
 import '../screens/product_content_ops_screens.dart';
 import '../screens/product_fantasy_community_screens.dart';
 import '../screens/product_front_office_registry_screen.dart';
-import '../screens/product_nba_entity_hub_screen.dart';
-import '../screens/product_nba_stats_center_screen.dart';
+import '../screens/product_nba_public_pages_screen.dart';
+import '../screens/product_platform_content_legal_screen.dart';
 import '../screens/product_profile_persisted_screen.dart';
 import '../screens/product_role_home_screen.dart';
 import '../screens/product_shell_screens.dart';
@@ -83,22 +83,29 @@ class _ConnectedRoleTerminalShellState
           label: 'Stats',
           group: 'NBA',
           icon: Icons.leaderboard_rounded,
-          description: 'Search, rank and compare connected NBA statistics.',
-          screen: ProductNbaStatsCenterScreen(),
+          description: 'Simple sortable NBA player box-score statistics.',
+          screen: ProductNbaBasicStatsScreen(),
         ),
         const _TerminalDestination(
           label: 'NBA Hub',
           group: 'NBA',
           icon: Icons.sports_basketball_rounded,
-          description: 'Players, teams, games and linked NBA entities.',
-          screen: ProductNbaEntityHubScreen(),
+          description: 'Linked players, teams, games, standings and league modules.',
+          screen: ProductNbaHubV2Screen(),
         ),
         const _TerminalDestination(
-          label: 'Advanced',
+          label: 'Advanced Stats',
           group: 'NBA',
           icon: Icons.analytics_rounded,
-          description: 'Advanced metrics, lineup and decision-support tools.',
+          description: 'Full advanced metric workstation, research and analytics.',
           screen: ProductAdvancedNbaToolsScreen(),
+        ),
+        const _TerminalDestination(
+          label: 'Awards',
+          group: 'NBA',
+          icon: Icons.emoji_events_rounded,
+          description: 'Annual awards, honors, selections and voting history.',
+          screen: ProductNbaAwardsCenterScreen(),
         ),
         _TerminalDestination(
           label: 'Trade Machine',
@@ -189,8 +196,8 @@ class _ConnectedRoleTerminalShellState
           label: 'Articles',
           group: 'Network',
           icon: Icons.article_rounded,
-          description: 'Long-form sports analysis and publishing surfaces.',
-          screen: ProductArticlesArenaScreen(),
+          description: 'Premium multi-sport reporting and analysis.',
+          screen: ProductEditorialHomeScreen(),
         ),
         _TerminalDestination(
           label: 'Messages',
@@ -227,28 +234,28 @@ class _ConnectedRoleTerminalShellState
           group: 'Legal',
           icon: Icons.info_outline_rounded,
           description: 'Sports Terminal mission and product information.',
-          screen: ProductLegalScreen(kind: 'about'),
+          screen: ProductPlatformLegalScreen(kind: 'about'),
         ),
         const _TerminalDestination(
           label: 'Contact',
           group: 'Legal',
           icon: Icons.mail_outline_rounded,
           description: 'Contact and customer support information.',
-          screen: ProductLegalScreen(kind: 'contact'),
+          screen: ProductPlatformLegalScreen(kind: 'contact'),
         ),
         const _TerminalDestination(
           label: 'Privacy Policy',
           group: 'Legal',
           icon: Icons.privacy_tip_outlined,
           description: 'Privacy disclosures and data-use boundaries.',
-          screen: ProductLegalScreen(kind: 'privacy'),
+          screen: ProductPlatformLegalScreen(kind: 'privacy'),
         ),
         const _TerminalDestination(
           label: 'Terms & Conditions',
           group: 'Legal',
           icon: Icons.description_outlined,
           description: 'Platform terms and customer responsibilities.',
-          screen: ProductLegalScreen(kind: 'terms'),
+          screen: ProductPlatformLegalScreen(kind: 'terms'),
         ),
       ];
 
@@ -373,14 +380,7 @@ class _ConnectedRoleTerminalShellState
 }
 
 class _TerminalDestination {
-  const _TerminalDestination({
-    required this.label,
-    required this.group,
-    required this.icon,
-    required this.description,
-    required this.screen,
-  });
-
+  const _TerminalDestination({required this.label, required this.group, required this.icon, required this.description, required this.screen});
   final String label;
   final String group;
   final IconData icon;
@@ -389,20 +389,7 @@ class _TerminalDestination {
 }
 
 class _TerminalTopNavigation extends StatelessWidget {
-  const _TerminalTopNavigation({
-    required this.session,
-    required this.destinations,
-    required this.selectedIndex,
-    required this.palette,
-    required this.search,
-    required this.searchController,
-    required this.onSearch,
-    required this.onSelected,
-    required this.onToggleTheme,
-    required this.onSignOut,
-    required this.darkMode,
-  });
-
+  const _TerminalTopNavigation({required this.session, required this.destinations, required this.selectedIndex, required this.palette, required this.search, required this.searchController, required this.onSearch, required this.onSelected, required this.onToggleTheme, required this.onSignOut, required this.darkMode});
   final AppSession session;
   final List<_TerminalDestination> destinations;
   final int selectedIndex;
@@ -420,447 +407,94 @@ class _TerminalTopNavigation extends StatelessWidget {
     final normalized = search.trim().toLowerCase();
     final visible = <MapEntry<int, _TerminalDestination>>[
       for (var index = 0; index < destinations.length; index++)
-        if (normalized.isEmpty ||
-            '${destinations[index].label} ${destinations[index].group} ${destinations[index].description}'
-                .toLowerCase()
-                .contains(normalized))
-          MapEntry(index, destinations[index]),
+        if (normalized.isEmpty || '${destinations[index].label} ${destinations[index].group} ${destinations[index].description}'.toLowerCase().contains(normalized)) MapEntry(index, destinations[index]),
     ];
     return Material(
       color: palette.panel,
       child: Container(
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: palette.line)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final showSearch = constraints.maxWidth >= 720;
-                final showIdentity = constraints.maxWidth >= 1080;
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
-                  child: Row(
-                    children: [
-                      const _TerminalLogo(size: 36),
-                      const SizedBox(width: 10),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 230),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              session.role.canManageOrganization
-                                  ? session.organizationName
-                                  : 'Sports Terminal',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: palette.text,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            Text(
-                              session.role.canManageOrganization
-                                  ? 'ORGANIZATION TERMINAL'
-                                  : 'NBA OPERATING TERMINAL',
-                              style: TextStyle(
-                                color: palette.muted,
-                                fontSize: 8,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: .7,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (showSearch) ...[
-                        const SizedBox(width: 18),
-                        Expanded(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 390),
-                            child: SizedBox(
-                              height: 34,
-                              child: TextField(
-                                controller: searchController,
-                                onChanged: onSearch,
-                                style: TextStyle(
-                                  color: palette.text,
-                                  fontSize: 12,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: 'Find terminal function…',
-                                  hintStyle: TextStyle(color: palette.muted),
-                                  prefixIcon: Icon(
-                                    Icons.search_rounded,
-                                    color: palette.muted,
-                                    size: 17,
-                                  ),
-                                  suffixIcon: search.isEmpty
-                                      ? null
-                                      : IconButton(
-                                          padding: EdgeInsets.zero,
-                                          onPressed: () {
-                                            searchController.clear();
-                                            onSearch('');
-                                          },
-                                          icon: Icon(
-                                            Icons.close_rounded,
-                                            color: palette.muted,
-                                            size: 16,
-                                          ),
-                                        ),
-                                  filled: true,
-                                  fillColor: palette.search,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(7),
-                                    borderSide: BorderSide(color: palette.line),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(7),
-                                    borderSide: BorderSide(color: palette.line),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ] else
-                        const Spacer(),
-                      if (showIdentity) ...[
-                        const Spacer(),
-                        CircleAvatar(
-                          radius: 14,
-                          backgroundColor: _blue,
-                          child: Text(
-                            session.displayName.isEmpty
-                                ? 'ST'
-                                : session.displayName
-                                    .split(' ')
-                                    .take(2)
-                                    .map((part) => part.isEmpty ? '' : part[0])
-                                    .join()
-                                    .toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 7),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 150),
-                          child: Text(
-                            session.displayName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: palette.text,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(width: 6),
-                      IconButton(
-                        tooltip: darkMode ? 'Use light mode' : 'Use dark mode',
-                        onPressed: onToggleTheme,
-                        visualDensity: VisualDensity.compact,
-                        icon: Icon(
-                          darkMode
-                              ? Icons.light_mode_rounded
-                              : Icons.dark_mode_rounded,
-                          color: palette.muted,
-                          size: 18,
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Sign out',
-                        onPressed: onSignOut,
-                        visualDensity: VisualDensity.compact,
-                        icon: Icon(
-                          Icons.logout_rounded,
-                          color: palette.muted,
-                          size: 18,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: palette.line))),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          LayoutBuilder(builder: (context, constraints) {
+            final showSearch = constraints.maxWidth >= 720;
+            final showIdentity = constraints.maxWidth >= 1080;
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
+              child: Row(children: [
+                const _TerminalLogo(size: 36), const SizedBox(width: 10),
+                ConstrainedBox(constraints: const BoxConstraints(maxWidth: 230), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(session.role.canManageOrganization ? session.organizationName : 'Sports Terminal', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: palette.text, fontSize: 13, fontWeight: FontWeight.w900)),
+                  Text(session.role.canManageOrganization ? 'ORGANIZATION TERMINAL' : 'NBA OPERATING TERMINAL', style: TextStyle(color: palette.muted, fontSize: 8, fontWeight: FontWeight.w800, letterSpacing: .7)),
+                ])),
+                if (showSearch) ...[
+                  const SizedBox(width: 18),
+                  Expanded(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 390), child: SizedBox(height: 34, child: TextField(
+                    controller: searchController, onChanged: onSearch, style: TextStyle(color: palette.text, fontSize: 12),
+                    decoration: InputDecoration(hintText: 'Find terminal function…', hintStyle: TextStyle(color: palette.muted), prefixIcon: Icon(Icons.search_rounded, color: palette.muted, size: 17), suffixIcon: search.isEmpty ? null : IconButton(padding: EdgeInsets.zero, onPressed: () { searchController.clear(); onSearch(''); }, icon: Icon(Icons.close_rounded, color: palette.muted, size: 16)), filled: true, fillColor: palette.search, isDense: true, contentPadding: EdgeInsets.zero, border: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: BorderSide(color: palette.line)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: BorderSide(color: palette.line))),
+                  )))),
+                ] else const Spacer(),
+                if (showIdentity) ...[
+                  const Spacer(),
+                  CircleAvatar(radius: 14, backgroundColor: _blue, child: Text(session.displayName.isEmpty ? 'ST' : session.displayName.split(' ').take(2).map((part) => part.isEmpty ? '' : part[0]).join().toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900))),
+                  const SizedBox(width: 7),
+                  ConstrainedBox(constraints: const BoxConstraints(maxWidth: 150), child: Text(session.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: palette.text, fontSize: 11, fontWeight: FontWeight.w800))),
+                ],
+                const SizedBox(width: 6),
+                IconButton(tooltip: darkMode ? 'Use light mode' : 'Use dark mode', onPressed: onToggleTheme, visualDensity: VisualDensity.compact, icon: Icon(darkMode ? Icons.light_mode_rounded : Icons.dark_mode_rounded, color: palette.muted, size: 18)),
+                IconButton(tooltip: 'Sign out', onPressed: onSignOut, visualDensity: VisualDensity.compact, icon: Icon(Icons.logout_rounded, color: palette.muted, size: 18)),
+              ]),
+            );
+          }),
+          Container(
+            height: 51, width: double.infinity,
+            decoration: BoxDecoration(color: palette.dark ? const Color(0xFF0A1320) : const Color(0xFFF7F9FC), border: Border(top: BorderSide(color: palette.line))),
+            child: visible.isEmpty ? Center(child: Text('No terminal function matches “$search”.', style: TextStyle(color: palette.muted, fontSize: 11))) : ListView.separated(
+              scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), itemCount: visible.length, separatorBuilder: (_, __) => const SizedBox(width: 3),
+              itemBuilder: (context, index) { final entry = visible[index]; return _TopNavigationItem(destination: entry.value, selected: entry.key == selectedIndex, palette: palette, onTap: () => onSelected(entry.key)); },
             ),
-            Container(
-              height: 51,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: palette.dark
-                    ? const Color(0xFF0A1320)
-                    : const Color(0xFFF7F9FC),
-                border: Border(top: BorderSide(color: palette.line)),
-              ),
-              child: visible.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No terminal function matches “$search”.',
-                        style: TextStyle(color: palette.muted, fontSize: 11),
-                      ),
-                    )
-                  : ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      itemCount: visible.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 3),
-                      itemBuilder: (context, index) {
-                        final entry = visible[index];
-                        return _TopNavigationItem(
-                          destination: entry.value,
-                          selected: entry.key == selectedIndex,
-                          palette: palette,
-                          onTap: () => onSelected(entry.key),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
+          ),
+        ]),
       ),
     );
   }
 }
 
 class _TopNavigationItem extends StatelessWidget {
-  const _TopNavigationItem({
-    required this.destination,
-    required this.selected,
-    required this.palette,
-    required this.onTap,
-  });
-
-  final _TerminalDestination destination;
-  final bool selected;
-  final _TerminalPalette palette;
-  final VoidCallback onTap;
-
+  const _TopNavigationItem({required this.destination, required this.selected, required this.palette, required this.onTap});
+  final _TerminalDestination destination; final bool selected; final _TerminalPalette palette; final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => Material(
-        color: selected ? palette.selected : Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(6),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: selected ? _blue : Colors.transparent,
-                  width: 2,
-                ),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  destination.icon,
-                  size: 16,
-                  color: selected ? _blue : palette.muted,
-                ),
-                const SizedBox(width: 7),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      destination.group.toUpperCase(),
-                      style: TextStyle(
-                        color: selected ? _blue : palette.muted,
-                        fontSize: 6.5,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: .55,
-                      ),
-                    ),
-                    Text(
-                      destination.label,
-                      style: TextStyle(
-                        color: selected ? palette.text : palette.muted,
-                        fontSize: 10.5,
-                        fontWeight:
-                            selected ? FontWeight.w900 : FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
+  Widget build(BuildContext context) => Material(color: selected ? palette.selected : Colors.transparent, borderRadius: BorderRadius.circular(6), child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(6), child: Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), decoration: BoxDecoration(border: Border(bottom: BorderSide(color: selected ? _blue : Colors.transparent, width: 2))),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(destination.icon, size: 16, color: selected ? _blue : palette.muted), const SizedBox(width: 7), Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [Text(destination.group.toUpperCase(), style: TextStyle(color: selected ? _blue : palette.muted, fontSize: 6.5, fontWeight: FontWeight.w900, letterSpacing: .55)), Text(destination.label, style: TextStyle(color: selected ? palette.text : palette.muted, fontSize: 10.5, fontWeight: selected ? FontWeight.w900 : FontWeight.w700))])]),
+  )));
 }
 
 class _TerminalPageHeader extends StatelessWidget {
-  const _TerminalPageHeader({
-    required this.destination,
-    required this.palette,
-    required this.organizationMode,
-    required this.onQuickOpen,
-    required this.destinations,
-  });
-
-  final _TerminalDestination destination;
-  final _TerminalPalette palette;
-  final bool organizationMode;
-  final ValueChanged<_TerminalDestination> onQuickOpen;
-  final List<_TerminalDestination> destinations;
-
+  const _TerminalPageHeader({required this.destination, required this.palette, required this.organizationMode, required this.onQuickOpen, required this.destinations});
+  final _TerminalDestination destination; final _TerminalPalette palette; final bool organizationMode; final ValueChanged<_TerminalDestination> onQuickOpen; final List<_TerminalDestination> destinations;
   @override
   Widget build(BuildContext context) {
-    final quick = destinations.where((item) {
-      return const {
-        'Trade Machine',
-        'Contracts & Assets',
-        'Workspace',
-        'Python Lab',
-      }.contains(item.label);
-    }).toList();
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: palette.card,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: palette.line),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [_navy, _blue, _orange]),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(destination.icon, color: Colors.white),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  destination.label,
-                  style: TextStyle(
-                    color: palette.text,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  destination.description,
-                  style: TextStyle(color: palette.muted, height: 1.4),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          PopupMenuButton<_TerminalDestination>(
-            tooltip: 'Quick open',
-            onSelected: onQuickOpen,
-            itemBuilder: (context) => [
-              for (final item in quick)
-                PopupMenuItem(
-                  value: item,
-                  child: ListTile(
-                    leading: Icon(item.icon),
-                    title: Text(item.label),
-                    subtitle: Text(item.description),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-            ],
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(
-                color: palette.selected,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.bolt_rounded, color: _blue, size: 18),
-                  const SizedBox(width: 7),
-                  Text(
-                    organizationMode ? 'Organization tools' : 'Quick open',
-                    style: TextStyle(
-                      color: palette.text,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const Icon(Icons.arrow_drop_down_rounded, color: _blue),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    final quick = destinations.where((item) => const {'Trade Machine','Contracts & Assets','Workspace','Python Lab'}.contains(item.label)).toList();
+    return Container(width: double.infinity, padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: palette.card, borderRadius: BorderRadius.circular(20), border: Border.all(color: palette.line)), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Container(width: 48, height: 48, decoration: BoxDecoration(gradient: const LinearGradient(colors: [_navy, _blue, _orange]), borderRadius: BorderRadius.circular(14)), child: Icon(destination.icon, color: Colors.white)), const SizedBox(width: 14),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(destination.label, style: TextStyle(color: palette.text, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.5)), const SizedBox(height: 5), Text(destination.description, style: TextStyle(color: palette.muted, height: 1.4))])), const SizedBox(width: 12),
+      PopupMenuButton<_TerminalDestination>(tooltip: 'Quick open', onSelected: onQuickOpen, itemBuilder: (context) => [for (final item in quick) PopupMenuItem(value: item, child: ListTile(leading: Icon(item.icon), title: Text(item.label), subtitle: Text(item.description), contentPadding: EdgeInsets.zero))], child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9), decoration: BoxDecoration(color: palette.selected, borderRadius: BorderRadius.circular(12)), child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.bolt_rounded, color: _blue, size: 18), const SizedBox(width: 7), Text(organizationMode ? 'Organization tools' : 'Quick open', style: TextStyle(color: palette.text, fontWeight: FontWeight.w900)), const Icon(Icons.arrow_drop_down_rounded, color: _blue)]))),
+    ]));
   }
 }
 
 class _TerminalLogo extends StatelessWidget {
-  const _TerminalLogo({required this.size});
-  final double size;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [_blue, _orange],
-          ),
-          borderRadius: BorderRadius.circular(size * .28),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          'ST',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: size * .34,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      );
+  const _TerminalLogo({required this.size}); final double size;
+  @override Widget build(BuildContext context) => Container(width: size, height: size, decoration: BoxDecoration(gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [_blue, _orange]), borderRadius: BorderRadius.circular(size * .28)), alignment: Alignment.center, child: Text('ST', style: TextStyle(color: Colors.white, fontSize: size * .34, fontWeight: FontWeight.w900)));
 }
 
 class _TerminalPalette {
-  const _TerminalPalette(this.dark);
-  final bool dark;
-
+  const _TerminalPalette(this.dark); final bool dark;
   Color get background => dark ? _darkBackground : _lightBackground;
   Color get panel => dark ? const Color(0xFF0C1727) : Colors.white;
   Color get card => dark ? const Color(0xFF101D2E) : Colors.white;
   Color get search => dark ? const Color(0xFF142338) : const Color(0xFFF1F4F8);
-  Color get selected =>
-      dark ? const Color(0xFF172B46) : const Color(0xFFEFF6FF);
-  Color get text =>
-      dark ? const Color(0xFFF3F6FA) : const Color(0xFF102033);
-  Color get muted =>
-      dark ? const Color(0xFFA8B3C3) : const Color(0xFF667085);
-  Color get line =>
-      dark ? const Color(0xFF24364F) : const Color(0xFFE3E8F0);
+  Color get selected => dark ? const Color(0xFF172B46) : const Color(0xFFEFF6FF);
+  Color get text => dark ? const Color(0xFFF3F6FA) : const Color(0xFF102033);
+  Color get muted => dark ? const Color(0xFFA8B3C3) : const Color(0xFF667085);
+  Color get line => dark ? const Color(0xFF24364F) : const Color(0xFFE3E8F0);
 }
