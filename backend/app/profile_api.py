@@ -107,6 +107,7 @@ def _profile_payload(user_id: str, viewer_user_id: str = "") -> dict[str, Any]:
     reputation = community.get("reputation", {})
     return {
         "user_id": user_id,
+        "is_owner": is_owner,
         "email": row["email"] if is_owner else None,
         "display_name": row["display_name"],
         "handle": row["handle"] or "",
