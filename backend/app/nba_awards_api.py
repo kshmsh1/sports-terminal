@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from collections import defaultdict
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -172,8 +172,8 @@ def award_history(
     league: str = "NBA",
     season: str = "",
     winner_only: bool = False,
-    offset: int = Query(default=0, ge=0),
-    limit: int = Query(default=250, ge=1, le=2000),
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=2000)] = 250,
 ) -> dict[str, Any]:
     if award_key not in _BY_KEY:
         raise HTTPException(status_code=404, detail="Unknown Sports Terminal award key")
