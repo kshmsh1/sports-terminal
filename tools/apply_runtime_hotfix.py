@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 
@@ -12,24 +13,33 @@ def replace(path_str: str, old: str, new: str, expected: int = 1) -> None:
     path.write_text(text.replace(old, new))
 
 
-research = "lib/screens/product_nba_research_command_center_screen.dart"
-replace(
-    research,
-    "    setState(() => _workspaceFuture = Future.value(next));",
+research = Path("lib/screens/product_nba_research_command_center_screen.dart")
+text = research.read_text()
+old = "    setState(() => _workspaceFuture = Future.value(next));"
+if text.count(old) != 2:
+    raise SystemExit(
+        f"{research}: expected 2 Future.value workspace callbacks, found {text.count(old)}"
+    )
+text = text.replace(
+    old,
     """    setState(() {
       _workspaceFuture = Future.value(next);
     });""",
-    expected=2,
 )
-replace(
-    research,
-    """          onPressed: () => setState(
-            () => _workspaceFuture = _store.load(widget.session),
-          ),""",
-    """          onPressed: () => setState(() {
+
+pattern = re.compile(
+    r"onPressed:\s*\(\)\s*=>\s*setState\(\s*\(\)\s*=>\s*"
+    r"_workspaceFuture\s*=\s*_store\.load\(widget\.session\),?\s*\),"
+)
+text, count = pattern.subn(
+    """onPressed: () => setState(() {
             _workspaceFuture = _store.load(widget.session);
           }),""",
+    text,
 )
+if count != 1:
+    raise SystemExit(f"{research}: expected 1 reload callback, found {count}")
+research.write_text(text)
 
 # Report any remaining expression-bodied setState callbacks that appear to
 # assign asynchronous work. Flutter debug mode asserts when a setState callback
