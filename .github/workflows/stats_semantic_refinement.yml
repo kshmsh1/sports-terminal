@@ -1,8 +1,8 @@
 name: Stats Semantic Refinement
 
 on:
-  pull_request:
-    branches: [main]
+  push:
+    branches: [agent/stats-workstation-visual-and-metric-overhaul]
 
 permissions:
   contents: write
