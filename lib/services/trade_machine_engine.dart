@@ -392,6 +392,9 @@ class TradeMachineEngine {
     // Cap room can be combined with outgoing salary when a below-cap team
     // structures the trade using room instead of relying solely on an exception.
     final roomStructure = outgoingSalary + context.capRoom;
+    // Cap room can be combined with outgoing salary when a below-cap team
+    // structures the trade using room instead of relying solely on an exception.
+    final roomStructure = outgoingSalary + context.capRoom;
     if (context.aboveSecondApron || postTradeSalary > context.secondApron) {
       return outgoingSalary;
     }
