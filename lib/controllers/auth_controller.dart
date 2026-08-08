@@ -132,6 +132,10 @@ class AuthController extends ChangeNotifier {
     required String password,
     required String displayName,
     required bool organizationAccount,
+    required bool acceptedTerms,
+    required bool acceptedPrivacy,
+    required String termsVersion,
+    required String privacyVersion,
     String organizationName = '',
   }) async {
     if (_busy) return false;
@@ -142,6 +146,10 @@ class AuthController extends ChangeNotifier {
       displayName: displayName,
       organizationAccount: organizationAccount,
       organizationName: organizationName,
+      acceptedTerms: acceptedTerms,
+      acceptedPrivacy: acceptedPrivacy,
+      termsVersion: termsVersion,
+      privacyVersion: privacyVersion,
     );
     if (result.succeeded) {
       _session = result.session;
