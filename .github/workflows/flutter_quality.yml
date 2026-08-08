@@ -39,6 +39,21 @@ jobs:
       - name: Test NBA API metric coverage audit contract
         run: python backend/scripts/nba_api_metric_coverage_contract_test.py
 
+      - name: Install pinned NBA API schema package
+        run: python -m pip install nba_api==1.11.4
+
+      - name: Audit declared NBA API metric coverage
+        run: python tools/audit_nba_api_metric_coverage.py --check
+
+      - name: Retain NBA API coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: nba-api-metric-coverage
+          path: |
+            artifacts/nba_api_metric_coverage.json
+            artifacts/nba_api_metric_coverage.md
+          retention-days: 14
+
       - name: Test historical NBA import contract
         run: python backend/scripts/historical_import_contract_test.py
 
