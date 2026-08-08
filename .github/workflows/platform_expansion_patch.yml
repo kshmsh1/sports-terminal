@@ -1,0 +1,87 @@
+name: Platform Expansion Patch
+
+on:
+  push:
+    branches: [agent/platform-pages-routing-trade-legal-notebook]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/platform-pages-routing-trade-legal-notebook
+      - name: Apply navigation, page-scroll, advanced-stats, notebook and signup patches
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              s = p.read_text()
+              if old not in s:
+                  raise SystemExit(f'pattern not found in {path}: {old[:80]!r}')
+              p.write_text(s.replace(old, new, 1))
+
+          shell = 'lib/widgets/connected_role_terminal_shell.dart'
+          replace(shell, "import '../screens/product_nba_entity_hub_screen.dart';\nimport '../screens/product_nba_stats_center_screen.dart';", "import '../screens/product_nba_entity_hub_screen.dart';\nimport '../screens/product_nba_public_pages_screen.dart';\nimport '../screens/product_platform_content_legal_screen.dart';\nimport '../screens/product_nba_stats_center_screen.dart';")
+          replace(shell, "screen: ProductNbaStatsCenterScreen(),", "screen: ProductNbaBasicStatsScreen(),")
+          replace(shell, "screen: ProductNbaEntityHubScreen(),", "screen: ProductNbaHubV2Screen(),")
+          replace(shell, "label: 'Advanced',", "label: 'Advanced Stats',")
+          replace(shell, "        _TerminalDestination(\n          label: 'Trade Machine',", "        const _TerminalDestination(\n          label: 'Awards',\n          group: 'NBA',\n          icon: Icons.emoji_events_rounded,\n          description: 'Annual awards, honors, selections and voting history.',\n          screen: ProductNbaAwardsCenterScreen(),\n        ),\n        _TerminalDestination(\n          label: 'Trade Machine',")
+          replace(shell, "screen: ProductArticlesArenaScreen(),", "screen: ProductEditorialHomeScreen(),")
+          replace(shell, "screen: ProductLegalScreen(kind: 'about'),", "screen: ProductPlatformLegalScreen(kind: 'about'),")
+          replace(shell, "screen: ProductLegalScreen(kind: 'contact'),", "screen: ProductPlatformLegalScreen(kind: 'contact'),")
+          replace(shell, "screen: ProductLegalScreen(kind: 'privacy'),", "screen: ProductPlatformLegalScreen(kind: 'privacy'),")
+          replace(shell, "screen: ProductLegalScreen(kind: 'terms'),", "screen: ProductPlatformLegalScreen(kind: 'terms'),")
+
+          # Full stats workstation participates in the platform's vertical scroll.
+          stats = 'lib/screens/product_nba_stats_workstation_v2_screen.dart'
+          replace(stats, "          child: Scrollbar(\n            controller: _pageController,\n            thumbVisibility: true,\n            child: ListView(\n              controller: _pageController,\n              padding: const EdgeInsets.fromLTRB(16, 14, 16, 40),\n              children: [", "          child: Padding(\n            padding: const EdgeInsets.fromLTRB(16, 14, 16, 40),\n            child: Column(\n              children: [")
+          replace(stats, "              ],\n            ),\n          ),\n        );\n      },", "              ],\n            ),\n          ),\n        );\n      },")
+
+          # Advanced Stats owns the full workstation plus the analytics suite without nested vertical flex scrolling.
+          advanced = 'lib/screens/product_advanced_nba_tools_screen.dart'
+          replace(advanced, "import 'product_analytics_suite_screen.dart';", "import 'product_analytics_suite_screen.dart';\nimport 'product_nba_stats_workstation_screen.dart';")
+          replace(advanced, "          Expanded(\n            child: ProductAnalyticsSuiteScreen(\n              key: ValueKey(\n                '${_historical ? 'history' : 'current'}-$_league-$_season-$_seasonType-$_revision',\n              ),\n            ),\n          ),", "          ProductNbaStatsWorkstationScreen(\n            key: ValueKey('stats-${_historical ? 'history' : 'current'}-$_league-$_season-$_seasonType-$_revision'),\n          ),\n          const SizedBox(height: 18),\n          ProductAnalyticsSuiteScreen(\n            key: ValueKey('${_historical ? 'history' : 'current'}-$_league-$_season-$_seasonType-$_revision'),\n          ),")
+
+          # Python output always appears below the notebook editor.
+          studio = 'lib/screens/product_connected_data_studio_screen.dart'
+          old = "          if (compact) {\n            return Column(\n              children: [\n                editor,\n                const SizedBox(height: 14),\n                console,\n              ],\n            );\n          }\n          return Row(\n            crossAxisAlignment: CrossAxisAlignment.start,\n            children: [\n              Expanded(flex: 6, child: editor),\n              const SizedBox(width: 14),\n              Expanded(flex: 5, child: console),\n            ],\n          );"
+          new = "          return Column(\n            children: [\n              editor,\n              const SizedBox(height: 14),\n              console,\n            ],\n          );"
+          replace(studio, old, new)
+          # Keep variable meaningful for analyzer while preserving responsive sizing hooks.
+          replace(studio, "          final compact = constraints.maxWidth < 950;", "          final compact = constraints.maxWidth < 950;\n          final _ = compact;")
+
+          # Account creation requires affirmative acceptance of both legal documents.
+          login = 'lib/screens/login_screen.dart'
+          replace(login, "import '../widgets/terminal_primitives.dart';", "import '../widgets/terminal_primitives.dart';\nimport 'product_platform_content_legal_screen.dart';")
+          replace(login, "  bool organizationAccount = false;", "  bool organizationAccount = false;\n  bool termsAccepted = false;\n  bool privacyAccepted = false;")
+          replace(login, "    if (createAccount) {\n      await widget.controller.signUp(", "    if (createAccount) {\n      if (!termsAccepted || !privacyAccepted) {\n        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You must agree to the Terms & Conditions and Privacy Policy before creating an account.')));\n        return;\n      }\n      await widget.controller.signUp(")
+          replace(login, "                obscurePassword: obscurePassword,", "                obscurePassword: obscurePassword,\n                termsAccepted: termsAccepted,\n                privacyAccepted: privacyAccepted,")
+          replace(login, "                onTogglePassword: () {\n                  setState(() => obscurePassword = !obscurePassword);\n                },", "                onTogglePassword: () {\n                  setState(() => obscurePassword = !obscurePassword);\n                },\n                onTermsChanged: (value) => setState(() => termsAccepted = value),\n                onPrivacyChanged: (value) => setState(() => privacyAccepted = value),")
+          replace(login, "    required this.obscurePassword,", "    required this.obscurePassword,\n    required this.termsAccepted,\n    required this.privacyAccepted,")
+          replace(login, "    required this.onTogglePassword,", "    required this.onTogglePassword,\n    required this.onTermsChanged,\n    required this.onPrivacyChanged,")
+          replace(login, "  final bool obscurePassword;", "  final bool obscurePassword;\n  final bool termsAccepted;\n  final bool privacyAccepted;")
+          replace(login, "  final VoidCallback onTogglePassword;", "  final VoidCallback onTogglePassword;\n  final ValueChanged<bool> onTermsChanged;\n  final ValueChanged<bool> onPrivacyChanged;")
+          marker = "          if (controller.error != null) ...["
+          legal = "          if (createAccount) ...[\n            const SizedBox(height: 14),\n            CheckboxListTile(\n              contentPadding: EdgeInsets.zero,\n              value: termsAccepted,\n              onChanged: controller.busy ? null : (value) => onTermsChanged(value == true),\n              title: const Text('I agree to the Terms & Conditions', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),\n              subtitle: TextButton(\n                style: TextButton.styleFrom(alignment: Alignment.centerLeft, padding: EdgeInsets.zero),\n                onPressed: () => _openLegal(context, 'terms'),\n                child: const Text('Read Terms & Conditions'),\n              ),\n              controlAffinity: ListTileControlAffinity.leading,\n            ),\n            CheckboxListTile(\n              contentPadding: EdgeInsets.zero,\n              value: privacyAccepted,\n              onChanged: controller.busy ? null : (value) => onPrivacyChanged(value == true),\n              title: const Text('I acknowledge and agree to the Privacy Policy', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),\n              subtitle: TextButton(\n                style: TextButton.styleFrom(alignment: Alignment.centerLeft, padding: EdgeInsets.zero),\n                onPressed: () => _openLegal(context, 'privacy'),\n                child: const Text('Read Privacy Policy'),\n              ),\n              controlAffinity: ListTileControlAffinity.leading,\n            ),\n          ],\n"
+          replace(login, marker, legal + marker)
+          p = Path(login)
+          s = p.read_text()
+          s += "\nFuture<void> _openLegal(BuildContext context, String kind) {\n  return Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => Scaffold(backgroundColor: const Color(0xFF090D12), appBar: AppBar(title: Text(kind == 'privacy' ? 'Privacy Policy' : 'Terms & Conditions')), body: SingleChildScrollView(padding: const EdgeInsets.all(20), child: ProductPlatformLegalScreen(kind: kind)))));\n}\n"
+          p.write_text(s)
+          PY
+      - name: Format changed Dart
+        run: dart format lib/widgets/connected_role_terminal_shell.dart lib/screens/product_nba_stats_workstation_v2_screen.dart lib/screens/product_advanced_nba_tools_screen.dart lib/screens/product_connected_data_studio_screen.dart lib/screens/login_screen.dart
+      - name: Commit patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lib
+          git commit -m "Wire platform expansion navigation and page scrolling" || exit 0
+          git push
