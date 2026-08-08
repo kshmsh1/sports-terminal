@@ -6,6 +6,8 @@ def replace(path_str: str, old: str, new: str, expected: int = 1) -> None:
     path = Path(path_str)
     text = path.read_text()
     count = text.count(old)
+    if count == 0 and new in text:
+        return
     if count != expected:
         raise SystemExit(
             f"{path}: expected {expected} copies, found {count}: {old[:110]!r}"
@@ -13,32 +15,32 @@ def replace(path_str: str, old: str, new: str, expected: int = 1) -> None:
     path.write_text(text.replace(old, new))
 
 
-# Research workspace futures.
+# Research workspace futures. These may already be fixed by an earlier hotfix run.
 research = Path("lib/screens/product_nba_research_command_center_screen.dart")
 text = research.read_text()
 old = "    setState(() => _workspaceFuture = Future.value(next));"
-if text.count(old) != 2:
-    raise SystemExit(
-        f"{research}: expected 2 Future.value workspace callbacks, found {text.count(old)}"
-    )
-text = text.replace(
-    old,
-    """    setState(() {
+safe = """    setState(() {
       _workspaceFuture = Future.value(next);
-    });""",
-)
+    });"""
+count = text.count(old)
+if count == 2:
+    text = text.replace(old, safe)
+elif count != 0 or text.count(safe) < 2:
+    raise SystemExit(
+        f"{research}: unexpected workspace callback state; old={count}, safe={text.count(safe)}"
+    )
 pattern = re.compile(
     r"onPressed:\s*\(\)\s*=>\s*setState\(\s*\(\)\s*=>\s*"
     r"_workspaceFuture\s*=\s*_store\.load\(widget\.session\),?\s*\),"
 )
-text, count = pattern.subn(
+text, refresh_count = pattern.subn(
     """onPressed: () => setState(() {
             _workspaceFuture = _store.load(widget.session);
           }),""",
     text,
 )
-if count != 1:
-    raise SystemExit(f"{research}: expected 1 workspace reload callback, found {count}")
+if refresh_count == 0 and "_workspaceFuture = _store.load(widget.session);" not in text:
+    raise SystemExit(f"{research}: workspace reload callback was neither old nor hardened")
 research.write_text(text)
 
 # Connected Community and Messages futures.
@@ -142,7 +144,15 @@ for path in Path("lib").rglob("*.dart"):
         expression = match.group(1).strip()
         if any(
             token in expression
-            for token in ("Future", ".load(", "_load(", "service.", "_store.", "_contexts.", "_watchlist.")
+            for token in (
+                "Future",
+                ".load(",
+                "_load(",
+                "service.",
+                "_store.",
+                "_contexts.",
+                "_watchlist.",
+            )
         ):
             line_no = text[: match.start()].count("\n") + 1
             context = "\n".join(lines[line_no - 1 : min(line_no + 2, len(lines))])
