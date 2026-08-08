@@ -8,11 +8,12 @@ def replace(path_str: str, old: str, new: str, expected: int = 1) -> None:
     count = text.count(old)
     if count != expected:
         raise SystemExit(
-            f"{path}: expected {expected} copies, found {count}: {old[:100]!r}"
+            f"{path}: expected {expected} copies, found {count}: {old[:110]!r}"
         )
     path.write_text(text.replace(old, new))
 
 
+# Research workspace futures.
 research = Path("lib/screens/product_nba_research_command_center_screen.dart")
 text = research.read_text()
 old = "    setState(() => _workspaceFuture = Future.value(next));"
@@ -26,7 +27,6 @@ text = text.replace(
       _workspaceFuture = Future.value(next);
     });""",
 )
-
 pattern = re.compile(
     r"onPressed:\s*\(\)\s*=>\s*setState\(\s*\(\)\s*=>\s*"
     r"_workspaceFuture\s*=\s*_store\.load\(widget\.session\),?\s*\),"
@@ -38,26 +38,119 @@ text, count = pattern.subn(
     text,
 )
 if count != 1:
-    raise SystemExit(f"{research}: expected 1 reload callback, found {count}")
+    raise SystemExit(f"{research}: expected 1 workspace reload callback, found {count}")
 research.write_text(text)
 
-# Report any remaining expression-bodied setState callbacks that appear to
-# assign asynchronous work. Flutter debug mode asserts when a setState callback
-# returns a Future even if static analysis and release compilation accept it.
+# Connected Community and Messages futures.
+network = "lib/screens/product_connected_network_screens.dart"
+replace(
+    network,
+    "    setState(() => future = _load());",
+    """    setState(() {
+      future = _load();
+    });""",
+)
+replace(
+    network,
+    "    setState(() => conversationsFuture = service.conversations(widget.session));",
+    """    setState(() {
+      conversationsFuture = service.conversations(widget.session);
+    });""",
+)
+
+# Launch/customer operations refresh.
+replace(
+    "lib/screens/product_launch_center_screen.dart",
+    "    setState(() => future = service.load(widget.session));",
+    """    setState(() {
+      future = service.load(widget.session);
+    });""",
+)
+
+# Organization workspace permissions refresh after grant/remove.
+replace(
+    "lib/screens/product_connected_workspace_screen.dart",
+    "    setState(() => future = widget.service.permissions(widget.session));",
+    """    setState(() {
+      future = widget.service.permissions(widget.session);
+    });""",
+    expected=2,
+)
+
+# Front-office registry refresh.
+replace(
+    "lib/screens/product_front_office_registry_screen.dart",
+    "    setState(() => future = _load());",
+    """    setState(() {
+      future = _load();
+    });""",
+)
+
+# Entity Intelligence futures: season, context and watchlist.
+entity = "lib/screens/product_nba_entity_command_center_screen.dart"
+replace(
+    entity,
+    "  void _refreshSeason() => setState(() => _seasonFuture = _loadSeason());",
+    """  void _refreshSeason() {
+    setState(() {
+      _seasonFuture = _loadSeason();
+    });
+  }""",
+)
+replace(
+    entity,
+    "    setState(() => _contextFuture = Future.value(active));",
+    """    setState(() {
+      _contextFuture = Future.value(active);
+    });""",
+)
+replace(
+    entity,
+    "setState(() => _watchlistFuture = _watchlist.load());",
+    """setState(() {
+        _watchlistFuture = _watchlist.load();
+      });""",
+    expected=3,
+)
+
+# Historical Intelligence shared-context refresh.
+replace(
+    "lib/screens/product_nba_historical_intelligence_screen.dart",
+    "    setState(() => _contextFuture = _contexts.load());",
+    """    setState(() {
+      _contextFuture = _contexts.load();
+    });""",
+)
+
+# Shell launch-status refresh.
+replace(
+    "lib/widgets/launch_role_product_shell.dart",
+    "    setState(() => _statusFuture = _loadStatus());",
+    """    setState(() {
+      _statusFuture = _loadStatus();
+    });""",
+)
+
+# Report remaining likely async expression-bodied setState callbacks. Block-bodied
+# callbacks that merely assign a Future are safe because they return void.
 suspects: list[str] = []
+arrow_assignment = re.compile(r"setState\(\s*\(\)\s*=>\s*([^\n;]+)")
 for path in Path("lib").rglob("*.dart"):
-    lines = path.read_text().splitlines()
-    for index, line in enumerate(lines):
-        if "setState(" not in line:
-            continue
-        context = "\n".join(lines[index : min(index + 5, len(lines))])
-        if "=>" not in context:
-            continue
-        if "Future" in context or ".load(" in context or "_store." in context:
-            suspects.append(f"{path}:{index + 1}\n{context}")
+    text = path.read_text()
+    lines = text.splitlines()
+    for match in narrow_assignment.finditer(text):
+        expression = match.group(1).strip()
+        if any(
+            token in expression
+            for token in ("Future", ".load(", "_load(", "service.", "_store.", "_contexts.", "_watchlist.")
+        ):
+            line_no = text[: match.start()].count("\n") + 1
+            context = "\n".join(lines[line_no - 1 : min(line_no + 2, len(lines))])
+            suspects.append(f"{path}:{line_no}\n{context}")
 
 if suspects:
-    print("ASYNC SETSTATE AUDIT — review remaining suspects:")
-    print("\n---\n".join(suspects))
-else:
-    print("ASYNC SETSTATE AUDIT — no likely Future-returning arrow callbacks remain.")
+    raise SystemExit(
+        "ASYNC SETSTATE AUDIT FAILED — likely Future-returning arrow callbacks remain:\n"
+        + "\n---\n".join(suspects)
+    )
+print("ASYNC SETSTATE AUDIT PASSED — no likely Future-returning arrow callbacks remain.")
