@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import os
+import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 with tempfile.TemporaryDirectory(prefix="sports-terminal-community-") as temp_dir:
     os.environ["SPORTS_TERMINAL_DB_PATH"] = str(Path(temp_dir) / "community.sqlite")
