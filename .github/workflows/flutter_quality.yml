@@ -75,6 +75,9 @@ jobs:
       - name: Test canonical NBA awards and voting contract
         run: python backend/scripts/nba_awards_contract_test.py
 
+      - name: Test expanded community network contract
+        run: python backend/scripts/community_network_contract_test.py
+
       - name: Test unified NBA terminal contract
         run: python backend/scripts/nba_terminal_contract_test.py
 
