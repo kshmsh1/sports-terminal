@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/nba_stats_metric_catalog.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 
@@ -17,16 +18,18 @@ class ProductNbaBasicStatsScreen extends StatefulWidget {
   const ProductNbaBasicStatsScreen({super.key});
 
   @override
-  State<ProductNbaBasicStatsScreen> createState() => _ProductNbaBasicStatsScreenState();
+  State<ProductNbaBasicStatsScreen> createState() =>
+      _ProductNbaBasicStatsScreenState();
 }
 
 class _ProductNbaBasicStatsScreenState extends State<ProductNbaBasicStatsScreen> {
-  final _engine = const NbaStatsWorkstationEngine();
-  final _search = TextEditingController();
+  final NbaStatsWorkstationEngine _engine = const NbaStatsWorkstationEngine();
+  final TextEditingController _search = TextEditingController();
   String _team = 'All';
   String _position = 'All';
   String _sort = 'pts';
   bool _descending = true;
+  NbaStatsSeasonType _seasonType = NbaStatsSeasonType.regular;
 
   @override
   void dispose() {
@@ -42,17 +45,36 @@ class _ProductNbaBasicStatsScreenState extends State<ProductNbaBasicStatsScreen>
             return const _Panel(child: Center(child: CircularProgressIndicator()));
           }
           if (snapshot.hasError || snapshot.data == null) {
-            return _Panel(child: Text('Stats unavailable: ${snapshot.error}', style: const TextStyle(color: _pMuted)));
+            return _Panel(
+              child: Text(
+                'Stats unavailable: ${snapshot.error}',
+                style: const TextStyle(color: _pMuted),
+              ),
+            );
           }
-          final rows = _engine.buildRows(snapshot.data!, basis: NbaStatsBasis.perGame, seasonType: NbaStatsSeasonType.regular);
+          final rows = _engine.buildRows(
+            snapshot.data!,
+            basis: NbaStatsBasis.perGame,
+            seasonType: _seasonType,
+          );
           final teams = <String>{'All'};
           for (final row in rows) {
-            teams.addAll(row.team.split(RegExp(r'[,/ ]+')).where((v) => v.isNotEmpty && v != '—'));
+            teams.addAll(
+              row.team
+                  .split(RegExp(r'[,/ ]+'))
+                  .where((value) => value.isNotEmpty && value != '—'),
+            );
           }
-          final q = _search.text.trim().toLowerCase();
+          final query = _search.text.trim().toLowerCase();
           final visible = rows.where((row) {
-            if (q.isNotEmpty && !'${row.player} ${row.team}'.toLowerCase().contains(q)) return false;
-            if (_team != 'All' && !row.team.split(RegExp(r'[,/ ]+')).contains(_team)) return false;
+            if (query.isNotEmpty &&
+                !'${row.player} ${row.team}'.toLowerCase().contains(query)) {
+              return false;
+            }
+            if (_team != 'All' &&
+                !row.team.split(RegExp(r'[,/ ]+')).contains(_team)) {
+              return false;
+            }
             if (_position != 'All' && row.position != _position) return false;
             return true;
           }).toList();
@@ -63,27 +85,57 @@ class _ProductNbaBasicStatsScreenState extends State<ProductNbaBasicStatsScreen>
               const _Hero(
                 eyebrow: 'NBA / STATS',
                 title: 'Basic player statistics',
-                body: 'The public Stats page stays intentionally simple. Every player and team is a first-class navigation target; the full research workstation now lives under Advanced Stats.',
+                body:
+                    'A clean league table for core production. Regular Season is the default; Playoffs is always kept separate. Every player and team name is a navigation target, while the full metric system lives under Advanced Stats.',
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               _Panel(
                 child: Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+                  spacing: 9,
+                  runSpacing: 9,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
+                    _EnumDrop<NbaStatsSeasonType>(
+                      value: _seasonType,
+                      values: const [
+                        NbaStatsSeasonType.regular,
+                        NbaStatsSeasonType.playoffs,
+                      ],
+                      label: (value) => value.label,
+                      onChanged: (value) =>
+                          setState(() => _seasonType = value),
+                    ),
                     SizedBox(
-                      width: 250,
+                      width: 245,
                       child: TextField(
                         controller: _search,
                         onChanged: (_) => setState(() {}),
                         style: const TextStyle(color: _pText),
-                        decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'Search players…', border: OutlineInputBorder(), isDense: true),
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search_rounded),
+                          hintText: 'Search players…',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
                       ),
                     ),
-                    _Drop(value: _team, values: teams.toList()..sort(), onChanged: (v) => setState(() => _team = v)),
-                    _Drop(value: _position, values: const ['All', 'PG', 'SG', 'SF', 'PF', 'C'], onChanged: (v) => setState(() => _position = v)),
-                    Text('${visible.length} players', style: const TextStyle(color: _pMuted, fontWeight: FontWeight.w800)),
+                    _Drop(
+                      value: _team,
+                      values: teams.toList()..sort(),
+                      onChanged: (value) => setState(() => _team = value),
+                    ),
+                    _Drop(
+                      value: _position,
+                      values: const ['All', 'PG', 'SG', 'SF', 'PF', 'C'],
+                      onChanged: (value) => setState(() => _position = value),
+                    ),
+                    Text(
+                      '${visible.length} players',
+                      style: const TextStyle(
+                        color: _pMuted,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -108,14 +160,30 @@ class _ProductNbaBasicStatsScreenState extends State<ProductNbaBasicStatsScreen>
 }
 
 class _BasicTable extends StatelessWidget {
-  const _BasicTable({required this.rows, required this.sortKey, required this.descending, required this.onSort});
+  const _BasicTable({
+    required this.rows,
+    required this.sortKey,
+    required this.descending,
+    required this.onSort,
+  });
+
   final List<NbaStatsRow> rows;
   final String sortKey;
   final bool descending;
   final ValueChanged<String> onSort;
 
   static const metrics = <(String, String)>[
-    ('gp', 'GP'), ('min', 'MIN'), ('pts', 'PTS'), ('reb', 'REB'), ('ast', 'AST'), ('stl', 'STL'), ('blk', 'BLK'), ('tov', 'TOV'), ('fg_pct', 'FG%'), ('three_pct', '3P%'), ('ft_pct', 'FT%'),
+    ('min', 'MPG'),
+    ('pts', 'PPG'),
+    ('reb', 'RPG'),
+    ('ast', 'APG'),
+    ('stl', 'SPG'),
+    ('blk', 'BPG'),
+    ('tov', 'TPG'),
+    ('pf', 'PF'),
+    ('fg_pct', 'FG%'),
+    ('three_pct', '3P%'),
+    ('ft_pct', 'FT%'),
   ];
 
   @override
@@ -124,66 +192,116 @@ class _BasicTable extends StatelessWidget {
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Table(
-            defaultColumnWidth: const FixedColumnWidth(72),
-            columnWidths: const {0: FixedColumnWidth(220), 1: FixedColumnWidth(74), 2: FixedColumnWidth(52)},
-            border: const TableBorder(horizontalInside: BorderSide(color: _pLine, width: .5)),
+            defaultColumnWidth: const FixedColumnWidth(70),
+            columnWidths: const {
+              0: FixedColumnWidth(214),
+              1: FixedColumnWidth(70),
+              2: FixedColumnWidth(48),
+            },
+            border: const TableBorder(
+              horizontalInside: BorderSide(color: _pLine, width: .5),
+            ),
             children: [
               TableRow(
                 decoration: const BoxDecoration(color: _pPanel2),
                 children: [
-                  const _Head('PLAYER'), const _Head('TEAM'), const _Head('POS'),
+                  const _Head('PLAYER'),
+                  const _Head('TEAM'),
+                  const _Head('POS'),
                   for (final metric in metrics)
                     InkWell(
                       onTap: () => onSort(metric.$1),
-                      child: _Head('${metric.$2}${sortKey == metric.$1 ? (descending ? ' ↓' : ' ↑') : ''}'),
+                      child: _Head(
+                        '${metric.$2}${sortKey == metric.$1 ? (descending ? ' ↓' : ' ↑') : ''}',
+                      ),
                     ),
                 ],
               ),
               for (final row in rows)
-                TableRow(children: [
-                  _EntityCell(
-                    label: row.player,
-                    onTap: () => openNbaPlayerPage(context, row.playerId, row.player),
-                  ),
-                  _EntityCell(
-                    label: row.team,
-                    onTap: () => openNbaTeamPage(context, row.team.split(RegExp(r'[,/ ]+')).first, row.team.split(RegExp(r'[,/ ]+')).first),
-                  ),
-                  _Cell(row.position),
-                  for (final metric in metrics) _Cell(_format(row.value(metric.$1), metric.$1)),
-                ]),
+                TableRow(
+                  children: [
+                    _EntityCell(
+                      label: row.player,
+                      onTap: () =>
+                          openNbaPlayerPage(context, row.playerId, row.player),
+                    ),
+                    _EntityCell(
+                      label: row.team,
+                      onTap: () {
+                        final id = _primaryTeam(row.team);
+                        openNbaTeamPage(context, id, id);
+                      },
+                    ),
+                    _Cell(row.position),
+                    for (final metric in metrics)
+                      _Cell(_format(row.value(metric.$1), metric.$1)),
+                  ],
+                ),
             ],
           ),
         ),
       );
 }
 
-Future<void> openNbaPlayerPage(BuildContext context, String playerId, String playerName) {
+Future<void> openNbaPlayerPage(
+  BuildContext context,
+  String playerId,
+  String playerName,
+) {
   return Navigator.of(context).push<void>(
     MaterialPageRoute(
-      settings: RouteSettings(name: '/nba/players/${Uri.encodeComponent(playerId)}'),
+      settings: RouteSettings(
+        name: '/nba/players/${Uri.encodeComponent(playerId)}',
+      ),
       builder: (_) => Scaffold(
         backgroundColor: _pBg,
-        appBar: AppBar(backgroundColor: _pPanel, foregroundColor: _pText, title: Text(playerName)),
+        appBar: AppBar(
+          backgroundColor: _pPanel,
+          foregroundColor: _pText,
+          title: Text(playerName),
+        ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(22),
-          child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 1500), child: ProductNbaPlayerPage(playerId: playerId, playerName: playerName))),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1500),
+              child: ProductNbaPlayerPage(
+                playerId: playerId,
+                playerName: playerName,
+              ),
+            ),
+          ),
         ),
       ),
     ),
   );
 }
 
-Future<void> openNbaTeamPage(BuildContext context, String teamId, String teamName) {
+Future<void> openNbaTeamPage(
+  BuildContext context,
+  String teamId,
+  String teamName,
+) {
   return Navigator.of(context).push<void>(
     MaterialPageRoute(
-      settings: RouteSettings(name: '/nba/teams/${Uri.encodeComponent(teamId)}'),
+      settings: RouteSettings(
+        name: '/nba/teams/${Uri.encodeComponent(teamId)}',
+      ),
       builder: (_) => Scaffold(
         backgroundColor: _pBg,
-        appBar: AppBar(backgroundColor: _pPanel, foregroundColor: _pText, title: Text(teamName)),
+        appBar: AppBar(
+          backgroundColor: _pPanel,
+          foregroundColor: _pText,
+          title: Text(teamName),
+        ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(22),
-          child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 1500), child: ProductNbaTeamPage(teamId: teamId))),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1500),
+              child: ProductNbaTeamPage(teamId: teamId),
+            ),
+          ),
         ),
       ),
     ),
@@ -191,7 +309,12 @@ Future<void> openNbaTeamPage(BuildContext context, String teamId, String teamNam
 }
 
 class ProductNbaPlayerPage extends StatefulWidget {
-  const ProductNbaPlayerPage({super.key, required this.playerId, required this.playerName});
+  const ProductNbaPlayerPage({
+    super.key,
+    required this.playerId,
+    required this.playerName,
+  });
+
   final String playerId;
   final String playerName;
 
@@ -200,312 +323,1214 @@ class ProductNbaPlayerPage extends StatefulWidget {
 }
 
 class _ProductNbaPlayerPageState extends State<ProductNbaPlayerPage> {
-  final _engine = const NbaStatsWorkstationEngine();
-  String category = 'Basic';
-  String basis = 'Per Game';
-
-  static const categories = <String, List<String>>{
-    'Basic': ['gp', 'min', 'pts', 'reb', 'ast', 'stl', 'blk', 'tov', 'pf'],
-    'Shooting': ['fgm', 'fga', 'fg_pct', 'two_pm', 'two_pa', 'two_pct', 'three_pm', 'three_pa', 'three_pct', 'ftm', 'fta', 'ft_pct'],
-    'Efficiency': ['efg_pct', 'ts_pct', 'ft_rate', 'three_rate'],
-    'Impact': ['bpm', 'scoring_load'],
-  };
+  final NbaStatsWorkstationEngine _engine = const NbaStatsWorkstationEngine();
+  final NbaTerminalMetricResolver _resolver = const NbaTerminalMetricResolver();
+  String _familyId = 'basic';
+  NbaStatsBasis _basis = NbaStatsBasis.perGame;
+  NbaStatsSeasonType _seasonType = NbaStatsSeasonType.regular;
+  final Set<String> _expanded = {};
 
   @override
   Widget build(BuildContext context) => FutureBuilder<NbaTerminalSeedSnapshot>(
         future: const NbaTerminalSeedRepository().load(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const _Panel(child: Center(child: CircularProgressIndicator()));
-          final selectedBasis = switch (basis) {
-            'Totals' => NbaStatsBasis.totals,
-            'Per 36' => NbaStatsBasis.per36,
-            'Per 100' => NbaStatsBasis.per100,
-            _ => NbaStatsBasis.perGame,
-          };
-          final rows = _engine.buildRows(snapshot.data!, basis: selectedBasis, seasonType: NbaStatsSeasonType.regular);
-          final row = rows.where((r) => r.playerId == widget.playerId || r.player == widget.playerName).firstOrNull;
-          if (row == null) return _Panel(child: Text('${widget.playerName} is not available in the active data scope.', style: const TextStyle(color: _pMuted)));
-          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            _Hero(eyebrow: 'NBA / PLAYER', title: row.player, body: '${row.team} · ${row.position} · first-class player profile linked from every entity surface.'),
-            const SizedBox(height: 12),
-            _Panel(child: Wrap(spacing: 10, runSpacing: 10, children: [
-              _Drop(value: category, values: categories.keys.toList(), onChanged: (v) => setState(() => category = v)),
-              _Drop(value: basis, values: const ['Per Game', 'Totals', 'Per 36', 'Per 100'], onChanged: (v) => setState(() => basis = v)),
-              for (final team in row.team.split(RegExp(r'[,/ ]+')).where((v) => v.isNotEmpty))
-                ActionChip(label: Text(team), avatar: const Icon(Icons.groups_rounded, size: 16), onPressed: () => openNbaTeamPage(context, team, team)),
-            ])),
-            const SizedBox(height: 12),
-            _MetricCards(row: row, keys: categories[category] ?? const []),
-            const SizedBox(height: 12),
-            _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const _Section('PLAYER WORKSPACE'),
-              const SizedBox(height: 8),
-              const Text('This page is designed to become the permanent home for bio, season-by-season history, game logs, splits, shooting, tracking, advanced models, contracts, transactions, awards, articles, community discussion, fantasy notes and saved research.', style: TextStyle(color: _pMuted, height: 1.5)),
-            ])),
-          ]);
+          if (!snapshot.hasData) {
+            return const _Panel(child: Center(child: CircularProgressIndicator()));
+          }
+          final rows = _engine.buildRows(
+            snapshot.data!,
+            basis: _basis,
+            seasonType: _seasonType,
+          );
+          final row = rows
+              .where(
+                (candidate) =>
+                    candidate.playerId == widget.playerId ||
+                    candidate.player == widget.playerName,
+              )
+              .firstOrNull;
+          if (row == null) {
+            return _Panel(
+              child: Text(
+                '${widget.playerName} is not available in the active ${_seasonType.label} scope.',
+                style: const TextStyle(color: _pMuted),
+              ),
+            );
+          }
+          final family = nbaTerminalFamily(_familyId);
+          final keys = nbaVisibleMetricKeys(family, _expanded);
+          final available = keys
+              .where((key) => _resolver.isAvailable(row, key))
+              .length;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _Hero(
+                eyebrow: 'NBA / PLAYER',
+                title: row.player,
+                body:
+                    '${row.team} · ${row.position} · a single-player version of the Advanced Stats taxonomy. Switch stat family, rate basis and Regular Season/Playoffs without leaving the player dossier.',
+              ),
+              const SizedBox(height: 12),
+              _Panel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 9,
+                      runSpacing: 9,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        _FamilyDrop(
+                          value: _familyId,
+                          onChanged: (value) => setState(() {
+                            _familyId = value;
+                            _expanded.clear();
+                          }),
+                        ),
+                        _EnumDrop<NbaStatsBasis>(
+                          value: _basis,
+                          values: NbaStatsBasis.values,
+                          label: (value) => value.label,
+                          onChanged: (value) => setState(() => _basis = value),
+                        ),
+                        _EnumDrop<NbaStatsSeasonType>(
+                          value: _seasonType,
+                          values: const [
+                            NbaStatsSeasonType.regular,
+                            NbaStatsSeasonType.playoffs,
+                          ],
+                          label: (value) => value.label,
+                          onChanged: (value) =>
+                              setState(() => _seasonType = value),
+                        ),
+                        _StatusPill('$available/${keys.length} populated'),
+                        for (final team in row.team
+                            .split(RegExp(r'[,/ ]+'))
+                            .where((value) => value.isNotEmpty && value != '—'))
+                          ActionChip(
+                            label: Text(team),
+                            avatar: const Icon(Icons.groups_rounded, size: 16),
+                            onPressed: () =>
+                                openNbaTeamPage(context, team, team),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      family.description,
+                      style: const TextStyle(color: _pMuted, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              _PlayerMetricGrid(
+                row: row,
+                family: family,
+                keys: keys,
+                resolver: _resolver,
+                expanded: _expanded,
+                onExpand: (key) => setState(() {
+                  if (!_expanded.add(key)) _expanded.remove(key);
+                }),
+              ),
+              const SizedBox(height: 12),
+              _PlayerGlossary(family: family),
+              const SizedBox(height: 12),
+              _Panel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    _Section('PLAYER WORKSPACE'),
+                    SizedBox(height: 8),
+                    Text(
+                      'This permanent player route is the consolidation point for statistics, game logs, historical seasons, shooting and tracking, impact models, awards, contracts, transactions, injuries, articles, community discussion, fantasy notes and saved research. Metrics with no authoritative source remain visibly unavailable rather than being fabricated.',
+                      style: TextStyle(color: _pMuted, height: 1.5),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
         },
       );
 }
 
-class ProductNbaTeamPage extends StatelessWidget {
+class _PlayerMetricGrid extends StatelessWidget {
+  const _PlayerMetricGrid({
+    required this.row,
+    required this.family,
+    required this.keys,
+    required this.resolver,
+    required this.expanded,
+    required this.onExpand,
+  });
+
+  final NbaStatsRow row;
+  final NbaTerminalStatFamily family;
+  final List<String> keys;
+  final NbaTerminalMetricResolver resolver;
+  final Set<String> expanded;
+  final ValueChanged<String> onExpand;
+
+  @override
+  Widget build(BuildContext context) => _Panel(
+        child: Wrap(
+          spacing: 9,
+          runSpacing: 9,
+          children: [
+            for (final key in keys)
+              _PlayerMetricCard(
+                metricKey: key,
+                value: resolver.format(row, key),
+                available: resolver.isAvailable(row, key),
+                expanded: expanded.contains(key),
+                onExpand: _expandable(key) ? () => onExpand(key) : null,
+              ),
+          ],
+        ),
+      );
+
+  bool _expandable(String key) {
+    final metric = nbaTerminalMetricByKey[key];
+    return (family.expansionOverrides[key]?.isNotEmpty ?? false) ||
+        (metric?.children.isNotEmpty ?? false);
+  }
+}
+
+class _PlayerMetricCard extends StatelessWidget {
+  const _PlayerMetricCard({
+    required this.metricKey,
+    required this.value,
+    required this.available,
+    required this.expanded,
+    this.onExpand,
+  });
+
+  final String metricKey;
+  final String value;
+  final bool available;
+  final bool expanded;
+  final VoidCallback? onExpand;
+
+  @override
+  Widget build(BuildContext context) {
+    final metric = nbaTerminalMetricByKey[metricKey];
+    return Container(
+      width: 174,
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: _pPanel2,
+        border: Border.all(color: available ? _pLine : _pLine.withValues(alpha: .6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  metric?.shortLabel ?? metricKey.toUpperCase(),
+                  style: const TextStyle(
+                    color: _pMuted,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              if (onExpand != null)
+                InkWell(
+                  onTap: onExpand,
+                  child: Icon(
+                    expanded ? Icons.arrow_drop_down : Icons.arrow_right,
+                    color: _pAmber,
+                    size: 18,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            style: TextStyle(
+              color: available ? _pText : _pMuted,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            metric?.label ?? metricKey,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: _pMuted, fontSize: 9, height: 1.25),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlayerGlossary extends StatelessWidget {
+  const _PlayerGlossary({required this.family});
+
+  final NbaTerminalStatFamily family;
+
+  @override
+  Widget build(BuildContext context) {
+    final keys = <String>{
+      ...family.metrics,
+      for (final key in family.metrics)
+        ...(family.expansionOverrides[key] ??
+            nbaTerminalMetricByKey[key]?.children ??
+            const <String>[]),
+    };
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Section('${family.label.toUpperCase()} GLOSSARY'),
+          const SizedBox(height: 8),
+          for (final key in keys)
+            if (nbaTerminalMetricByKey[key] case final metric?)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 7),
+                child: RichText(
+                  text: TextSpan(
+                    style: const TextStyle(color: _pMuted, fontSize: 10, height: 1.4),
+                    children: [
+                      TextSpan(
+                        text: '${metric.shortLabel} — ',
+                        style: const TextStyle(
+                          color: _pText,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      TextSpan(text: metric.description),
+                    ],
+                  ),
+                ),
+              ),
+        ],
+      ),
+    );
+  }
+}
+
+class ProductNbaTeamPage extends StatefulWidget {
   const ProductNbaTeamPage({super.key, required this.teamId});
+
   final String teamId;
+
+  @override
+  State<ProductNbaTeamPage> createState() => _ProductNbaTeamPageState();
+}
+
+class _ProductNbaTeamPageState extends State<ProductNbaTeamPage> {
+  NbaStatsSeasonType _seasonType = NbaStatsSeasonType.regular;
 
   @override
   Widget build(BuildContext context) => FutureBuilder<NbaTerminalSeedSnapshot>(
         future: const NbaTerminalSeedRepository().load(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const _Panel(child: Center(child: CircularProgressIndicator()));
+          if (!snapshot.hasData) {
+            return const _Panel(child: Center(child: CircularProgressIndicator()));
+          }
           final data = snapshot.data!;
-          final team = data.teamRecords.where((r) => '${r['team_id']}' == teamId).firstOrNull;
-          final players = const NbaStatsWorkstationEngine().buildRows(data).where((r) => r.team.split(RegExp(r'[,/ ]+')).contains(teamId)).toList()
-            ..sort((a, b) => (b.value('pts') ?? 0).compareTo(a.value('pts') ?? 0));
-          final games = data.teamGameLogs.where((r) => '${r['team_id']}' == teamId).toList().reversed.take(15).toList();
-          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            _Hero(eyebrow: 'NBA / TEAM', title: teamId, body: 'Roster, team performance, recent games, transactions, cap, draft assets, articles and community are consolidated into one permanent team route.'),
-            const SizedBox(height: 12),
-            if (team != null)
-              Wrap(spacing: 10, runSpacing: 10, children: [
-                _Kpi('Record', '${team['wins'] ?? '—'}-${team['losses'] ?? '—'}'),
-                _Kpi('PPG', _value(team['points_per_game'])),
-                _Kpi('Opp PPG', _value(team['opponent_points_per_game'])),
-                _Kpi('Margin', _value(team['average_margin'])),
-              ]),
-            const SizedBox(height: 12),
-            _Panel(padding: EdgeInsets.zero, child: Table(
-              columnWidths: const {0: FlexColumnWidth(3)},
-              children: [
-                const TableRow(decoration: BoxDecoration(color: _pPanel2), children: [_Head('ROSTER'), _Head('POS'), _Head('GP'), _Head('PTS'), _Head('REB'), _Head('AST')]),
-                for (final row in players)
-                  TableRow(children: [
-                    _EntityCell(label: row.player, onTap: () => openNbaPlayerPage(context, row.playerId, row.player)),
-                    _Cell(row.position), _Cell(_format(row.value('gp'), 'gp')), _Cell(_format(row.value('pts'), 'pts')), _Cell(_format(row.value('reb'), 'reb')), _Cell(_format(row.value('ast'), 'ast')),
-                  ]),
-              ],
-            )),
-            const SizedBox(height: 12),
-            _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const _Section('RECENT GAMES'),
-              const SizedBox(height: 8),
-              for (final game in games)
-                Padding(padding: const EdgeInsets.symmetric(vertical: 5), child: Row(children: [
-                  SizedBox(width: 105, child: Text('${game['game_date'] ?? '—'}', style: const TextStyle(color: _pMuted))),
-                  Expanded(child: Text('${game['opponent_team_id'] ?? '—'} · ${game['result'] ?? '—'}', style: const TextStyle(color: _pText, fontWeight: FontWeight.w800))),
-                  Text('${game['points'] ?? '—'} PTS', style: const TextStyle(color: _pBlue, fontWeight: FontWeight.w900)),
-                ])),
-            ])),
-          ]);
+          final team = data.teamRecords
+              .where((record) => '${record['team_id']}' == widget.teamId)
+              .firstOrNull;
+          final players = const NbaStatsWorkstationEngine()
+              .buildRows(data, seasonType: _seasonType)
+              .where(
+                (row) => row.team
+                    .split(RegExp(r'[,/ ]+'))
+                    .contains(widget.teamId),
+              )
+              .toList()
+            ..sort(
+              (left, right) =>
+                  (right.value('pts') ?? 0).compareTo(left.value('pts') ?? 0),
+            );
+          final games = data.teamGameLogs
+              .where((record) => '${record['team_id']}' == widget.teamId)
+              .toList()
+              .reversed
+              .take(15)
+              .toList();
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _Hero(
+                eyebrow: 'NBA / TEAM',
+                title: widget.teamId,
+                body:
+                    'Roster, performance, recent games and linked league entities consolidated into one permanent team route. Front-office, draft, contract, editorial and community objects can attach to this identity.',
+              ),
+              const SizedBox(height: 12),
+              _Panel(
+                child: Wrap(
+                  spacing: 9,
+                  runSpacing: 9,
+                  children: [
+                    _EnumDrop<NbaStatsSeasonType>(
+                      value: _seasonType,
+                      values: const [
+                        NbaStatsSeasonType.regular,
+                        NbaStatsSeasonType.playoffs,
+                      ],
+                      label: (value) => value.label,
+                      onChanged: (value) =>
+                          setState(() => _seasonType = value),
+                    ),
+                    if (team != null) ...[
+                      _Kpi('Record', '${team['wins'] ?? '—'}-${team['losses'] ?? '—'}'),
+                      _Kpi('PPG', _value(team['points_per_game'])),
+                      _Kpi('Opp PPG', _value(team['opponent_points_per_game'])),
+                      _Kpi('Margin', _value(team['average_margin'])),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              _Panel(
+                padding: EdgeInsets.zero,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: 850,
+                    child: Table(
+                      columnWidths: const {0: FlexColumnWidth(3)},
+                      children: [
+                        const TableRow(
+                          decoration: BoxDecoration(color: _pPanel2),
+                          children: [
+                            _Head('ROSTER'),
+                            _Head('POS'),
+                            _Head('GP'),
+                            _Head('PPG'),
+                            _Head('RPG'),
+                            _Head('APG'),
+                          ],
+                        ),
+                        for (final row in players)
+                          TableRow(
+                            children: [
+                              _EntityCell(
+                                label: row.player,
+                                onTap: () => openNbaPlayerPage(
+                                  context,
+                                  row.playerId,
+                                  row.player,
+                                ),
+                              ),
+                              _Cell(row.position),
+                              _Cell(_format(row.value('gp'), 'gp')),
+                              _Cell(_format(row.value('pts'), 'pts')),
+                              _Cell(_format(row.value('reb'), 'reb')),
+                              _Cell(_format(row.value('ast'), 'ast')),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _Panel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _Section('RECENT GAMES'),
+                    const SizedBox(height: 8),
+                    for (final game in games)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 5),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 105,
+                              child: Text(
+                                '${game['game_date'] ?? '—'}',
+                                style: const TextStyle(color: _pMuted),
+                              ),
+                            ),
+                            Expanded(
+                              child: InkWell(
+                                onTap: () {
+                                  final opponent =
+                                      '${game['opponent_team_id'] ?? ''}';
+                                  if (opponent.isNotEmpty && opponent != '—') {
+                                    openNbaTeamPage(
+                                      context,
+                                      opponent,
+                                      opponent,
+                                    );
+                                  }
+                                },
+                                child: Text(
+                                  '${game['opponent_team_id'] ?? '—'} · ${game['result'] ?? '—'}',
+                                  style: const TextStyle(
+                                    color: _pBlue,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '${game['points'] ?? '—'} PTS',
+                              style: const TextStyle(
+                                color: _pText,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          );
         },
       );
 }
 
 class ProductNbaHubV2Screen extends StatefulWidget {
   const ProductNbaHubV2Screen({super.key});
+
   @override
   State<ProductNbaHubV2Screen> createState() => _ProductNbaHubV2ScreenState();
 }
 
 class _ProductNbaHubV2ScreenState extends State<ProductNbaHubV2Screen> {
-  final search = TextEditingController();
+  final TextEditingController search = TextEditingController();
+  NbaStatsSeasonType seasonType = NbaStatsSeasonType.regular;
+
   @override
-  void dispose() { search.dispose(); super.dispose(); }
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => FutureBuilder<NbaTerminalSeedSnapshot>(
-    future: const NbaTerminalSeedRepository().load(),
-    builder: (context, snapshot) {
-      if (!snapshot.hasData) return const _Panel(child: Center(child: CircularProgressIndicator()));
-      final data = snapshot.data!;
-      final q = search.text.trim().toLowerCase();
-      final rows = const NbaStatsWorkstationEngine().buildRows(data);
-      final players = rows.where((r) => q.isEmpty || '${r.player} ${r.team}'.toLowerCase().contains(q)).toList()..sort((a,b)=>(b.value('pts')??0).compareTo(a.value('pts')??0));
-      final teams = data.teamRecords.where((r) => q.isEmpty || '${r['team_id']}'.toLowerCase().contains(q)).toList();
-      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const _Hero(eyebrow: 'NBA HUB', title: 'The league operating homepage', body: 'A complete entry point for teams, players, standings, games, leaders, awards, transactions, research, editorial and community—built around linked NBA entities rather than dead-end tables.'),
-        const SizedBox(height: 12),
-        _Panel(child: TextField(controller: search, onChanged: (_) => setState(() {}), style: const TextStyle(color: _pText), decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'Search the NBA universe…', border: OutlineInputBorder()))),
-        const SizedBox(height: 12),
-        Wrap(spacing: 10, runSpacing: 10, children: [
-          _Kpi('Teams', '${data.teams.length}'), _Kpi('Players', '${rows.length}'), _Kpi('Games', '${data.games.length}'), _Kpi('PBP', '${data.playByPlayEvents}'),
-        ]),
-        const SizedBox(height: 12),
-        const _Section('TEAMS'),
-        const SizedBox(height: 8),
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          for (final team in teams)
-            ActionChip(avatar: const Icon(Icons.shield_outlined, size: 17), label: Text('${team['team_id']} · ${team['wins']}-${team['losses']}'), onPressed: () => openNbaTeamPage(context, '${team['team_id']}', '${team['team_id']}')),
-        ]),
-        const SizedBox(height: 16),
-        const _Section('PLAYER LEADERS'),
-        const SizedBox(height: 8),
-        _Panel(padding: EdgeInsets.zero, child: Column(children: [
-          for (final row in players.take(25))
-            InkWell(onTap: () => openNbaPlayerPage(context, row.playerId, row.player), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9), child: Row(children: [
-              Expanded(child: Text(row.player, style: const TextStyle(color: _pText, fontWeight: FontWeight.w800))),
-              InkWell(onTap: () => openNbaTeamPage(context, row.team.split(RegExp(r'[,/ ]+')).first, row.team), child: Text(row.team, style: const TextStyle(color: _pBlue, fontWeight: FontWeight.w800))),
-              const SizedBox(width: 18), Text('${_format(row.value('pts'),'pts')} PPG', style: const TextStyle(color: _pAmber, fontWeight: FontWeight.w900)),
-            ]))),
-        ])),
-        const SizedBox(height: 16),
-        const _Section('LEAGUE MODULES'),
-        const SizedBox(height: 8),
-        const Wrap(spacing: 8, runSpacing: 8, children: [
-          _Module('Standings', Icons.format_list_numbered_rounded), _Module('Schedule & Scores', Icons.calendar_month_rounded), _Module('Transactions', Icons.swap_horiz_rounded), _Module('Awards & Voting', Icons.emoji_events_rounded), _Module('Draft', Icons.school_rounded), _Module('Injuries', Icons.health_and_safety_outlined), _Module('Contracts & Cap', Icons.account_balance_wallet_outlined), _Module('Historical Records', Icons.history_rounded),
-        ]),
-      ]);
-    },
-  );
+        future: const NbaTerminalSeedRepository().load(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const _Panel(child: Center(child: CircularProgressIndicator()));
+          }
+          final data = snapshot.data!;
+          final query = search.text.trim().toLowerCase();
+          final rows = const NbaStatsWorkstationEngine()
+              .buildRows(data, seasonType: seasonType);
+          final players = rows
+              .where(
+                (row) =>
+                    query.isEmpty ||
+                    '${row.player} ${row.team}'.toLowerCase().contains(query),
+              )
+              .toList()
+            ..sort(
+              (left, right) =>
+                  (right.value('pts') ?? 0).compareTo(left.value('pts') ?? 0),
+            );
+          final teams = data.teamRecords
+              .where(
+                (record) =>
+                    query.isEmpty ||
+                    '${record['team_id']} ${record['team_name'] ?? ''}'
+                        .toLowerCase()
+                        .contains(query),
+              )
+              .toList();
+          final ppg = [...rows]
+            ..sort((a, b) => (b.value('pts') ?? 0).compareTo(a.value('pts') ?? 0));
+          final rpg = [...rows]
+            ..sort((a, b) => (b.value('reb') ?? 0).compareTo(a.value('reb') ?? 0));
+          final apg = [...rows]
+            ..sort((a, b) => (b.value('ast') ?? 0).compareTo(a.value('ast') ?? 0));
+          final standings = [...data.teamRecords]
+            ..sort((a, b) => _winPct(b).compareTo(_winPct(a)));
+          final recentGames = data.games.reversed.take(12).toList();
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _Hero(
+                eyebrow: 'NBA HUB',
+                title: 'The league operating homepage',
+                body:
+                    'A data-first command page for the NBA: canonical teams and players, standings, schedule context, leaders, historical research, awards, transactions, front-office workflows, editorial and community. Entity names stay linked throughout the experience.',
+              ),
+              const SizedBox(height: 12),
+              _Panel(
+                child: Wrap(
+                  spacing: 9,
+                  runSpacing: 9,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    _EnumDrop<NbaStatsSeasonType>(
+                      value: seasonType,
+                      values: const [
+                        NbaStatsSeasonType.regular,
+                        NbaStatsSeasonType.playoffs,
+                      ],
+                      label: (value) => value.label,
+                      onChanged: (value) => setState(() => seasonType = value),
+                    ),
+                    SizedBox(
+                      width: 330,
+                      child: TextField(
+                        controller: search,
+                        onChanged: (_) => setState(() {}),
+                        style: const TextStyle(color: _pText),
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search_rounded),
+                          hintText: 'Search players and teams…',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    _Kpi('Teams', '${data.teams.length}'),
+                    _Kpi('Players', '${rows.length}'),
+                    _Kpi('Games', '${data.games.length}'),
+                    _Kpi('PBP', '${data.playByPlayEvents}'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              const _Section('TEAMS'),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 7,
+                runSpacing: 7,
+                children: [
+                  for (final team in teams)
+                    ActionChip(
+                      avatar: const Icon(Icons.shield_outlined, size: 16),
+                      label: Text(
+                        '${team['team_id']} · ${team['wins'] ?? '—'}-${team['losses'] ?? '—'}',
+                      ),
+                      onPressed: () => openNbaTeamPage(
+                        context,
+                        '${team['team_id']}',
+                        '${team['team_name'] ?? team['team_id']}',
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final leaders = [
+                    _LeaderBlock('SCORING', 'PPG', ppg, 'pts'),
+                    _LeaderBlock('REBOUNDING', 'RPG', rpg, 'reb'),
+                    _LeaderBlock('PLAYMAKING', 'APG', apg, 'ast'),
+                  ];
+                  if (constraints.maxWidth < 980) {
+                    return Column(
+                      children: [
+                        for (final block in leaders) ...[
+                          _LeaderPanel(block: block),
+                          const SizedBox(height: 10),
+                        ],
+                      ],
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (var index = 0; index < leaders.length; index++) ...[
+                        if (index > 0) const SizedBox(width: 10),
+                        Expanded(child: _LeaderPanel(block: leaders[index])),
+                      ],
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              const _Section('LEAGUE TABLE'),
+              const SizedBox(height: 8),
+              _Panel(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    for (var index = 0;
+                        index < standings.take(30).length;
+                        index++)
+                      _StandingRow(
+                        rank: index + 1,
+                        record: standings[index],
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const _Section('RECENT GAMES'),
+              const SizedBox(height: 8),
+              _Panel(
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final game in recentGames) _GameCard(game: game),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const _Section('NBA TERMINAL MODULES'),
+              const SizedBox(height: 8),
+              const Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _Module('Advanced Stats', Icons.analytics_rounded),
+                  _Module('Awards & Voting', Icons.emoji_events_rounded),
+                  _Module('Trade Machine', Icons.swap_horiz_rounded),
+                  _Module('Contracts & Cap', Icons.account_balance_wallet_outlined),
+                  _Module('Draft Assets', Icons.school_rounded),
+                  _Module('Historical Intelligence', Icons.history_rounded),
+                  _Module('Team Publications', Icons.newspaper_rounded),
+                  _Module('Community', Icons.forum_rounded),
+                ],
+              ),
+            ],
+          );
+        },
+      );
 }
 
-class ProductNbaAwardsCenterScreen extends StatefulWidget {
-  const ProductNbaAwardsCenterScreen({super.key});
+class _LeaderBlock {
+  const _LeaderBlock(this.title, this.unit, this.rows, this.key);
+  final String title;
+  final String unit;
+  final List<NbaStatsRow> rows;
+  final String key;
+}
+
+class _LeaderPanel extends StatelessWidget {
+  const _LeaderPanel({required this.block});
+  final _LeaderBlock block;
+
   @override
-  State<ProductNbaAwardsCenterScreen> createState() => _ProductNbaAwardsCenterScreenState();
+  Widget build(BuildContext context) => _Panel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Section(block.title),
+            const SizedBox(height: 7),
+            for (var index = 0;
+                index < block.rows.take(5).length;
+                index++)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(color: _pMuted),
+                      ),
+                    ),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => openNbaPlayerPage(
+                          context,
+                          block.rows[index].playerId,
+                          block.rows[index].player,
+                        ),
+                        child: Text(
+                          block.rows[index].player,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: _pBlue,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${_format(block.rows[index].value(block.key), block.key)} ${block.unit}',
+                      style: const TextStyle(
+                        color: _pText,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      );
 }
 
-class _ProductNbaAwardsCenterScreenState extends State<ProductNbaAwardsCenterScreen> {
-  String query = '';
-  String group = 'All';
-
-  static const awards = <(String, String, String)>[
-    ('MVP', 'Season Awards', 'Most Valuable Player · Michael Jordan Trophy'),
-    ('ROY', 'Season Awards', 'Rookie of the Year · Wilt Chamberlain Trophy'),
-    ('DPOY', 'Season Awards', 'Defensive Player of the Year · Hakeem Olajuwon Trophy'),
-    ('6MOY', 'Season Awards', 'Sixth Man of the Year · John Havlicek Trophy'),
-    ('MIP', 'Season Awards', 'Most Improved Player · George Mikan Trophy'),
-    ('Clutch POY', 'Season Awards', 'Clutch Player of the Year · Jerry West Trophy'),
-    ('Sportsmanship', 'Season Awards', 'Sportsmanship Award · Joe Dumars Trophy'),
-    ('Teammate', 'Season Awards', 'Twyman-Stokes Teammate of the Year'),
-    ('Hustle', 'Season Awards', 'NBA Hustle Award'),
-    ('Social Justice', 'Season Awards', 'Social Justice Champion · Kareem Abdul-Jabbar Trophy'),
-    ('Citizenship', 'Season Awards', 'J. Walter Kennedy Citizenship Award'),
-    ('Coach', 'Season Awards', 'Coach of the Year · Red Auerbach Trophy'),
-    ('Executive', 'Season Awards', 'Executive of the Year'),
-    ('Best Record', 'Season Awards', 'Best Regular Season Record · Maurice Podoloff Trophy'),
-    ('Finals MVP', 'Postseason', 'NBA Finals MVP · Bill Russell Trophy'),
-    ('East Finals MVP', 'Postseason', 'Eastern Conference Finals MVP · Larry Bird Trophy'),
-    ('West Finals MVP', 'Postseason', 'Western Conference Finals MVP · Magic Johnson Trophy'),
-    ('NBA Cup MVP', 'Postseason', 'In-Season Tournament / NBA Cup MVP'),
-    ('All-Star MVP', 'All-Star', 'NBA All-Star Game MVP · Kobe Bryant Trophy'),
-    ('All-Star', 'All-Star', 'NBA All-Star selections'),
-    ('All-NBA 1st', 'Honors', 'All-NBA First Team'),
-    ('All-NBA 2nd', 'Honors', 'All-NBA Second Team'),
-    ('All-NBA 3rd', 'Honors', 'All-NBA Third Team'),
-    ('All-Defense 1st', 'Honors', 'All-Defensive First Team'),
-    ('All-Defense 2nd', 'Honors', 'All-Defensive Second Team'),
-    ('All-Rookie 1st', 'Honors', 'All-Rookie First Team'),
-    ('All-Rookie 2nd', 'Honors', 'All-Rookie Second Team'),
-    ('All-Tournament', 'Honors', 'NBA Cup / In-Season Tournament All-Tournament Team'),
-    ('Player of Month', 'Periodic', 'Player of the Month'),
-    ('Rookie of Month', 'Periodic', 'Rookie of the Month'),
-    ('Defensive POTM', 'Periodic', 'Defensive Player of the Month'),
-    ('Player of Week', 'Periodic', 'Player of the Week'),
-    ('Hall of Fame', 'Legacy', 'Naismith Memorial Basketball Hall of Fame'),
-  ];
+class _StandingRow extends StatelessWidget {
+  const _StandingRow({required this.rank, required this.record});
+  final int rank;
+  final Map<String, dynamic> record;
 
   @override
   Widget build(BuildContext context) {
-    final groups = ['All', ...{for (final item in awards) item.$2}];
-    final visible = awards.where((a) => (group == 'All' || a.$2 == group) && (query.isEmpty || '${a.$1} ${a.$3}'.toLowerCase().contains(query.toLowerCase()))).toList();
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const _Hero(eyebrow: 'NBA / AWARDS', title: 'Awards, honors and voting archive', body: 'Every annual NBA award and major honor gets its own durable page, including winner history, voting shares where available, team selections and linked player profiles.'),
-      const SizedBox(height: 12),
-      _Panel(child: Wrap(spacing: 8, runSpacing: 8, children: [
-        SizedBox(width: 250, child: TextField(onChanged: (v) => setState(() => query = v), style: const TextStyle(color: _pText), decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Find an award…', border: OutlineInputBorder(), isDense: true))),
-        _Drop(value: group, values: groups, onChanged: (v) => setState(() => group = v)),
-      ])),
-      const SizedBox(height: 12),
-      Wrap(spacing: 10, runSpacing: 10, children: [
-        for (final award in visible)
-          SizedBox(width: 310, child: _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(award.$2.toUpperCase(), style: const TextStyle(color: _pBlue, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: .7)),
-            const SizedBox(height: 7),
-            Text(award.$1, style: const TextStyle(color: _pText, fontSize: 19, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 5),
-            Text(award.$3, style: const TextStyle(color: _pMuted, height: 1.35)),
-            const SizedBox(height: 10),
-            const Text('Winner history · voting · linked players · season filter', style: TextStyle(color: _pGreen, fontSize: 10, fontWeight: FontWeight.w800)),
-          ]))),
-      ]),
-      const SizedBox(height: 12),
-      const _Panel(child: Text('Data contract: the historical warehouse already contains Basketball-Reference-derived award shares, end-of-season teams, All-Star selections and draft-era history. This surface intentionally defines the full product taxonomy now; the next ingestion projection should materialize those source tables into canonical award and voting facts rather than scrape pages at runtime.', style: TextStyle(color: _pMuted, height: 1.5))),
-    ]);
+    final id = '${record['team_id'] ?? '—'}';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: _pLine, width: .5)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 36,
+            child: Text('$rank', style: const TextStyle(color: _pMuted)),
+          ),
+          Expanded(
+            child: InkWell(
+              onTap: () => openNbaTeamPage(context, id, id),
+              child: Text(
+                id,
+                style: const TextStyle(
+                  color: _pBlue,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 80,
+            child: Text(
+              '${record['wins'] ?? '—'}-${record['losses'] ?? '—'}',
+              textAlign: TextAlign.right,
+              style: const TextStyle(color: _pText, fontWeight: FontWeight.w900),
+            ),
+          ),
+          SizedBox(
+            width: 76,
+            child: Text(
+              _winPct(record).toStringAsFixed(3).replaceFirst('0.', '.'),
+              textAlign: TextAlign.right,
+              style: const TextStyle(color: _pMuted),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
-class _MetricCards extends StatelessWidget {
-  const _MetricCards({required this.row, required this.keys});
-  final NbaStatsRow row;
-  final List<String> keys;
+class _GameCard extends StatelessWidget {
+  const _GameCard({required this.game});
+  final Map<String, dynamic> game;
+
   @override
-  Widget build(BuildContext context) => Wrap(spacing: 8, runSpacing: 8, children: [for (final key in keys) _Kpi(key.toUpperCase(), _format(row.value(key), key))]);
+  Widget build(BuildContext context) {
+    final home = _firstText(game, const ['home_team_id', 'home_team', 'home']);
+    final away = _firstText(game, const ['away_team_id', 'away_team', 'away', 'visitor_team_id']);
+    final date = _firstText(game, const ['game_date', 'date', 'gameDate']);
+    final status = _firstText(game, const ['status', 'game_status_text', 'result']);
+    return Container(
+      width: 250,
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(color: _pPanel2, border: Border.all(color: _pLine)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            date == '—' ? 'NBA GAME' : date,
+            style: const TextStyle(
+              color: _pMuted,
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 7),
+          _GameTeamLink(label: away),
+          const SizedBox(height: 4),
+          _GameTeamLink(label: home),
+          if (status != '—') ...[
+            const SizedBox(height: 7),
+            Text(status, style: const TextStyle(color: _pAmber, fontSize: 10)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _GameTeamLink extends StatelessWidget {
+  const _GameTeamLink({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: label == '—' ? null : () => openNbaTeamPage(context, label, label),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: label == '—' ? _pMuted : _pBlue,
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      );
 }
 
 class _Hero extends StatelessWidget {
   const _Hero({required this.eyebrow, required this.title, required this.body});
-  final String eyebrow; final String title; final String body;
+  final String eyebrow;
+  final String title;
+  final String body;
+
   @override
-  Widget build(BuildContext context) => Container(width: double.infinity, padding: const EdgeInsets.all(22), decoration: BoxDecoration(color: _pPanel, border: Border.all(color: _pLine)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Text(eyebrow, style: const TextStyle(color: _pBlue, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)), const SizedBox(height: 7), Text(title, style: const TextStyle(color: _pText, fontSize: 29, fontWeight: FontWeight.w900)), const SizedBox(height: 6), Text(body, style: const TextStyle(color: _pMuted, height: 1.45)),
-  ]));
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(color: _pPanel, border: Border.all(color: _pLine)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              eyebrow,
+              style: const TextStyle(
+                color: _pBlue,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1,
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              title,
+              style: const TextStyle(
+                color: _pText,
+                fontSize: 29,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(body, style: const TextStyle(color: _pMuted, height: 1.45)),
+          ],
+        ),
+      );
 }
 
 class _Panel extends StatelessWidget {
   const _Panel({required this.child, this.padding = const EdgeInsets.all(14)});
-  final Widget child; final EdgeInsetsGeometry padding;
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
   @override
-  Widget build(BuildContext context) => Container(width: double.infinity, padding: padding, decoration: BoxDecoration(color: _pPanel, border: Border.all(color: _pLine)), child: child);
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: padding,
+        decoration: BoxDecoration(color: _pPanel, border: Border.all(color: _pLine)),
+        child: child,
+      );
 }
 
 class _Kpi extends StatelessWidget {
-  const _Kpi(this.label, this.value); final String label; final String value;
+  const _Kpi(this.label, this.value);
+  final String label;
+  final String value;
+
   @override
-  Widget build(BuildContext context) => Container(width: 150, padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: _pPanel2, border: Border.all(color: _pLine)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(color: _pMuted, fontSize: 9, fontWeight: FontWeight.w800)), const SizedBox(height: 5), Text(value, style: const TextStyle(color: _pText, fontSize: 18, fontWeight: FontWeight.w900))]));
+  Widget build(BuildContext context) => Container(
+        width: 142,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: _pPanel2, border: Border.all(color: _pLine)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label.toUpperCase(),
+              style: const TextStyle(
+                color: _pMuted,
+                fontSize: 8,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                color: _pText,
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class _Drop extends StatelessWidget {
   const _Drop({required this.value, required this.values, required this.onChanged});
-  final String value; final List<String> values; final ValueChanged<String> onChanged;
+  final String value;
+  final List<String> values;
+  final ValueChanged<String> onChanged;
+
   @override
-  Widget build(BuildContext context) => Container(height: 42, constraints: const BoxConstraints(minWidth: 120, maxWidth: 230), padding: const EdgeInsets.symmetric(horizontal: 9), decoration: BoxDecoration(color: _pPanel2, border: Border.all(color: _pLine)), child: DropdownButtonHideUnderline(child: DropdownButton<String>(value: values.contains(value) ? value : values.first, dropdownColor: _pPanel2, style: const TextStyle(color: _pText), items: [for (final item in values) DropdownMenuItem(value: item, child: Text(item))], onChanged: (v) { if (v != null) onChanged(v); })));
+  Widget build(BuildContext context) => Container(
+        height: 42,
+        constraints: const BoxConstraints(minWidth: 120, maxWidth: 240),
+        padding: const EdgeInsets.symmetric(horizontal: 9),
+        decoration: BoxDecoration(color: _pPanel2, border: Border.all(color: _pLine)),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: values.contains(value) ? value : values.first,
+            isExpanded: true,
+            dropdownColor: _pPanel2,
+            style: const TextStyle(color: _pText),
+            items: [
+              for (final item in values)
+                DropdownMenuItem(value: item, child: Text(item)),
+            ],
+            onChanged: (next) {
+              if (next != null) onChanged(next);
+            },
+          ),
+        ),
+      );
+}
+
+class _FamilyDrop extends StatelessWidget {
+  const _FamilyDrop({required this.value, required this.onChanged});
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 42,
+        width: 235,
+        padding: const EdgeInsets.symmetric(horizontal: 9),
+        decoration: BoxDecoration(color: _pPanel2, border: Border.all(color: _pLine)),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: value,
+            isExpanded: true,
+            dropdownColor: _pPanel2,
+            style: const TextStyle(color: _pText),
+            items: [
+              for (final family in nbaTerminalStatFamilies)
+                DropdownMenuItem(value: family.id, child: Text(family.label)),
+            ],
+            onChanged: (next) {
+              if (next != null) onChanged(next);
+            },
+          ),
+        ),
+      );
+}
+
+class _EnumDrop<T> extends StatelessWidget {
+  const _EnumDrop({
+    required this.value,
+    required this.values,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final T value;
+  final List<T> values;
+  final String Function(T) label;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 42,
+        constraints: const BoxConstraints(minWidth: 135, maxWidth: 210),
+        padding: const EdgeInsets.symmetric(horizontal: 9),
+        decoration: BoxDecoration(color: _pPanel2, border: Border.all(color: _pLine)),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<T>(
+            value: value,
+            isExpanded: true,
+            dropdownColor: _pPanel2,
+            style: const TextStyle(color: _pText),
+            items: [
+              for (final item in values)
+                DropdownMenuItem(value: item, child: Text(label(item))),
+            ],
+            onChanged: (next) {
+              if (next != null) onChanged(next);
+            },
+          ),
+        ),
+      );
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+        decoration: BoxDecoration(
+          color: _pPanel2,
+          border: Border.all(color: _pGreen.withValues(alpha: .6)),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: _pGreen,
+            fontSize: 9,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      );
 }
 
 class _Head extends StatelessWidget {
-  const _Head(this.text); final String text;
+  const _Head(this.text);
+  final String text;
+
   @override
-  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 10), child: Text(text, maxLines: 1, style: const TextStyle(color: _pMuted, fontSize: 9, fontWeight: FontWeight.w900)));
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+        child: Text(
+          text,
+          maxLines: 1,
+          style: const TextStyle(
+            color: _pMuted,
+            fontSize: 9,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      );
 }
 
 class _Cell extends StatelessWidget {
-  const _Cell(this.text); final String text;
+  const _Cell(this.text);
+  final String text;
+
   @override
-  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 9), child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _pText, fontSize: 10, fontWeight: FontWeight.w700)));
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: _pText,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
 }
 
 class _EntityCell extends StatelessWidget {
-  const _EntityCell({required this.label, required this.onTap}); final String label; final VoidCallback onTap;
+  const _EntityCell({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+
   @override
-  Widget build(BuildContext context) => InkWell(onTap: onTap, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 9), child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _pBlue, fontSize: 10, fontWeight: FontWeight.w900, decoration: TextDecoration.underline, decorationColor: _pBlue))));
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _pBlue,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              decoration: TextDecoration.underline,
+              decorationColor: _pBlue,
+            ),
+          ),
+        ),
+      );
 }
 
 class _Section extends StatelessWidget {
-  const _Section(this.text); final String text;
+  const _Section(this.text);
+  final String text;
+
   @override
-  Widget build(BuildContext context) => Text(text, style: const TextStyle(color: _pAmber, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: .7));
+  Widget build(BuildContext context) => Text(
+        text,
+        style: const TextStyle(
+          color: _pAmber,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          letterSpacing: .7,
+        ),
+      );
 }
 
 class _Module extends StatelessWidget {
-  const _Module(this.label, this.icon); final String label; final IconData icon;
+  const _Module(this.label, this.icon);
+  final String label;
+  final IconData icon;
+
   @override
-  Widget build(BuildContext context) => Container(width: 190, padding: const EdgeInsets.all(13), decoration: BoxDecoration(color: _pPanel, border: Border.all(color: _pLine)), child: Row(children: [Icon(icon, color: _pBlue), const SizedBox(width: 9), Expanded(child: Text(label, style: const TextStyle(color: _pText, fontWeight: FontWeight.w800)))]));
+  Widget build(BuildContext context) => Container(
+        width: 196,
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(color: _pPanel, border: Border.all(color: _pLine)),
+        child: Row(
+          children: [
+            Icon(icon, color: _pBlue),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: _pText,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 String _format(double? value, String key) {
   if (value == null) return '—';
   if (key == 'gp') return value.round().toString();
-  if (key.contains('pct') || key == 'ft_rate' || key == 'three_rate') return '${(value.abs() <= 1.5 ? value * 100 : value).toStringAsFixed(1)}%';
+  if (key.contains('pct') || key == 'ft_rate' || key == 'three_rate') {
+    return '${(value.abs() <= 1.5 ? value * 100 : value).toStringAsFixed(1)}%';
+  }
   return value.toStringAsFixed(1);
 }
-String _value(Object? v) => v is num ? v.toStringAsFixed(1) : (v?.toString() ?? '—');
 
-extension _FirstOrNull<T> on Iterable<T> { T? get firstOrNull => isEmpty ? null : first; }
+String _value(Object? value) =>
+    value is num ? value.toStringAsFixed(1) : (value?.toString() ?? '—');
+
+String _primaryTeam(String value) => value
+    .split(RegExp(r'[,/ ]+'))
+    .where((part) => part.isNotEmpty && part != '—')
+    .firstOrNull ??
+    value;
+
+double _winPct(Map<String, dynamic> record) {
+  final wins = _number(record['wins']);
+  final losses = _number(record['losses']);
+  final games = wins + losses;
+  return games <= 0 ? 0 : wins / games;
+}
+
+double _number(Object? value) {
+  if (value is num) return value.toDouble();
+  return double.tryParse('${value ?? ''}') ?? 0;
+}
+
+String _firstText(Map<String, dynamic> row, List<String> keys) {
+  for (final key in keys) {
+    final value = '${row[key] ?? ''}'.trim();
+    if (value.isNotEmpty && value != 'null') return value;
+  }
+  return '—';
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull => isEmpty ? null : first;
+}
