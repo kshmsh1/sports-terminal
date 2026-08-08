@@ -81,6 +81,10 @@ class LaunchAuthClient {
     required String password,
     required String displayName,
     required bool organizationAccount,
+    required bool acceptedTerms,
+    required bool acceptedPrivacy,
+    required String termsVersion,
+    required String privacyVersion,
     String organizationName = '',
   }) async {
     final response = await _request(
@@ -91,6 +95,10 @@ class LaunchAuthClient {
         'password': password,
         'display_name': displayName.trim(),
         'account_type': organizationAccount ? 'organization' : 'individual',
+        'accepted_terms': acceptedTerms,
+        'accepted_privacy': acceptedPrivacy,
+        'terms_version': termsVersion,
+        'privacy_version': privacyVersion,
         if (organizationAccount)
           'organization_name': organizationName.trim(),
       },
