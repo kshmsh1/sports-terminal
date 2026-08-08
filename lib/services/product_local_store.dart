@@ -80,11 +80,38 @@ class ProductLocalStore {
     await preferences.remove(key);
   }
 
+  Future<List<String>> loadStringList(
+    String key, {
+    List<String> fallback = const [],
+  }) async {
+    final preferences = await SharedPreferences.getInstance();
+    final native = preferences.getStringList(key);
+    if (native != null) return List<String>.from(native);
+    final encoded = preferences.getString(key);
+    if (encoded == null || encoded.isEmpty) return List<String>.from(fallback);
+    try {
+      final decoded = jsonDecode(encoded);
+      if (decoded is List) {
+        return decoded.map((value) => value.toString()).toList(growable: false);
+      }
+    } catch (_) {
+      return List<String>.from(fallback);
+    }
+    return List<String>.from(fallback);
+  }
+
+  Future<void> saveStringList(String key, List<String> values) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setStringList(key, List<String>.from(values));
+  }
+
   Future<Set<String>> loadStringSet(
     String key, {
     Set<String> fallback = const {},
   }) async {
     final preferences = await SharedPreferences.getInstance();
+    final native = preferences.getStringList(key);
+    if (native != null) return native.toSet();
     final encoded = preferences.getString(key);
     if (encoded == null || encoded.isEmpty) return Set<String>.from(fallback);
     try {
@@ -101,7 +128,7 @@ class ProductLocalStore {
   Future<void> saveStringSet(String key, Set<String> values) async {
     final preferences = await SharedPreferences.getInstance();
     final sorted = values.toList()..sort();
-    await preferences.setString(key, jsonEncode(sorted));
+    await preferences.setStringList(key, sorted);
   }
 
   Future<Map<String, String>> loadStringMap(
