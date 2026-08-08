@@ -1,0 +1,60 @@
+name: Stats Semantic Refinement
+
+on:
+  push:
+    branches: [agent/stats-workstation-visual-and-metric-overhaul]
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/stats-workstation-visual-and-metric-overhaul
+      - name: Refine family-specific defensive rebounding and usage semantics
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('lib/services/nba_stats_metric_catalog.dart')
+          text = path.read_text()
+          old_family = """    metrics: [
+      'spg', 'bpg', 'deflections_pg', 'dreb', 'charges_drawn_pg',
+      'contested_shots_pg', 'loose_balls_recovered_pg', 'dfg_pct',
+      'rim_dfg_pct', 'midrange_dfg_pct', 'three_dfg_pct', 'box_out_pct',
+      'blow_by_rate', 'contest_distance', 'help_defense_pg', 'deterrence_rate',
+      'switch_attrition_rate', 'closeout_speed', 'anticipation',
+    ],
+  ),"""
+          new_family = """    metrics: [
+      'spg', 'bpg', 'deflections_pg', 'dreb', 'charges_drawn_pg',
+      'contested_shots_pg', 'loose_balls_recovered_pg', 'dfg_pct',
+      'rim_dfg_pct', 'midrange_dfg_pct', 'three_dfg_pct', 'box_out_pct',
+      'blow_by_rate', 'contest_distance', 'help_defense_pg', 'deterrence_rate',
+      'switch_attrition_rate', 'closeout_speed', 'anticipation',
+    ],
+    expansionOverrides: {
+      'dreb': ['contested_dreb_pg', 'uncontested_dreb_pg'],
+    },
+  ),"""
+          if text.count(old_family) != 1:
+              raise SystemExit('defensive family block did not match exactly once')
+          text = text.replace(old_family, new_family)
+          old_usage = "  _m('usage', 'Usage Rate', 'USG%', 'Movement', 'Estimated share of team possessions used by the player while on court.', raw: ['usage', 'usage_pct', 'usg_pct'], engineKey: 'scoring_load', format: NbaTerminalMetricFormat.percent),"
+          new_usage = "  _m('usage', 'Usage Rate', 'USG%', 'Movement', 'Estimated share of team possessions used by the player while on court.', raw: ['usage', 'usage_pct', 'usg_pct'], format: NbaTerminalMetricFormat.percent, providerNative: true),"
+          if text.count(old_usage) != 1:
+              raise SystemExit('usage definition did not match exactly once')
+          text = text.replace(old_usage, new_usage)
+          path.write_text(text)
+          PY
+      - name: Commit refinement
+        shell: bash
+        run: |
+          git config user.name "sports-terminal-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add lib/services/nba_stats_metric_catalog.dart
+          git commit -m "Refine defensive rebounding and usage semantics"
+          git push origin HEAD:agent/stats-workstation-visual-and-metric-overhaul
