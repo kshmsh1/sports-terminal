@@ -67,7 +67,9 @@ class _ProductNbaHistoricalIntelligenceScreenState
 
   void _refreshContext() {
     if (!mounted) return;
-    setState(() => _contextFuture = _contexts.load());
+    setState(() {
+      _contextFuture = _contexts.load();
+    });
   }
 
   @override

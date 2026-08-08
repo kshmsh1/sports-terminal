@@ -59,7 +59,9 @@ class _ProductFrontOfficeRegistryScreenState
   }
 
   Future<void> _refresh() async {
-    setState(() => future = _load());
+    setState(() {
+      future = _load();
+    });
     await future;
   }
 

@@ -51,7 +51,9 @@ class _ProductConnectedCommunityScreenState
   }
 
   Future<void> _refresh() async {
-    setState(() => future = _load());
+    setState(() {
+      future = _load();
+    });
     await future;
   }
 
@@ -325,7 +327,9 @@ class _ProductConnectedMessagesScreenState
   }
 
   Future<void> _refresh() async {
-    setState(() => conversationsFuture = service.conversations(widget.session));
+    setState(() {
+      conversationsFuture = service.conversations(widget.session);
+    });
     await conversationsFuture;
     if (selectedConversation != null) {
       await _selectConversation(selectedConversation!);

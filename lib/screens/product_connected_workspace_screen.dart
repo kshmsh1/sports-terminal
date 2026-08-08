@@ -1337,7 +1337,9 @@ class _SharingDialogState extends State<_SharingDialog> {
     );
     if (!mounted) return;
     userController.clear();
-    setState(() => future = widget.service.permissions(widget.session));
+    setState(() {
+      future = widget.service.permissions(widget.session);
+    });
   }
 
   Future<void> _remove(String userId) async {
@@ -1346,7 +1348,9 @@ class _SharingDialogState extends State<_SharingDialog> {
       userId: userId,
     );
     if (!mounted) return;
-    setState(() => future = widget.service.permissions(widget.session));
+    setState(() {
+      future = widget.service.permissions(widget.session);
+    });
   }
 
   @override

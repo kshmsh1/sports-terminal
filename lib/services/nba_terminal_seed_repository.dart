@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show FlutterError;
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show AssetManifest, rootBundle;
 import 'package:http/http.dart' as http;
 
 import 'product_local_store.dart';
@@ -57,6 +57,19 @@ class NbaTerminalSeedRepository {
     final fallback = config['fallbackAssetPath']?.toString() ??
         'assets/data/nba/terminal_seed/nba_2025';
     final allowFallback = config['allowFallback'] != false;
+
+    // On Flutter Web, probing a missing asset emits a noisy engine-level 404
+    // before rootBundle throws. Consult the bundle manifest first so an absent
+    // current-season candidate can fall back without requesting every file.
+    if (allowFallback &&
+        candidate != fallback &&
+        !await _assetExists('$candidate/manifest.json')) {
+      return _loadFrom(
+        fallback,
+        launchConfig: config,
+        usedFallback: true,
+      );
+    }
 
     try {
       return await _loadFrom(
@@ -245,6 +258,17 @@ class NbaTerminalSeedRepository {
     return _loadList(resolvedBasePath, 'player_game_logs_top.json');
   }
 
+  Future<bool> _assetExists(String path) async {
+    try {
+      final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+      return manifest.listAssets().contains(path);
+    } catch (_) {
+      // Tests and older embedding environments may not expose the binary asset
+      // manifest. Preserve the existing load-and-catch behavior in that case.
+      return true;
+    }
+  }
+
   Future<Map<String, dynamic>> _loadObject(
     String resolvedBasePath,
     String filename,
@@ -257,6 +281,7 @@ class NbaTerminalSeedRepository {
     String resolvedBasePath,
     String filename,
   ) async {
+    if (!await _assetExists('$resolvedBasePath/$filename')) return null;
     try {
       return await _loadObject(resolvedBasePath, filename);
     } catch (_) {
@@ -283,6 +308,7 @@ class NbaTerminalSeedRepository {
     String resolvedBasePath,
     String filename,
   ) async {
+    if (!await _assetExists('$resolvedBasePath/$filename')) return null;
     try {
       return await _loadList(resolvedBasePath, filename);
     } catch (_) {

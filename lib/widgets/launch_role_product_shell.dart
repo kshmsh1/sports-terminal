@@ -76,7 +76,9 @@ class _LaunchRoleProductShellState extends State<LaunchRoleProductShell> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _statusFuture = _loadStatus());
+    setState(() {
+      _statusFuture = _loadStatus();
+    });
     await _statusFuture;
   }
 

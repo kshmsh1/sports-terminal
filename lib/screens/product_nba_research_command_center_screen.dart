@@ -118,7 +118,9 @@ class _ProductNbaResearchCommandCenterScreenState
     final current = await _workspaceFuture;
     final next = await _store.upsert(widget.session, current, workspace);
     if (!mounted) return;
-    setState(() => _workspaceFuture = Future.value(next));
+    setState(() {
+      _workspaceFuture = Future.value(next);
+    });
   }
 
   Future<void> _editNotes(NbaResearchWorkspace workspace) async {
@@ -194,7 +196,9 @@ class _ProductNbaResearchCommandCenterScreenState
     final current = await _workspaceFuture;
     final next = await _store.remove(widget.session, current, workspace.id);
     if (!mounted) return;
-    setState(() => _workspaceFuture = Future.value(next));
+    setState(() {
+      _workspaceFuture = Future.value(next);
+    });
   }
 
   void _openWorkspace(NbaResearchWorkspace workspace) {
@@ -290,9 +294,9 @@ class _ProductNbaResearchCommandCenterScreenState
           const SizedBox(width: 8),
           IconButton(
             tooltip: 'Reload saved research',
-            onPressed: () => setState(
-              () => _workspaceFuture = _store.load(widget.session),
-            ),
+            onPressed: () => setState(() {
+            _workspaceFuture = _store.load(widget.session);
+          }),
             icon: const Icon(Icons.refresh_rounded, color: _text),
           ),
           if (!compact)
