@@ -8,6 +8,8 @@ import '../screens/product_connected_data_studio_screen.dart';
 import '../screens/product_connected_network_screens.dart';
 import '../screens/product_community_v2_screen.dart';
 import '../screens/product_articles_v2_screen.dart';
+import '../screens/product_community_v2_screen.dart';
+import '../screens/product_articles_v2_screen.dart';
 import '../screens/product_connected_transaction_screens.dart';
 import '../screens/product_connected_workspace_screen.dart';
 import '../screens/product_content_ops_screens.dart';
