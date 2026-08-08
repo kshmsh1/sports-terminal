@@ -327,7 +327,7 @@ class _TeamStats extends StatelessWidget {
               const SizedBox(height: 5),
               Text('${(row.value('pts') ?? 0).toStringAsFixed(1)} PTS · ${(row.value('reb') ?? 0).toStringAsFixed(1)} REB · ${(row.value('ast') ?? 0).toStringAsFixed(1)} AST', style: const TextStyle(color: _tbText, fontSize: 9)),
               const SizedBox(height: 3),
-              Text('${engine.formatValue('ts_pct', row.value('ts_pct'))} TS · ${engine.formatValue('bpm', row.value('bpm'))} BPM', style: const TextStyle(color: _tbMuted, fontSize: 9)),
+              Text('${_percent(row.value('ts_pct'))} TS · ${_numberText(row.value('bpm'))} BPM', style: const TextStyle(color: _tbMuted, fontSize: 9)),
             ])))),
         ]),
       ]),
@@ -453,7 +453,7 @@ class _BlogPanel extends StatelessWidget {
 }
 
 String _teamId(Map<String, dynamic> row) {
-  for (final key in const ['team_id', 'team', 'abbreviation', 'team_abbreviation', 'id']) {
+  for (final key in const ['team_abbreviation', 'abbreviation', 'team', 'team_id', 'id']) {
     final value = row[key]?.toString().trim() ?? '';
     if (value.isNotEmpty) return value;
   }
@@ -477,4 +477,16 @@ String _storyHeadline(String team, Map<String, dynamic> game, int index) {
 T? _firstOrNull<T>(Iterable<T> values) {
   final iterator = values.iterator;
   return iterator.moveNext() ? iterator.current : null;
+}
+
+String _numberText(Object? value) {
+  final number = value is num ? value.toDouble() : double.tryParse(value?.toString() ?? '');
+  return number == null ? '—' : number.toStringAsFixed(1);
+}
+
+String _percent(Object? value) {
+  final number = value is num ? value.toDouble() : double.tryParse(value?.toString() ?? '');
+  if (number == null) return '—';
+  final normalized = number.abs() <= 1.5 ? number * 100 : number;
+  return '${normalized.toStringAsFixed(1)}%';
 }

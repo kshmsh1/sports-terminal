@@ -31,7 +31,7 @@ void main() {
     final advanced = File('lib/screens/product_nba_advanced_stats_document_screen.dart').readAsStringSync();
     expect(advanced, contains('nbaTerminalStatFamilies'));
     expect(advanced, contains('nbaTerminalMetrics'));
-    expect(advanced, contains('NbaStatsBasis.per100'));
+    expect(advanced, contains('NbaStatsBasis.values'));
     expect(advanced, contains('ADVANCED STAT GLOSSARY'));
     expect(advanced, contains('openNbaPlayerPage'));
     expect(advanced, contains('openNbaTeamPage'));

@@ -236,12 +236,12 @@ class _ProductPersistedProfileScreenState extends State<ProductPersistedProfileS
                 onChanged: (key, value) {
                   setState(() {
                     switch (key) {
-                      case 'email': _emailDigest = value;
-                      case 'team': _teamAlerts = value;
-                      case 'player': _playerAlerts = value;
-                      case 'reply': _replyAlerts = value;
-                      case 'message': _messageAlerts = value;
-                      case 'product': _productUpdates = value;
+                      case 'email': _emailDigest = value; break;
+                      case 'team': _teamAlerts = value; break;
+                      case 'player': _playerAlerts = value; break;
+                      case 'reply': _replyAlerts = value; break;
+                      case 'message': _messageAlerts = value; break;
+                      case 'product': _productUpdates = value; break;
                     }
                   });
                   _save();
@@ -255,10 +255,10 @@ class _ProductPersistedProfileScreenState extends State<ProductPersistedProfileS
                 onChanged: (key, value) {
                   setState(() {
                     switch (key) {
-                      case 'public': _publicProfile = value;
-                      case 'favorites': _showFavorites = value;
-                      case 'activity': _showActivity = value;
-                      case 'awards': _showAwards = value;
+                      case 'public': _publicProfile = value; break;
+                      case 'favorites': _showFavorites = value; break;
+                      case 'activity': _showActivity = value; break;
+                      case 'awards': _showAwards = value; break;
                     }
                   });
                   _save();
@@ -668,7 +668,7 @@ String _cleanHandle(String value) {
 String _defaultUsername(String value) => _cleanHandle(value);
 String _initials(String value) => value.trim().isEmpty ? 'ST' : value.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty).take(2).map((part) => part[0].toUpperCase()).join();
 String _teamId(Map<String, dynamic> row) {
-  for (final key in const ['team_id', 'team', 'abbreviation', 'team_abbreviation', 'id']) {
+  for (final key in const ['team_abbreviation', 'abbreviation', 'team', 'team_id', 'id']) {
     final value = row[key]?.toString().trim() ?? '';
     if (value.isNotEmpty) return value;
   }

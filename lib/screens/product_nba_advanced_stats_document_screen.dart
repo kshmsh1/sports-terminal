@@ -169,7 +169,6 @@ class _ProductNbaAdvancedStatsDocumentScreenState
               position: _position,
               search: _search,
               minGames: _minGames,
-              favoriteOnly: false,
               compareCount: _compareIds.length,
               onFamily: _changeFamily,
               onBasis: (value) => setState(() => _basis = value),
@@ -282,7 +281,6 @@ class _Controls extends StatelessWidget {
     required this.position,
     required this.search,
     required this.minGames,
-    required this.favoriteOnly,
     required this.compareCount,
     required this.onFamily,
     required this.onBasis,
@@ -300,7 +298,6 @@ class _Controls extends StatelessWidget {
   final String position;
   final TextEditingController search;
   final TextEditingController minGames;
-  final bool favoriteOnly;
   final int compareCount;
   final ValueChanged<String> onFamily;
   final ValueChanged<NbaStatsBasis> onBasis;

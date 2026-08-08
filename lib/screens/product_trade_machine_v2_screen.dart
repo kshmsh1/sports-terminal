@@ -904,7 +904,7 @@ List<String> _teamIds(NbaTerminalSeedSnapshot data) {
   return result;
 }
 String _teamId(Map<String,dynamic> row) {
-  for (final key in const ['team_id','abbreviation','team_abbreviation','id']) {
+  for (final key in const ['team_abbreviation','abbreviation','team','team_id','id']) {
     final value = row[key]?.toString().trim() ?? '';
     if (value.isNotEmpty) return value;
   }
@@ -935,7 +935,7 @@ int _discoverRosterCount(NbaTerminalSeedSnapshot data, String team) {
   for (final row in const NbaStatsWorkstationEngine().buildRows(data)) {
     if (row.team.split(RegExp(r'[,/ ]+')).contains(team)) names.add(row.playerId);
   }
-  return names.isEmpty ? 15 : names.length.clamp(10, 18);
+  return names.isEmpty ? 15 : names.length.clamp(10, 18).toInt();
 }
 double _discoverPlayerSalary(NbaTerminalSeedSnapshot data, String playerId, String playerName) {
   for (final row in data.players) {
