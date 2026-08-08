@@ -60,9 +60,11 @@ app.middleware("http")(enforce_launch_authorization)
 def _attach_router_routes(router) -> None:
     """Attach already-prefixed routes without route-snapshot loss.
 
-    Historical, awards and terminal routes are composed before the generic
-    /v2/nba/{season}/{dataset} route. Attaching their final APIRoute objects directly
-    preserves dynamic composition and unambiguous route ordering.
+    Several Sports Terminal routers are assembled through modules that also depend on
+    shared launch services. In those cases FastAPI ``include_router`` can snapshot a
+    router before a circular import has finished populating it. Attaching the final
+    APIRoute objects directly preserves the completed route graph and deduplicates by
+    path/method signature.
     """
     existing = {
         (
@@ -98,8 +100,12 @@ app.include_router(nba_data_router)
 app.include_router(front_office_hardened_router)
 app.include_router(front_office_router)
 app.include_router(trust_safety_router)
-app.include_router(community_router)
-app.include_router(profile_router)
+# Community and profile both reuse launch/trust services and can participate in a
+# circular import when contract harnesses import their modules before main_launch.
+# Use the same final-route attachment contract as the historical composition layer
+# so the launch app always exposes the completed network/account API graph.
+_attach_router_routes(community_router)
+_attach_router_routes(profile_router)
 app.include_router(python_runtime_router)
 app.include_router(customer_operations_router)
 app.include_router(automation_governance_router)
