@@ -49,3 +49,6 @@ jobs:
 
       - name: Deep historical research contract
         run: python backend/scripts/historical_research_launch_contract_test.py
+
+      - name: Entity and season intelligence contract
+        run: python backend/scripts/historical_entity_intelligence_contract_test.py
