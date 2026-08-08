@@ -6,6 +6,7 @@ from .auth_api import router as auth_router
 from .auth_guard import enforce_launch_auth
 from .authorization_guard import enforce_launch_authorization
 from .automation_governance_api import router as automation_governance_router
+from .community_api import router as community_router
 from .completion_status_api import router as completion_status_router
 from .customer_operations_api import router as customer_operations_router
 from .front_office_api import router as front_office_router
@@ -41,13 +42,13 @@ front_office_module.front_office_reconciliation = hardened_reconciliation(
 )
 
 app.title = "Sports Terminal Launch API"
-app.version = "1.7.0"
+app.version = "1.8.0"
 app.description = (
     "Launch-oriented Sports Terminal API for authentication, certified and historical NBA data, "
     "canonical awards and voting, canonical contracts and draft assets, transaction ledgers, "
-    "moderated community and messaging, isolated Python analysis, customer operations, launch "
-    "automation, organization governance, versioned workspaces, saved sports objects, platform "
-    "operations, and the unified NBA terminal."
+    "ranked community discovery, threaded discussion, moderation and messaging, isolated Python "
+    "analysis, customer operations, launch automation, organization governance, versioned "
+    "workspaces, saved sports objects, platform operations, and the unified NBA terminal."
 )
 
 app.middleware("http")(enforce_launch_auth)
@@ -96,6 +97,7 @@ app.include_router(nba_data_router)
 app.include_router(front_office_hardened_router)
 app.include_router(front_office_router)
 app.include_router(trust_safety_router)
+app.include_router(community_router)
 app.include_router(python_runtime_router)
 app.include_router(customer_operations_router)
 app.include_router(automation_governance_router)
