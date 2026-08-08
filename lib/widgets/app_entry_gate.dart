@@ -4,6 +4,7 @@ import '../controllers/auth_controller.dart';
 import '../controllers/internal_workspace_controller.dart';
 import '../models/app_session.dart';
 import '../screens/login_screen.dart';
+import 'admin_nba_terminal_overlay.dart';
 import 'role_research_augmented_shell.dart';
 import 'terminal_shell.dart';
 
@@ -30,7 +31,10 @@ class AppEntryGate extends StatelessWidget {
           return LoginScreen(controller: authController);
         }
         if (session.role.canAccessPlatformAdmin) {
-          return const TerminalShell();
+          return AdminNbaTerminalOverlay(
+            session: session,
+            child: const TerminalShell(),
+          );
         }
         return RoleResearchAugmentedShell(
           session: session,
