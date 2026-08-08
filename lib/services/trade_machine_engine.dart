@@ -145,14 +145,14 @@ class TradeMachineEngine {
 
   double _maximumIncoming(TeamCapContext context, double outgoing, double postTradeSalary) {
     if (context.teamSalary < context.salaryCap) {
-      final room = (context.salaryCap - context.teamSalary).clamp(0, double.infinity);
+      final room = (context.salaryCap - context.teamSalary).clamp(0, double.infinity).toDouble();
       return outgoing + room + 250000;
     }
     if (postTradeSalary > context.firstApron) return outgoing;
     if (outgoing <= 0) return 0;
     final scaledSevenPointFive = 7500000 * (context.salaryCap / _cba2023Cap);
-    final expanded = [
-      (2 * outgoing + 250000).clamp(0, outgoing + scaledSevenPointFive),
+    final expanded = <double>[
+      (2 * outgoing + 250000).clamp(0, outgoing + scaledSevenPointFive).toDouble(),
       1.25 * outgoing + 250000,
     ].reduce((a, b) => a > b ? a : b);
     return expanded;
