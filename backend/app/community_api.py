@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from datetime import datetime, timezone
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -419,7 +419,7 @@ def community_feed(
     sort: str = "hot",
     followed_only: bool = False,
     saved_only: bool = False,
-    limit: int = Query(default=100, ge=1, le=500),
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> dict[str, Any]:
     init_community_db()
     sort_key = sort.strip().lower()
@@ -442,8 +442,6 @@ def community_feed(
         if saved_only:
             clauses.append("EXISTS (SELECT 1 FROM community_saved_posts sp WHERE sp.user_id=? AND sp.post_id=p.id)")
             params.append(viewer_user_id)
-        # Fetch a bounded candidate pool before ranking. Hot/controversial are calculated
-        # from vote/comment state in Python to keep the formula explicit and testable.
         candidate_limit = min(max(limit * 5, 250), 2000)
         params.append(candidate_limit)
         rows = connection.execute(
