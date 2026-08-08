@@ -1,0 +1,56 @@
+name: Format Platform Expansion
+
+on:
+  push:
+    branches: [agent/full-platform-product-expansion]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/full-platform-product-expansion
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Format expansion Dart source
+        run: |
+          dart format \
+            lib/controllers/auth_controller.dart \
+            lib/services/launch_auth_client.dart \
+            lib/services/trade_machine_engine.dart \
+            lib/screens/login_screen.dart \
+            lib/screens/product_legal_information_v2.dart \
+            lib/screens/product_nba_entity_pages_v2.dart \
+            lib/screens/product_nba_basic_stats_screen.dart \
+            lib/screens/product_nba_advanced_stats_document_screen.dart \
+            lib/screens/product_advanced_nba_tools_screen.dart \
+            lib/screens/product_nba_awards_screen.dart \
+            lib/screens/product_nba_hub_v2_screen.dart \
+            lib/screens/product_python_lab_v2_screen.dart \
+            lib/screens/product_connected_data_studio_screen.dart \
+            lib/screens/product_team_blogs_screen.dart \
+            lib/screens/product_profile_persisted_screen.dart \
+            lib/screens/product_community_v2_screen.dart \
+            lib/screens/product_articles_v2_screen.dart \
+            lib/screens/product_trade_machine_v2_screen.dart \
+            lib/screens/product_trade_machine_screen.dart \
+            lib/widgets/connected_role_terminal_shell.dart \
+            test/platform_expansion_contract_test.dart \
+            test/trade_machine_v2_engine_test.dart
+      - name: Remove temporary formatter and commit
+        shell: bash
+        run: |
+          git rm -f .github/workflows/platform_expansion_format.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Format full platform expansion source"
+          git push origin HEAD:agent/full-platform-product-expansion
