@@ -54,12 +54,11 @@ app.middleware("http")(enforce_launch_authorization)
 
 
 def _attach_router_routes(router) -> None:
-    """Attach an already-prefixed dynamically composed router without snapshot loss.
+    """Attach already-prefixed routes without route-snapshot loss.
 
-    The historical router is augmented at import time with deep-research APIRoute
-    objects. Attaching the final route objects directly keeps that dynamic composition
-    intact and, critically, preserves their position before the generic
-    /v2/nba/{season}/{dataset} route.
+    Historical and terminal routes are composed before the generic
+    /v2/nba/{season}/{dataset} route. Attaching their final APIRoute objects directly
+    preserves both dynamic historical composition and unambiguous terminal routing.
     """
     existing = {
         (
@@ -86,9 +85,10 @@ app.include_router(workspace_router)
 # the dynamic certified-release route can interpret "history" as a season value.
 _attach_router_routes(historical_nba_router)
 _attach_router_routes(historical_nba_compat_router)
-# The unified terminal endpoints must also precede the generic certified-release
-# NBA route so /v2/nba/terminal/* can never be interpreted as a season dataset.
-app.include_router(nba_terminal_router)
+# Terminal routes receive the same explicit ordering guarantee. This also avoids
+# FastAPI route-snapshot behavior when the shared app object has been imported by a
+# contract harness before launch composition finishes.
+_attach_router_routes(nba_terminal_router)
 app.include_router(nba_data_router)
 app.include_router(front_office_hardened_router)
 app.include_router(front_office_router)
