@@ -53,6 +53,7 @@ def main() -> int:
         os.environ["SPORTS_TERMINAL_DB_PATH"] = str(root / "launch.sqlite")
         sys.path.insert(0, str(repo_root / "backend"))
 
+        from app import completion_status_api as completion  # noqa: PLC0415
         from app import main_launch as launch  # noqa: PLC0415
         from app import nba_terminal_api as terminal  # noqa: PLC0415
 
@@ -98,6 +99,21 @@ def main() -> int:
         assert commands["count"] >= 1, commands
         assert any(row["id"] == "history" for row in commands["rows"]), commands
 
+        completion_state = completion.platform_completion_status()
+        modules = completion_state["internal_modules"]
+        assert modules["canonical_historical_nba_warehouse"] == "implemented", modules
+        assert modules["nba_terminal_command_layer"] == "implemented", modules
+        assert modules["nba_entity_intelligence"] == "implemented", modules
+        assert modules["nba_historical_intelligence"] == "implemented", modules
+        assert modules["nba_stats_workstation"] == "implemented", modules
+        assert modules["nba_analytics_suite"] == "implemented", modules
+        assert modules["nba_global_command_shortcut"] == "implemented", modules
+        assert completion_state["internal_ready"] is True, completion_state
+        # Current catalog population and production operations stay explicit blockers;
+        # the completion registry must never hide them just because NBA product code exists.
+        assert isinstance(completion_state["source_blockers"], list), completion_state
+        assert isinstance(completion_state["external_blockers"], list), completion_state
+
         print(
             json.dumps(
                 {
@@ -106,6 +122,8 @@ def main() -> int:
                     "players": manifest["counts"]["players"],
                     "season_span": manifest["season_span"],
                     "command_count": len(manifest["commands"]),
+                    "implemented_modules": len(modules),
+                    "completion_status": completion_state["status"],
                 },
                 indent=2,
             )
