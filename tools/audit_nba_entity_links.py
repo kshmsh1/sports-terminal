@@ -25,7 +25,8 @@ CONTRACTS: dict[str, tuple[str, ...]] = {
         "openNbaTeamPage(context, id, id)",
     ),
     "lib/screens/product_nba_awards_v2_screen.dart": (
-        "openNbaPlayerPage(context, playerKey, playerName)",
+        "_openHistoricalPlayerPage(",
+        "ProductHistoricalPlayerDossier(",
         "class _AwardHistoryRow",
     ),
     "lib/screens/product_trade_machine_v2_screen.dart": (
@@ -38,6 +39,12 @@ CONTRACTS: dict[str, tuple[str, ...]] = {
         "openNbaTeamPage(context, team, team)",
         "onOpenTeam",
         "game['opponent_team_id']",
+    ),
+    "lib/screens/product_historical_nba_entity_dossier.dart": (
+        "class ProductHistoricalPlayerDossier",
+        "class ProductHistoricalTeamDossier",
+        "nbaTerminalStatFamilies",
+        "NbaStatsSeasonType.playoffs",
     ),
 }
 
@@ -65,7 +72,7 @@ def main() -> int:
                 passed += 1
 
     payload = {
-        "contract": "canonical-player-team-links-v1",
+        "contract": "canonical-player-team-links-v2-all-era",
         "surfaces": len(CONTRACTS),
         "assertions": assertions,
         "passed": passed,
