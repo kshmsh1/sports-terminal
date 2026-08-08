@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/nba_awards_repository.dart';
-import 'product_nba_public_pages_screen.dart';
+import 'product_historical_nba_entity_dossier.dart';
 
 const _aBg = Color(0xFF090D12);
 const _aPanel = Color(0xFF0F151C);
@@ -291,7 +291,7 @@ class _AwardHero extends StatelessWidget {
             ),
             SizedBox(height: 6),
             Text(
-              'Annual awards, All-NBA and All-Defense teams, All-Star selections and voting shares are queried from the canonical historical warehouse. Source records remain preserved when a modern product category does not apply cleanly.',
+              'Annual awards, All-NBA and All-Defense teams, All-Star selections and voting shares are queried from the canonical historical warehouse. Every historical player result opens an all-era dossier backed by canonical career evidence.',
               style: TextStyle(color: _aMuted, height: 1.5),
             ),
           ],
@@ -536,7 +536,11 @@ class _AwardHistoryRow extends StatelessWidget {
             child: InkWell(
               onTap: playerKey.isEmpty
                   ? null
-                  : () => openNbaPlayerPage(context, playerKey, playerName),
+                  : () => _openHistoricalPlayerPage(
+                        context,
+                        playerKey,
+                        playerName,
+                      ),
               child: Text(
                 playerName,
                 style: TextStyle(
@@ -585,6 +589,40 @@ class _AwardHistoryRow extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _openHistoricalPlayerPage(
+  BuildContext context,
+  String playerKey,
+  String playerName,
+) {
+  return Navigator.of(context).push<void>(
+    MaterialPageRoute(
+      settings: RouteSettings(
+        name: '/nba/players/${Uri.encodeComponent(playerKey)}',
+      ),
+      builder: (_) => Scaffold(
+        backgroundColor: _aBg,
+        appBar: AppBar(
+          backgroundColor: _aPanel,
+          foregroundColor: _aText,
+          title: Text(playerName),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(22),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1500),
+              child: ProductHistoricalPlayerDossier(
+                playerKeyOrId: playerKey,
+                playerName: playerName,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _AwardPanel extends StatelessWidget {
