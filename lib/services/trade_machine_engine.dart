@@ -95,7 +95,9 @@ class TradeMachineEngine {
       if (!scenario.teams.contains(assignment.asset.originTeam) || !scenario.teams.contains(assignment.destinationTeam)) findings.add(TradeValidationFinding(code: 'TEAM_SCOPE', message: '${assignment.asset.label} references a team outside this scenario.', severity: TradeValidationSeverity.error));
       if (assignment.asset.originTeam == assignment.destinationTeam) findings.add(TradeValidationFinding(code: 'SAME_TEAM', message: '${assignment.asset.label} cannot be routed back to its origin team.', severity: TradeValidationSeverity.error, team: assignment.asset.originTeam));
     }
-    for (final id in duplicateAssetIds) findings.add(TradeValidationFinding(code: 'DUPLICATE_ASSET', message: 'Asset $id is assigned more than once.', severity: TradeValidationSeverity.error));
+    for (final id in duplicateAssetIds) {
+      findings.add(TradeValidationFinding(code: 'DUPLICATE_ASSET', message: 'Asset $id is assigned more than once.', severity: TradeValidationSeverity.error));
+    }
 
     for (final team in scenario.teams) {
       final outgoing = scenario.outgoingFor(team).toList();
@@ -128,7 +130,7 @@ class TradeMachineEngine {
         final distantFirst = outgoing.where((item) => item.asset.type == TradeAssetType.draftPick && item.asset.metadata['round']?.toString() == '1' && (item.asset.metadata['years_out'] as num?)?.toInt() == 7).toList();
         if (distantFirst.isNotEmpty) findings.add(TradeValidationFinding(code: 'SECOND_APRON_FROZEN_PICK', message: '$team is routing a first-round pick seven seasons out. Second-apron teams can have that pick frozen from trade and later moved to the end of the first round under the CBA draft-pick penalty.', severity: TradeValidationSeverity.error, team: team));
       } else if (postTradeSalary > context.firstApron) {
-        findings.add(TradeValidationFinding(code: 'FIRST_APRON', message: '$team projects above the first apron. The modeled $250,000 TPE allowance is removed and hard-cap-triggering transaction types require review.', severity: TradeValidationSeverity.warning, team: team));
+        findings.add(TradeValidationFinding(code: 'FIRST_APRON', message: '$team projects above the first apron. The modeled \$250,000 TPE allowance is removed and hard-cap-triggering transaction types require review.', severity: TradeValidationSeverity.warning, team: team));
       }
 
       for (final asset in outgoing.where((a) => a.asset.type == TradeAssetType.player)) {
