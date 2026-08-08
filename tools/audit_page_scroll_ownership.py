@@ -26,7 +26,7 @@ SHELL_SURFACES = (
     ("lib/screens/product_connected_workspace_screen.dart", "ProductConnectedWorkspaceScreen"),
     ("lib/screens/product_connected_data_studio_screen.dart", "ProductConnectedDataStudioScreen"),
     ("lib/screens/product_content_ops_screens.dart", "ProductAdminOpsCenterScreen"),
-    ("lib/screens/product_content_ops_screens.dart", "ProductTrustSafetyConsoleScreen"),
+    ("lib/screens/product_connected_network_screens.dart", "ProductTrustSafetyConsoleScreen"),
     ("lib/screens/product_strategy_map_screen.dart", "ProductStrategyMapScreen"),
     ("lib/screens/product_fantasy_community_screens.dart", "ProductFantasyWarRoomScreen"),
     ("lib/screens/product_team_blogs_screen.dart", "ProductTeamBlogsScreen"),
