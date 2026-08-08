@@ -74,6 +74,7 @@ def main() -> int:
 
         from app import main_launch as launch  # noqa: PLC0415
         from app import historical_nba_entity_api as entity  # noqa: PLC0415
+        from app import historical_nba_entity_search_api as entity_search  # noqa: PLC0415
 
         paths = {getattr(route, "path", "") for route in launch.app.routes}
         required = {
@@ -89,22 +90,26 @@ def main() -> int:
             "history_routes": sorted(path for path in paths if "/v2/nba/history" in path),
         }
 
-        search = entity.historical_entity_search(
+        search = entity_search.historical_entity_search_fast(
             query="Example",
             league="NBA",
             kinds="player,team,franchise,season,game",
             limit_per_kind=20,
         )
         assert search["count"] >= 1, search
+        assert search["search_strategy"] == "bounded-canonical-entity-search-v2", search
         assert search["groups"]["players"][0]["player_key"] == "p_star", search
 
-        season_search = entity.historical_entity_search(
+        season_search = entity_search.historical_entity_search_fast(
             query="2023",
             league="NBA",
             kinds="season",
             limit_per_kind=20,
         )
         assert season_search["groups"]["seasons"][0]["season_id"] == "2023-24", season_search
+        assert season_search["groups"]["seasons"][0]["players"] == 2, season_search
+        assert season_search["groups"]["seasons"][0]["teams"] == 2, season_search
+        assert season_search["groups"]["seasons"][0]["games"] == 1, season_search
 
         player = entity.historical_player_dossier(
             player_key="p_star",
@@ -157,6 +162,7 @@ def main() -> int:
             json.dumps(
                 {
                     "entity_routes": len(required),
+                    "search_strategy": search["search_strategy"],
                     "search_results": search["count"],
                     "player": player["profile"]["canonical_name"],
                     "season": season["season"]["season_id"],
