@@ -1,0 +1,27 @@
+name: Finalize Platform Expansion
+
+on:
+  push:
+    branches: [agent/platform-pages-routing-trade-legal-notebook]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: contains(github.event.head_commit.message, 'Run one-shot platform expansion finish patch')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/platform-pages-routing-trade-legal-notebook
+          fetch-depth: 0
+      - name: Apply durable finish patch and self-clean
+        run: python tools/finalize_platform_expansion_patch.py
+      - name: Commit durable fix
+        run: |
+          git config user.name "sports-terminal-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix Community composer live validation" || exit 0
+          git push origin HEAD:agent/platform-pages-routing-trade-legal-notebook
