@@ -117,6 +117,23 @@ def platform_completion_status() -> dict[str, Any]:
         }
 
     internal_modules = {
+        "canonical_historical_nba_warehouse": "implemented",
+        "historical_source_registry": "implemented",
+        "historical_field_provenance": "implemented",
+        "historical_conflict_preservation": "implemented",
+        "nba_current_historical_context": "implemented",
+        "nba_terminal_command_layer": "implemented",
+        "nba_terminal_manifest": "implemented",
+        "nba_terminal_season_index": "implemented",
+        "nba_entity_intelligence": "implemented",
+        "nba_historical_intelligence": "implemented",
+        "nba_stats_workstation": "implemented",
+        "nba_analytics_suite": "implemented",
+        "nba_research_command_center": "implemented",
+        "nba_research_workspaces": "implemented",
+        "nba_entity_watchlists": "implemented",
+        "nba_command_favorites_and_recents": "implemented",
+        "nba_global_command_shortcut": "implemented",
         "front_office_registry": "implemented",
         "contract_versions": "implemented",
         "team_financial_positions": "implemented",

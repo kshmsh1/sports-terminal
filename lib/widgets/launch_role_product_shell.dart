@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import '../controllers/internal_workspace_controller.dart';
 import '../models/app_session.dart';
 import '../screens/product_automation_governance_screen.dart';
+import '../screens/product_nba_terminal_screen.dart';
 import '../services/launch_backend_transport.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/product_local_store.dart';
 import 'connected_role_terminal_shell.dart';
+import 'nba_terminal_shortcut_scope.dart';
 
 class LaunchRoleProductShell extends StatefulWidget {
   const LaunchRoleProductShell({
@@ -88,6 +90,28 @@ class _LaunchRoleProductShellState extends State<LaunchRoleProductShell> {
       _remoteEnabled = value;
       _statusFuture = _loadStatus();
     });
+  }
+
+  Future<void> _showNbaTerminal() {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog.fullscreen(
+        child: Scaffold(
+          backgroundColor: const Color(0xFF06101B),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF0D1A28),
+            foregroundColor: Colors.white,
+            title: const Text('Sports Terminal · NBA'),
+            leading: IconButton(
+              tooltip: 'Close NBA Terminal',
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              icon: const Icon(Icons.close_rounded),
+            ),
+          ),
+          body: ProductNbaTerminalScreen(session: widget.session),
+        ),
+      ),
+    );
   }
 
   Future<void> _showAutomationCenter() {
@@ -193,109 +217,127 @@ class _LaunchRoleProductShellState extends State<LaunchRoleProductShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        ConnectedRoleTerminalShell(
-          session: widget.session,
-          workspaceController: widget.workspaceController,
-          onSignOut: widget.onSignOut,
-        ),
-        Positioned(
-          right: 18,
-          bottom: 18,
-          child: SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FloatingActionButton.extended(
-                  heroTag: 'automation-center',
-                  onPressed: _showAutomationCenter,
-                  icon: Icon(
-                    widget.session.role.canManageOrganization
-                        ? Icons.admin_panel_settings_rounded
-                        : Icons.auto_awesome_motion_rounded,
+    return NbaTerminalShortcutScope(
+      onOpen: () {
+        _showNbaTerminal();
+      },
+      child: Stack(
+        children: [
+          ConnectedRoleTerminalShell(
+            session: widget.session,
+            workspaceController: widget.workspaceController,
+            onSignOut: widget.onSignOut,
+          ),
+          Positioned(
+            right: 18,
+            bottom: 18,
+            child: SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FloatingActionButton.extended(
+                    heroTag: 'nba-terminal-command-center',
+                    tooltip: 'Open NBA Terminal · ⌘K / Ctrl+K',
+                    onPressed: _showNbaTerminal,
+                    backgroundColor: const Color(0xFF071A33),
+                    foregroundColor: Colors.white,
+                    icon: const Icon(Icons.terminal_rounded),
+                    label: const Text(
+                      'NBA Terminal',
+                      style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
                   ),
-                  label: Text(
-                    widget.session.role.canManageOrganization
-                        ? 'Control Plane'
-                        : 'Automation',
+                  const SizedBox(height: 10),
+                  FloatingActionButton.extended(
+                    heroTag: 'automation-center',
+                    onPressed: _showAutomationCenter,
+                    icon: Icon(
+                      widget.session.role.canManageOrganization
+                          ? Icons.admin_panel_settings_rounded
+                          : Icons.auto_awesome_motion_rounded,
+                    ),
+                    label: Text(
+                      widget.session.role.canManageOrganization
+                          ? 'Control Plane'
+                          : 'Automation',
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                FutureBuilder<_LaunchProductStatus>(
-                  future: _statusFuture,
-                  builder: (context, snapshot) {
-                    final status = snapshot.data;
-                    final loading = status == null;
-                    final backendOnline = status?.backendOnline == true;
-                    final fallback = status?.usedFallback == true;
-                    final label = loading
-                        ? 'Checking launch status'
-                        : '${status.supportedSeason} · ${fallback ? 'DEV DATA' : 'CERTIFIED'} · ${backendOnline ? 'SHARED' : 'LOCAL'}';
-                    return Material(
-                      elevation: 12,
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(999),
-                      child: InkWell(
+                  const SizedBox(height: 10),
+                  FutureBuilder<_LaunchProductStatus>(
+                    future: _statusFuture,
+                    builder: (context, snapshot) {
+                      final status = snapshot.data;
+                      final loading = status == null;
+                      final backendOnline = status?.backendOnline == true;
+                      final fallback = status?.usedFallback == true;
+                      final label = loading
+                          ? 'Checking launch status'
+                          : '${status.supportedSeason} · ${fallback ? 'DEV DATA' : 'CERTIFIED'} · ${backendOnline ? 'SHARED' : 'LOCAL'}';
+                      return Material(
+                        elevation: 12,
+                        color: Colors.transparent,
                         borderRadius: BorderRadius.circular(999),
-                        onTap: status == null ? null : () => _showDetails(status),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF071A33),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: fallback
-                                  ? const Color(0xFFFFB547)
-                                  : const Color(0xFF6EE7B7),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(999),
+                          onTap: status == null ? null : () => _showDetails(status),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
                             ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (loading)
-                                const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF071A33),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: fallback
+                                    ? const Color(0xFFFFB547)
+                                    : const Color(0xFF6EE7B7),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (loading)
+                                  const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                else
+                                  Icon(
+                                    backendOnline
+                                        ? Icons.cloud_done_rounded
+                                        : Icons.cloud_off_rounded,
+                                    size: 16,
                                     color: Colors.white,
                                   ),
-                                )
-                              else
-                                Icon(
-                                  backendOnline
-                                      ? Icons.cloud_done_rounded
-                                      : Icons.cloud_off_rounded,
-                                  size: 16,
-                                  color: Colors.white,
+                                const SizedBox(width: 8),
+                                Text(
+                                  label,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: .3,
+                                  ),
                                 ),
-                              const SizedBox(width: 8),
-                              Text(
-                                label,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: .3,
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
