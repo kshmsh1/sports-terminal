@@ -20,6 +20,9 @@ router = APIRouter(prefix="/v2/auth", tags=["authentication"])
 PASSWORD_ITERATIONS = 310_000
 SESSION_DAYS = 30
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+TERMS_VERSION = "2026-08-08-v1"
+PRIVACY_VERSION = "2026-08-08-v1"
+LEGAL_EFFECTIVE_DATE = "2026-08-08"
 
 
 class SignUpRequest(BaseModel):
@@ -28,6 +31,10 @@ class SignUpRequest(BaseModel):
     display_name: str
     account_type: str = "individual"
     organization_name: str | None = None
+    accepted_terms: bool = False
+    accepted_privacy: bool = False
+    terms_version: str = ""
+    privacy_version: str = ""
 
 
 class SignInRequest(BaseModel):
@@ -66,8 +73,19 @@ def init_auth_db() -> None:
               revoked_at TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS legal_acceptances (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              document_type TEXT NOT NULL,
+              document_version TEXT NOT NULL,
+              accepted_at TEXT NOT NULL,
+              source TEXT NOT NULL DEFAULT 'signup',
+              UNIQUE(user_id, document_type, document_version)
+            );
+
             CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id, expires_at);
             CREATE INDEX IF NOT EXISTS idx_auth_credentials_verified ON auth_credentials(email_verified);
+            CREATE INDEX IF NOT EXISTS idx_legal_acceptances_user ON legal_acceptances(user_id, document_type, accepted_at);
             """
         )
         connection.commit()
@@ -87,6 +105,17 @@ def _validate_password(password: str) -> None:
         raise HTTPException(status_code=400, detail="Password must contain mixed-case characters")
     if not any(character.isdigit() for character in password):
         raise HTTPException(status_code=400, detail="Password must contain a number")
+
+
+def _validate_legal_acceptance(payload: SignUpRequest) -> None:
+    if not payload.accepted_terms:
+        raise HTTPException(status_code=400, detail="You must accept the Sports Terminal Terms & Conditions to create an account")
+    if not payload.accepted_privacy:
+        raise HTTPException(status_code=400, detail="You must acknowledge the Sports Terminal Privacy Policy to create an account")
+    if payload.terms_version != TERMS_VERSION:
+        raise HTTPException(status_code=409, detail="Terms & Conditions version is out of date; review and accept the current version")
+    if payload.privacy_version != PRIVACY_VERSION:
+        raise HTTPException(status_code=409, detail="Privacy Policy version is out of date; review and acknowledge the current version")
 
 
 def _password_hash(password: str, salt_hex: str, iterations: int) -> str:
@@ -171,6 +200,33 @@ def _organizations_for(connection: sqlite3.Connection, user_id: str) -> list[dic
     )
 
 
+def _legal_state(connection: sqlite3.Connection, user_id: str) -> dict[str, Any]:
+    rows = connection.execute(
+        "SELECT document_type, document_version, accepted_at FROM legal_acceptances WHERE user_id = ? ORDER BY accepted_at DESC",
+        (user_id,),
+    ).fetchall()
+    latest: dict[str, dict[str, str]] = {}
+    for row in rows:
+        document_type = str(row["document_type"])
+        if document_type not in latest:
+            latest[document_type] = {
+                "version": str(row["document_version"]),
+                "accepted_at": str(row["accepted_at"]),
+            }
+    return {
+        "required": {
+            "terms": TERMS_VERSION,
+            "privacy": PRIVACY_VERSION,
+            "effective_date": LEGAL_EFFECTIVE_DATE,
+        },
+        "accepted": latest,
+        "current": (
+            latest.get("terms", {}).get("version") == TERMS_VERSION
+            and latest.get("privacy", {}).get("version") == PRIVACY_VERSION
+        ),
+    }
+
+
 def _session_response(
     connection: sqlite3.Connection,
     user: dict[str, Any],
@@ -187,6 +243,7 @@ def _session_response(
         "user": user,
         "email_verified": bool(credential["email_verified"]) if credential is not None else False,
         "organizations": _organizations_for(connection, user["id"]),
+        "legal": _legal_state(connection, user["id"]),
         "external_requirements": {
             "email_delivery": not bool(os.getenv("SPORTS_TERMINAL_EMAIL_PROVIDER")),
             "mfa_provider": not bool(os.getenv("SPORTS_TERMINAL_MFA_PROVIDER")),
@@ -204,9 +261,19 @@ def startup_auth_api() -> None:
     init_auth_db()
 
 
+@router.get("/legal-versions")
+def legal_versions() -> dict[str, str]:
+    return {
+        "terms_version": TERMS_VERSION,
+        "privacy_version": PRIVACY_VERSION,
+        "effective_date": LEGAL_EFFECTIVE_DATE,
+    }
+
+
 @router.post("/signup")
 def sign_up(payload: SignUpRequest) -> dict[str, Any]:
     init_auth_db()
+    _validate_legal_acceptance(payload)
     email = _normalize_email(payload.email)
     _validate_password(payload.password)
     display_name = payload.display_name.strip()
@@ -234,12 +301,20 @@ def sign_up(payload: SignUpRequest) -> dict[str, Any]:
             (user_id, _slug(display_name, user_id), timestamp, timestamp),
         )
         connection.execute(
-            "INSERT INTO user_settings (user_id, dark_mode, email_digest, fantasy_alerts, notification_preferences, created_at, updated_at) VALUES (?, 0, 0, 1, '{}', ?, ?)",
+            "INSERT INTO user_settings (user_id, dark_mode, email_digest, fantasy_alerts, notification_preferences, created_at, updated_at) VALUES (?, 1, 0, 1, '{}', ?, ?)",
             (user_id, timestamp, timestamp),
         )
         connection.execute(
             "INSERT INTO auth_credentials (user_id, password_hash, password_salt, password_iterations, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?)",
             (user_id, password_hash, salt, PASSWORD_ITERATIONS, timestamp, timestamp),
+        )
+        connection.execute(
+            "INSERT INTO legal_acceptances (id, user_id, document_type, document_version, accepted_at, source) VALUES (?, ?, 'terms', ?, ?, 'signup')",
+            (make_id("legal"), user_id, TERMS_VERSION, timestamp),
+        )
+        connection.execute(
+            "INSERT INTO legal_acceptances (id, user_id, document_type, document_version, accepted_at, source) VALUES (?, ?, 'privacy', ?, ?, 'signup')",
+            (make_id("legal"), user_id, PRIVACY_VERSION, timestamp),
         )
 
         if payload.account_type == "organization":
