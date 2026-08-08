@@ -26,6 +26,6 @@ jobs:
         run: |
           git config user.name "sports-terminal-actions"
           git config user.email "actions@users.noreply.github.com"
-          git add backend/scripts/dev.sh lib/screens/product_nba_terminal_screen.dart lib/screens/product_nba_stats_workstation_screen.dart lib/services/nba_terminal_seed_repository.dart scripts/dev_all.sh test/nba_terminal_debug_runtime_test.dart test/transaction_convergence_collaboration_test.dart test/transaction_decision_notification_test.dart
-          git commit -m "Harden debug runtime, layout, assets and local test isolation"
+          git add -A
+          git commit -m "Harden audited async state callbacks"
           git push origin HEAD:agent/runtime-hardening-v1
