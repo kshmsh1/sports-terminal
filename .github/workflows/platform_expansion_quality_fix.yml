@@ -1,0 +1,37 @@
+name: Platform Expansion Quality Fix
+
+on:
+  push:
+    branches: [agent/full-platform-product-expansion]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/full-platform-product-expansion
+          fetch-depth: 0
+      - name: Apply deterministic quality fixes
+        run: python tools/apply_platform_expansion_quality_fixes.py
+      - name: Remove temporary fixer
+        shell: bash
+        run: |
+          git rm -f tools/apply_platform_expansion_quality_fixes.py || true
+          git rm -f .github/workflows/platform_expansion_quality_fix.yml || true
+      - name: Commit fixes
+        shell: bash
+        run: |
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "Nothing to fix"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Harden platform expansion integration"
+          git push origin HEAD:agent/full-platform-product-expansion
