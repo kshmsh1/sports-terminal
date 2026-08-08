@@ -85,7 +85,7 @@ class TradeAsset {
   bool get isTradeable => !_bool(metadata['not_tradeable']) && !_bool(metadata['cannot_trade']);
   bool get aggregationRestricted => _bool(metadata['aggregation_restricted']) || _bool(metadata['recently_acquired_restricted']);
   bool get noTradeClause => _bool(metadata['no_trade_clause']);
-  bool get noTradeConsent => _bool(metadata['no_trade_consent']) || _bool(metadata['trade_consent']);
+  bool get noTradeConsent => _bool(metadata['no_trade_consent']) || (metadata.containsKey('trade_consent') && !_bool(metadata['trade_consent']));
   bool get poisonPill => _bool(metadata['poison_pill']);
   bool get recentlySignedRestricted => _bool(metadata['recently_signed_restricted']) || _bool(metadata['trade_restricted']);
   bool get isUnprotectedFirst => isFirstRoundPick && !_bool(metadata['protected']) && !_bool(metadata['swap']);
@@ -371,6 +371,9 @@ class TradeMachineEngine {
       // generally needs an exception or outgoing salary to receive a player.
       return context.capRoom;
     }
+    // Cap room can be combined with outgoing salary when a below-cap team
+    // structures the trade using room instead of relying solely on an exception.
+    final roomStructure = outgoingSalary + context.capRoom;
     if (context.aboveSecondApron || postTradeSalary > context.secondApron) {
       return outgoingSalary;
     }
@@ -386,7 +389,8 @@ class TradeMachineEngine {
     final roomA = outgoingSalary + 7500000;
     final firstBranch = doubleA < roomA ? doubleA : roomA;
     final secondBranch = outgoingSalary * 1.25 + 250000;
-    return firstBranch > secondBranch ? firstBranch : secondBranch;
+    final exceptionStructure = firstBranch > secondBranch ? firstBranch : secondBranch;
+    return roomStructure > exceptionStructure ? roomStructure : exceptionStructure;
   }
 
   void _validateSalaryMatching({

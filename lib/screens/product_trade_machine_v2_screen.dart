@@ -789,7 +789,9 @@ class _AssetEditDialogState extends State<_AssetEditDialog> {
     _notTradeable = _bool(widget.item.metadata['not_tradeable']);
     _aggregationRestricted = _bool(widget.item.metadata['aggregation_restricted']);
     _noTradeClause = _bool(widget.item.metadata['no_trade_clause']);
-    _tradeConsent = _bool(widget.item.metadata['trade_consent']);
+    _tradeConsent = widget.item.metadata.containsKey('no_trade_consent')
+        ? !_bool(widget.item.metadata['no_trade_consent'])
+        : _bool(widget.item.metadata['trade_consent']);
     _poisonPill = _bool(widget.item.metadata['poison_pill']);
     _recentlySigned = _bool(widget.item.metadata['recently_signed_restricted']);
     _tradeKicker = TextEditingController(text: (_double(widget.item.metadata['trade_kicker_pct']) * 100).toStringAsFixed(1));
@@ -815,7 +817,7 @@ class _AssetEditDialogState extends State<_AssetEditDialog> {
           ],
         ]))),
         actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')), FilledButton(onPressed: () {
-          final metadata = Map<String,dynamic>.from(widget.item.metadata)..addAll({'not_tradeable': _notTradeable, 'aggregation_restricted': _aggregationRestricted, 'recently_signed_restricted': _recentlySigned, 'no_trade_clause': _noTradeClause, 'trade_consent': _tradeConsent, 'poison_pill': _poisonPill, 'trade_kicker_pct': _double(_tradeKicker.text) / 100});
+          final metadata = Map<String,dynamic>.from(widget.item.metadata)..addAll({'not_tradeable': _notTradeable, 'aggregation_restricted': _aggregationRestricted, 'recently_signed_restricted': _recentlySigned, 'no_trade_clause': _noTradeClause, 'no_trade_consent': _noTradeClause && !_tradeConsent, 'poison_pill': _poisonPill, 'trade_kicker_pct': _double(_tradeKicker.text) / 100});
           Navigator.of(context).pop(widget.item.copyWith(destinationTeam: _destination, salary: widget.item.type == TradeAssetType.player ? _double(_salary.text) : widget.item.salary, metadata: metadata));
         }, child: const Text('Apply'))],
       );

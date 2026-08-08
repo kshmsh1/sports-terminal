@@ -286,7 +286,7 @@ class _ProductCommunityV2ScreenState extends State<ProductCommunityV2Screen> {
         }
         final data = snapshot.data!;
         final posts = _visiblePosts(data.posts);
-        final selected = posts.where((post) => _text(post['id']) == _selectedPostId).firstOrNull;
+        final selected = _firstOrNull(posts.where((post) => _text(post['id']) == _selectedPostId));
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _CommunityHero(data: data, joined: _joined.length, saved: _saved.length),
           const SizedBox(height: 12),
@@ -686,9 +686,6 @@ class _CreatePostDialogState extends State<_CreatePostDialog> {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          FilledButton(onPressed: _title.text.trim().isEmpty ? () {
-            if (_title.text.trim().isEmpty) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('A title is required.')));
-          } : null, child: const Text('Publish')),
           FilledButton(
             onPressed: () {
               final title = _title.text.trim();
@@ -755,4 +752,9 @@ String _relative(Object? value) {
   if (diff.inDays < 1) return '${diff.inHours}h ago';
   if (diff.inDays < 30) return '${diff.inDays}d ago';
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+}
+
+T? _firstOrNull<T>(Iterable<T> values) {
+  final iterator = values.iterator;
+  return iterator.moveNext() ? iterator.current : null;
 }

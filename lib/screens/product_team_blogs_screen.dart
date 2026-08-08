@@ -84,7 +84,7 @@ class _ProductTeamBlogsScreenState extends State<ProductTeamBlogsScreen> {
         }
         final data = snapshot.data!;
         final teams = data.teamRecords.map(_teamId).where((value) => value != '—').toSet().toList()..sort();
-        if (_team.isEmpty && teams.isNotEmpty) _team = _followed.where(teams.contains).firstOrNull ?? teams.first;
+        if (_team.isEmpty && teams.isNotEmpty) _team = _firstOrNull(_followed.where(teams.contains)) ?? teams.first;
         final query = _search.text.trim().toLowerCase();
         final visibleTeams = teams.where((team) => query.isEmpty || team.toLowerCase().contains(query) || _teamName(data, team).toLowerCase().contains(query)).toList();
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -205,7 +205,7 @@ class _BlogHome extends StatelessWidget {
     final games = data.teamGameLogs.where((row) => _teamId(row) == team).toList()..sort((a, b) => _text(b['game_date']).compareTo(_text(a['game_date'])));
     final players = engine.buildRows(data).where((row) => row.team.split(RegExp(r'[,/ ]+')).contains(team)).toList()..sort((a, b) => (b.value('pts') ?? 0).compareTo(a.value('pts') ?? 0));
     return Column(children: [
-      _FeatureStory(team: team, game: games.firstOrNull),
+      _FeatureStory(team: team, game: _firstOrNull(games)),
       const SizedBox(height: 12),
       LayoutBuilder(builder: (context, constraints) {
         final compact = constraints.maxWidth < 900;
@@ -472,4 +472,9 @@ String _storyHeadline(String team, Map<String, dynamic> game, int index) {
   if (result.startsWith('W')) return '$team takeaways: what changed in the win over $opponent';
   if (result.startsWith('L')) return '$team film + numbers: what went wrong against $opponent';
   return '$team vs. $opponent: game notebook and statistical context';
+}
+
+T? _firstOrNull<T>(Iterable<T> values) {
+  final iterator = values.iterator;
+  return iterator.moveNext() ? iterator.current : null;
 }

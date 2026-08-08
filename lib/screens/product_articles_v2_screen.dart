@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 
 import '../services/product_local_store.dart';
@@ -306,7 +304,7 @@ class _SecondaryArticle extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(border: Border(bottom: last ? BorderSide.none : const BorderSide(color: _arLine, width: .5))),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Container(width: 95, height: 78, alignment: Alignment.center, decoration: BoxDecoration(color: article.accent.withValues(alpha: .22), borderRadius: BorderRadius.circular(7)), child: Text(article.section.substring(0, article.section.length.clamp(0, 4)).toUpperCase(), style: TextStyle(color: article.accent, fontWeight: FontWeight.w900))),
+            Container(width: 95, height: 78, alignment: Alignment.center, decoration: BoxDecoration(color: article.accent.withValues(alpha: .22), borderRadius: BorderRadius.circular(7)), child: Text((article.section.length <= 4 ? article.section : article.section.substring(0, 4)).toUpperCase(), style: TextStyle(color: article.accent, fontWeight: FontWeight.w900))),
             const SizedBox(width: 11),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(article.title, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _arText, fontSize: 14, fontWeight: FontWeight.w900, height: 1.2)),

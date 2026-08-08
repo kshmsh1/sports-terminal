@@ -6,6 +6,8 @@ import '../screens/product_advanced_nba_tools_screen.dart';
 import '../screens/product_backend_sync_screen.dart';
 import '../screens/product_connected_data_studio_screen.dart';
 import '../screens/product_connected_network_screens.dart';
+import '../screens/product_community_v2_screen.dart';
+import '../screens/product_articles_v2_screen.dart';
 import '../screens/product_connected_transaction_screens.dart';
 import '../screens/product_connected_workspace_screen.dart';
 import '../screens/product_content_ops_screens.dart';
@@ -188,14 +190,14 @@ class _ConnectedRoleTerminalShellState extends State<ConnectedRoleTerminalShell>
           group: 'Network',
           icon: Icons.forum_rounded,
           description: 'Moderated communities, threads, comments, voting, saves and reputation.',
-          screen: ProductConnectedCommunityScreen(session: widget.session),
+          screen: ProductCommunityV2Screen(session: widget.session),
         ),
         const _TerminalDestination(
           label: 'Articles',
           group: 'Content',
           icon: Icons.article_rounded,
           description: 'Multi-sport long-form reporting, analysis and editorial discovery.',
-          screen: ProductArticlesArenaScreen(),
+          screen: ProductArticlesV2Screen(),
         ),
         _TerminalDestination(
           label: 'Messages',
