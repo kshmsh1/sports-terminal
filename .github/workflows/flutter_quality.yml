@@ -54,6 +54,9 @@ jobs:
       - name: Test historical NBA entity intelligence contract
         run: python backend/scripts/historical_entity_intelligence_contract_test.py
 
+      - name: Test unified NBA terminal contract
+        run: python backend/scripts/nba_terminal_contract_test.py
+
       - name: Test launch backend contracts
         id: backend_contract
         working-directory: backend
