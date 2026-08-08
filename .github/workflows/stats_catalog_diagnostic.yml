@@ -1,0 +1,27 @@
+name: Stats Catalog Diagnostic
+
+on:
+  push:
+    branches: [agent/stats-workstation-visual-and-metric-overhaul]
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Find duplicate metric IDs
+        run: |
+          python - <<'PY'
+          import re
+          from collections import Counter
+          from pathlib import Path
+          text = Path('lib/services/nba_stats_metric_catalog.dart').read_text()
+          keys = re.findall(r"_m\('([^']+)'", text)
+          counts = Counter(keys)
+          print('definitions', len(keys))
+          print('unique', len(counts))
+          print('duplicates:')
+          for key, count in sorted(counts.items()):
+              if count > 1:
+                  print(f'{key}: {count}')
+          PY
