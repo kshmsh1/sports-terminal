@@ -36,6 +36,9 @@ jobs:
       - name: Compile launch backend
         run: python -m compileall -q backend/app tools
 
+      - name: Test NBA API metric coverage audit contract
+        run: python backend/scripts/nba_api_metric_coverage_contract_test.py
+
       - name: Test historical NBA import contract
         run: python backend/scripts/historical_import_contract_test.py
 
