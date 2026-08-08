@@ -1,0 +1,74 @@
+name: Platform Expansion Release Gate
+
+on:
+  push:
+    branches: [agent/full-platform-product-expansion]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: platform-expansion-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Validate full expansion release candidate
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out immutable candidate
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+
+      - name: Compile backend and tools
+        run: python -m compileall -q backend/app backend/scripts tools
+
+      - name: Validate platform expansion backend contract
+        run: python backend/scripts/platform_expansion_contract_test.py
+
+      - name: Validate launch backend contract
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python scripts/launch_contract_test.py
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Strict analyzer
+        run: flutter analyze
+
+      - name: Validate expansion architecture contracts
+        run: flutter test test/platform_expansion_contract_test.dart
+
+      - name: Validate Trade Machine v2 rules
+        run: flutter test test/trade_machine_v2_engine_test.dart
+
+      - name: Run complete Flutter suite
+        run: flutter test
+
+      - name: Build release web bundle
+        run: flutter build web --release
+
+      - name: Mark PR 32 ready only after the complete release gate succeeds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr ready 32 --repo ${{ github.repository }}
