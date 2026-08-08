@@ -5,6 +5,8 @@ import tempfile
 import traceback
 from pathlib import Path
 
+from fastapi import HTTPException
+
 
 def checkpoint(label: str) -> None:
     print(f"BACKEND_CONTRACT_CHECKPOINT: {label}", flush=True)
@@ -20,7 +22,13 @@ try:
         # bootstrap and every launch router are applied exactly as they are when
         # Uvicorn runs the product.
         from app import main_launch as _main_launch  # noqa: F401
-        from app.auth_api import SignInRequest, SignUpRequest, sign_in, sign_up
+        from app.auth_api import (
+            LEGAL_DOCUMENT_VERSION,
+            SignInRequest,
+            SignUpRequest,
+            sign_in,
+            sign_up,
+        )
         from app.launch_api import (
             CaseUpsert,
             DataReleaseUpsert,
@@ -41,7 +49,7 @@ try:
             upsert_notification,
             upsert_transaction_case,
         )
-        from app.main import init_db
+        from app.main import connect, init_db
         from app.workspace_api import (
             WorkspaceUpsert,
             get_primary_workspace,
@@ -53,6 +61,25 @@ try:
         init_db()
         init_launch_db()
 
+        checkpoint("legal consent gate")
+        try:
+            sign_up(
+                SignUpRequest(
+                    email="no-consent@example.com",
+                    password="LaunchPass123",
+                    display_name="No Consent",
+                    account_type="individual",
+                )
+            )
+            raise AssertionError("Signup without legal consent should fail")
+        except HTTPException as error:
+            assert error.status_code == 400
+        with connect() as connection:
+            assert connection.execute(
+                "SELECT COUNT(*) AS count FROM users WHERE email = ?",
+                ("no-consent@example.com",),
+            ).fetchone()["count"] == 0
+
         checkpoint("first-party individual authentication")
         individual_auth = sign_up(
             SignUpRequest(
@@ -60,10 +87,35 @@ try:
                 password="LaunchPass123",
                 display_name="Launch Analyst",
                 account_type="individual",
+                accepted_terms=True,
+                accepted_privacy=True,
+                legal_document_version=LEGAL_DOCUMENT_VERSION,
+                legal_accepted_at="2026-08-08T18:00:00Z",
             )
         )
         assert individual_auth["user"]["role"] == "analyst"
         assert individual_auth["token"]
+        assert individual_auth["legal_acceptances"]["current"] is True
+        assert (
+            individual_auth["legal_acceptances"]["current_version"]
+            == LEGAL_DOCUMENT_VERSION
+        )
+        assert set(individual_auth["legal_acceptances"]["documents"]) == {
+            "terms",
+            "privacy",
+        }
+        with connect() as connection:
+            legal_rows = connection.execute(
+                "SELECT document_key, document_version FROM legal_acceptances WHERE user_id = ?",
+                (individual_auth["user"]["id"],),
+            ).fetchall()
+            assert len(legal_rows) == 2
+            settings = connection.execute(
+                "SELECT dark_mode FROM user_settings WHERE user_id = ?",
+                (individual_auth["user"]["id"],),
+            ).fetchone()
+            assert settings is not None and settings["dark_mode"] == 1
+
         individual_login = sign_in(
             SignInRequest(
                 email="analyst@example.com",
@@ -71,6 +123,7 @@ try:
             )
         )
         assert individual_login["user"]["id"] == individual_auth["user"]["id"]
+        assert individual_login["legal_acceptances"]["current"] is True
 
         checkpoint("first-party organization authentication")
         organization_auth = sign_up(
@@ -80,10 +133,14 @@ try:
                 display_name="Launch Owner",
                 account_type="organization",
                 organization_name="Launch Basketball Operations",
+                accepted_terms=True,
+                accepted_privacy=True,
+                legal_document_version=LEGAL_DOCUMENT_VERSION,
             )
         )
         assert organization_auth["user"]["role"] == "organization_admin"
         assert organization_auth["organizations"][0]["membership_role"] == "owner"
+        assert organization_auth["legal_acceptances"]["current"] is True
 
         checkpoint("versioned customer workspace")
         individual_user_id = individual_auth["user"]["id"]
@@ -272,6 +329,7 @@ try:
         assert readiness["data_release"]["season"] == "2025-26"
         assert "transaction_case_snapshots" in readiness["tables"]
         assert "auth_credentials" in readiness["tables"]
+        assert "legal_acceptances" in readiness["tables"]
         assert "workspace_snapshots" in readiness["tables"]
 
     print("Sports Terminal launch backend contract test passed.")
