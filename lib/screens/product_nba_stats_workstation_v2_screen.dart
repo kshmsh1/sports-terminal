@@ -1001,7 +1001,6 @@ class _MetricCell extends StatelessWidget {
         color: available ? _text : _faint,
         fontSize: 10,
         fontWeight: available ? FontWeight.w700 : FontWeight.w500,
-        fontFeatures: const [FontFeature.tabularFigures()],
       ),
     ),
   );

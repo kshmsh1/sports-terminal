@@ -46,12 +46,14 @@ class NbaTerminalStatFamily {
     required this.label,
     required this.description,
     required this.metrics,
+    this.expansionOverrides = const {},
   });
 
   final String id;
   final String label;
   final String description;
   final List<String> metrics;
+  final Map<String, List<String>> expansionOverrides;
 }
 
 const nbaTerminalStatFamilies = <NbaTerminalStatFamily>[
@@ -73,7 +75,7 @@ const nbaTerminalStatFamilies = <NbaTerminalStatFamily>[
       'contested_shots_pg', 'loose_balls_recovered_pg', 'dfg_pct',
       'rim_dfg_pct', 'midrange_dfg_pct', 'three_dfg_pct', 'box_out_pct',
       'blow_by_rate', 'contest_distance', 'help_defense_pg', 'deterrence_rate',
-      'switch_attrition_rate', 'closeout_speed',
+      'switch_attrition_rate', 'closeout_speed', 'anticipation',
     ],
   ),
   NbaTerminalStatFamily(
@@ -95,6 +97,9 @@ const nbaTerminalStatFamilies = <NbaTerminalStatFamily>[
     metrics: [
       'rpg', 'dreb', 'oreb', 'box_out_pct', 'tap_outs_pg', 'deferred_rebounds_pg',
     ],
+    expansionOverrides: {
+      'rpg': ['contested_rpg', 'uncontested_rpg', 'trb_pct'],
+    },
   ),
   NbaTerminalStatFamily(
     id: 'efficiency',
@@ -242,7 +247,7 @@ final List<NbaTerminalMetric> nbaTerminalMetrics = [
   _m('mpg', 'Minutes Per Game', 'MPG', 'Basic', 'Average minutes played per game.', engineKey: 'min', raw: ['mpg', 'minutes_per_game']),
   _m('ppg', 'Points Per Game', 'PPG', 'Basic', 'Points scored under the selected rate basis.', engineKey: 'pts'),
   _m('rpg', 'Rebounds Per Game', 'RPG', 'Basic', 'Total rebounds under the selected rate basis.', engineKey: 'reb', children: ['oreb', 'dreb']),
-  _m('oreb', 'Offensive Rebounds', 'ORB', 'Rebounding', 'Offensive rebounds under the selected rate basis.', engineKey: 'oreb'),
+  _m('oreb', 'Offensive Rebounds', 'ORB', 'Rebounding', 'Offensive rebounds under the selected rate basis.', engineKey: 'oreb', children: ['contested_orb_pg', 'uncontested_orb_pg', 'orb_pct']),
   _m('dreb', 'Defensive Rebounds', 'DRB', 'Rebounding', 'Defensive rebounds under the selected rate basis.', engineKey: 'dreb', children: ['contested_dreb_pg', 'uncontested_dreb_pg', 'drb_pct']),
   _m('apg', 'Assists Per Game', 'APG', 'Playmaking', 'Assists under the selected rate basis.', engineKey: 'ast'),
   _m('spg', 'Steals Per Game', 'SPG', 'Defense', 'Steals under the selected rate basis.', engineKey: 'stl', children: ['stl_pct']),
@@ -280,6 +285,7 @@ final List<NbaTerminalMetric> nbaTerminalMetrics = [
   _m('deterrence_rate', 'Deterrence Rate', 'DETER%', 'Defense', 'Estimated reduction in opponent shot or drive attempts attributable to the defender’s presence.', raw: ['deterrence_rate'], format: NbaTerminalMetricFormat.percent, providerNative: true),
   _m('switch_attrition_rate', 'Switch Attrition Rate', 'SW ATTR%', 'Defense', 'Rate at which an offense abandons or degrades an action after the player switches onto it.', raw: ['switch_attrition_rate'], format: NbaTerminalMetricFormat.percent, providerNative: true),
   _m('closeout_speed', 'Closeout Speed', 'CL SPEED', 'Defense', 'Tracked average speed while closing out to a shooter.', raw: ['closeout_speed', 'avg_closeout_speed'], providerNative: true),
+  _m('anticipation', 'Defensive Anticipation', 'ANTICIP', 'Defense', 'Model or tracking estimate of how early a defender recognizes and reacts to developing actions.', raw: ['anticipation', 'defensive_anticipation'], providerNative: true),
 
   _m('screen_apg', 'Screen Assists Per Game', 'SCREEN APG', 'Playmaking', 'Screens directly leading to a made field goal per game.', raw: ['screen_assists_per_game', 'screen_apg'], providerNative: true),
   _m('secondary_apg', 'Secondary Assists Per Game', '2ND APG', 'Playmaking', 'Passes immediately preceding the credited assist, also called hockey assists.', raw: ['secondary_assists_per_game', 'secondary_apg', 'hockey_assists_per_game'], providerNative: true),
@@ -292,7 +298,7 @@ final List<NbaTerminalMetric> nbaTerminalMetrics = [
   _m('ft_apg', 'Free-Throw Assists Per Game', 'FT APG', 'Playmaking', 'Passes leading directly to shooting fouls and free-throw trips per game.', raw: ['free_throw_assists_per_game', 'ft_assists_per_game', 'ft_apg'], providerNative: true),
   _m('touches_pg', 'Touches Per Game', 'TOUCH PG', 'Playmaking', 'Tracked offensive touches per game.', raw: ['touches_per_game', 'touches_pg'], providerNative: true),
   _m('pass_windows_opened', 'Pass Windows Opened', 'PASS WIN', 'Creation', 'Estimated passing lanes created for teammates by player positioning, movement or gravity.', raw: ['pass_windows_opened', 'passing_lanes_opened'], providerNative: true),
-  _m('passing_decision_time', 'Passing Decision Time', 'PASS DT', 'Movement', 'Average elapsed time from gaining possession to initiating a pass.', raw: ['passing_decision_time', 'avg_passing_decision_time'], format: NbaTerminalMetricFormat.seconds, lowerIsBetter: false, providerNative: true),
+  _m('passing_decision_time', 'Passing Decision Time', 'PASS DT', 'Movement', 'Average elapsed time from gaining possession to initiating a pass.', raw: ['passing_decision_time', 'avg_passing_decision_time'], format: NbaTerminalMetricFormat.seconds, higherIsBetter: false, providerNative: true),
   _m('panic_turnover_rate', 'Panic Turnover Rate', 'PANIC TO%', 'Playmaking', 'Share of pressure possessions ending in an unplanned or forced turnover.', raw: ['panic_turnover_rate'], format: NbaTerminalMetricFormat.percent, higherIsBetter: false, providerNative: true),
   _m('blitz_trap_escape_rate', 'Blitz / Trap Escape Rate', 'TRAP ESC%', 'Playmaking', 'Share of blitzed or trapped possessions escaped without a turnover or dead possession.', raw: ['blitz_trap_escape_rate', 'trap_escape_rate'], format: NbaTerminalMetricFormat.percent, providerNative: true),
   _m('double_team_escape_rate', 'Double-Team Navigation Rate', 'DBL ESC%', 'Playmaking', 'Successful navigation rate when two defenders commit to the ball.', raw: ['double_team_escape_rate'], format: NbaTerminalMetricFormat.percent, providerNative: true),
@@ -459,7 +465,7 @@ List<String> nbaVisibleMetricKeys(
     output.add(key);
     final metric = nbaTerminalMetricByKey[key];
     if (metric != null && expanded.contains(key)) {
-      output.addAll(metric.children);
+      output.addAll(family.expansionOverrides[key] ?? metric.children);
     }
   }
   return output;
