@@ -13,7 +13,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from .launch_api import init_launch_db
-from .main import connect, ensure_user, make_id, now_iso, row_to_dict, rows_to_dicts
+from .main import connect, ensure_user, init_db, make_id, now_iso, row_to_dict, rows_to_dicts
 
 router = APIRouter(prefix="/v2/auth", tags=["authentication"])
 
@@ -47,6 +47,10 @@ class ChangePasswordRequest(BaseModel):
 
 
 def init_auth_db() -> None:
+    # Auth can be initialized independently by tests, workers, or a future
+    # dedicated identity service. Own the core-user dependency explicitly
+    # instead of relying on another FastAPI startup handler to run first.
+    init_db()
     init_launch_db()
     with connect() as connection:
         connection.executescript(
