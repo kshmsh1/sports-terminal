@@ -298,9 +298,8 @@ class RoleResearchAugmentedShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 1020;
-        final left = compact ? 18.0 : 306.0;
+      builder: (context, _) {
+        const left = 18.0;
         return Stack(
           children: [
             LaunchRoleProductShell(
