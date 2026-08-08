@@ -90,6 +90,9 @@ jobs:
       - name: Audit page scroll ownership
         run: python tools/audit_page_scroll_ownership.py --check
 
+      - name: Audit canonical NBA entity links
+        run: python tools/audit_nba_entity_links.py --check
+
       - name: Test launch backend contracts
         id: backend_contract
         working-directory: backend
