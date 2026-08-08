@@ -1,0 +1,27 @@
+name: Finalize Platform Expansion V3
+
+on:
+  push:
+    branches: [agent/platform-pages-routing-trade-legal-notebook]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: contains(github.event.head_commit.message, 'Run one-shot profile routing and quality patch')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/platform-pages-routing-trade-legal-notebook
+          fetch-depth: 0
+      - name: Apply durable profile routing and quality fixes
+        run: python tools/finalize_platform_expansion_v3.py
+      - name: Commit durable fixes
+        run: |
+          git config user.name "sports-terminal-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Route durable profile and add platform quality audits" || exit 0
+          git push origin HEAD:agent/platform-pages-routing-trade-legal-notebook
