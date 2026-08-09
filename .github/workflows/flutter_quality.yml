@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: flutter-quality-${{ github.ref }}
@@ -22,45 +22,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-
-      # PR33_ONE_SHOT_BEGIN
-      - name: Finalize PR33 Dart source cleanup
-        if: github.event_name == 'pull_request' && github.head_ref == 'agent/platform-pages-routing-trade-legal-notebook'
-        shell: bash
-        run: |
-          git fetch origin "$GITHUB_HEAD_REF"
-          git checkout -B "$GITHUB_HEAD_REF" "origin/$GITHUB_HEAD_REF"
-          python - <<'PY'
-          from pathlib import Path
-          import re
-
-          public = Path('lib/screens/product_nba_public_pages_screen.dart')
-          text = public.read_text(encoding='utf-8')
-          old = "_Kpi('Players', '${rows.length}')"
-          new = "_Kpi('Players', '${players.length}')"
-          if old in text:
-              text = text.replace(old, new, 1)
-          public.write_text(text, encoding='utf-8')
-
-          trade = Path('lib/screens/product_trade_machine_v2_screen.dart')
-          trade_text = trade.read_text(encoding='utf-8')
-          trade_text = re.sub(
-              r'\$\{([A-Za-z_][A-Za-z0-9_]*)\}',
-              lambda match: '$' + match.group(1),
-              trade_text,
-          )
-          trade.write_text(trade_text, encoding='utf-8')
-          PY
-          git config user.name "sports-terminal-ci"
-          git config user.email "sports-terminal-ci@users.noreply.github.com"
-          git add lib/screens/product_nba_public_pages_screen.dart lib/screens/product_trade_machine_v2_screen.dart
-          if git diff --cached --quiet; then
-            echo "No Dart cleanup changes required."
-          else
-            git commit -m "Clean final PR33 analyzer issues"
-            git push origin HEAD:"$GITHUB_HEAD_REF"
-          fi
-      # PR33_ONE_SHOT_END
 
       - name: Set up Python
         uses: actions/setup-python@v6
