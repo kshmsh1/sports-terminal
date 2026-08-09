@@ -61,18 +61,18 @@ class _ProductTradeMachineV2ScreenState
   Future<void> _restore() async {
     final saved = await store.loadStringMap(ProductLocalStore.tradeMachineStateKey);
     if (!mounted || saved.isEmpty) return;
-    final restoredTeams = '${saved['teams'] ?? ''}'
+    final restoredTeams = saved['teams'] ?? ''
         .split('|')
         .where((item) => item.isNotEmpty)
         .take(5)
         .toList();
-    final restoredSeason = '${saved['year'] ?? season}';
+    final restoredSeason = saved['year'] ?? season;
     setState(() {
       season = const {'2024-25', '2025-26', '2026-27'}.contains(restoredSeason)
           ? restoredSeason
           : '2026-27';
       if (restoredTeams.length >= 2) teams = restoredTeams;
-      nameController.text = '${saved['name'] ?? nameController.text}';
+      nameController.text = saved['name'] ?? nameController.text;
       routes = _decode(saved['destinations']);
       teamTabs = _decode(saved['tabs']);
       routedOnly = saved['selectedOnly'] == 'true';
