@@ -894,7 +894,7 @@ class _ProductNbaHubV2ScreenState extends State<ProductNbaHubV2Screen> {
                       ),
                     ),
                     _Kpi('Teams', '${data.teams.length}'),
-                    _Kpi('Players', '${rows.length}'),
+                    _Kpi('Players', '${players.length}'),
                     _Kpi('Games', '${data.games.length}'),
                     _Kpi('PBP', '${data.playByPlayEvents}'),
                   ],
