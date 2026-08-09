@@ -61,7 +61,7 @@ class _ProductTradeMachineV2ScreenState
   Future<void> _restore() async {
     final saved = await store.loadStringMap(ProductLocalStore.tradeMachineStateKey);
     if (!mounted || saved.isEmpty) return;
-    final restoredTeams = saved['teams'] ?? ''
+    final restoredTeams = (saved['teams'] ?? '')
         .split('|')
         .where((item) => item.isNotEmpty)
         .take(5)
