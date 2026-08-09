@@ -1,0 +1,52 @@
+name: PR33 Analyzer Cleanup
+
+on:
+  push:
+    branches: [agent/platform-pages-routing-trade-legal-notebook]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/platform-pages-routing-trade-legal-notebook
+      - name: Apply deterministic cleanup
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          public = Path('lib/screens/product_nba_public_pages_screen.dart')
+          text = public.read_text(encoding='utf-8')
+          old = "_Kpi('Players', '${rows.length}')"
+          new = "_Kpi('Players', '${players.length}')"
+          if old not in text:
+              raise SystemExit('NBA Hub player KPI anchor missing')
+          text = text.replace(old, new, 1)
+          public.write_text(text, encoding='utf-8')
+
+          trade = Path('lib/screens/product_trade_machine_v2_screen.dart')
+          trade_text = trade.read_text(encoding='utf-8')
+          trade_text, replacements = re.subn(
+              r'\$\{([A-Za-z_][A-Za-z0-9_]*)\}',
+              lambda match: '$' + match.group(1),
+              trade_text,
+          )
+          if replacements == 0:
+              raise SystemExit('No simple Trade Machine interpolations found')
+          trade.write_text(trade_text, encoding='utf-8')
+
+          Path('.github/workflows/pr33_analyzer_cleanup.yml').unlink()
+          print(f'Normalized {replacements} simple Trade Machine interpolation(s).')
+          PY
+      - name: Commit cleanup
+        run: |
+          git config user.name "sports-terminal-ci"
+          git config user.email "sports-terminal-ci@users.noreply.github.com"
+          git add -A
+          git commit -m "Clean final PR33 analyzer issues"
+          git push origin HEAD:agent/platform-pages-routing-trade-legal-notebook
