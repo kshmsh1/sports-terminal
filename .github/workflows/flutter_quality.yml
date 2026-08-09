@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v6
 
       # PR33_ONE_SHOT_BEGIN
-      - name: Finalize PR33 source cleanup
+      - name: Finalize PR33 Dart source cleanup
         if: github.event_name == 'pull_request' && github.head_ref == 'agent/platform-pages-routing-trade-legal-notebook'
         shell: bash
         run: |
@@ -50,32 +50,12 @@ jobs:
               trade_text,
           )
           trade.write_text(trade_text, encoding='utf-8')
-
-          temporary = Path('.github/workflows/pr33_analyzer_cleanup.yml')
-          if temporary.exists():
-              temporary.unlink()
-
-          workflow = Path('.github/workflows/flutter_quality.yml')
-          workflow_text = workflow.read_text(encoding='utf-8')
-          pattern = re.compile(
-              r"\n      # PR33_ONE_SHOT_BEGIN\n.*?\n      # PR33_ONE_SHOT_END\n",
-              re.S,
-          )
-          workflow_text, count = pattern.subn('\n', workflow_text, count=1)
-          if count != 1:
-              raise SystemExit('Could not remove one-shot workflow block')
-          workflow_text = workflow_text.replace(
-              'permissions:\n  contents: write',
-              'permissions:\n  contents: read',
-              1,
-          )
-          workflow.write_text(workflow_text, encoding='utf-8')
           PY
           git config user.name "sports-terminal-ci"
           git config user.email "sports-terminal-ci@users.noreply.github.com"
-          git add -A
+          git add lib/screens/product_nba_public_pages_screen.dart lib/screens/product_trade_machine_v2_screen.dart
           if git diff --cached --quiet; then
-            echo "No cleanup changes required."
+            echo "No Dart cleanup changes required."
           else
             git commit -m "Clean final PR33 analyzer issues"
             git push origin HEAD:"$GITHUB_HEAD_REF"
