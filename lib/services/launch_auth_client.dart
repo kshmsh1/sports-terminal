@@ -25,16 +25,13 @@ class LaunchAuthClient {
     ProductLocalStore store = const ProductLocalStore(),
   }) : _store = store;
 
+  static const legalVersion = '2026-08-08-v1';
   final ProductLocalStore _store;
 
   Future<LaunchAuthResult> restore() async {
     final token = await _store.loadString(ProductLocalStore.launchAuthTokenKey);
     if (token.isEmpty) return const LaunchAuthResult(available: false);
-    final response = await _request(
-      'GET',
-      '/v2/auth/session',
-      token: token,
-    );
+    final response = await _request('GET', '/v2/auth/session', token: token);
     if (!response.available) {
       final cached = await _loadCachedSession();
       return LaunchAuthResult(available: false, session: cached);
@@ -43,7 +40,9 @@ class LaunchAuthClient {
       await clearLocalSession();
       return LaunchAuthResult(
         available: true,
-        error: response.error.isEmpty ? 'Saved session is no longer valid.' : response.error,
+        error: response.error.isEmpty
+            ? 'Saved session is no longer valid.'
+            : response.error,
       );
     }
     return _acceptSession(
@@ -81,8 +80,18 @@ class LaunchAuthClient {
     required String password,
     required String displayName,
     required bool organizationAccount,
+    required bool acceptedTerms,
+    required bool acceptedPrivacy,
     String organizationName = '',
   }) async {
+    if (!acceptedTerms || !acceptedPrivacy) {
+      return const LaunchAuthResult(
+        available: true,
+        error:
+            'You must agree to the Terms & Conditions and Privacy Policy before creating an account.',
+      );
+    }
+    final acceptedAt = DateTime.now().toUtc().toIso8601String();
     final response = await _request(
       'POST',
       '/v2/auth/signup',
@@ -93,6 +102,10 @@ class LaunchAuthClient {
         'account_type': organizationAccount ? 'organization' : 'individual',
         if (organizationAccount)
           'organization_name': organizationName.trim(),
+        'accepted_terms': acceptedTerms,
+        'accepted_privacy': acceptedPrivacy,
+        'legal_document_version': legalVersion,
+        'legal_accepted_at': acceptedAt,
       },
     );
     if (!response.available) {
@@ -101,7 +114,9 @@ class LaunchAuthClient {
     if (response.data is! Map) {
       return LaunchAuthResult(
         available: true,
-        error: response.error.isEmpty ? 'Account creation failed.' : response.error,
+        error: response.error.isEmpty
+            ? 'Account creation failed.'
+            : response.error,
       );
     }
     return _acceptSession(
@@ -161,7 +176,6 @@ class LaunchAuthClient {
     final userId = user['id']?.toString() ?? '';
     final email = user['email']?.toString() ?? '';
     if (userId.isEmpty || email.isEmpty) return null;
-
     final organizations = payload['organizations'];
     Map<String, dynamic>? selectedOrganization;
     if (organizations is List) {
@@ -174,10 +188,10 @@ class LaunchAuthClient {
         }
       }
     }
-    final backendRole = user['role']?.toString() ?? 'analyst';
-    final membershipRole =
-        selectedOrganization?['membership_role']?.toString() ?? '';
-    final role = _role(backendRole, membershipRole);
+    final role = _role(
+      user['role']?.toString() ?? 'analyst',
+      selectedOrganization?['membership_role']?.toString() ?? '',
+    );
     return AppSession(
       userId: userId,
       email: email,

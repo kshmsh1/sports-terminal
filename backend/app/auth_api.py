@@ -13,13 +13,15 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from .launch_api import init_launch_db
-from .main import connect, ensure_user, make_id, now_iso, row_to_dict, rows_to_dicts
+from .main import connect, ensure_user, init_db, make_id, now_iso, row_to_dict, rows_to_dicts
 
 router = APIRouter(prefix="/v2/auth", tags=["authentication"])
 
 PASSWORD_ITERATIONS = 310_000
 SESSION_DAYS = 30
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+LEGAL_DOCUMENT_VERSION = "2026-08-08-v1"
+LEGAL_DOCUMENT_KEYS = ("terms", "privacy")
 
 
 class SignUpRequest(BaseModel):
@@ -28,6 +30,10 @@ class SignUpRequest(BaseModel):
     display_name: str
     account_type: str = "individual"
     organization_name: str | None = None
+    accepted_terms: bool = False
+    accepted_privacy: bool = False
+    legal_document_version: str = LEGAL_DOCUMENT_VERSION
+    legal_accepted_at: str | None = None
 
 
 class SignInRequest(BaseModel):
@@ -41,6 +47,10 @@ class ChangePasswordRequest(BaseModel):
 
 
 def init_auth_db() -> None:
+    # Auth can be initialized independently by tests, workers, or a future
+    # dedicated identity service. Own the core-user dependency explicitly
+    # instead of relying on another FastAPI startup handler to run first.
+    init_db()
     init_launch_db()
     with connect() as connection:
         connection.executescript(
@@ -66,8 +76,23 @@ def init_auth_db() -> None:
               revoked_at TEXT
             );
 
-            CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id, expires_at);
-            CREATE INDEX IF NOT EXISTS idx_auth_credentials_verified ON auth_credentials(email_verified);
+            CREATE TABLE IF NOT EXISTS legal_acceptances (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              document_key TEXT NOT NULL,
+              document_version TEXT NOT NULL,
+              accepted_at TEXT NOT NULL,
+              client_accepted_at TEXT,
+              created_at TEXT NOT NULL,
+              UNIQUE(user_id, document_key, document_version)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_auth_sessions_user
+              ON auth_sessions(user_id, expires_at);
+            CREATE INDEX IF NOT EXISTS idx_auth_credentials_verified
+              ON auth_credentials(email_verified);
+            CREATE INDEX IF NOT EXISTS idx_legal_acceptances_user
+              ON legal_acceptances(user_id, accepted_at);
             """
         )
         connection.commit()
@@ -106,7 +131,13 @@ def _create_session(connection: sqlite3.Connection, user_id: str) -> tuple[str, 
     expires_at = created_at + timedelta(days=SESSION_DAYS)
     connection.execute(
         "INSERT INTO auth_sessions (token_hash, user_id, expires_at, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?)",
-        (token_hash, user_id, expires_at.isoformat(), created_at.isoformat(), created_at.isoformat()),
+        (
+            token_hash,
+            user_id,
+            expires_at.isoformat(),
+            created_at.isoformat(),
+            created_at.isoformat(),
+        ),
     )
     return token, expires_at.isoformat()
 
@@ -120,7 +151,10 @@ def _token_from_header(authorization: str | None) -> str:
     return token
 
 
-def _session_user(connection: sqlite3.Connection, token: str) -> tuple[dict[str, Any], str]:
+def _session_user(
+    connection: sqlite3.Connection,
+    token: str,
+) -> tuple[dict[str, Any], str]:
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
     row = connection.execute(
         """
@@ -151,7 +185,10 @@ def _session_user(connection: sqlite3.Connection, token: str) -> tuple[dict[str,
     return user, token_hash
 
 
-def _organizations_for(connection: sqlite3.Connection, user_id: str) -> list[dict[str, Any]]:
+def _organizations_for(
+    connection: sqlite3.Connection,
+    user_id: str,
+) -> list[dict[str, Any]]:
     return rows_to_dicts(
         connection.execute(
             """
@@ -162,13 +199,44 @@ def _organizations_for(connection: sqlite3.Connection, user_id: str) -> list[dic
                    organization_memberships.role AS membership_role,
                    organization_memberships.status AS membership_status
             FROM organizations
-            JOIN organization_memberships ON organizations.id = organization_memberships.organization_id
+            JOIN organization_memberships
+              ON organizations.id = organization_memberships.organization_id
             WHERE organization_memberships.user_id = ?
             ORDER BY organizations.name
             """,
             (user_id,),
         ).fetchall()
     )
+
+
+def _legal_acceptances_for(
+    connection: sqlite3.Connection,
+    user_id: str,
+) -> dict[str, Any]:
+    rows = rows_to_dicts(
+        connection.execute(
+            """
+            SELECT document_key, document_version, accepted_at, client_accepted_at
+            FROM legal_acceptances
+            WHERE user_id = ?
+            ORDER BY accepted_at DESC
+            """,
+            (user_id,),
+        ).fetchall()
+    )
+    latest: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        key = str(row["document_key"])
+        latest.setdefault(key, row)
+    current = all(
+        latest.get(key, {}).get("document_version") == LEGAL_DOCUMENT_VERSION
+        for key in LEGAL_DOCUMENT_KEYS
+    )
+    return {
+        "current_version": LEGAL_DOCUMENT_VERSION,
+        "current": current,
+        "documents": latest,
+    }
 
 
 def _session_response(
@@ -185,8 +253,11 @@ def _session_response(
         "token": token,
         "expires_at": expires_at,
         "user": user,
-        "email_verified": bool(credential["email_verified"]) if credential is not None else False,
+        "email_verified": bool(credential["email_verified"])
+        if credential is not None
+        else False,
         "organizations": _organizations_for(connection, user["id"]),
+        "legal_acceptances": _legal_acceptances_for(connection, user["id"]),
         "external_requirements": {
             "email_delivery": not bool(os.getenv("SPORTS_TERMINAL_EMAIL_PROVIDER")),
             "mfa_provider": not bool(os.getenv("SPORTS_TERMINAL_MFA_PROVIDER")),
@@ -213,18 +284,49 @@ def sign_up(payload: SignUpRequest) -> dict[str, Any]:
     if len(display_name) < 2:
         raise HTTPException(status_code=400, detail="Display name is required")
     if payload.account_type not in {"individual", "organization"}:
-        raise HTTPException(status_code=400, detail="Account type must be individual or organization")
-    if payload.account_type == "organization" and not (payload.organization_name or "").strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Account type must be individual or organization",
+        )
+    if payload.account_type == "organization" and not (
+        payload.organization_name or ""
+    ).strip():
         raise HTTPException(status_code=400, detail="Organization name is required")
+    if not payload.accepted_terms or not payload.accepted_privacy:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "You must affirmatively agree to the Terms & Conditions and "
+                "Privacy Policy before creating an account"
+            ),
+        )
+    if payload.legal_document_version != LEGAL_DOCUMENT_VERSION:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "The legal documents have changed. Review and accept the current "
+                f"version ({LEGAL_DOCUMENT_VERSION}) before creating an account"
+            ),
+        )
 
     timestamp = now_iso()
     user_id = make_id("usr")
     salt = secrets.token_bytes(16).hex()
     password_hash = _password_hash(payload.password, salt, PASSWORD_ITERATIONS)
     with connect() as connection:
-        if connection.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone() is not None:
-            raise HTTPException(status_code=409, detail="An account already exists for this email")
-        user_role = "organization_admin" if payload.account_type == "organization" else "analyst"
+        if connection.execute(
+            "SELECT id FROM users WHERE email = ?",
+            (email,),
+        ).fetchone() is not None:
+            raise HTTPException(
+                status_code=409,
+                detail="An account already exists for this email",
+            )
+        user_role = (
+            "organization_admin"
+            if payload.account_type == "organization"
+            else "analyst"
+        )
         connection.execute(
             "INSERT INTO users (id, email, display_name, role, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'active', ?, ?)",
             (user_id, email, display_name, user_role, timestamp, timestamp),
@@ -234,13 +336,38 @@ def sign_up(payload: SignUpRequest) -> dict[str, Any]:
             (user_id, _slug(display_name, user_id), timestamp, timestamp),
         )
         connection.execute(
-            "INSERT INTO user_settings (user_id, dark_mode, email_digest, fantasy_alerts, notification_preferences, created_at, updated_at) VALUES (?, 0, 0, 1, '{}', ?, ?)",
+            "INSERT INTO user_settings (user_id, dark_mode, email_digest, fantasy_alerts, notification_preferences, created_at, updated_at) VALUES (?, 1, 0, 1, '{}', ?, ?)",
             (user_id, timestamp, timestamp),
         )
         connection.execute(
             "INSERT INTO auth_credentials (user_id, password_hash, password_salt, password_iterations, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?)",
-            (user_id, password_hash, salt, PASSWORD_ITERATIONS, timestamp, timestamp),
+            (
+                user_id,
+                password_hash,
+                salt,
+                PASSWORD_ITERATIONS,
+                timestamp,
+                timestamp,
+            ),
         )
+        for document_key in LEGAL_DOCUMENT_KEYS:
+            connection.execute(
+                """
+                INSERT INTO legal_acceptances (
+                  id, user_id, document_key, document_version,
+                  accepted_at, client_accepted_at, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    make_id("legal"),
+                    user_id,
+                    document_key,
+                    LEGAL_DOCUMENT_VERSION,
+                    timestamp,
+                    payload.legal_accepted_at,
+                    timestamp,
+                ),
+            )
 
         if payload.account_type == "organization":
             organization_id = make_id("org")
@@ -248,12 +375,22 @@ def sign_up(payload: SignUpRequest) -> dict[str, Any]:
             organization_slug = _slug(organization_name, organization_id)
             suffix = 1
             base_slug = organization_slug
-            while connection.execute("SELECT 1 FROM organizations WHERE slug = ?", (organization_slug,)).fetchone() is not None:
+            while connection.execute(
+                "SELECT 1 FROM organizations WHERE slug = ?",
+                (organization_slug,),
+            ).fetchone() is not None:
                 suffix += 1
                 organization_slug = f"{base_slug}-{suffix}"
             connection.execute(
                 "INSERT INTO organizations (id, name, slug, status, plan_id, created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, 'active', 'org', ?, ?, ?)",
-                (organization_id, organization_name, organization_slug, user_id, timestamp, timestamp),
+                (
+                    organization_id,
+                    organization_name,
+                    organization_slug,
+                    user_id,
+                    timestamp,
+                    timestamp,
+                ),
             )
             connection.execute(
                 "INSERT INTO organization_memberships (organization_id, user_id, role, status, joined_at, updated_at) VALUES (?, ?, 'owner', 'active', ?, ?)",
@@ -262,7 +399,12 @@ def sign_up(payload: SignUpRequest) -> dict[str, Any]:
 
         token, expires_at = _create_session(connection, user_id)
         connection.commit()
-        user = row_to_dict(connection.execute("SELECT id, email, display_name, role, status FROM users WHERE id = ?", (user_id,)).fetchone())
+        user = row_to_dict(
+            connection.execute(
+                "SELECT id, email, display_name, role, status FROM users WHERE id = ?",
+                (user_id,),
+            ).fetchone()
+        )
         assert user is not None
         return _session_response(connection, user, token, expires_at)
 
@@ -290,12 +432,18 @@ def sign_in(payload: SignInRequest) -> dict[str, Any]:
             locked_until = datetime.fromisoformat(row["locked_until"])
             if locked_until > datetime.now(timezone.utc):
                 raise HTTPException(status_code=429, detail="Account is temporarily locked")
-        actual = _password_hash(payload.password, row["password_salt"], int(row["password_iterations"]))
+        actual = _password_hash(
+            payload.password,
+            row["password_salt"],
+            int(row["password_iterations"]),
+        )
         if not hmac.compare_digest(actual, row["password_hash"]):
             attempts = int(row["failed_attempts"]) + 1
             locked_until = None
             if attempts >= 8:
-                locked_until = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+                locked_until = (
+                    datetime.now(timezone.utc) + timedelta(minutes=15)
+                ).isoformat()
                 attempts = 0
             connection.execute(
                 "UPDATE auth_credentials SET failed_attempts = ?, locked_until = ?, updated_at = ? WHERE user_id = ?",
@@ -305,7 +453,10 @@ def sign_in(payload: SignInRequest) -> dict[str, Any]:
             raise HTTPException(status_code=401, detail="Email or password is incorrect")
         if row["status"] != "active":
             raise HTTPException(status_code=403, detail="Account is not active")
-        if os.getenv("SPORTS_TERMINAL_REQUIRE_EMAIL_VERIFICATION") == "true" and not bool(row["email_verified"]):
+        if (
+            os.getenv("SPORTS_TERMINAL_REQUIRE_EMAIL_VERIFICATION") == "true"
+            and not bool(row["email_verified"])
+        ):
             raise HTTPException(status_code=403, detail="Email verification is required")
         connection.execute(
             "UPDATE auth_credentials SET failed_attempts = 0, locked_until = NULL, updated_at = ? WHERE user_id = ?",
@@ -324,7 +475,9 @@ def sign_in(payload: SignInRequest) -> dict[str, Any]:
 
 
 @router.get("/session")
-def read_session(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+def read_session(
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
     init_auth_db()
     token = _token_from_header(authorization)
     with connect() as connection:
@@ -338,7 +491,9 @@ def read_session(authorization: str | None = Header(default=None)) -> dict[str, 
 
 
 @router.post("/logout")
-def sign_out(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+def sign_out(
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
     init_auth_db()
     token = _token_from_header(authorization)
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
@@ -366,7 +521,10 @@ def change_password(
             (user["id"],),
         ).fetchone()
         if credential is None:
-            raise HTTPException(status_code=409, detail="Account does not have first-party credentials")
+            raise HTTPException(
+                status_code=409,
+                detail="Account does not have first-party credentials",
+            )
         actual = _password_hash(
             payload.current_password,
             credential["password_salt"],
@@ -375,10 +533,20 @@ def change_password(
         if not hmac.compare_digest(actual, credential["password_hash"]):
             raise HTTPException(status_code=401, detail="Current password is incorrect")
         salt = secrets.token_bytes(16).hex()
-        password_hash = _password_hash(payload.new_password, salt, PASSWORD_ITERATIONS)
+        password_hash = _password_hash(
+            payload.new_password,
+            salt,
+            PASSWORD_ITERATIONS,
+        )
         connection.execute(
             "UPDATE auth_credentials SET password_hash = ?, password_salt = ?, password_iterations = ?, updated_at = ? WHERE user_id = ?",
-            (password_hash, salt, PASSWORD_ITERATIONS, now_iso(), user["id"]),
+            (
+                password_hash,
+                salt,
+                PASSWORD_ITERATIONS,
+                now_iso(),
+                user["id"],
+            ),
         )
         connection.execute(
             "UPDATE auth_sessions SET revoked_at = ? WHERE user_id = ? AND token_hash != ? AND revoked_at IS NULL",

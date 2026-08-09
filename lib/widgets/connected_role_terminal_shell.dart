@@ -4,6 +4,7 @@ import '../controllers/internal_workspace_controller.dart';
 import '../models/app_session.dart';
 import '../screens/product_advanced_nba_tools_screen.dart';
 import '../screens/product_backend_sync_screen.dart';
+import '../screens/product_community_v2_screen.dart';
 import '../screens/product_connected_data_studio_screen.dart';
 import '../screens/product_connected_network_screens.dart';
 import '../screens/product_connected_transaction_screens.dart';
@@ -11,9 +12,10 @@ import '../screens/product_connected_workspace_screen.dart';
 import '../screens/product_content_ops_screens.dart';
 import '../screens/product_fantasy_community_screens.dart';
 import '../screens/product_front_office_registry_screen.dart';
-import '../screens/product_nba_entity_hub_screen.dart';
-import '../screens/product_nba_stats_center_screen.dart';
-import '../screens/product_profile_persisted_screen.dart';
+import '../screens/product_nba_awards_v2_screen.dart';
+import '../screens/product_nba_public_pages_screen.dart';
+import '../screens/product_platform_content_legal_screen.dart';
+import '../screens/product_profile_v3_screen.dart';
 import '../screens/product_role_home_screen.dart';
 import '../screens/product_shell_screens.dart';
 import '../screens/product_strategy_map_screen.dart';
@@ -83,22 +85,29 @@ class _ConnectedRoleTerminalShellState
           label: 'Stats',
           group: 'NBA',
           icon: Icons.leaderboard_rounded,
-          description: 'Search, rank and compare connected NBA statistics.',
-          screen: ProductNbaStatsCenterScreen(),
+          description: 'Simple sortable NBA player box-score statistics.',
+          screen: ProductNbaBasicStatsScreen(),
         ),
         const _TerminalDestination(
           label: 'NBA Hub',
           group: 'NBA',
           icon: Icons.sports_basketball_rounded,
-          description: 'Players, teams, games and linked NBA entities.',
-          screen: ProductNbaEntityHubScreen(),
+          description: 'Linked players, teams, games, standings and league modules.',
+          screen: ProductNbaHubV2Screen(),
         ),
         const _TerminalDestination(
-          label: 'Advanced',
+          label: 'Advanced Stats',
           group: 'NBA',
           icon: Icons.analytics_rounded,
-          description: 'Advanced metrics, lineup and decision-support tools.',
+          description: 'Full advanced metric workstation, research and analytics.',
           screen: ProductAdvancedNbaToolsScreen(),
+        ),
+        const _TerminalDestination(
+          label: 'Awards',
+          group: 'NBA',
+          icon: Icons.emoji_events_rounded,
+          description: 'Canonical annual awards, honors, selections and voting history.',
+          screen: ProductNbaAwardsVotingScreen(),
         ),
         _TerminalDestination(
           label: 'Trade Machine',
@@ -182,15 +191,15 @@ class _ConnectedRoleTerminalShellState
           label: 'Community',
           group: 'Network',
           icon: Icons.forum_rounded,
-          description: 'Moderated threads, replies, reports, blocks and mutes.',
-          screen: ProductConnectedCommunityScreen(session: widget.session),
+          description: 'Ranked communities, threaded discussion and trust controls.',
+          screen: ProductCommunityV2Screen(session: widget.session),
         ),
         const _TerminalDestination(
           label: 'Articles',
           group: 'Network',
           icon: Icons.article_rounded,
-          description: 'Long-form sports analysis and publishing surfaces.',
-          screen: ProductArticlesArenaScreen(),
+          description: 'Premium multi-sport reporting and analysis.',
+          screen: ProductEditorialHomeScreen(),
         ),
         _TerminalDestination(
           label: 'Messages',
@@ -220,35 +229,35 @@ class _ConnectedRoleTerminalShellState
           group: 'Account',
           icon: Icons.person_rounded,
           description: 'Account, identity and saved preference controls.',
-          screen: ProductPersistedProfileScreen(session: widget.session),
+          screen: ProductProfileV3Screen(session: widget.session),
         ),
         const _TerminalDestination(
           label: 'About Us',
           group: 'Legal',
           icon: Icons.info_outline_rounded,
           description: 'Sports Terminal mission and product information.',
-          screen: ProductLegalScreen(kind: 'about'),
+          screen: ProductPlatformLegalScreen(kind: 'about'),
         ),
         const _TerminalDestination(
           label: 'Contact',
           group: 'Legal',
           icon: Icons.mail_outline_rounded,
           description: 'Contact and customer support information.',
-          screen: ProductLegalScreen(kind: 'contact'),
+          screen: ProductPlatformLegalScreen(kind: 'contact'),
         ),
         const _TerminalDestination(
           label: 'Privacy Policy',
           group: 'Legal',
           icon: Icons.privacy_tip_outlined,
           description: 'Privacy disclosures and data-use boundaries.',
-          screen: ProductLegalScreen(kind: 'privacy'),
+          screen: ProductPlatformLegalScreen(kind: 'privacy'),
         ),
         const _TerminalDestination(
           label: 'Terms & Conditions',
           group: 'Legal',
           icon: Icons.description_outlined,
           description: 'Platform terms and customer responsibilities.',
-          screen: ProductLegalScreen(kind: 'terms'),
+          screen: ProductPlatformLegalScreen(kind: 'terms'),
         ),
       ];
 
@@ -542,7 +551,9 @@ class _TerminalTopNavigation extends StatelessWidget {
                                 : session.displayName
                                     .split(' ')
                                     .take(2)
-                                    .map((part) => part.isEmpty ? '' : part[0])
+                                    .map(
+                                      (part) => part.isEmpty ? '' : part[0],
+                                    )
                                     .join()
                                     .toUpperCase(),
                             style: const TextStyle(
@@ -618,7 +629,7 @@ class _TerminalTopNavigation extends StatelessWidget {
                         vertical: 5,
                       ),
                       itemCount: visible.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 3),
+                      separatorBuilder: (_, _) => const SizedBox(width: 3),
                       itemBuilder: (context, index) {
                         final entry = visible[index];
                         return _TopNavigationItem(
@@ -724,14 +735,16 @@ class _TerminalPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final quick = destinations.where((item) {
-      return const {
-        'Trade Machine',
-        'Contracts & Assets',
-        'Workspace',
-        'Python Lab',
-      }.contains(item.label);
-    }).toList();
+    final quick = destinations
+        .where(
+          (item) => const {
+            'Trade Machine',
+            'Contracts & Assets',
+            'Workspace',
+            'Python Lab',
+          }.contains(item.label),
+        )
+        .toList();
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -747,7 +760,9 @@ class _TerminalPageHeader extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [_navy, _blue, _orange]),
+              gradient: const LinearGradient(
+                colors: [_navy, _blue, _orange],
+              ),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(destination.icon, color: Colors.white),
@@ -821,6 +836,7 @@ class _TerminalPageHeader extends StatelessWidget {
 
 class _TerminalLogo extends StatelessWidget {
   const _TerminalLogo({required this.size});
+
   final double size;
 
   @override
@@ -849,12 +865,14 @@ class _TerminalLogo extends StatelessWidget {
 
 class _TerminalPalette {
   const _TerminalPalette(this.dark);
+
   final bool dark;
 
   Color get background => dark ? _darkBackground : _lightBackground;
   Color get panel => dark ? const Color(0xFF0C1727) : Colors.white;
   Color get card => dark ? const Color(0xFF101D2E) : Colors.white;
-  Color get search => dark ? const Color(0xFF142338) : const Color(0xFFF1F4F8);
+  Color get search =>
+      dark ? const Color(0xFF142338) : const Color(0xFFF1F4F8);
   Color get selected =>
       dark ? const Color(0xFF172B46) : const Color(0xFFEFF6FF);
   Color get text =>

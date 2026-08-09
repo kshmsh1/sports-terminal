@@ -14,6 +14,7 @@ from typing import Any
 
 PORT = 8012
 BASE_URL = f"http://127.0.0.1:{PORT}"
+LEGAL_DOCUMENT_VERSION = "2026-08-08-v1"
 
 
 def request(
@@ -110,6 +111,18 @@ with tempfile.TemporaryDirectory(prefix="sports-terminal-http-") as temp_dir:
                 or headers.get("x-content-type-options")
             ) == "nosniff"
 
+            status, _, rejected = request(
+                "POST",
+                "/v2/auth/signup",
+                body={
+                    "email": "http-no-consent@example.com",
+                    "password": "HttpLaunch123",
+                    "display_name": "HTTP No Consent",
+                    "account_type": "individual",
+                },
+            )
+            assert status == 400, rejected
+
             status, _, session = request(
                 "POST",
                 "/v2/auth/signup",
@@ -118,9 +131,18 @@ with tempfile.TemporaryDirectory(prefix="sports-terminal-http-") as temp_dir:
                     "password": "HttpLaunch123",
                     "display_name": "HTTP Analyst",
                     "account_type": "individual",
+                    "accepted_terms": True,
+                    "accepted_privacy": True,
+                    "legal_document_version": LEGAL_DOCUMENT_VERSION,
+                    "legal_accepted_at": "2026-08-08T18:00:00Z",
                 },
             )
             assert status == 200, session
+            assert session["legal_acceptances"]["current"] is True
+            assert (
+                session["legal_acceptances"]["current_version"]
+                == LEGAL_DOCUMENT_VERSION
+            )
             token = session["token"]
             user_id = session["user"]["id"]
 
@@ -212,6 +234,7 @@ with tempfile.TemporaryDirectory(prefix="sports-terminal-http-") as temp_dir:
             )
             assert status == 200, session_check
             assert session_check["user"]["id"] == user_id
+            assert session_check["legal_acceptances"]["current"] is True
 
             status, _, invalid = request(
                 "GET",

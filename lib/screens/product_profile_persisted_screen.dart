@@ -1,232 +1,622 @@
 import 'package:flutter/material.dart';
 
 import '../models/app_session.dart';
+import '../services/community_network_service.dart';
 import '../services/product_local_store.dart';
 
-const _navy = Color(0xFF071A33);
-const _blue = Color(0xFF2563EB);
-const _orange = Color(0xFFFF7A1A);
-const _ink = Color(0xFF102033);
-const _muted = Color(0xFF667085);
-const _line = Color(0xFFE3E8F0);
-const _soft = Color(0xFFF4F7FB);
+const _bg = Color(0xFF090D12);
+const _panel = Color(0xFF0F151C);
+const _panel2 = Color(0xFF141C25);
+const _line = Color(0xFF263342);
+const _text = Color(0xFFE8EDF3);
+const _muted = Color(0xFF8895A5);
+const _blue = Color(0xFF63A9FF);
+const _amber = Color(0xFFE2B866);
+const _green = Color(0xFF69C99A);
 
 class ProductPersistedProfileScreen extends StatefulWidget {
   const ProductPersistedProfileScreen({super.key, required this.session});
-
   final AppSession session;
 
   @override
-  State<ProductPersistedProfileScreen> createState() => _ProductPersistedProfileScreenState();
+  State<ProductPersistedProfileScreen> createState() =>
+      _ProductPersistedProfileScreenState();
 }
 
-class _ProductPersistedProfileScreenState extends State<ProductPersistedProfileScreen> {
-  final ProductLocalStore localStore = const ProductLocalStore();
+class _ProductPersistedProfileScreenState
+    extends State<ProductPersistedProfileScreen> {
+  final store = const ProductLocalStore();
+  final community = const CommunityNetworkService();
+  final username = TextEditingController();
+  final bio = TextEditingController();
+  final avatarUrl = TextEditingController();
+  final favoritePlayer = TextEditingController();
+  bool loaded = false;
   bool publicProfile = true;
   bool emailDigest = false;
   bool fantasyAlerts = true;
-  Set<String> favoriteTeams = {'OKC', 'BOS'};
-  bool loaded = false;
+  bool tradeAlerts = true;
+  bool articleDigest = true;
+  Set<String> favoriteTeams = {};
+  Set<String> favoritePlayers = {};
+  late Future<Map<String, dynamic>?> communityProfileFuture;
+
+  static const teams = [
+    'ATL','BOS','BKN','CHA','CHI','CLE','DAL','DEN','DET','GSW','HOU','IND','LAC','LAL','MEM','MIA','MIL','MIN','NOP','NYK','OKC','ORL','PHI','PHX','POR','SAC','SAS','TOR','UTA','WAS'
+  ];
 
   @override
   void initState() {
     super.initState();
-    _loadPreferences();
+    communityProfileFuture = community.userProfile(widget.session.userId);
+    _load();
   }
 
-  Future<void> _loadPreferences() async {
-    final settings = await localStore.loadStringMap(ProductLocalStore.profileSettingsKey);
-    final teams = await localStore.loadStringSet(ProductLocalStore.favoriteTeamsKey, fallback: {'OKC', 'BOS'});
+  @override
+  void dispose() {
+    username.dispose();
+    bio.dispose();
+    avatarUrl.dispose();
+    favoritePlayer.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final settings = await store.loadStringMap(ProductLocalStore.profileSettingsKey);
+    final teams = await store.loadStringSet(ProductLocalStore.favoriteTeamsKey);
+    final players = await store.loadStringSet(ProductLocalStore.playerWatchlistKey);
     if (!mounted) return;
     setState(() {
+      username.text = settings['username'] ??
+          widget.session.displayName.replaceAll(' ', '').toLowerCase();
+      bio.text = settings['bio'] ?? '';
+      avatarUrl.text = settings['avatarUrl'] ?? '';
       publicProfile = settings['publicProfile'] != 'false';
       emailDigest = settings['emailDigest'] == 'true';
       fantasyAlerts = settings['fantasyAlerts'] != 'false';
+      tradeAlerts = settings['tradeAlerts'] != 'false';
+      articleDigest = settings['articleDigest'] != 'false';
       favoriteTeams = teams;
+      favoritePlayers = players;
       loaded = true;
     });
   }
 
-  Future<void> _saveSettings() async {
-    await localStore.saveStringMap(ProductLocalStore.profileSettingsKey, {
+  Future<void> _save() async {
+    final cleanHandle = username.text
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9_.-]'), '');
+    username.text = cleanHandle;
+    await store.saveStringMap(ProductLocalStore.profileSettingsKey, {
+      'username': cleanHandle,
+      'bio': bio.text.trim(),
+      'avatarUrl': avatarUrl.text.trim(),
       'publicProfile': '$publicProfile',
       'emailDigest': '$emailDigest',
       'fantasyAlerts': '$fantasyAlerts',
+      'tradeAlerts': '$tradeAlerts',
+      'articleDigest': '$articleDigest',
     });
-    await localStore.saveStringSet(ProductLocalStore.favoriteTeamsKey, favoriteTeams);
-  }
-
-  Future<void> _setPublicProfile(bool value) async {
-    setState(() => publicProfile = value);
-    await _saveSettings();
-  }
-
-  Future<void> _setEmailDigest(bool value) async {
-    setState(() => emailDigest = value);
-    await _saveSettings();
-  }
-
-  Future<void> _setFantasyAlerts(bool value) async {
-    setState(() => fantasyAlerts = value);
-    await _saveSettings();
-  }
-
-  Future<void> _toggleTeam(String team) async {
-    setState(() => favoriteTeams.contains(team) ? favoriteTeams.remove(team) : favoriteTeams.add(team));
-    await _saveSettings();
+    await store.saveStringSet(ProductLocalStore.favoriteTeamsKey, favoriteTeams);
+    await store.saveStringSet(ProductLocalStore.playerWatchlistKey, favoritePlayers);
+    if (!mounted) return;
+    setState(() {
+      communityProfileFuture = community.userProfile(widget.session.userId);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Profile and preferences saved.')),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!loaded) return const _Surface(child: Text('Loading profile settings...', style: TextStyle(color: _muted)));
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _HeroBand(
-        eyebrow: 'Profile / Settings',
-        title: '${widget.session.displayName}’s clubhouse',
-        body: 'Profiles should become the user’s sports identity: favorites, watchlists, posts, workspaces, privacy, notifications, subscription, and public activity.',
-        chips: [widget.session.role.label, widget.session.organizationName, 'Settings saved locally'],
-      ),
-      const SizedBox(height: 18),
-      _TwoColumn(
-        left: _Surface(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              CircleAvatar(radius: 34, backgroundColor: const Color(0xFFFFEFE1), child: Text(_initial(widget.session.displayName), style: const TextStyle(color: _orange, fontWeight: FontWeight.w900, fontSize: 28))),
-              const SizedBox(width: 14),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(widget.session.displayName, style: const TextStyle(color: _ink, fontSize: 27, fontWeight: FontWeight.w900)),
-                Text('${widget.session.organizationName} • ${widget.session.role.label}', style: const TextStyle(color: _muted, fontWeight: FontWeight.w700)),
-              ])),
-            ]),
-            const SizedBox(height: 18),
-            _MiniStats(items: [
-              _MiniStat('Favorite teams', '${favoriteTeams.length}'),
-              const _MiniStat('Watchlist', 'Shared'),
-              const _MiniStat('Settings', 'Local save'),
-            ]),
-            const SizedBox(height: 18),
-            const _RoadmapTable(title: 'Profile data to persist in backend later', rows: [
-              ['Identity', 'Avatar, bio, handle, favorite teams, favorite players.'],
-              ['Activity', 'Posts, comments, saved threads, public workspaces.'],
-              ['Account', 'Email, password/provider, privacy, export/delete.'],
-            ]),
-          ]),
-        ),
-        right: _Surface(
-          padding: EdgeInsets.zero,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const _PanelHeader('Settings', 'Saved locally on this device until the backend account system exists.'),
-            _SettingsSwitch('Public profile', 'Let other users see your bio, posts, favorites, and public workspaces.', publicProfile, _setPublicProfile),
-            _SettingsSwitch('Weekly email digest', 'Send a recap of your favorite teams, watchlists, and community replies.', emailDigest, _setEmailDigest),
-            _SettingsSwitch('Fantasy alerts', 'Notify me when watchlist players cross role/stat thresholds.', fantasyAlerts, _setFantasyAlerts),
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Wrap(spacing: 10, runSpacing: 10, children: [
-                for (final team in ['OKC', 'BOS', 'NYK', 'DEN', 'LAL', 'GSW', 'DAL', 'MIN', 'PHI', 'MIA'])
-                  FilterChip(
-                    selected: favoriteTeams.contains(team),
-                    selectedColor: const Color(0xFFEFF6FF),
-                    checkmarkColor: _blue,
-                    label: Text(team, style: const TextStyle(fontWeight: FontWeight.w900)),
-                    onSelected: (_) => _toggleTeam(team),
+    if (!loaded) {
+      return const _Card(child: Center(child: CircularProgressIndicator()));
+    }
+    final handle = username.text.trim().isEmpty ? 'user' : username.text.trim();
+    return ColoredBox(
+      color: _bg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Card(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 42,
+                  backgroundColor: _panel2,
+                  foregroundImage: avatarUrl.text.trim().isEmpty
+                      ? null
+                      : NetworkImage(avatarUrl.text.trim()),
+                  child: avatarUrl.text.trim().isEmpty
+                      ? Text(
+                          _initials(widget.session.displayName),
+                          style: const TextStyle(
+                            color: _blue,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.session.displayName,
+                        style: const TextStyle(
+                          color: _text,
+                          fontSize: 29,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      Text(
+                        '@$handle · ${widget.session.role.label}',
+                        style: const TextStyle(
+                          color: _blue,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      if (bio.text.trim().isNotEmpty) ...[
+                        const SizedBox(height: 7),
+                        Text(
+                          bio.text.trim(),
+                          style: const TextStyle(color: _muted, height: 1.4),
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      _ReputationBadges(
+                        future: communityProfileFuture,
+                        favoriteTeams: favoriteTeams.length,
+                        favoritePlayers: favoritePlayers.length,
+                        publicProfile: publicProfile,
+                      ),
+                    ],
                   ),
-              ]),
+                ),
+              ],
             ),
-          ]),
-        ),
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final editor = _Card(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _Title('IDENTITY'),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: username,
+                      onChanged: (_) => setState(() {}),
+                      style: const TextStyle(color: _text),
+                      decoration: const InputDecoration(
+                        labelText: 'Username / handle',
+                        prefixText: '@',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: bio,
+                      onChanged: (_) => setState(() {}),
+                      minLines: 3,
+                      maxLines: 5,
+                      style: const TextStyle(color: _text),
+                      decoration: const InputDecoration(
+                        labelText: 'Bio',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: avatarUrl,
+                      onChanged: (_) => setState(() {}),
+                      style: const TextStyle(color: _text),
+                      decoration: const InputDecoration(
+                        labelText: 'Profile picture URL',
+                        helperText:
+                            'Image upload/storage can replace this URL field when object storage is connected.',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      value: publicProfile,
+                      onChanged: (value) =>
+                          setState(() => publicProfile = value),
+                      title: const Text(
+                        'Public profile',
+                        style: TextStyle(
+                          color: _text,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Allow other users to view your bio, teams, earned badges and public contribution history.',
+                        style: TextStyle(color: _muted),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+              final prefs = _Card(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _Title('PREFERENCES & NOTIFICATIONS'),
+                    const SizedBox(height: 6),
+                    _Switch(
+                      'Weekly sports digest',
+                      emailDigest,
+                      (value) => setState(() => emailDigest = value),
+                    ),
+                    _Switch(
+                      'Fantasy/player alerts',
+                      fantasyAlerts,
+                      (value) => setState(() => fantasyAlerts = value),
+                    ),
+                    _Switch(
+                      'Trade & transaction alerts',
+                      tradeAlerts,
+                      (value) => setState(() => tradeAlerts = value),
+                    ),
+                    _Switch(
+                      'Editorial newsletter',
+                      articleDigest,
+                      (value) => setState(() => articleDigest = value),
+                    ),
+                  ],
+                ),
+              );
+              if (constraints.maxWidth < 900) {
+                return Column(
+                  children: [editor, const SizedBox(height: 12), prefs],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: editor),
+                  const SizedBox(width: 12),
+                  Expanded(child: prefs),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          _Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _Title('TEAMS YOU ROOT FOR'),
+                const SizedBox(height: 5),
+                const Text(
+                  'Choose any number of NBA teams. These preferences can drive your home feed, notifications, articles and community shortcuts.',
+                  style: TextStyle(color: _muted),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: [
+                    for (final team in teams)
+                      FilterChip(
+                        selected: favoriteTeams.contains(team),
+                        label: Text(team),
+                        onSelected: (_) => setState(() {
+                          if (!favoriteTeams.add(team)) favoriteTeams.remove(team);
+                        }),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _Title('FAVORITE PLAYERS / WATCHLIST'),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: favoritePlayer,
+                        style: const TextStyle(color: _text),
+                        decoration: const InputDecoration(
+                          hintText: 'Add player name or canonical ID…',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: () {
+                        final value = favoritePlayer.text.trim();
+                        if (value.isEmpty) return;
+                        setState(() {
+                          favoritePlayers.add(value);
+                          favoritePlayer.clear();
+                        });
+                      },
+                      child: const Text('Add'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 9),
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: [
+                    for (final player in favoritePlayers)
+                      InputChip(
+                        label: Text(player),
+                        onDeleted: () =>
+                            setState(() => favoritePlayers.remove(player)),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _Title('PROFILE AWARDS & REPUTATION'),
+                const SizedBox(height: 8),
+                FutureBuilder<Map<String, dynamic>?>(
+                  future: communityProfileFuture,
+                  builder: (context, snapshot) {
+                    final payload = snapshot.data;
+                    final reputation = payload?['reputation'];
+                    final data = reputation is Map ? reputation : const {};
+                    final badges = data['badges'];
+                    final communities = payload?['communities'];
+                    final memberships = communities is List ? communities : const [];
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 18,
+                          runSpacing: 10,
+                          children: [
+                            _Stat('${data['reputation'] ?? 0}', 'Reputation'),
+                            _Stat('${data['posts'] ?? 0}', 'Threads'),
+                            _Stat('${data['comments'] ?? 0}', 'Comments'),
+                            _Stat(
+                              '${data['received_upvotes'] ?? 0}',
+                              'Received upvotes',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            const _Badge(
+                              'FOUNDING USER',
+                              Icons.workspace_premium_rounded,
+                              _amber,
+                            ),
+                            if (badges is List)
+                              for (final badge in badges)
+                                _Badge(
+                                  '$badge'.toUpperCase(),
+                                  Icons.verified_rounded,
+                                  _green,
+                                ),
+                            if (favoriteTeams.isNotEmpty)
+                              const _Badge(
+                                'TEAM LOYALIST',
+                                Icons.favorite_rounded,
+                                _green,
+                              ),
+                            if (favoritePlayers.length >= 5)
+                              const _Badge(
+                                'SCOUT',
+                                Icons.visibility_rounded,
+                                _blue,
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 9),
+                        Text(
+                          memberships.isEmpty
+                              ? 'Follow communities and contribute to earn server-backed reputation and community badges.'
+                              : 'Member of ${memberships.length} Sports Terminal communities. Reputation badges are calculated from published contribution history rather than being user-editable.',
+                          style: const TextStyle(color: _muted, height: 1.45),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: _save,
+              icon: const Icon(Icons.save_rounded),
+              label: const Text('Save profile & preferences'),
+            ),
+          ),
+        ],
       ),
-    ]);
+    );
   }
 }
 
-class _HeroBand extends StatelessWidget {
-  const _HeroBand({required this.eyebrow, required this.title, required this.body, required this.chips});
-  final String eyebrow;
-  final String title;
-  final String body;
-  final List<String> chips;
+class _ReputationBadges extends StatelessWidget {
+  const _ReputationBadges({
+    required this.future,
+    required this.favoriteTeams,
+    required this.favoritePlayers,
+    required this.publicProfile,
+  });
 
+  final Future<Map<String, dynamic>?> future;
+  final int favoriteTeams;
+  final int favoritePlayers;
+  final bool publicProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: future,
+      builder: (context, snapshot) {
+        final payload = snapshot.data;
+        final raw = payload?['reputation'];
+        final reputation = raw is Map ? raw : const {};
+        final badges = reputation['badges'];
+        final score = reputation['reputation'] ?? 0;
+        return Wrap(
+          spacing: 7,
+          runSpacing: 7,
+          children: [
+            _Badge('REP $score', Icons.bolt_rounded, _blue),
+            if (favoriteTeams > 0)
+              const _Badge('TEAM LOYALIST', Icons.favorite_rounded, _green),
+            if (favoritePlayers >= 5)
+              const _Badge('SCOUT', Icons.visibility_rounded, _blue),
+            if (publicProfile)
+              const _Badge('PUBLIC PROFILE', Icons.public_rounded, _amber),
+            if (badges is List)
+              for (final badge in badges.take(4))
+                _Badge(
+                  '$badge'.toUpperCase(),
+                  Icons.verified_rounded,
+                  _green,
+                ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _Card extends StatelessWidget {
+  const _Card({required this.child});
+  final Widget child;
   @override
   Widget build(BuildContext context) => Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [_navy, _blue, _orange]), borderRadius: BorderRadius.circular(32), boxShadow: const [BoxShadow(color: Color(0x26071A33), blurRadius: 32, offset: Offset(0, 16))]),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(eyebrow.toUpperCase(), style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-          const SizedBox(height: 10),
-          ConstrainedBox(constraints: const BoxConstraints(maxWidth: 850), child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 38, height: 1.05, fontWeight: FontWeight.w900, letterSpacing: -0.8))),
-          const SizedBox(height: 12),
-          ConstrainedBox(constraints: const BoxConstraints(maxWidth: 780), child: Text(body, style: const TextStyle(color: Color(0xFFEAF2FF), fontSize: 16, height: 1.45, fontWeight: FontWeight.w600))),
-          const SizedBox(height: 18),
-          Wrap(spacing: 9, runSpacing: 9, children: [for (final chip in chips) _GlassChip(chip)]),
-        ]),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _panel,
+          border: Border.all(color: _line),
+        ),
+        child: child,
       );
 }
 
-class _GlassChip extends StatelessWidget {
-  const _GlassChip(this.label);
-  final String label;
+class _Title extends StatelessWidget {
+  const _Title(this.text);
+  final String text;
   @override
-  Widget build(BuildContext context) => Container(padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7), decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.13), borderRadius: BorderRadius.circular(999), border: Border.all(color: Colors.white.withValues(alpha: 0.25))), child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)));
+  Widget build(BuildContext context) => Text(
+        text,
+        style: const TextStyle(
+          color: _text,
+          fontSize: 15,
+          fontWeight: FontWeight.w900,
+          letterSpacing: .6,
+        ),
+      );
 }
 
-class _SettingsSwitch extends StatelessWidget {
-  const _SettingsSwitch(this.title, this.body, this.value, this.onChanged);
-  final String title;
-  final String body;
+class _Badge extends StatelessWidget {
+  const _Badge(this.text, this.icon, this.color);
+  final String text;
+  final IconData icon;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: _panel2,
+          border: Border.all(color: color.withValues(alpha: .55)),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: color),
+            const SizedBox(width: 5),
+            Text(
+              text,
+              style: TextStyle(
+                color: color,
+                fontSize: 8,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _Switch extends StatelessWidget {
+  const _Switch(this.label, this.value, this.onChanged);
+  final String label;
   final bool value;
   final ValueChanged<bool> onChanged;
-
   @override
-  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(18), decoration: const BoxDecoration(border: Border(top: BorderSide(color: _line))), child: Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: _ink, fontSize: 17, fontWeight: FontWeight.w900)), const SizedBox(height: 5), Text(body, style: const TextStyle(color: _muted, height: 1.35, fontWeight: FontWeight.w600))])), Switch(value: value, onChanged: onChanged)]));
+  Widget build(BuildContext context) => SwitchListTile.adaptive(
+        contentPadding: EdgeInsets.zero,
+        value: value,
+        onChanged: onChanged,
+        title: Text(
+          label,
+          style: const TextStyle(color: _text, fontWeight: FontWeight.w800),
+        ),
+      );
 }
 
-class _MiniStats extends StatelessWidget {
-  const _MiniStats({required this.items});
-  final List<_MiniStat> items;
-  @override
-  Widget build(BuildContext context) => Wrap(spacing: 10, runSpacing: 10, children: [for (final item in items) Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: _soft, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(item.label, style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w800)), const SizedBox(height: 6), Text(item.value, style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 20))]))]);
-}
-
-class _MiniStat {
-  const _MiniStat(this.label, this.value);
-  final String label;
+class _Stat extends StatelessWidget {
+  const _Stat(this.value, this.label);
   final String value;
-}
-
-class _PanelHeader extends StatelessWidget {
-  const _PanelHeader(this.title, this.subtitle);
-  final String title;
-  final String subtitle;
+  final String label;
   @override
-  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: _ink, fontSize: 19, fontWeight: FontWeight.w900)), const SizedBox(height: 4), Text(subtitle, style: const TextStyle(color: _muted, fontWeight: FontWeight.w600))]));
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: _text,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(
+              color: _muted,
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      );
 }
 
-class _RoadmapTable extends StatelessWidget {
-  const _RoadmapTable({required this.title, required this.rows});
-  final String title;
-  final List<List<String>> rows;
-  @override
-  Widget build(BuildContext context) => _Surface(padding: EdgeInsets.zero, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_PanelHeader(title, 'Launch checklist'), for (final row in rows) Container(padding: const EdgeInsets.all(16), decoration: const BoxDecoration(border: Border(top: BorderSide(color: _line))), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [SizedBox(width: 180, child: Text(row[0], style: const TextStyle(color: _ink, fontWeight: FontWeight.w900))), Expanded(child: Text(row[1], style: const TextStyle(color: _muted, height: 1.35, fontWeight: FontWeight.w600)))]))]));
-}
-
-class _TwoColumn extends StatelessWidget {
-  const _TwoColumn({required this.left, required this.right});
-  final Widget left;
-  final Widget right;
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(builder: (context, constraints) {
-        if (constraints.maxWidth < 920) return Column(children: [left, const SizedBox(height: 18), right]);
-        return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: left), const SizedBox(width: 18), Expanded(child: right)]);
-      });
-}
-
-class _Surface extends StatelessWidget {
-  const _Surface({required this.child, this.padding = const EdgeInsets.all(18)});
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-  @override
-  Widget build(BuildContext context) => Container(width: double.infinity, padding: padding, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(26), border: Border.all(color: _line), boxShadow: const [BoxShadow(color: Color(0x0A071A33), blurRadius: 24, offset: Offset(0, 12))]), child: child);
-}
-
-String _initial(String value) => value.trim().isEmpty ? 'U' : value.trim()[0].toUpperCase();
+String _initials(String value) => value
+    .trim()
+    .split(RegExp(r'\s+'))
+    .take(2)
+    .map((part) => part.isEmpty ? '' : part[0])
+    .join()
+    .toUpperCase();

@@ -6,11 +6,8 @@ import '../models/app_session.dart';
 import '../services/launch_auth_client.dart';
 
 class AuthController extends ChangeNotifier {
-  AuthController({LaunchAuthClient authClient = const LaunchAuthClient()})
-      : _authClient = authClient;
-
+  AuthController({LaunchAuthClient authClient = const LaunchAuthClient()}) : _authClient = authClient;
   final LaunchAuthClient _authClient;
-
   AppSession? _session;
   String? _error;
   bool _busy = false;
@@ -22,45 +19,13 @@ class AuthController extends ChangeNotifier {
   bool get busy => _busy;
   bool get hydrated => _hydrated;
 
-  static const _demoAccounts =
-      <String, ({String password, AppSession session})>{
-    'analyst@sportsterminal.local': (
-      password: 'demo123',
-      session: AppSession(
-        userId: 'demo-analyst',
-        email: 'analyst@sportsterminal.local',
-        displayName: 'Demo Analyst',
-        organizationId: 'demo-org',
-        organizationName: 'Sports Terminal Demo Organization',
-        role: UserRole.analyst,
-      ),
-    ),
-    'admin@sportsterminal.local': (
-      password: 'demo123',
-      session: AppSession(
-        userId: 'demo-org-admin',
-        email: 'admin@sportsterminal.local',
-        displayName: 'Demo Organization Admin',
-        organizationId: 'demo-org',
-        organizationName: 'Sports Terminal Demo Organization',
-        role: UserRole.organizationAdmin,
-      ),
-    ),
-    'platform@sportsterminal.local': (
-      password: 'demo123',
-      session: AppSession(
-        userId: 'demo-platform-admin',
-        email: 'platform@sportsterminal.local',
-        displayName: 'Demo Platform Admin',
-        organizationId: 'sports-terminal-internal',
-        organizationName: 'Sports Terminal Internal',
-        role: UserRole.platformAdmin,
-      ),
-    ),
+  static const _demoAccounts = <String, ({String password, AppSession session})>{
+    'analyst@sportsterminal.local': (password: 'demo123', session: AppSession(userId: 'demo-analyst', email: 'analyst@sportsterminal.local', displayName: 'Demo Analyst', organizationId: 'demo-org', organizationName: 'Sports Terminal Demo Organization', role: UserRole.analyst)),
+    'admin@sportsterminal.local': (password: 'demo123', session: AppSession(userId: 'demo-org-admin', email: 'admin@sportsterminal.local', displayName: 'Demo Organization Admin', organizationId: 'demo-org', organizationName: 'Sports Terminal Demo Organization', role: UserRole.organizationAdmin)),
+    'platform@sportsterminal.local': (password: 'demo123', session: AppSession(userId: 'demo-platform-admin', email: 'platform@sportsterminal.local', displayName: 'Demo Platform Admin', organizationId: 'sports-terminal-internal', organizationName: 'Sports Terminal Internal', role: UserRole.platformAdmin)),
   };
 
-  List<AppSession> get demoSessions =>
-      _demoAccounts.values.map((item) => item.session).toList(growable: false);
+  List<AppSession> get demoSessions => _demoAccounts.values.map((item) => item.session).toList(growable: false);
 
   Future<void> hydrate() async {
     if (_hydrated || _busy) return;
@@ -68,18 +33,13 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
     final result = await _authClient.restore();
     _session = result.session;
-    if (result.available && result.error.isNotEmpty) {
-      _error = result.error;
-    }
+    if (result.available && result.error.isNotEmpty) _error = result.error;
     _busy = false;
     _hydrated = true;
     notifyListeners();
   }
 
-  FutureOr<bool> signIn({
-    required String email,
-    required String password,
-  }) {
+  FutureOr<bool> signIn({required String email, required String password}) {
     if (_busy) return false;
     final normalizedEmail = email.trim().toLowerCase();
     final demo = _demoAccounts[normalizedEmail];
@@ -91,21 +51,12 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
       return true;
     }
-    return _signInRemote(
-      normalizedEmail: normalizedEmail,
-      password: password,
-    );
+    return _signInRemote(normalizedEmail: normalizedEmail, password: password);
   }
 
-  Future<bool> _signInRemote({
-    required String normalizedEmail,
-    required String password,
-  }) async {
+  Future<bool> _signInRemote({required String normalizedEmail, required String password}) async {
     _setBusy(true);
-    final remote = await _authClient.signIn(
-      email: normalizedEmail,
-      password: password,
-    );
+    final remote = await _authClient.signIn(email: normalizedEmail, password: password);
     if (remote.succeeded) {
       _session = remote.session;
       _error = null;
@@ -114,13 +65,8 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
       return true;
     }
-
     _session = null;
-    _error = remote.available
-        ? (remote.error.isEmpty
-            ? 'Email or password is incorrect.'
-            : remote.error)
-        : 'The account service is offline. Start the launch backend or use a development demo role.';
+    _error = remote.available ? (remote.error.isEmpty ? 'Email or password is incorrect.' : remote.error) : 'The account service is offline. Start the launch backend or use a development demo role.';
     _busy = false;
     _hydrated = true;
     notifyListeners();
@@ -132,9 +78,16 @@ class AuthController extends ChangeNotifier {
     required String password,
     required String displayName,
     required bool organizationAccount,
+    required bool acceptedTerms,
+    required bool acceptedPrivacy,
     String organizationName = '',
   }) async {
     if (_busy) return false;
+    if (!acceptedTerms || !acceptedPrivacy) {
+      _error = 'You must agree to the Terms & Conditions and Privacy Policy before creating an account.';
+      notifyListeners();
+      return false;
+    }
     _setBusy(true);
     final result = await _authClient.signUp(
       email: email,
@@ -142,6 +95,8 @@ class AuthController extends ChangeNotifier {
       displayName: displayName,
       organizationAccount: organizationAccount,
       organizationName: organizationName,
+      acceptedTerms: acceptedTerms,
+      acceptedPrivacy: acceptedPrivacy,
     );
     if (result.succeeded) {
       _session = result.session;
@@ -152,11 +107,7 @@ class AuthController extends ChangeNotifier {
       return true;
     }
     _session = null;
-    _error = result.available
-        ? (result.error.isEmpty
-            ? 'Account creation failed.'
-            : result.error)
-        : 'The account service is offline. Start the launch backend before creating a customer account.';
+    _error = result.available ? (result.error.isEmpty ? 'Account creation failed.' : result.error) : 'The account service is offline. Start the launch backend before creating a customer account.';
     _busy = false;
     _hydrated = true;
     notifyListeners();
@@ -170,25 +121,7 @@ class AuthController extends ChangeNotifier {
     _hydrated = true;
     notifyListeners();
   }
-
-  void clearError() {
-    if (_error == null) return;
-    _error = null;
-    notifyListeners();
-  }
-
-  void signOut() {
-    _session = null;
-    _error = null;
-    _busy = false;
-    _hydrated = true;
-    notifyListeners();
-    unawaited(_authClient.signOut());
-  }
-
-  void _setBusy(bool value) {
-    _busy = value;
-    _error = null;
-    notifyListeners();
-  }
+  void clearError() { if (_error == null) return; _error = null; notifyListeners(); }
+  void signOut() { _session = null; _error = null; _busy = false; _hydrated = true; notifyListeners(); unawaited(_authClient.signOut()); }
+  void _setBusy(bool value) { _busy = value; _error = null; notifyListeners(); }
 }

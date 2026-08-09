@@ -72,8 +72,26 @@ jobs:
       - name: Test historical NBA entity intelligence contract
         run: python backend/scripts/historical_entity_intelligence_contract_test.py
 
+      - name: Test canonical NBA awards and voting contract
+        run: python backend/scripts/nba_awards_contract_test.py
+
+      - name: Test expanded community network contract
+        run: python backend/scripts/community_network_contract_test.py
+
+      - name: Test durable Sports Terminal profile contract
+        run: python backend/scripts/profile_contract_test.py
+
+      - name: Test mandatory legal consent contract
+        run: python backend/scripts/legal_consent_contract_test.py
+
       - name: Test unified NBA terminal contract
         run: python backend/scripts/nba_terminal_contract_test.py
+
+      - name: Audit page scroll ownership
+        run: python tools/audit_page_scroll_ownership.py --check
+
+      - name: Audit canonical NBA entity links
+        run: python tools/audit_nba_entity_links.py --check
 
       - name: Test launch backend contracts
         id: backend_contract

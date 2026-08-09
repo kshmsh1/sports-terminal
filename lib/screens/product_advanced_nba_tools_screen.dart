@@ -4,7 +4,7 @@ import '../services/historical_nba_repository.dart';
 import '../services/nba_research_context_store.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/product_local_store.dart';
-import 'product_analytics_suite_screen.dart';
+import 'product_nba_stats_workstation_screen.dart';
 
 class ProductAdvancedNbaToolsScreen extends StatefulWidget {
   const ProductAdvancedNbaToolsScreen({super.key});
@@ -74,7 +74,7 @@ class _ProductAdvancedNbaToolsScreenState
       _historical = scope == 'historical';
       _league = savedLeague.isEmpty ? 'NBA' : savedLeague;
       _season = season;
-      _seasonType = const {'regular', 'playoffs', 'combined'}.contains(savedType)
+      _seasonType = const {'regular', 'playoffs'}.contains(savedType)
           ? savedType
           : 'regular';
       _seasons = seasons;
@@ -171,7 +171,7 @@ class _ProductAdvancedNbaToolsScreenState
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: const Color(0xFF111824),
+      color: const Color(0xFF090D12),
       child: Column(
         children: [
           _DataScopeBar(
@@ -189,11 +189,10 @@ class _ProductAdvancedNbaToolsScreenState
             onLeague: _changeLeague,
             onSeasonType: _changeSeasonType,
           ),
-          Expanded(
-            child: ProductAnalyticsSuiteScreen(
-              key: ValueKey(
-                '${_historical ? 'history' : 'current'}-$_league-$_season-$_seasonType-$_revision',
-              ),
+          const SizedBox(height: 10),
+          ProductNbaStatsWorkstationScreen(
+            key: ValueKey(
+              'advanced-${_historical ? 'history' : 'current'}-$_league-$_season-$_seasonType-$_revision',
             ),
           ),
         ],
@@ -218,7 +217,6 @@ class _DataScopeBar extends StatelessWidget {
     required this.onLeague,
     required this.onSeasonType,
   });
-
   final bool historical;
   final bool loading;
   final String season;
@@ -238,7 +236,7 @@ class _DataScopeBar extends StatelessWidget {
     const text = Color(0xFFF3F6FB);
     const muted = Color(0xFF98A5B8);
     const line = Color(0xFF344154);
-    const yellow = Color(0xFFFFCB45);
+    const blue = Color(0xFF63A9FF);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -251,99 +249,23 @@ class _DataScopeBar extends StatelessWidget {
         runSpacing: 7,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          const Text(
-            'ANALYTICS DATA',
-            style: TextStyle(
-              color: yellow,
-              fontSize: 9,
-              fontWeight: FontWeight.w900,
-              letterSpacing: .8,
-            ),
-          ),
-          ChoiceChip(
-            selected: !historical,
-            label: const Text('Certified / Current'),
-            onSelected: (_) => onCurrent(),
-          ),
-          ChoiceChip(
-            selected: historical,
-            label: const Text('Canonical History'),
-            onSelected: (_) => onHistorical(),
-          ),
+          const Text('ADVANCED STATS DATA', style: TextStyle(color: blue, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: .8)),
+          ChoiceChip(selected: !historical, label: const Text('Current'), onSelected: (_) => onCurrent()),
+          ChoiceChip(selected: historical, label: const Text('Canonical History'), onSelected: (_) => onHistorical()),
           if (historical) ...[
-            _ScopeDrop(
-              value: league,
-              values: const ['NBA', 'ABA', 'BAA'],
-              onChanged: onLeague,
-            ),
-            _ScopeDrop(
-              value: seasonType,
-              values: const ['regular', 'playoffs', 'combined'],
-              labels: const {
-                'regular': 'Regular Season',
-                'playoffs': 'Playoffs',
-                'combined': 'Combined',
-              },
-              onChanged: onSeasonType,
-            ),
-            if (seasons.isNotEmpty)
-              _ScopeDrop(
-                value: seasons.contains(season) ? season : seasons.last,
-                values: seasons.reversed.toList(),
-                onChanged: onSeason,
-              ),
+            _ScopeDrop(value: league, values: const ['NBA', 'ABA', 'BAA'], onChanged: onLeague),
+            _ScopeDrop(value: seasonType, values: const ['regular', 'playoffs'], labels: const {'regular': 'Regular Season', 'playoffs': 'Playoffs'}, onChanged: onSeasonType),
+            if (seasons.isNotEmpty) _ScopeDrop(value: seasons.contains(season) ? season : seasons.last, values: seasons.reversed.toList(), onChanged: onSeason),
           ],
-          if (loading)
-            const SizedBox(
-              width: 15,
-              height: 15,
-              child: CircularProgressIndicator(strokeWidth: 2, color: yellow),
-            ),
-          Text(
-            historical
-                ? '${season.isEmpty ? 'NO SEASON' : season} · canonical warehouse projected into original seed contract'
-                : 'validated asset / fallback seed contract',
-            style: const TextStyle(color: muted, fontSize: 9),
-          ),
-          FutureBuilder<NbaResearchContext>(
-            future: contextFuture,
-            builder: (context, snapshot) {
-              final active = snapshot.data;
-              if (active == null || active.entityLabel.isEmpty) {
-                return const SizedBox.shrink();
-              }
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0x2265B5FF),
-                  border: Border.all(color: const Color(0x5565B5FF)),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  'ENTITY · ${active.entityLabel}',
-                  style: const TextStyle(
-                    color: Color(0xFF65B5FF),
-                    fontSize: 8,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              );
-            },
-          ),
-          if (error.isNotEmpty)
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
-              child: Text(
-                error,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.redAccent, fontSize: 9),
-              ),
-            ),
-          const Text(
-            'Same Player Dashboard · Compare · Rankings · Team Compare · Recent Games · Shot Profile · Lineup Builder · Tier List',
-            style: TextStyle(color: text, fontSize: 8, fontWeight: FontWeight.w700),
-          ),
+          if (loading) const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2, color: blue)),
+          Text(historical ? '${season.isEmpty ? 'NO SEASON' : season} · canonical historical scope' : 'validated current-release scope', style: const TextStyle(color: muted, fontSize: 9)),
+          FutureBuilder<NbaResearchContext>(future: contextFuture, builder: (context, snapshot) {
+            final active = snapshot.data;
+            if (active == null || active.entityLabel.isEmpty) return const SizedBox.shrink();
+            return Text('ENTITY · ${active.entityLabel}', style: const TextStyle(color: blue, fontSize: 8, fontWeight: FontWeight.w900));
+          }),
+          if (error.isNotEmpty) ConstrainedBox(constraints: const BoxConstraints(maxWidth: 430), child: Text(error, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.redAccent, fontSize: 9))),
+          const Text('Full categorized workstation · sortable metrics · rate bases · compare · glossary · source awareness', style: TextStyle(color: text, fontSize: 8, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -351,46 +273,23 @@ class _DataScopeBar extends StatelessWidget {
 }
 
 class _ScopeDrop extends StatelessWidget {
-  const _ScopeDrop({
-    required this.value,
-    required this.values,
-    required this.onChanged,
-    this.labels = const {},
-  });
-
+  const _ScopeDrop({required this.value, required this.values, required this.onChanged, this.labels = const {}});
   final String value;
   final List<String> values;
   final Map<String, String> labels;
   final ValueChanged<String> onChanged;
-
   @override
   Widget build(BuildContext context) => Container(
         height: 32,
         padding: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF222D3E),
-          border: Border.all(color: const Color(0xFF344154)),
-          borderRadius: BorderRadius.circular(6),
-        ),
+        decoration: BoxDecoration(color: const Color(0xFF222D3E), border: Border.all(color: const Color(0xFF344154)), borderRadius: BorderRadius.circular(6)),
         child: DropdownButtonHideUnderline(
           child: DropdownButton<String>(
             value: value,
             dropdownColor: const Color(0xFF222D3E),
-            style: const TextStyle(
-              color: Color(0xFFF3F6FB),
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-            ),
-            items: [
-              for (final item in values)
-                DropdownMenuItem(
-                  value: item,
-                  child: Text(labels[item] ?? item),
-                ),
-            ],
-            onChanged: (next) {
-              if (next != null) onChanged(next);
-            },
+            style: const TextStyle(color: Color(0xFFF3F6FB), fontSize: 9, fontWeight: FontWeight.w800),
+            items: [for (final item in values) DropdownMenuItem(value: item, child: Text(labels[item] ?? item))],
+            onChanged: (next) { if (next != null) onChanged(next); },
           ),
         ),
       );
