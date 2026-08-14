@@ -7,6 +7,7 @@ import '../services/nba_research_context_store.dart';
 import '../services/nba_terminal_command_engine.dart';
 import '../services/nba_terminal_repository.dart';
 import '../services/nba_terminal_state_store.dart';
+import '../widgets/nba_game_navigation.dart';
 import 'product_analytics_suite_screen.dart';
 import 'product_automation_governance_screen.dart';
 import 'product_connected_data_studio_screen.dart';
@@ -18,6 +19,7 @@ import 'product_fantasy_community_screens.dart';
 import 'product_front_office_registry_screen.dart';
 import 'product_nba_entity_command_center_screen.dart';
 import 'product_nba_historical_intelligence_screen.dart';
+import 'product_nba_public_pages_screen.dart';
 import 'product_nba_research_command_center_screen.dart';
 import 'product_nba_stats_center_screen.dart';
 import 'product_nba_universe_screen.dart';
@@ -366,6 +368,29 @@ class _ProductNbaTerminalScreenState extends State<ProductNbaTerminalScreen> {
                 onActivate: () async {
                   await _activateEntity(kind, row);
                   if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                  if (kind == 'game' && mounted) {
+                    final away = (row['away_team_name'] ??
+                            row['away_team_id'] ??
+                            'Away')
+                        .toString();
+                    final home = (row['home_team_name'] ??
+                            row['home_team_id'] ??
+                            'Home')
+                        .toString();
+                    await openNbaGamePage(
+                      this.context,
+                      gameId: key,
+                      gameLabel: '$away @ $home',
+                      onOpenTeam: (teamId) =>
+                          openNbaTeamPage(this.context, teamId, teamId),
+                      onOpenPlayer: (playerId, playerName) =>
+                          openNbaPlayerPage(
+                        this.context,
+                        playerId,
+                        playerName,
+                      ),
+                    );
+                  }
                 },
               );
             },
@@ -1347,7 +1372,7 @@ class _EntityPreview extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onActivate,
                 icon: const Icon(Icons.bolt_rounded),
-                label: const Text('Activate context'),
+                label: Text(kind == 'game' ? 'Open game' : 'Activate context'),
               ),
             ],
           ),
