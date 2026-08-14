@@ -41,7 +41,9 @@ class NbaSeasonPlayerLeaderEngine {
       return activeSeason == normalizedSeason;
     }).where((row) {
       final games = row.value('gp') ?? 0;
-      return games >= minimumGames && row.value(metric.key) != null;
+      return games >= minimumGames &&
+          row.value(metric.key) != null &&
+          _hasMetricEvidence(row.raw, metric);
     }).toList()
       ..sort((left, right) {
         final l = left.value(metric.key)!;
@@ -148,6 +150,63 @@ String _rawSeasonId(Map<String, dynamic> raw) {
     if (value.isNotEmpty) return value;
   }
   return '';
+}
+
+bool _hasMetricEvidence(
+  Map<String, dynamic> raw,
+  NbaSeasonLeaderMetric metric,
+) {
+  final keys = switch (metric) {
+    NbaSeasonLeaderMetric.points => const [
+        'points',
+        'pts',
+        'points_per_game',
+        'ppg',
+      ],
+    NbaSeasonLeaderMetric.rebounds => const [
+        'rebounds',
+        'trb',
+        'reb',
+        'rebounds_per_game',
+        'rpg',
+      ],
+    NbaSeasonLeaderMetric.assists => const [
+        'assists',
+        'ast',
+        'assists_per_game',
+        'apg',
+      ],
+    NbaSeasonLeaderMetric.steals => const [
+        'steals',
+        'stl',
+        'steals_per_game',
+        'spg',
+      ],
+    NbaSeasonLeaderMetric.blocks => const [
+        'blocks',
+        'blk',
+        'blocks_per_game',
+        'bpg',
+      ],
+    NbaSeasonLeaderMetric.plusMinus => const [
+        'plus_minus',
+        'plus_minus_per_game',
+      ],
+    NbaSeasonLeaderMetric.trueShooting => const <String>[],
+  };
+  if (metric == NbaSeasonLeaderMetric.trueShooting) {
+    return _hasAny(raw, const ['field_goal_attempts', 'fga']) ||
+        _hasAny(raw, const ['free_throw_attempts', 'fta']);
+  }
+  return _hasAny(raw, keys);
+}
+
+bool _hasAny(Map<String, dynamic> raw, List<String> keys) {
+  for (final key in keys) {
+    final value = raw[key];
+    if (value != null && value.toString().trim().isNotEmpty) return true;
+  }
+  return false;
 }
 
 String _normalize(String value) => value.trim().toUpperCase();
