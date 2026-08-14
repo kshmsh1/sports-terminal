@@ -51,7 +51,7 @@ void main() {
     expect(payload.rows, isEmpty);
     expect(payload.readinessState, 'Partial');
     expect(payload.metadata['matchedEvents'], 0);
-    expect(payload.filterSummary, contains('query=does-not-exist'));
+    expect(payload.filterSummary, contains('query="does-not-exist"'));
   });
 
   test('partial event rows remain partial instead of being repaired', () {
