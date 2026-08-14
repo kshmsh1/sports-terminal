@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../screens/product_nba_game_command_center_screen.dart';
+import '../screens/product_nba_game_terminal_screen.dart';
 import '../screens/product_nba_schedule_screen.dart';
 import '../services/nba_terminal_seed_repository.dart';
 
@@ -51,9 +52,17 @@ Future<void> openNbaGamePage(
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1500),
-              child: ProductNbaGameCommandCenterScreen(
+              child: ProductNbaGameTerminalScreen(
                 gameId: normalizedId,
                 loadSeed: loadSeed,
+                onOpenGame: (relatedGameId, relatedGameLabel) => openNbaGamePage(
+                  routeContext,
+                  gameId: relatedGameId,
+                  gameLabel: relatedGameLabel,
+                  loadSeed: loadSeed,
+                  onOpenTeam: onOpenTeam,
+                  onOpenPlayer: onOpenPlayer,
+                ),
                 onOpenTeam: onOpenTeam,
                 onOpenPlayer: onOpenPlayer,
               ),
