@@ -443,7 +443,5 @@ num? _number(Map<String, dynamic> row, List<String> keys) {
   return null;
 }
 
-int? _integer(Map<String, dynamic> row, List<String> keys) {
-  final value = _number(row, keys);
-  return value == null ? null : value.round();
-}
+int? _integer(Map<String, dynamic> row, List<String> keys) =>
+    _number(row, keys)?.round();
