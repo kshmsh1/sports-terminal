@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/nba_game_schedule_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
+import 'nba_team_trend_panel.dart';
 
 const _panel = Color(0xFF0F151C);
 const _panel2 = Color(0xFF141C25);
@@ -153,6 +154,15 @@ class NbaTeamGameLogPanel extends StatelessWidget {
               ),
             ),
           Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+            child: NbaTeamTrendPanel(
+              seed: seed,
+              teamId: teamId,
+              seasonType: seasonType,
+              onOpenGame: onOpenGame,
+            ),
+          ),
+          Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
             child: Wrap(
               spacing: 8,
@@ -174,9 +184,7 @@ class NbaTeamGameLogPanel extends StatelessWidget {
     final normalized = teamId.trim().toUpperCase();
     final home = row.homeTeamId.trim().toUpperCase() == normalized;
     final opponentId = home ? row.awayTeamId : row.homeTeamId;
-    final opponentLabel = home
-        ? row.awayTeamAbbreviation
-        : row.homeTeamAbbreviation;
+    final opponentLabel = home ? row.awayTeamAbbreviation : row.homeTeamAbbreviation;
     final prefix = home ? 'vs' : '@';
     return InkWell(
       onTap: opponentId.isEmpty ? null : () => onOpenTeam(opponentId),
