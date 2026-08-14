@@ -39,11 +39,12 @@ CONTRACTS: dict[str, tuple[str, ...]] = {
         "SOURCE & PROVENANCE",
     ),
     "lib/services/nba_game_workflow_service.dart": (
+        "SportsObjectRouter",
         "RoutePayload route(",
         "activateResearch(",
         "watchItem(",
         "toggleWatch(",
-        "sourceObjectType",
+        "RoutePayloadController",
     ),
     "lib/services/nba_game_schedule_engine.dart": (
         "class NbaGameScheduleEngine",
