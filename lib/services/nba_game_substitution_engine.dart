@@ -2,6 +2,9 @@ import 'nba_game_intelligence_engine.dart';
 import 'nba_game_play_by_play_engine.dart';
 import 'nba_terminal_seed_repository.dart';
 
+export 'nba_game_play_by_play_engine.dart'
+    show NbaPbpPlayerIdentity, NbaPbpTeamIdentity;
+
 /// Extracts confirmed substitution swaps from canonical PBP events.
 /// This engine intentionally does not reconstruct lineups or minutes between
 /// swaps because starters and complete substitution coverage are not guaranteed.
