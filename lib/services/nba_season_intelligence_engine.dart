@@ -214,10 +214,18 @@ class _MutableRecord {
 }
 
 String _normalize(String value) => value.trim().toUpperCase();
-String _normalizeSeasonType(String value) => value
-    .trim()
-    .toLowerCase()
-    .replaceAll('-', '_')
-    .replaceAll(' ', '_')
-    .replaceAll('postseason', 'playoffs')
-    .replaceAll('playoff', 'playoffs');
+
+String _normalizeSeasonType(String value) {
+  final normalized = value
+      .trim()
+      .toLowerCase()
+      .replaceAll('-', '_')
+      .replaceAll(' ', '_');
+  if (normalized.contains('postseason') || normalized.contains('playoff')) {
+    return 'playoffs';
+  }
+  if (normalized == 'regular' || normalized.contains('regular_season')) {
+    return 'regular_season';
+  }
+  return normalized;
+}
