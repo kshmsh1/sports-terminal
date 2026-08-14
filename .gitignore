@@ -50,12 +50,15 @@ __pycache__/
 /artifacts/nba_api_metric_coverage.json
 /artifacts/nba_api_metric_coverage.md
 
-# Large generated historical warehouses and reports
+# Large generated historical / modern warehouses and reports
 /data/warehouse/nba_history.sqlite
 /data/warehouse/nba_history.sqlite-shm
 /data/warehouse/nba_history.sqlite-wal
 /data/warehouse/nba_history_import_report.json
 /data/warehouse/nba_canonical_build_report.json
+/data/warehouse/nba_api_modern.sqlite
+/data/warehouse/nba_api_modern.sqlite-shm
+/data/warehouse/nba_api_modern.sqlite-wal
 
 # Symbolication related
 app.*.symbols
