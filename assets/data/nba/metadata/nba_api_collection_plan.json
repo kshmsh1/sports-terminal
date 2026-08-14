@@ -11,7 +11,7 @@
   "endpoints": [
     {
       "key": "league_player_stats",
-      "module": "league_dash_player_stats",
+      "module": "leaguedashplayerstats",
       "class": "LeagueDashPlayerStats",
       "datasets": ["LeagueDashPlayerStats"],
       "first_season": "1996-97",
@@ -23,7 +23,7 @@
     },
     {
       "key": "player_bio_stats",
-      "module": "league_dash_player_bio_stats",
+      "module": "leaguedashplayerbiostats",
       "class": "LeagueDashPlayerBioStats",
       "datasets": ["LeagueDashPlayerBioStats"],
       "first_season": "1996-97",
@@ -32,7 +32,7 @@
     },
     {
       "key": "estimated_metrics",
-      "module": "player_estimated_metrics",
+      "module": "playerestimatedmetrics",
       "class": "PlayerEstimatedMetrics",
       "datasets": ["PlayerEstimatedMetrics"],
       "first_season": "1996-97",
@@ -41,7 +41,7 @@
     },
     {
       "key": "hustle",
-      "module": "league_hustle_stats_player",
+      "module": "leaguehustlestatsplayer",
       "class": "LeagueHustleStatsPlayer",
       "datasets": ["HustleStatsPlayer"],
       "first_season": "2016-17",
@@ -50,7 +50,7 @@
     },
     {
       "key": "defense_overall",
-      "module": "league_dash_pt_defend",
+      "module": "leaguedashptdefend",
       "class": "LeagueDashPtDefend",
       "datasets": ["LeagueDashPTDefend"],
       "first_season": "2013-14",
@@ -63,7 +63,7 @@
     },
     {
       "key": "clutch",
-      "module": "league_dash_player_clutch",
+      "module": "leaguedashplayerclutch",
       "class": "LeagueDashPlayerClutch",
       "datasets": ["LeagueDashPlayerClutch"],
       "first_season": "1996-97",
@@ -72,7 +72,7 @@
     },
     {
       "key": "player_shot_profile",
-      "module": "league_dash_player_pt_shot",
+      "module": "leaguedashplayerptshot",
       "class": "LeagueDashPlayerPtShot",
       "datasets": ["LeagueDashPTShots"],
       "first_season": "2013-14",
@@ -81,7 +81,7 @@
     },
     {
       "key": "shot_locations",
-      "module": "league_dash_player_shot_locations",
+      "module": "leaguedashplayershotlocations",
       "class": "LeagueDashPlayerShotLocations",
       "datasets": ["ShotLocations"],
       "first_season": "1996-97",
@@ -90,7 +90,7 @@
     },
     {
       "key": "tracking",
-      "module": "league_dash_pt_stats",
+      "module": "leaguedashptstats",
       "class": "LeagueDashPtStats",
       "datasets": ["LeagueDashPtStats"],
       "first_season": "2013-14",
@@ -106,7 +106,7 @@
     },
     {
       "key": "synergy_play_types",
-      "module": "synergy_play_types",
+      "module": "synergyplaytypes",
       "class": "SynergyPlayTypes",
       "datasets": ["SynergyPlayType"],
       "first_season": "2015-16",
@@ -122,7 +122,7 @@
     },
     {
       "key": "gravity",
-      "module": "gravity_leaders",
+      "module": "gravityleaders",
       "class": "GravityLeaders",
       "datasets": [],
       "first_season": "2013-14",
@@ -132,7 +132,7 @@
     },
     {
       "key": "dunk_tracking",
-      "module": "dunk_score_leaders",
+      "module": "dunkscoreleaders",
       "class": "DunkScoreLeaders",
       "datasets": [],
       "first_season": "2024-25",
