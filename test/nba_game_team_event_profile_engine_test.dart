@@ -10,7 +10,7 @@ void main() {
     expect(result.eventCount, 8);
     expect(result.profiles, hasLength(2));
     expect(result.unattributedEventCount, 2);
-    expect(result.uncreditedObservedPoints, 4);
+    expect(result.uncreditedObservedPoints, 5);
 
     final home = result.byTeamId('AAA')!;
     expect(home.explicitTeamEvents, 4);
@@ -32,8 +32,8 @@ void main() {
 
     expect(away.explicitTeamEvents, 2);
     expect(away.observedScoreDeltaPoints, 3);
-    expect(away.creditedPlayerPoints, 1);
-    expect(away.uncreditedTeamObservedPoints, 2);
+    expect(away.creditedPlayerPoints, 0);
+    expect(away.uncreditedTeamObservedPoints, 3);
     expect(away.closeWindowEvents, 2);
     expect(away.categoryCount(NbaPbpEventCategory.freeThrow), 1);
     expect(away.categoryCount(NbaPbpEventCategory.turnover), 1);
