@@ -315,61 +315,84 @@ class _GameHero extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text(
-                'NBA / GAME COMMAND CENTER',
-                style: TextStyle(
-                  color: _blue,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
+              const Expanded(
+                child: Text(
+                  'NBA / GAME COMMAND CENTER',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _blue,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1,
+                  ),
                 ),
               ),
-              const Spacer(),
-              if (game.status.isNotEmpty)
+              if (game.status.isNotEmpty) ...[
+                const SizedBox(width: 10),
                 _Pill(
                   label: game.status.toUpperCase(),
                   color: _amber,
                 ),
+              ],
             ],
           ),
           const SizedBox(height: 18),
           LayoutBuilder(
             builder: (context, constraints) {
-              final compact = constraints.maxWidth < 760;
-              final matchup = [
-                _TeamScore(
-                  team: game.awayTeam,
-                  score: game.awayScore,
-                  winner: game.winnerTeamId == game.awayTeam.id,
-                  onOpen: onOpenTeam,
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: compact ? 4 : 18,
-                    vertical: compact ? 12 : 0,
-                  ),
-                  child: const Text(
-                    'AT',
-                    style: TextStyle(
-                      color: _muted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
+              final compact = constraints.maxWidth < 860;
+              final away = _TeamScore(
+                team: game.awayTeam,
+                score: game.awayScore,
+                winner: game.winnerTeamId == game.awayTeam.id,
+                onOpen: onOpenTeam,
+              );
+              final home = _TeamScore(
+                team: game.homeTeam,
+                score: game.homeScore,
+                winner: game.winnerTeamId == game.homeTeam.id,
+                onOpen: onOpenTeam,
+              );
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    away,
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      child: Center(
+                        child: Text(
+                          'AT',
+                          style: TextStyle(
+                            color: _muted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                    home,
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(child: away),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 18),
+                    child: Text(
+                      'AT',
+                      style: TextStyle(
+                        color: _muted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
-                ),
-                _TeamScore(
-                  team: game.homeTeam,
-                  score: game.homeScore,
-                  winner: game.winnerTeamId == game.homeTeam.id,
-                  onOpen: onOpenTeam,
-                ),
-              ];
-              return compact
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: matchup,
-                    )
-                  : Row(children: matchup);
+                  Expanded(child: home),
+                ],
+              );
             },
           ),
           const SizedBox(height: 16),
@@ -411,6 +434,8 @@ class _TeamScore extends StatelessWidget {
       children: [
         Text(
           team.abbreviation.isEmpty ? '—' : team.abbreviation,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: winner ? _green : _text,
             fontSize: 30,
@@ -420,31 +445,38 @@ class _TeamScore extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           team.name.isEmpty ? 'Unknown team' : team.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(color: _muted, fontWeight: FontWeight.w700),
         ),
       ],
     );
-    return Expanded(
-      child: Row(
-        children: [
-          Expanded(
-            child: onOpen == null || team.id.isEmpty
-                ? content
-                : InkWell(
-                    onTap: () => onOpen!(team.id),
-                    child: content,
-                  ),
-          ),
-          Text(
-            score?.toString() ?? '—',
-            style: TextStyle(
-              color: winner ? _green : _text,
-              fontSize: 42,
-              fontWeight: FontWeight.w900,
+    return Row(
+      children: [
+        Expanded(
+          child: onOpen == null || team.id.isEmpty
+              ? content
+              : InkWell(
+                  onTap: () => onOpen!(team.id),
+                  child: content,
+                ),
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          flex: 0,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              score?.toString() ?? '—',
+              style: TextStyle(
+                color: winner ? _green : _text,
+                fontSize: 42,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
