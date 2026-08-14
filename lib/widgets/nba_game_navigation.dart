@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../screens/product_nba_game_command_center_screen.dart';
 import '../screens/product_nba_game_terminal_screen.dart';
 import '../screens/product_nba_schedule_screen.dart';
+import '../screens/product_nba_season_screen.dart';
 import '../services/nba_terminal_seed_repository.dart';
 
 /// Opens a canonical NBA game route without coupling the Game Command Center
@@ -34,6 +35,17 @@ Future<void> openNbaGamePage(
           foregroundColor: const Color(0xFFE8EDF3),
           title: Text(gameLabel.trim().isEmpty ? 'NBA Game' : gameLabel.trim()),
           actions: [
+            IconButton(
+              key: const ValueKey('open-nba-season'),
+              tooltip: 'Open active NBA season',
+              onPressed: () => _openActiveSeason(
+                routeContext,
+                loadSeed: loadSeed,
+                onOpenTeam: onOpenTeam,
+                onOpenPlayer: onOpenPlayer,
+              ),
+              icon: const Icon(Icons.calendar_view_month_rounded),
+            ),
             IconButton(
               key: const ValueKey('open-nba-schedule'),
               tooltip: 'Open NBA Schedule',
@@ -112,6 +124,19 @@ Future<void> openNbaSchedulePage(
           backgroundColor: const Color(0xFF0F151C),
           foregroundColor: const Color(0xFFE8EDF3),
           title: Text(team == 'All' ? 'NBA Schedule' : '$team Schedule'),
+          actions: [
+            IconButton(
+              key: const ValueKey('schedule-open-nba-season'),
+              tooltip: 'Open active NBA season',
+              onPressed: () => _openActiveSeason(
+                scheduleContext,
+                loadSeed: loadSeed,
+                onOpenTeam: onOpenTeam,
+                onOpenPlayer: onOpenPlayer,
+              ),
+              icon: const Icon(Icons.calendar_view_month_rounded),
+            ),
+          ],
         ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(22),
@@ -140,4 +165,83 @@ Future<void> openNbaSchedulePage(
       ),
     ),
   );
+}
+
+Future<void> openNbaSeasonPage(
+  BuildContext context, {
+  required String seasonId,
+  Future<NbaTerminalSeedSnapshot> Function()? loadSeed,
+  ValueChanged<String>? onOpenTeam,
+  NbaGamePlayerOpenCallback? onOpenPlayer,
+}) {
+  final normalizedSeason = seasonId.trim();
+  if (normalizedSeason.isEmpty) return Future.value();
+
+  return Navigator.of(context).push<void>(
+    MaterialPageRoute(
+      settings: RouteSettings(
+        name: '/nba/seasons/${Uri.encodeComponent(normalizedSeason)}',
+        arguments: {'seasonId': normalizedSeason},
+      ),
+      builder: (seasonContext) => Scaffold(
+        backgroundColor: nbaSeasonBackground,
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF0F151C),
+          foregroundColor: const Color(0xFFE8EDF3),
+          title: Text('$normalizedSeason NBA Season'),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(22),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1600),
+              child: ProductNbaSeasonScreen(
+                seasonId: normalizedSeason,
+                loadSeed: loadSeed,
+                onOpenTeam: onOpenTeam,
+                onOpenGame: (gameId, gameLabel) => openNbaGamePage(
+                  seasonContext,
+                  gameId: gameId,
+                  gameLabel: gameLabel,
+                  loadSeed: loadSeed,
+                  onOpenTeam: onOpenTeam,
+                  onOpenPlayer: onOpenPlayer,
+                ),
+                onOpenSchedule: () => openNbaSchedulePage(
+                  seasonContext,
+                  loadSeed: loadSeed,
+                  onOpenTeam: onOpenTeam,
+                  onOpenPlayer: onOpenPlayer,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Future<void> _openActiveSeason(
+  BuildContext context, {
+  Future<NbaTerminalSeedSnapshot> Function()? loadSeed,
+  ValueChanged<String>? onOpenTeam,
+  NbaGamePlayerOpenCallback? onOpenPlayer,
+}) async {
+  try {
+    final seed = await (loadSeed?.call() ?? const NbaTerminalSeedRepository().load());
+    if (!context.mounted || seed.supportedSeason.trim().isEmpty) return;
+    await openNbaSeasonPage(
+      context,
+      seasonId: seed.supportedSeason,
+      loadSeed: loadSeed,
+      onOpenTeam: onOpenTeam,
+      onOpenPlayer: onOpenPlayer,
+    );
+  } catch (_) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      const SnackBar(content: Text('Active NBA season is unavailable.')),
+    );
+  }
 }
