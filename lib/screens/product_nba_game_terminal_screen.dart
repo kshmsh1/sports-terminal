@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../controllers/route_payload_controller.dart';
 import '../services/nba_game_intelligence_engine.dart';
+import '../services/nba_game_play_by_play_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
+import '../services/sports_object_router.dart';
 import '../widgets/nba_game_deep_intelligence_panel.dart';
+import '../widgets/nba_game_event_explorer_panel.dart';
 import '../widgets/nba_game_event_intelligence_panel.dart';
+import '../widgets/nba_game_event_profile_panel.dart';
 import 'product_nba_game_command_center_screen.dart';
 
 /// Permanent canonical Game route composition. The base Command Center and all
@@ -51,6 +56,38 @@ class _ProductNbaGameTerminalScreenState extends State<ProductNbaGameTerminalScr
       widget.loadSeed?.call() ?? const NbaTerminalSeedRepository().load();
 
   Future<NbaTerminalSeedSnapshot> _sharedSeed() => _seedFuture;
+
+  void _routeEvent(
+    NbaGameIntelligenceSnapshot game,
+    NbaGamePlayByPlayEvent event,
+    String targetRoute,
+  ) {
+    final controller = RoutePayloadScope.maybeOf(context);
+    if (controller == null) {
+      _notice('Shared RoutePayload state is unavailable in this shell.');
+      return;
+    }
+    try {
+      final payload = const SportsObjectRouter().packageGameEvent(
+        game: game,
+        event: event,
+        targetRoute: targetRoute,
+      );
+      controller.setActivePayload(
+        payload,
+        origin: 'NBA Game Event Explorer · ${game.gameId} · ${event.sequence ?? 'unsequenced'}',
+      );
+      _notice('${payload.displayLabel} routed to $targetRoute.');
+    } catch (error) {
+      _notice('Unable to route event: $error');
+    }
+  }
+
+  void _notice(String message) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,6 +140,24 @@ class _ProductNbaGameTerminalScreenState extends State<ProductNbaGameTerminalScr
                     game: game,
                     onOpenTeam: widget.onOpenTeam,
                     onOpenPlayer: widget.onOpenPlayer,
+                  ),
+                  const SizedBox(height: 12),
+                  NbaGameEventProfilePanel(
+                    key: ValueKey('game-event-profile-panel-${game.gameId}'),
+                    seed: snapshot.data!,
+                    game: game,
+                    onOpenTeam: widget.onOpenTeam,
+                    onOpenPlayer: widget.onOpenPlayer,
+                  ),
+                  const SizedBox(height: 12),
+                  NbaGameEventExplorerPanel(
+                    key: ValueKey('game-event-explorer-panel-${game.gameId}'),
+                    seed: snapshot.data!,
+                    game: game,
+                    onOpenTeam: widget.onOpenTeam,
+                    onOpenPlayer: widget.onOpenPlayer,
+                    onRouteEvent: (event, targetRoute) =>
+                        _routeEvent(game, event, targetRoute),
                   ),
                 ],
               ),
