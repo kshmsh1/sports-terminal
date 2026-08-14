@@ -99,7 +99,9 @@ void main() {
     await tester.tap(find.text('Open game'));
     await tester.pumpAndSettle();
 
-    expect(find.text('EVENT ROWS NOT EXPOSED'), findsOneWidget);
+    // Both the deep PBP surface and the batch-export surface expose the same
+    // release-level unavailability state; the route should keep both visible.
+    expect(find.text('EVENT ROWS NOT EXPOSED'), findsNWidgets(2));
     expect(
       find.textContaining('125 normalized events are declared by release metadata'),
       findsOneWidget,
