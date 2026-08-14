@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/nba_game_schedule_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
+import 'nba_game_navigation.dart';
 
 const _panel = Color(0xFF0F151C);
 const _panel2 = Color(0xFF141C25);
@@ -48,6 +49,12 @@ class NbaGameDiscoveryPanel extends StatelessWidget {
       ascending: false,
     );
     final rows = result.rows.take(limit).toList(growable: false);
+    final activeSeason = seed.supportedSeason.trim();
+    final queryLower = normalizedQuery.toLowerCase();
+    final seasonMatch = activeSeason.isNotEmpty &&
+        ('$activeSeason nba season active current')
+            .toLowerCase()
+            .contains(queryLower);
 
     return Container(
       width: double.infinity,
@@ -64,7 +71,7 @@ class NbaGameDiscoveryPanel extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'GAME DISCOVERY',
+                        'GAME + SEASON DISCOVERY',
                         style: TextStyle(
                           color: _amber,
                           fontSize: 11,
@@ -74,7 +81,7 @@ class NbaGameDiscoveryPanel extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${result.rows.length} canonical games match “$normalizedQuery”.',
+                        '${result.rows.length} canonical games${seasonMatch ? ' · active Season match' : ''} for “$normalizedQuery”.',
                         style: const TextStyle(color: _muted, fontSize: 10),
                       ),
                     ],
@@ -90,12 +97,59 @@ class NbaGameDiscoveryPanel extends StatelessWidget {
             ),
           ),
           const Divider(height: 1, color: _line),
+          if (seasonMatch) ...[
+            Container(
+              key: const ValueKey('hub-season-discovery-result'),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              color: _panel2,
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_view_month_rounded, color: _amber, size: 18),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$activeSeason NBA Season',
+                          style: const TextStyle(
+                            color: _text,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        Text(
+                          'Canonical active release · ${seed.datasetStatus.toUpperCase()}',
+                          style: const TextStyle(color: _muted, fontSize: 8),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton.icon(
+                    key: ValueKey('hub-discovery-season-$activeSeason'),
+                    onPressed: () => openNbaSeasonPage(
+                      context,
+                      seasonId: activeSeason,
+                      loadSeed: () async => seed,
+                      onOpenTeam: onOpenTeam,
+                    ),
+                    icon: const Icon(Icons.open_in_new_rounded, size: 15),
+                    label: const Text('Open Season'),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: _line),
+          ],
           if (rows.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 24),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 24),
               child: Text(
-                'No canonical games match this query in the active season-type scope.',
-                style: TextStyle(color: _muted),
+                seasonMatch
+                    ? 'No canonical games match this query in the active season-type scope.'
+                    : 'No canonical games or active Season match this query in the current release.',
+                style: const TextStyle(color: _muted),
               ),
             )
           else
