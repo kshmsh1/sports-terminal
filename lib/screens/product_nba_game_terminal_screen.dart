@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../controllers/route_payload_controller.dart';
+import '../services/nba_game_event_batch_route_service.dart';
+import '../services/nba_game_event_query_engine.dart';
 import '../services/nba_game_intelligence_engine.dart';
 import '../services/nba_game_play_by_play_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/sports_object_router.dart';
 import '../widgets/nba_game_deep_intelligence_panel.dart';
+import '../widgets/nba_game_event_batch_export_panel.dart';
 import '../widgets/nba_game_event_explorer_panel.dart';
 import '../widgets/nba_game_event_intelligence_panel.dart';
 import '../widgets/nba_game_event_profile_panel.dart';
@@ -35,7 +38,8 @@ class ProductNbaGameTerminalScreen extends StatefulWidget {
       _ProductNbaGameTerminalScreenState();
 }
 
-class _ProductNbaGameTerminalScreenState extends State<ProductNbaGameTerminalScreen> {
+class _ProductNbaGameTerminalScreenState
+    extends State<ProductNbaGameTerminalScreen> {
   late Future<NbaTerminalSeedSnapshot> _seedFuture;
 
   @override
@@ -47,7 +51,8 @@ class _ProductNbaGameTerminalScreenState extends State<ProductNbaGameTerminalScr
   @override
   void didUpdateWidget(ProductNbaGameTerminalScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.gameId != widget.gameId || oldWidget.loadSeed != widget.loadSeed) {
+    if (oldWidget.gameId != widget.gameId ||
+        oldWidget.loadSeed != widget.loadSeed) {
       _seedFuture = _load();
     }
   }
@@ -75,11 +80,39 @@ class _ProductNbaGameTerminalScreenState extends State<ProductNbaGameTerminalScr
       );
       controller.setActivePayload(
         payload,
-        origin: 'NBA Game Event Explorer · ${game.gameId} · ${event.sequence ?? 'unsequenced'}',
+        origin:
+            'NBA Game Event Explorer · ${game.gameId} · ${event.sequence ?? 'unsequenced'}',
       );
       _notice('${payload.displayLabel} routed to $targetRoute.');
     } catch (error) {
       _notice('Unable to route event: $error');
+    }
+  }
+
+  void _routeEventSelection(
+    NbaGameIntelligenceSnapshot game,
+    NbaGameEventQueryResult result,
+    String targetRoute,
+  ) {
+    final controller = RoutePayloadScope.maybeOf(context);
+    if (controller == null) {
+      _notice('Shared RoutePayload state is unavailable in this shell.');
+      return;
+    }
+    try {
+      final payload = const NbaGameEventBatchRouteService().package(
+        game: game,
+        result: result,
+        targetRoute: targetRoute,
+      );
+      controller.setActivePayload(
+        payload,
+        origin:
+            'NBA Game Event Explorer Batch · ${game.gameId} · ${result.matchedEvents} events',
+      );
+      _notice('${result.matchedEvents} events routed to $targetRoute.');
+    } catch (error) {
+      _notice('Unable to route event selection: $error');
     }
   }
 
@@ -135,7 +168,9 @@ class _ProductNbaGameTerminalScreenState extends State<ProductNbaGameTerminalScr
                   ),
                   const SizedBox(height: 12),
                   NbaGameEventIntelligencePanel(
-                    key: ValueKey('game-event-intelligence-panel-${game.gameId}'),
+                    key: ValueKey(
+                      'game-event-intelligence-panel-${game.gameId}',
+                    ),
                     seed: snapshot.data!,
                     game: game,
                     onOpenTeam: widget.onOpenTeam,
@@ -148,6 +183,14 @@ class _ProductNbaGameTerminalScreenState extends State<ProductNbaGameTerminalScr
                     game: game,
                     onOpenTeam: widget.onOpenTeam,
                     onOpenPlayer: widget.onOpenPlayer,
+                  ),
+                  const SizedBox(height: 12),
+                  NbaGameEventBatchExportPanel(
+                    key: ValueKey('game-event-batch-panel-${game.gameId}'),
+                    seed: snapshot.data!,
+                    game: game,
+                    onRouteSelection: (result, targetRoute) =>
+                        _routeEventSelection(game, result, targetRoute),
                   ),
                   const SizedBox(height: 12),
                   NbaGameEventExplorerPanel(
