@@ -67,21 +67,42 @@ Future<void> openNbaGamePage(
 
 /// Opens the first-class NBA schedule workspace from any surface that already
 /// participates in canonical game navigation.
+///
+/// Optional initial constraints are carried as route arguments and initialized
+/// into visible schedule controls so a team/game/search handoff is inspectable
+/// and reversible by the user rather than hidden in navigation state.
 Future<void> openNbaSchedulePage(
   BuildContext context, {
   Future<NbaTerminalSeedSnapshot> Function()? loadSeed,
   ValueChanged<String>? onOpenTeam,
   NbaGamePlayerOpenCallback? onOpenPlayer,
+  String initialTeamId = 'All',
+  String initialQuery = '',
+  String initialSeasonType = 'All',
+  bool initialAscending = true,
 }) {
+  final team = initialTeamId.trim().isEmpty ? 'All' : initialTeamId.trim();
+  final query = initialQuery.trim();
+  final seasonType =
+      initialSeasonType.trim().isEmpty ? 'All' : initialSeasonType.trim();
+
   return Navigator.of(context).push<void>(
     MaterialPageRoute(
-      settings: const RouteSettings(name: '/nba/schedule'),
-      builder: (_) => Scaffold(
+      settings: RouteSettings(
+        name: '/nba/schedule',
+        arguments: {
+          'teamId': team,
+          'query': query,
+          'seasonType': seasonType,
+          'ascending': initialAscending,
+        },
+      ),
+      builder: (scheduleContext) => Scaffold(
         backgroundColor: const Color(0xFF090D12),
         appBar: AppBar(
           backgroundColor: const Color(0xFF0F151C),
           foregroundColor: const Color(0xFFE8EDF3),
-          title: const Text('NBA Schedule'),
+          title: Text(team == 'All' ? 'NBA Schedule' : '$team Schedule'),
         ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(22),
@@ -90,9 +111,13 @@ Future<void> openNbaSchedulePage(
               constraints: const BoxConstraints(maxWidth: 1600),
               child: ProductNbaScheduleScreen(
                 loadSeed: loadSeed,
+                initialTeamId: team,
+                initialQuery: query,
+                initialSeasonType: seasonType,
+                initialAscending: initialAscending,
                 onOpenTeam: onOpenTeam,
                 onOpenGame: (gameId, gameLabel) => openNbaGamePage(
-                  context,
+                  scheduleContext,
                   gameId: gameId,
                   gameLabel: gameLabel,
                   loadSeed: loadSeed,
