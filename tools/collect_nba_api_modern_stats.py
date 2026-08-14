@@ -295,7 +295,6 @@ def resolve_kwargs(
     signature = inspect.signature(endpoint_class.__init__)
     kwargs: dict[str, Any] = {}
     notes: list[str] = []
-    supplied_semantics: set[str] = set()
 
     common = {
         "season": season,
@@ -306,7 +305,6 @@ def resolve_kwargs(
         parameter = _supported_parameter(signature, semantic)
         if parameter:
             kwargs[parameter] = value
-            supplied_semantics.add(semantic)
 
     for semantic, value in variant.items():
         if semantic == "key":
@@ -314,7 +312,6 @@ def resolve_kwargs(
         parameter = _supported_parameter(signature, semantic)
         if parameter:
             kwargs[parameter] = value
-            supplied_semantics.add(semantic)
         else:
             notes.append(f"variant semantic '{semantic}' is not accepted by constructor")
 
@@ -351,7 +348,9 @@ def dry_run_plan(
         try:
             endpoint_class = _endpoint_class(plan)
             declared = _declared_datasets(endpoint_class)
-            missing_datasets = [dataset for dataset in plan.datasets if declared and dataset not in declared]
+            missing_datasets = [
+                dataset for dataset in plan.datasets if declared and dataset not in declared
+            ]
             variants = []
             for variant in plan.variants:
                 kwargs, notes, missing_required = resolve_kwargs(
@@ -429,10 +428,15 @@ def _result_sets(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return [dict(item) for item in candidates if isinstance(item, dict)]
 
 
-def _row_objects(result_set: dict[str, Any]) -> tuple[list[str], list[dict[str, Any]]]:
+def _row_objects(
+    result_set: dict[str, Any],
+) -> tuple[list[str], list[dict[str, Any]]]:
     headers_raw = result_set.get("headers") or []
     if isinstance(headers_raw, list) and headers_raw and isinstance(headers_raw[0], dict):
-        headers = [str(item.get("columnNames") or item.get("name") or "") for item in headers_raw]
+        headers = [
+            str(item.get("columnNames") or item.get("name") or "")
+            for item in headers_raw
+        ]
     else:
         headers = [str(item) for item in headers_raw] if isinstance(headers_raw, list) else []
     row_set = result_set.get("rowSet") or result_set.get("rows") or []
@@ -442,7 +446,12 @@ def _row_objects(result_set: dict[str, Any]) -> tuple[list[str], list[dict[str, 
             if isinstance(item, dict):
                 rows.append({str(key): value for key, value in item.items()})
             elif isinstance(item, (list, tuple)):
-                rows.append({headers[index] if index < len(headers) else f"column_{index}": value for index, value in enumerate(item)})
+                rows.append(
+                    {
+                        headers[index] if index < len(headers) else f"column_{index}": value
+                        for index, value in enumerate(item)
+                    }
+                )
     if not headers and rows:
         headers = list(rows[0])
     return headers, rows
@@ -467,6 +476,48 @@ def _text(value: Any) -> str:
     return str(value).strip()
 
 
+def _ensure_request_parent(
+    db: sqlite3.Connection,
+    *,
+    request_id: str,
+    run_id: str,
+    plan: EndpointPlan,
+    season: str,
+    season_type: str,
+    variant_key: str,
+    kwargs: dict[str, Any],
+    started_at: str,
+) -> None:
+    """Create the request parent before any result-set/raw-row child insert.
+
+    This intentionally lives inside ``archive_response`` rather than only in the live
+    collector loop so fixtures, replay tools and future callers cannot accidentally
+    violate the same foreign-key ordering contract.
+    """
+    db.execute(
+        """
+        INSERT OR IGNORE INTO nba_api_requests(
+          request_id,run_id,endpoint_key,endpoint_module,endpoint_class,season,season_type,
+          variant_key,kwargs_json,status,error,started_at,completed_at,response_sha256,
+          result_set_count,row_count
+        ) VALUES (?,?,?,?,?,?,?,?,?,'running','',?,NULL,'',0,0)
+        """,
+        (
+            request_id,
+            run_id,
+            plan.key,
+            plan.module,
+            plan.class_name,
+            season,
+            season_type,
+            variant_key,
+            json.dumps(kwargs, sort_keys=True, default=str),
+            started_at,
+        ),
+    )
+    db.commit()
+
+
 def archive_response(
     db: sqlite3.Connection,
     *,
@@ -480,12 +531,32 @@ def archive_response(
     payload: dict[str, Any],
     started_at: str,
 ) -> tuple[int, int, str]:
-    serialized = json.dumps(payload, separators=(",", ":"), sort_keys=True, default=str)
+    _ensure_request_parent(
+        db,
+        request_id=request_id,
+        run_id=run_id,
+        plan=plan,
+        season=season,
+        season_type=season_type,
+        variant_key=variant_key,
+        kwargs=kwargs,
+        started_at=started_at,
+    )
+    serialized = json.dumps(
+        payload,
+        separators=(",", ":"),
+        sort_keys=True,
+        default=str,
+    )
     digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
     sets = _result_sets(payload)
     total_rows = 0
     for index, result_set in enumerate(sets):
-        dataset = str(result_set.get("name") or result_set.get("resultSetName") or f"dataset_{index}")
+        dataset = str(
+            result_set.get("name")
+            or result_set.get("resultSetName")
+            or f"dataset_{index}"
+        )
         headers, rows = _row_objects(result_set)
         db.execute(
             "INSERT OR REPLACE INTO nba_api_result_sets(request_id,dataset,headers_json,row_count) VALUES (?,?,?,?)",
@@ -512,34 +583,23 @@ def archive_response(
                     _text(_ci_get(row, PLAYER_NAME_KEYS)),
                     _text(_ci_get(row, TEAM_ID_KEYS)),
                     _text(_ci_get(row, TEAM_ABBR_KEYS)),
-                    json.dumps(row, separators=(",", ":"), sort_keys=True, default=str),
+                    json.dumps(
+                        row,
+                        separators=(",", ":"),
+                        sort_keys=True,
+                        default=str,
+                    ),
                 ),
             )
         total_rows += len(rows)
     db.execute(
         """
-        INSERT OR REPLACE INTO nba_api_requests(
-          request_id,run_id,endpoint_key,endpoint_module,endpoint_class,season,season_type,
-          variant_key,kwargs_json,status,error,started_at,completed_at,response_sha256,
-          result_set_count,row_count
-        ) VALUES (?,?,?,?,?,?,?,?,?,'success','',?,?,?,?,?,?)
+        UPDATE nba_api_requests
+        SET status='success',error='',completed_at=?,response_sha256=?,
+            result_set_count=?,row_count=?
+        WHERE request_id=?
         """,
-        (
-            request_id,
-            run_id,
-            plan.key,
-            plan.module,
-            plan.class_name,
-            season,
-            season_type,
-            variant_key,
-            json.dumps(kwargs, sort_keys=True, default=str),
-            started_at,
-            now_iso(),
-            digest,
-            len(sets),
-            total_rows,
-        ),
+        (now_iso(), digest, len(sets), total_rows, request_id),
     )
     db.commit()
     return len(sets), total_rows, digest
@@ -599,7 +659,9 @@ def collect(
 ) -> dict[str, Any]:
     version = package_version()
     if version == "not-installed":
-        raise RuntimeError("nba_api is not installed. Use scripts/collect_nba_api_modern_stats.sh.")
+        raise RuntimeError(
+            "nba_api is not installed. Use scripts/collect_nba_api_modern_stats.sh."
+        )
     run_id = f"nbaapi_{uuid.uuid4().hex[:16]}"
     started = now_iso()
     with connect(db_path) as db:
@@ -631,14 +693,23 @@ def collect(
                             ).fetchall()
                         ]
                         for old_id in old_ids:
-                            db.execute("DELETE FROM nba_api_requests WHERE request_id=?", (old_id,))
+                            db.execute(
+                                "DELETE FROM nba_api_requests WHERE request_id=?",
+                                (old_id,),
+                            )
                         db.commit()
                     for variant in plan.variants:
                         request_count += 1
                         variant_key = str(variant.get("key") or "default")
                         request_id = f"req_{uuid.uuid4().hex[:20]}"
                         request_started = now_iso()
-                        kwargs, notes, missing = resolve_kwargs(endpoint_class, season, season_type, variant, timeout)
+                        kwargs, notes, missing = resolve_kwargs(
+                            endpoint_class,
+                            season,
+                            season_type,
+                            variant,
+                            timeout,
+                        )
                         if missing:
                             failure_count += 1
                             record_failure(
@@ -651,7 +722,10 @@ def collect(
                                 variant_key=variant_key,
                                 kwargs=kwargs,
                                 started_at=request_started,
-                                error=f"Missing required constructor parameters: {', '.join(missing)}; {'; '.join(notes)}",
+                                error=(
+                                    "Missing required constructor parameters: "
+                                    f"{', '.join(missing)}; {'; '.join(notes)}"
+                                ),
                             )
                             continue
                         error = ""
@@ -697,19 +771,32 @@ def collect(
                                 error=error,
                             )
 
-        status = "success" if failure_count == 0 else "partial" if success_count else "failure"
+        status_value = (
+            "success"
+            if failure_count == 0
+            else "partial"
+            if success_count
+            else "failure"
+        )
         db.execute(
             """
             UPDATE nba_api_collection_runs
             SET completed_at=?,status=?,request_count=?,success_count=?,failure_count=?
             WHERE run_id=?
             """,
-            (now_iso(), status, request_count, success_count, failure_count, run_id),
+            (
+                now_iso(),
+                status_value,
+                request_count,
+                success_count,
+                failure_count,
+                run_id,
+            ),
         )
         db.commit()
         return {
             "run_id": run_id,
-            "status": status,
+            "status": status_value,
             "package_version": version,
             "requests": request_count,
             "successes": success_count,
@@ -742,10 +829,16 @@ def _payload_value(payload: dict[str, Any], field: str) -> Any:
     return None
 
 
-def _simple_metric_value(recipe: dict[str, Any], payload: dict[str, Any]) -> float | None:
+def _simple_metric_value(
+    recipe: dict[str, Any],
+    payload: dict[str, Any],
+) -> float | None:
     operation = str(recipe.get("operation") or "").strip()
     inputs = [str(value) for value in recipe.get("inputs") or []]
-    ratio = re.fullmatch(r"\s*([A-Za-z0-9_]+)\s*/\s*([A-Za-z0-9_]+)\s*", operation)
+    ratio = re.fullmatch(
+        r"\s*([A-Za-z0-9_]+)\s*/\s*([A-Za-z0-9_]+)\s*",
+        operation,
+    )
     if ratio:
         numerator = _number(_payload_value(payload, ratio.group(1)))
         denominator = _number(_payload_value(payload, ratio.group(2)))
@@ -773,7 +866,11 @@ def materialize(
     season_types: list[str] | None = None,
 ) -> dict[str, Any]:
     recipes = load_recipes(recipe_path)
-    scopes = {(season, season_type) for season in (seasons or []) for season_type in (season_types or [])}
+    scopes = {
+        (season, season_type)
+        for season in (seasons or [])
+        for season_type in (season_types or [])
+    }
     inserted = skipped = 0
     with connect(db_path) as db:
         init_db(db)
@@ -788,8 +885,8 @@ def materialize(
         db.commit()
 
         for priority, recipe in enumerate(recipes):
-            status = str(recipe.get("status") or "")
-            if status not in SIMPLE_STATUSES:
+            status_value = str(recipe.get("status") or "")
+            if status_value not in SIMPLE_STATUSES:
                 skipped += 1
                 continue
             endpoint = str(recipe.get("endpoint") or "")
@@ -800,7 +897,9 @@ def materialize(
             clauses = ["endpoint_class=?", "dataset=?", "player_id<>''"]
             params: list[Any] = [endpoint, dataset_spec]
             if scopes:
-                scope_sql = " OR ".join("(season=? AND season_type=?)" for _ in scopes)
+                scope_sql = " OR ".join(
+                    "(season=? AND season_type=?)" for _ in scopes
+                )
                 clauses.append(f"({scope_sql})")
                 for season, season_type in sorted(scopes):
                     params.extend([season, season_type])
@@ -813,7 +912,11 @@ def materialize(
                 if not isinstance(payload, dict):
                     continue
                 value = _simple_metric_value(recipe, payload)
-                if value is None or value != value or value in (float("inf"), float("-inf")):
+                if (
+                    value is None
+                    or value != value
+                    or value in (float("inf"), float("-inf"))
+                ):
                     continue
                 db.execute(
                     """
@@ -824,17 +927,41 @@ def materialize(
                     ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                     """,
                     (
-                        row["season"], row["season_type"], row["player_id"], row["player_name"],
-                        row["team_id"], row["team_abbreviation"], str(recipe.get("metric") or ""), value,
-                        endpoint, dataset_spec, row["variant_key"], status,
-                        str(recipe.get("operation") or ""), priority, row["request_id"], now_iso(),
+                        row["season"],
+                        row["season_type"],
+                        row["player_id"],
+                        row["player_name"],
+                        row["team_id"],
+                        row["team_abbreviation"],
+                        str(recipe.get("metric") or ""),
+                        value,
+                        endpoint,
+                        dataset_spec,
+                        row["variant_key"],
+                        status_value,
+                        str(recipe.get("operation") or ""),
+                        priority,
+                        row["request_id"],
+                        now_iso(),
                     ),
                 )
                 inserted += 1
         db.commit()
-        distinct_metrics = int(db.execute("SELECT COUNT(DISTINCT metric_key) FROM nba_api_metric_values").fetchone()[0])
-        distinct_players = int(db.execute("SELECT COUNT(DISTINCT player_id) FROM nba_api_metric_values").fetchone()[0])
-        scopes_count = int(db.execute("SELECT COUNT(*) FROM (SELECT DISTINCT season,season_type FROM nba_api_metric_values)").fetchone()[0])
+        distinct_metrics = int(
+            db.execute(
+                "SELECT COUNT(DISTINCT metric_key) FROM nba_api_metric_values"
+            ).fetchone()[0]
+        )
+        distinct_players = int(
+            db.execute(
+                "SELECT COUNT(DISTINCT player_id) FROM nba_api_metric_values"
+            ).fetchone()[0]
+        )
+        scopes_count = int(
+            db.execute(
+                "SELECT COUNT(*) FROM (SELECT DISTINCT season,season_type FROM nba_api_metric_values)"
+            ).fetchone()[0]
+        )
     return {
         "database": str(db_path),
         "materialized_rows": inserted,
@@ -854,14 +981,38 @@ def status(db_path: Path) -> dict[str, Any]:
             "SELECT * FROM nba_api_collection_runs ORDER BY started_at DESC LIMIT 1"
         ).fetchone()
         counts = {
-            "runs": int(db.execute("SELECT COUNT(*) FROM nba_api_collection_runs").fetchone()[0]),
-            "requests": int(db.execute("SELECT COUNT(*) FROM nba_api_requests").fetchone()[0]),
-            "successful_requests": int(db.execute("SELECT COUNT(*) FROM nba_api_requests WHERE status='success'").fetchone()[0]),
-            "failed_requests": int(db.execute("SELECT COUNT(*) FROM nba_api_requests WHERE status='failure'").fetchone()[0]),
-            "raw_rows": int(db.execute("SELECT COUNT(*) FROM nba_api_raw_rows").fetchone()[0]),
-            "metric_rows": int(db.execute("SELECT COUNT(*) FROM nba_api_metric_values").fetchone()[0]),
-            "metrics": int(db.execute("SELECT COUNT(DISTINCT metric_key) FROM nba_api_metric_values").fetchone()[0]),
-            "players": int(db.execute("SELECT COUNT(DISTINCT player_id) FROM nba_api_metric_values").fetchone()[0]),
+            "runs": int(
+                db.execute("SELECT COUNT(*) FROM nba_api_collection_runs").fetchone()[0]
+            ),
+            "requests": int(
+                db.execute("SELECT COUNT(*) FROM nba_api_requests").fetchone()[0]
+            ),
+            "successful_requests": int(
+                db.execute(
+                    "SELECT COUNT(*) FROM nba_api_requests WHERE status='success'"
+                ).fetchone()[0]
+            ),
+            "failed_requests": int(
+                db.execute(
+                    "SELECT COUNT(*) FROM nba_api_requests WHERE status='failure'"
+                ).fetchone()[0]
+            ),
+            "raw_rows": int(
+                db.execute("SELECT COUNT(*) FROM nba_api_raw_rows").fetchone()[0]
+            ),
+            "metric_rows": int(
+                db.execute("SELECT COUNT(*) FROM nba_api_metric_values").fetchone()[0]
+            ),
+            "metrics": int(
+                db.execute(
+                    "SELECT COUNT(DISTINCT metric_key) FROM nba_api_metric_values"
+                ).fetchone()[0]
+            ),
+            "players": int(
+                db.execute(
+                    "SELECT COUNT(DISTINCT player_id) FROM nba_api_metric_values"
+                ).fetchone()[0]
+            ),
         }
         coverage = [
             dict(row)
@@ -893,7 +1044,11 @@ def main() -> int:
     parser.add_argument("--season", action="append", default=[])
     parser.add_argument("--from-season", default="")
     parser.add_argument("--to-season", default="")
-    parser.add_argument("--season-type", choices=("regular", "playoffs", "both"), default="both")
+    parser.add_argument(
+        "--season-type",
+        choices=("regular", "playoffs", "both"),
+        default="both",
+    )
     parser.add_argument("--endpoint", action="append", default=[])
     parser.add_argument("--include-disabled", action="store_true")
     parser.add_argument("--delay", type=float, default=1.25)
@@ -918,7 +1073,11 @@ def main() -> int:
             parser.error("--from-season and --to-season must be supplied together")
         seasons.extend(season_range(args.from_season, args.to_season))
     seasons = list(dict.fromkeys(seasons or ["2025-26"]))
-    season_types = ["regular", "playoffs"] if args.season_type == "both" else [args.season_type]
+    season_types = (
+        ["regular", "playoffs"]
+        if args.season_type == "both"
+        else [args.season_type]
+    )
 
     if args.dry_run:
         report = dry_run_plan(
