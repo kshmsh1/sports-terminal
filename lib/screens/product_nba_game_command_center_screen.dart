@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../controllers/route_payload_controller.dart';
 import '../services/nba_game_intelligence_engine.dart';
+import '../services/nba_game_workflow_service.dart';
 import '../services/nba_terminal_seed_repository.dart';
 
 const _bg = Color(0xFF090D12);
@@ -113,6 +115,8 @@ class _ProductNbaGameCommandCenterScreenState
               onOpenTeam: widget.onOpenTeam,
             ),
             const SizedBox(height: 12),
+            _GameWorkflowPanel(game: game),
+            const SizedBox(height: 12),
             _CoveragePanel(game: game),
             if (game.integrityIssues.isNotEmpty) ...[
               const SizedBox(height: 12),
@@ -134,6 +138,159 @@ class _ProductNbaGameCommandCenterScreenState
           ],
         );
       },
+    );
+  }
+}
+
+class _GameWorkflowPanel extends StatefulWidget {
+  const _GameWorkflowPanel({required this.game});
+
+  final NbaGameIntelligenceSnapshot game;
+
+  @override
+  State<_GameWorkflowPanel> createState() => _GameWorkflowPanelState();
+}
+
+class _GameWorkflowPanelState extends State<_GameWorkflowPanel> {
+  static const _workflows = NbaGameWorkflowService();
+  late Future<bool> _watchedFuture;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _watchedFuture = _workflows.isWatched(widget.game);
+  }
+
+  @override
+  void didUpdateWidget(_GameWorkflowPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.game.gameId != widget.game.gameId) {
+      _watchedFuture = _workflows.isWatched(widget.game);
+      _busy = false;
+    }
+  }
+
+  void _route(String target) {
+    final controller = RoutePayloadScope.maybeOf(context);
+    if (controller == null) {
+      _notice('Shared RoutePayload state is unavailable in this shell.');
+      return;
+    }
+    try {
+      final payload = _workflows.route(
+        controller,
+        game: widget.game,
+        targetRoute: target,
+      );
+      _notice('${payload.displayLabel} routed to $target.');
+    } catch (error) {
+      _notice('Unable to route game: $error');
+    }
+  }
+
+  Future<void> _activateResearch() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final context = await _workflows.activateResearch(widget.game);
+      if (!mounted) return;
+      _notice(
+        'Research context activated · ${context.scopeLabel}${context.entityLabel.isEmpty ? '' : ' · ${context.entityLabel}'}.',
+      );
+    } catch (error) {
+      if (mounted) _notice('Unable to activate research context: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _toggleWatch() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final watched = await _workflows.toggleWatch(widget.game);
+      if (!mounted) return;
+      setState(() => _watchedFuture = Future.value(watched));
+      _notice(watched ? 'Game added to NBA watchlist.' : 'Game removed from NBA watchlist.');
+    } catch (error) {
+      if (mounted) _notice('Unable to update watchlist: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _notice(String message) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      title: 'GAME WORKFLOWS',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Publish this canonical game into shared terminal state, activate it as the current research object, or persist it in the cross-NBA entity watchlist.',
+            style: TextStyle(color: _muted, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                key: const ValueKey('game-route-workspace'),
+                onPressed: () => _route('Workspace'),
+                icon: const Icon(Icons.grid_on_rounded, size: 17),
+                label: const Text('Workspace'),
+              ),
+              OutlinedButton.icon(
+                key: const ValueKey('game-route-python'),
+                onPressed: () => _route('Python Lab'),
+                icon: const Icon(Icons.code_rounded, size: 17),
+                label: const Text('Python Lab'),
+              ),
+              OutlinedButton.icon(
+                key: const ValueKey('game-route-compare'),
+                onPressed: () => _route('Compare'),
+                icon: const Icon(Icons.compare_arrows_rounded, size: 17),
+                label: const Text('Compare'),
+              ),
+              OutlinedButton.icon(
+                key: const ValueKey('game-route-source-audit'),
+                onPressed: () => _route('Source Audit'),
+                icon: const Icon(Icons.fact_check_outlined, size: 17),
+                label: const Text('Source Audit'),
+              ),
+              FilledButton.icon(
+                key: const ValueKey('game-activate-research'),
+                onPressed: _busy ? null : _activateResearch,
+                icon: const Icon(Icons.bolt_rounded, size: 17),
+                label: const Text('Activate research context'),
+              ),
+              FutureBuilder<bool>(
+                future: _watchedFuture,
+                builder: (context, snapshot) {
+                  final watched = snapshot.data == true;
+                  return OutlinedButton.icon(
+                    key: const ValueKey('game-toggle-watch'),
+                    onPressed: _busy ? null : _toggleWatch,
+                    icon: Icon(
+                      watched ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                      size: 17,
+                    ),
+                    label: Text(watched ? 'Watching' : 'Watch game'),
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
