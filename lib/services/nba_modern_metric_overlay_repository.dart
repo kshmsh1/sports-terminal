@@ -41,7 +41,7 @@ class NbaModernMetricOverlay {
         byPlayerName[_normalizeName(row.player)];
     if (metrics == null || metrics.isEmpty) return row;
     final nextRaw = <String, dynamic>{...row.raw};
-    final nextValues = <String, double>{...row.values};
+    final nextValues = <String, double?>{...row.values};
     for (final entry in metrics.entries) {
       nextRaw[entry.key] = entry.value;
       final definition = nbaTerminalMetricByKey[entry.key];
