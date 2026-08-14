@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/nba_stats_metric_catalog.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
+import '../widgets/nba_game_navigation.dart';
 
 const _pBg = Color(0xFF090D12);
 const _pPanel = Color(0xFF0F151C);
@@ -305,6 +306,21 @@ Future<void> openNbaTeamPage(
         ),
       ),
     ),
+  );
+}
+
+Future<void> _openPublicGame(
+  BuildContext context,
+  String gameId, {
+  String gameLabel = 'NBA Game',
+}) {
+  return openNbaGamePage(
+    context,
+    gameId: gameId,
+    gameLabel: gameLabel,
+    onOpenTeam: (teamId) => openNbaTeamPage(context, teamId, teamId),
+    onOpenPlayer: (playerId, playerName) =>
+        openNbaPlayerPage(context, playerId, playerName),
   );
 }
 
@@ -747,45 +763,70 @@ class _ProductNbaTeamPageState extends State<ProductNbaTeamPage> {
                     for (final game in games)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 5),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 105,
-                              child: Text(
-                                '${game['game_date'] ?? '—'}',
-                                style: const TextStyle(color: _pMuted),
-                              ),
-                            ),
-                            Expanded(
-                              child: InkWell(
-                                onTap: () {
-                                  final opponent =
-                                      '${game['opponent_team_id'] ?? ''}';
-                                  if (opponent.isNotEmpty && opponent != '—') {
-                                    openNbaTeamPage(
-                                      context,
-                                      opponent,
-                                      opponent,
-                                    );
-                                  }
-                                },
-                                child: Text(
-                                  '${game['opponent_team_id'] ?? '—'} · ${game['result'] ?? '—'}',
-                                  style: const TextStyle(
-                                    color: _pBlue,
-                                    fontWeight: FontWeight.w800,
+                        child: Builder(
+                          builder: (context) {
+                            final gameId = _firstText(
+                              game,
+                              const ['game_id', 'gameId', 'id'],
+                            );
+                            final opponent = _firstText(
+                              game,
+                              const ['opponent_team_id', 'opponent_team', 'opponent'],
+                            );
+                            return Row(
+                              children: [
+                                SizedBox(
+                                  width: 105,
+                                  child: Text(
+                                    '${game['game_date'] ?? '—'}',
+                                    style: const TextStyle(color: _pMuted),
                                   ),
                                 ),
-                              ),
-                            ),
-                            Text(
-                              '${game['points'] ?? '—'} PTS',
-                              style: const TextStyle(
-                                color: _pText,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ],
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: opponent == '—'
+                                        ? null
+                                        : () => openNbaTeamPage(
+                                              context,
+                                              opponent,
+                                              opponent,
+                                            ),
+                                    child: Text(
+                                      '$opponent · ${game['result'] ?? '—'}',
+                                      style: TextStyle(
+                                        color: opponent == '—' ? _pMuted : _pBlue,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  '${game['points'] ?? '—'} PTS',
+                                  style: const TextStyle(
+                                    color: _pText,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                if (gameId != '—') ...[
+                                  const SizedBox(width: 6),
+                                  IconButton(
+                                    tooltip: 'Open Game Command Center',
+                                    visualDensity: VisualDensity.compact,
+                                    icon: const Icon(
+                                      Icons.open_in_new_rounded,
+                                      size: 17,
+                                      color: _pAmber,
+                                    ),
+                                    onPressed: () => _openPublicGame(
+                                      context,
+                                      gameId,
+                                      gameLabel: '$opponent · ${game['game_date'] ?? 'NBA Game'}',
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            );
+                          },
                         ),
                       ),
                   ],
@@ -1126,6 +1167,7 @@ class _GameCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final gameId = _firstText(game, const ['game_id', 'gameId', 'id']);
     final home = _firstText(game, const ['home_team_id', 'home_team', 'home']);
     final away = _firstText(game, const ['away_team_id', 'away_team', 'away', 'visitor_team_id']);
     final date = _firstText(game, const ['game_date', 'date', 'gameDate']);
@@ -1152,6 +1194,22 @@ class _GameCard extends StatelessWidget {
           if (status != '—') ...[
             const SizedBox(height: 7),
             Text(status, style: const TextStyle(color: _pAmber, fontSize: 10)),
+          ],
+          if (gameId != '—') ...[
+            const SizedBox(height: 7),
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+              ),
+              onPressed: () => _openPublicGame(
+                context,
+                gameId,
+                gameLabel: '$away @ $home',
+              ),
+              icon: const Icon(Icons.sports_basketball_rounded, size: 15),
+              label: const Text('Open game'),
+            ),
           ],
         ],
       ),
