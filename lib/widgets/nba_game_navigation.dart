@@ -165,6 +165,8 @@ Future<void> openNbaSeasonPage(
   BuildContext context, {
   required String seasonId,
   Future<NbaTerminalSeedSnapshot> Function()? loadSeed,
+  NbaSeasonComparisonSeedLoader? loadComparisonSeason,
+  NbaSeasonSourcePayloadLoader? loadSourceContext,
   ValueChanged<String>? onOpenTeam,
   NbaGamePlayerOpenCallback? onOpenPlayer,
 }) {
@@ -192,6 +194,8 @@ Future<void> openNbaSeasonPage(
               child: ProductNbaSeasonScreen(
                 seasonId: normalizedSeason,
                 loadSeed: loadSeed,
+                loadComparisonSeason: loadComparisonSeason,
+                loadSourceContext: loadSourceContext,
                 onOpenTeam: onOpenTeam,
                 onOpenPlayer: onOpenPlayer,
                 onOpenGame: (gameId, gameLabel) => openNbaGamePage(
@@ -235,6 +239,12 @@ Future<void> openHistoricalNbaSeasonPage(
     seasonId: normalizedSeason,
     loadSeed: () => const NbaTerminalSeedRepository().loadHistoricalSeason(
       normalizedSeason,
+      league: league,
+      seasonType: seasonType,
+    ),
+    loadComparisonSeason: (comparisonSeason) =>
+        const NbaTerminalSeedRepository().loadHistoricalSeason(
+      comparisonSeason,
       league: league,
       seasonType: seasonType,
     ),
