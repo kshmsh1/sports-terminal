@@ -45,6 +45,7 @@ void main() {
     expect(find.text('Alpha'), findsOneWidget);
     expect(find.text('Beta'), findsOneWidget);
     expect(find.text('Example Guard'), findsOneWidget);
+    expect(find.text('GAME WORKFLOWS'), findsOneWidget);
 
     await tester.tap(find.text('Alpha'));
     await tester.pump();
@@ -53,6 +54,50 @@ void main() {
     await tester.tap(find.text('Example Guard'));
     await tester.pump();
     expect(openedPlayer, ('p1', 'Example Guard'));
+  });
+
+  testWidgets('game route opens canonical schedule and schedule reopens game', (
+    tester,
+  ) async {
+    final observer = _RecordingObserver();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorObservers: [observer],
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: FilledButton(
+              onPressed: () => openNbaGamePage(
+                context,
+                gameId: 'g1',
+                gameLabel: 'Beta @ Alpha',
+                loadSeed: () async => _seed(),
+              ),
+              child: const Text('Open game'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open game'));
+    await tester.pumpAndSettle();
+    expect(observer.lastPushed?.settings.name, '/nba/games/g1');
+
+    await tester.tap(find.byKey(const ValueKey('open-nba-schedule')));
+    await tester.pumpAndSettle();
+
+    expect(observer.lastPushed?.settings.name, '/nba/schedule');
+    expect(find.text('Canonical game calendar'), findsOneWidget);
+    expect(find.text('AAA'), findsWidgets);
+    expect(find.text('BBB'), findsWidgets);
+    expect(find.byKey(const ValueKey('schedule-game-g1')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('schedule-game-g1')));
+    await tester.pumpAndSettle();
+
+    expect(observer.lastPushed?.settings.name, '/nba/games/g1');
+    expect(find.text('NBA / GAME COMMAND CENTER'), findsOneWidget);
   });
 
   testWidgets('empty game identifiers are a navigation no-op', (tester) async {
@@ -105,6 +150,7 @@ NbaTerminalSeedSnapshot _seed() => NbaTerminalSeedSnapshot.fromMap({
           'game_id': 'g1',
           'season_id': '2025-26',
           'game_date': '2026-01-15',
+          'season_type': 'regular',
           'status': 'Final',
           'home_team_id': 'AAA',
           'away_team_id': 'BBB',
