@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
 TOOL_PATH = ROOT / "tools" / "collect_nba_api_modern_stats.py"
 RECIPES = ROOT / "assets" / "data" / "nba" / "metadata" / "nba_api_metric_recipes.json"
 
@@ -16,30 +17,6 @@ assert spec and spec.loader
 pipeline = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = pipeline
 spec.loader.exec_module(pipeline)
-
-
-def request_stub(db: sqlite3.Connection, run_id: str, request_id: str, endpoint_class: str) -> None:
-    db.execute(
-        """
-        INSERT INTO nba_api_requests(
-          request_id,run_id,endpoint_key,endpoint_module,endpoint_class,season,season_type,
-          variant_key,kwargs_json,status,error,started_at,completed_at,response_sha256,
-          result_set_count,row_count
-        ) VALUES (?,?,?,?,?,?,?,?,?,'running','',?,'','','0',0)
-        """,
-        (
-            request_id,
-            run_id,
-            endpoint_class,
-            "fixture",
-            endpoint_class,
-            "2025-26",
-            "regular",
-            "default",
-            "{}",
-            pipeline.now_iso(),
-        ),
-    )
 
 
 def main() -> None:
@@ -54,6 +31,8 @@ def main() -> None:
             )
             db.commit()
 
+            # Deliberately do NOT pre-create nba_api_requests rows here. archive_response
+            # must create its parent record before inserting result-set/raw-row children.
             hustle_plan = pipeline.EndpointPlan(
                 key="hustle",
                 module="fixture",
@@ -63,7 +42,6 @@ def main() -> None:
                 enabled=True,
                 variants=({"key": "default"},),
             )
-            request_stub(db, run_id, "req_hustle", hustle_plan.class_name)
             pipeline.archive_response(
                 db,
                 request_id="req_hustle",
@@ -107,7 +85,6 @@ def main() -> None:
                 enabled=True,
                 variants=({"key": "base"},),
             )
-            request_stub(db, run_id, "req_stats", stats_plan.class_name)
             pipeline.archive_response(
                 db,
                 request_id="req_stats",
@@ -140,6 +117,13 @@ def main() -> None:
                 },
                 started_at=pipeline.now_iso(),
             )
+
+            parents = db.execute(
+                "SELECT request_id,status,row_count FROM nba_api_requests ORDER BY request_id"
+            ).fetchall()
+            assert len(parents) == 2, parents
+            assert all(row["status"] == "success" for row in parents), parents
+            assert sum(int(row["row_count"]) for row in parents) == 4, parents
 
         report = pipeline.materialize(
             db_path,
@@ -186,7 +170,9 @@ def main() -> None:
                 "materialized_rows": report["materialized_rows"],
                 "metrics": report["distinct_metrics"],
                 "players": report["distinct_players"],
-                "route_count": len([path for path in routes if path.startswith("/v2/nba/modern-metrics")]),
+                "route_count": len(
+                    [path for path in routes if path.startswith("/v2/nba/modern-metrics")]
+                ),
             }
         )
         print("Modern NBA API collection/materialization contract passed.")
