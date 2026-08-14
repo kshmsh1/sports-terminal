@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/nba_player_game_log_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
+import 'nba_player_trend_panel.dart';
 
 const _panel = Color(0xFF0F151C);
 const _panel2 = Color(0xFF141C25);
@@ -187,6 +188,16 @@ class NbaPlayerGameLogPanel extends StatelessWidget {
                 ],
               ),
             ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+            child: NbaPlayerTrendPanel(
+              seed: seed,
+              playerId: playerId,
+              playerName: playerName,
+              seasonType: seasonType,
+              onOpenGame: onOpenGame,
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
             child: Text(
