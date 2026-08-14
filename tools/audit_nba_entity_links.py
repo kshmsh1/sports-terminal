@@ -70,7 +70,8 @@ CONTRACTS: dict[str, tuple[str, ...]] = {
         "openNbaGamePage(",
         "Open Game Command Center",
         "onOpenTeam",
-        "game['opponent_team_id']",
+        "_firstGameValue(",
+        "'opponent_team_id'",
     ),
     "lib/screens/product_historical_nba_entity_dossier.dart": (
         "class ProductHistoricalPlayerDossier",
