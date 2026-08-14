@@ -21,6 +21,7 @@ void main() {
     expect(result.periodsCovered, 2);
     expect(result.availabilityLabel, 'AVAILABLE');
     expect(result.rowsForOtherGames, 1);
+    expect(result.classifiedEvents, 4);
 
     final first = result.events.first;
     expect(first.sequence, 10);
@@ -32,6 +33,9 @@ void main() {
     expect(first.team.abbreviation, 'AAA');
     expect(first.player.name, 'Example Guard');
     expect(first.description, contains('jumper'));
+    expect(first.category, NbaPbpEventCategory.madeFieldGoal);
+    expect(first.result, NbaPbpEventResult.made);
+    expect(first.isScoringAction, isTrue);
 
     final last = result.events.last;
     expect(last.sequence, 40);
@@ -68,8 +72,108 @@ void main() {
     expect(event.homeScore, 101);
     expect(event.awayScore, 99);
     expect(event.team.id, isEmpty);
-    expect(event.player.id, isEmpty);
+    expect(event.player.isEmpty, isTrue);
+    expect(event.category, NbaPbpEventCategory.madeFieldGoal);
     expect(event.typeLabel, '3PT · JUMP SHOT');
+  });
+
+  test('classifies legacy event codes and preserves secondary participants', () {
+    final result = const NbaGamePlayByPlayEngine().build(
+      _seed(
+        playByPlay: [
+          {
+            'game_id': 'g1',
+            'event_num': 90,
+            'event_msg_type': 8,
+            'period': 3,
+            'clock': '6:30',
+            'team_id': 'AAA',
+            'player1_id': 'p1',
+            'player1_name': 'Example Guard',
+            'player2_id': 'p3',
+            'player2_name': 'Reserve Guard',
+            'description': 'SUB: Reserve Guard FOR Example Guard',
+          },
+        ],
+      ),
+      gameId: 'g1',
+    );
+
+    final event = result.events.single;
+    expect(event.category, NbaPbpEventCategory.substitution);
+    expect(event.player.id, 'p1');
+    expect(event.secondaryPlayer.id, 'p3');
+    expect(event.hasExplicitSubstitution, isTrue);
+    expect(event.substitutionOut.id, 'p1');
+    expect(event.substitutionIn.id, 'p3');
+    expect(result.explicitSubstitutionEvents, 1);
+  });
+
+  test('does not fabricate a substitution counterpart from an incomplete row', () {
+    final result = const NbaGamePlayByPlayEngine().build(
+      _seed(
+        playByPlay: [
+          {
+            'game_id': 'g1',
+            'event_num': 91,
+            'event_type': 'substitution',
+            'period': 4,
+            'clock': '4:00',
+            'team_id': 'AAA',
+            'player_out_id': 'p1',
+            'player_out_name': 'Example Guard',
+          },
+        ],
+      ),
+      gameId: 'g1',
+    );
+
+    final event = result.events.single;
+    expect(event.category, NbaPbpEventCategory.substitution);
+    expect(event.substitutionOut.id, 'p1');
+    expect(event.substitutionIn.isEmpty, isTrue);
+    expect(event.hasExplicitSubstitution, isFalse);
+    expect(result.explicitSubstitutionEvents, 0);
+  });
+
+  test('normalizes free-throw outcome only when the row supports it', () {
+    final result = const NbaGamePlayByPlayEngine().build(
+      _seed(
+        playByPlay: [
+          {
+            'game_id': 'g1',
+            'event_num': 100,
+            'event_msg_type': 3,
+            'period': 4,
+            'clock': '0:42',
+            'player_id': 'p1',
+            'team_id': 'AAA',
+            'description': 'Example Guard Free Throw 1 of 2 MISS',
+            'home_score': 100,
+            'away_score': 99,
+          },
+          {
+            'game_id': 'g1',
+            'event_num': 101,
+            'event_msg_type': 3,
+            'period': 4,
+            'clock': '0:42',
+            'player_id': 'p1',
+            'team_id': 'AAA',
+            'description': 'Example Guard Free Throw 2 of 2 GOOD',
+            'home_score': 101,
+            'away_score': 99,
+          },
+        ],
+      ),
+      gameId: 'g1',
+    );
+
+    expect(result.events.first.category, NbaPbpEventCategory.freeThrow);
+    expect(result.events.first.result, NbaPbpEventResult.missed);
+    expect(result.events.first.isScoringAction, isFalse);
+    expect(result.events.last.result, NbaPbpEventResult.made);
+    expect(result.events.last.isScoringAction, isTrue);
   });
 
   test('reports event rows not exposed when manifest declares normalized PBP', () {
@@ -124,6 +228,7 @@ NbaTerminalSeedSnapshot _seed({
       'players': [
         {'player_id': 'p1', 'player_name': 'Example Guard', 'team_id': 'AAA'},
         {'player_id': 'p2', 'player_name': 'Example Wing', 'team_id': 'BBB'},
+        {'player_id': 'p3', 'player_name': 'Reserve Guard', 'team_id': 'AAA'},
       ],
       'games': [
         {
