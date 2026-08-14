@@ -1,15 +1,24 @@
 import '../models/route_payload.dart';
+import 'nba_entity_watchlist_store.dart';
+import 'nba_research_context_store.dart';
 import 'nba_season_intelligence_engine.dart';
 import 'nba_terminal_seed_repository.dart';
 import 'sports_object_router.dart';
 
-/// Packages one canonical Season into the shared RoutePayload contract.
+/// Coordinates shared workflow actions for one canonical NBA Season.
 ///
-/// The payload contains scored-game-derived team standings plus season coverage
-/// metadata. It does not inject standings from another source or backfill
-/// unavailable team rows merely to make the package complete.
+/// The season projection remains owned by [NbaSeasonIntelligenceEngine]. This
+/// service only packages it for shared RoutePayload state, activates the exact
+/// research scope, and creates a canonical persistent watchlist identity.
 class NbaSeasonWorkflowService {
-  const NbaSeasonWorkflowService();
+  const NbaSeasonWorkflowService({
+    NbaResearchContextStore contextStore = const NbaResearchContextStore(),
+    NbaEntityWatchlistStore watchlistStore = const NbaEntityWatchlistStore(),
+  })  : _contextStore = contextStore,
+        _watchlistStore = watchlistStore;
+
+  final NbaResearchContextStore _contextStore;
+  final NbaEntityWatchlistStore _watchlistStore;
 
   RoutePayload package(
     NbaTerminalSeedSnapshot seed, {
@@ -94,4 +103,101 @@ class NbaSeasonWorkflowService {
       },
     );
   }
+
+  Future<NbaResearchContext> activateResearch(
+    NbaTerminalSeedSnapshot seed, {
+    required String seasonId,
+    String seasonType = 'All',
+    String league = 'NBA',
+  }) {
+    final normalizedSeason = seasonId.trim();
+    if (normalizedSeason.isEmpty) {
+      throw ArgumentError.value(seasonId, 'seasonId', 'Season is required.');
+    }
+    if (seed.isHistorical) {
+      return _contextStore.activateHistorical(
+        season: normalizedSeason,
+        league: league,
+        seasonType: _normalizedSeasonType(seasonType),
+      );
+    }
+    return _contextStore.selectCurrent(clearEntity: true);
+  }
+
+  NbaEntityWatchItem watchItem(
+    NbaTerminalSeedSnapshot seed, {
+    required String seasonId,
+    String seasonType = 'All',
+    String league = 'NBA',
+  }) {
+    final normalizedSeason = seasonId.trim();
+    if (normalizedSeason.isEmpty) {
+      throw ArgumentError.value(seasonId, 'seasonId', 'Season is required.');
+    }
+    final normalizedLeague = league.trim().isEmpty ? 'NBA' : league.trim().toUpperCase();
+    final normalizedType = _normalizedSeasonType(seasonType);
+    return NbaEntityWatchItem(
+      kind: 'season',
+      key: normalizedSeason,
+      label: '$normalizedSeason $normalizedLeague Season',
+      subtitle: seed.isHistorical
+          ? 'Historical canonical season · ${_seasonTypeLabel(normalizedType)}'
+          : 'Certified current release · ${_seasonTypeLabel(normalizedType)}',
+      season: normalizedSeason,
+      league: normalizedLeague,
+      seasonType: normalizedType,
+    );
+  }
+
+  Future<bool> isWatched(
+    NbaTerminalSeedSnapshot seed, {
+    required String seasonId,
+    String seasonType = 'All',
+    String league = 'NBA',
+  }) =>
+      _watchlistStore.contains(
+        watchItem(
+          seed,
+          seasonId: seasonId,
+          seasonType: seasonType,
+          league: league,
+        ).signature,
+      );
+
+  Future<bool> toggleWatch(
+    NbaTerminalSeedSnapshot seed, {
+    required String seasonId,
+    String seasonType = 'All',
+    String league = 'NBA',
+  }) async {
+    final item = watchItem(
+      seed,
+      seasonId: seasonId,
+      seasonType: seasonType,
+      league: league,
+    );
+    final next = await _watchlistStore.toggle(item);
+    return next.any((candidate) => candidate.signature == item.signature);
+  }
+
+  String _normalizedSeasonType(String value) {
+    final normalized = value.trim().toLowerCase().replaceAll('-', '_');
+    if (normalized.contains('playoff') || normalized.contains('postseason')) {
+      return 'playoffs';
+    }
+    if (normalized == 'all' || normalized.contains('combined')) return 'combined';
+    if (normalized.contains('preseason')) return 'preseason';
+    if (normalized.contains('all_star') || normalized.contains('all star')) {
+      return 'all_star';
+    }
+    return 'regular';
+  }
+
+  String _seasonTypeLabel(String value) => switch (value) {
+        'playoffs' => 'Playoffs',
+        'combined' => 'Regular + Playoffs',
+        'preseason' => 'Preseason',
+        'all_star' => 'All-Star',
+        _ => 'Regular Season',
+      };
 }
