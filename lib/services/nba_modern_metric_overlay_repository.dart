@@ -41,12 +41,17 @@ class NbaModernMetricOverlay {
         byPlayerName[_normalizeName(row.player)];
     if (metrics == null || metrics.isEmpty) return row;
     final nextRaw = <String, dynamic>{...row.raw};
+    final nextValues = <String, double>{...row.values};
     for (final entry in metrics.entries) {
       nextRaw[entry.key] = entry.value;
       final definition = nbaTerminalMetricByKey[entry.key];
       if (definition != null) {
         for (final alias in definition.rawAliases) {
           nextRaw[alias] = entry.value;
+        }
+        final engineKey = definition.engineKey;
+        if (engineKey != null && engineKey.isNotEmpty) {
+          nextValues[engineKey] = entry.value;
         }
       }
     }
@@ -55,7 +60,7 @@ class NbaModernMetricOverlay {
       player: row.player,
       team: row.team,
       position: row.position,
-      values: row.values,
+      values: nextValues,
       percentiles: row.percentiles,
       raw: nextRaw,
       possessionsEstimated: row.possessionsEstimated,
