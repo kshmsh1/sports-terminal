@@ -1,7 +1,100 @@
 import '../models/route_payload.dart';
+import 'nba_game_intelligence_engine.dart';
 
 class SportsObjectRouter {
   const SportsObjectRouter();
+
+  RoutePayload packageGame({
+    required NbaGameIntelligenceSnapshot game,
+    String targetRoute = 'Open',
+  }) {
+    final blockingIssues = [
+      for (final issue in game.integrityIssues)
+        if (issue.severity == NbaGameIntegritySeverity.blocking) issue.code,
+    ];
+    final warnings = [
+      for (final issue in game.integrityIssues)
+        if (issue.severity == NbaGameIntegritySeverity.warning) issue.code,
+    ];
+    final missing = game.coverage.missingSections;
+    final readinessState = blockingIssues.isNotEmpty
+        ? 'Blocked'
+        : missing.isEmpty
+            ? 'Ready'
+            : 'Partial';
+    final matchup = '${game.awayTeam.abbreviation} @ ${game.homeTeam.abbreviation}';
+    final sourceSnapshot = game.provenance.assetPath.trim().isNotEmpty
+        ? game.provenance.assetPath
+        : game.provenance.datasetStatus;
+
+    return packageRows(
+      datasetId: 'nba_game_${game.gameId}',
+      packageId: game.gameId,
+      displayLabel: game.gameDate.isEmpty ? matchup : '$matchup · ${game.gameDate}',
+      sourceObjectType: 'NBA Game',
+      targetRoute: targetRoute,
+      sourceSnapshot: sourceSnapshot,
+      readinessState: readinessState,
+      filterSummary: 'Canonical game ${game.gameId}',
+      rowKey: 'game_id',
+      blockers: blockingIssues,
+      preferredColumns: const [
+        'game_id',
+        'season_id',
+        'season_type',
+        'game_date',
+        'status',
+        'away_team_id',
+        'away_team',
+        'away_score',
+        'home_team_id',
+        'home_team',
+        'home_score',
+        'winner_team_id',
+        'arena',
+        'city',
+        'player_lines',
+        'periods',
+      ],
+      rows: [
+        {
+          'game_id': game.gameId,
+          'season_id': game.seasonId,
+          'season_type': game.seasonType,
+          'game_date': game.gameDate,
+          'status': game.status,
+          'away_team_id': game.awayTeam.id,
+          'away_team': game.awayTeam.name,
+          'away_score': game.awayScore,
+          'home_team_id': game.homeTeam.id,
+          'home_team': game.homeTeam.name,
+          'home_score': game.homeScore,
+          'winner_team_id': game.winnerTeamId,
+          'arena': game.arena,
+          'city': game.city,
+          'player_lines': game.playerLines.length,
+          'periods': game.periods.length,
+        },
+      ],
+      metadata: {
+        'gameId': game.gameId,
+        'requestedGameId': game.requestedGameId,
+        'historicalContext': game.provenance.historicalContext,
+        'datasetStatus': game.provenance.datasetStatus,
+        'validationStatus': game.provenance.validationStatus,
+        'releaseId': game.provenance.releaseId,
+        'releaseVersion': game.provenance.releaseVersion,
+        'releaseStatus': game.provenance.releaseStatus,
+        'sourceIds': game.provenance.sourceIds,
+        'asOfValues': game.provenance.asOfValues,
+        'usedFallbackDataset': game.provenance.usedFallbackDataset,
+        'usedCompatibilityJoin': game.coverage.usedCompatibilityJoin,
+        'missingSections': missing,
+        'integrityWarnings': warnings,
+        'integrityBlockers': blockingIssues,
+      },
+    );
+  }
 
   RoutePayload packageRows({
     required String datasetId,
