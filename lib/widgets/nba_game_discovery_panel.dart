@@ -71,7 +71,7 @@ class NbaGameDiscoveryPanel extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'GAME DISCOVERY + SEASON',
+                        'GAME DISCOVERY',
                         style: TextStyle(
                           color: _amber,
                           fontSize: 11,
