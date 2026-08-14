@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sports_terminal/screens/product_nba_season_screen.dart';
 import 'package:sports_terminal/services/nba_terminal_seed_repository.dart';
 import 'package:sports_terminal/widgets/nba_game_navigation.dart';
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets('opens canonical season route with standings and game inventory',
       (tester) async {
     await tester.pumpWidget(
@@ -17,6 +20,8 @@ void main() {
                 context,
                 seasonId: '2025-26',
                 loadSeed: () async => _seed(),
+                loadComparisonSeason: (_) async => _comparisonSeed(),
+                loadSourceContext: () async => _sourceContext(),
               ),
               child: const Text('Season'),
             ),
@@ -32,6 +37,9 @@ void main() {
     expect(find.text('2025-26 NBA Season'), findsWidgets);
     expect(find.text('SEASON STANDINGS'), findsOneWidget);
     expect(find.text('SEASON GAME INVENTORY'), findsOneWidget);
+    expect(find.byKey(const ValueKey('season-cross-season-workbench')), findsOneWidget);
+    expect(find.byKey(const ValueKey('season-source-context-panel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('season-transactions-not-exposed')), findsOneWidget);
     final route = ModalRoute.of(
       tester.element(find.byType(ProductNbaSeasonScreen)),
     );
@@ -52,6 +60,8 @@ void main() {
                 context,
                 seasonId: '2025-26',
                 loadSeed: () async => _seed(),
+                loadComparisonSeason: (_) async => _comparisonSeed(),
+                loadSourceContext: () async => _sourceContext(),
                 onOpenTeam: (teamId) => openedTeam = teamId,
               ),
               child: const Text('Season'),
@@ -83,6 +93,8 @@ void main() {
                 context,
                 seasonId: '2025-26',
                 loadSeed: () async => _seed(),
+                loadComparisonSeason: (_) async => _comparisonSeed(),
+                loadSourceContext: () async => _sourceContext(),
               ),
               child: const Text('Season'),
             ),
@@ -116,6 +128,8 @@ void main() {
                 context,
                 seasonId: '2025-26',
                 loadSeed: () async => _seed(),
+                loadComparisonSeason: (_) async => _comparisonSeed(),
+                loadSourceContext: () async => _sourceContext(),
               ),
               child: const Text('Season'),
             ),
@@ -135,6 +149,61 @@ void main() {
     expect(route?.settings.name, '/nba/schedule');
   });
 }
+
+Map<String, dynamic> _sourceContext() => const {
+      'league': 'NBA',
+      'season_type': 'regular',
+      'awards': [
+        {
+          'award': 'Most Valuable Player',
+          'player_key': 'p1',
+          'player_name': 'Alpha Guard',
+          'winner': true,
+        },
+      ],
+      'all_star': [],
+      'draft': [],
+      'coverage': [
+        {'domain': 'awards', 'status': 'available', 'rows': 1},
+      ],
+    };
+
+NbaTerminalSeedSnapshot _comparisonSeed() => NbaTerminalSeedSnapshot.fromMap({
+      'manifest': const {},
+      'teams': [
+        {'team_id': 'AAA', 'team_name': 'Alpha', 'abbreviation': 'AAA'},
+        {'team_id': 'BBB', 'team_name': 'Beta', 'abbreviation': 'BBB'},
+      ],
+      'players': const [],
+      'games': [
+        {
+          'game_id': 'c1',
+          'season_id': '2024-25',
+          'game_date': '2025-01-01',
+          'season_type': 'Regular Season',
+          'home_team_id': 'BBB',
+          'away_team_id': 'AAA',
+          'home_score': 100,
+          'away_score': 95,
+          'status': 'Final',
+        },
+      ],
+      'team_records': const [],
+      'team_game_logs': const [],
+      'player_season_totals': const [],
+      'player_leaders': const {},
+      'player_game_highs': const {},
+      'player_game_logs_top': const [],
+      'search_index': const [],
+      'data_dictionary': const {},
+      'validation_report': {'status': 'pass'},
+      'release_manifest': {'status': 'historical-canonical'},
+      'standings': const [],
+      'play_by_play': const [],
+      'launch_config': {'supportedSeason': '2024-25', 'datasetStatus': 'historical-canonical'},
+      'asset_path': 'backend://v2/nba/history/2024-25',
+      'used_fallback': false,
+    });
 
 NbaTerminalSeedSnapshot _seed() => NbaTerminalSeedSnapshot.fromMap({
       'manifest': const {},
