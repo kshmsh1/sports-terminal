@@ -27,6 +27,7 @@ from .nba_data_api import router as nba_data_router
 from .nba_modern_metrics_api import router as nba_modern_metrics_router
 from .nba_terminal_api import router as nba_terminal_router
 from .operations import launch_operations_middleware
+from .pre_capital_readiness_api import router as pre_capital_readiness_router
 from .profile_api import router as profile_router
 from .python_runtime_api import router as python_runtime_router
 from .trust_safety_api import router as trust_safety_router
@@ -51,7 +52,7 @@ app.description = (
     "contracts and draft assets, transaction ledgers, ranked community discovery, threaded "
     "discussion, moderation and messaging, isolated Python analysis, customer operations, launch "
     "automation, organization governance, versioned workspaces, saved sports objects, platform "
-    "operations, and the unified NBA terminal."
+    "operations, pre-capital readiness, and the unified NBA terminal."
 )
 
 app.middleware("http")(enforce_launch_auth)
@@ -114,3 +115,4 @@ app.include_router(python_runtime_router)
 app.include_router(customer_operations_router)
 app.include_router(automation_governance_router)
 app.include_router(completion_status_router)
+app.include_router(pre_capital_readiness_router)
