@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../controllers/route_payload_controller.dart';
 import '../services/nba_season_intelligence_engine.dart';
+import '../services/nba_season_workflow_service.dart';
 import '../services/nba_terminal_seed_repository.dart';
+import '../widgets/nba_season_analytics_panel.dart';
 
 const _bg = Color(0xFF090D12);
 const _panel = Color(0xFF0F151C);
@@ -25,6 +28,7 @@ class ProductNbaSeasonScreen extends StatefulWidget {
     this.loadSeed,
     this.onOpenGame,
     this.onOpenTeam,
+    this.onOpenPlayer,
     this.onOpenSchedule,
   });
 
@@ -32,6 +36,7 @@ class ProductNbaSeasonScreen extends StatefulWidget {
   final Future<NbaTerminalSeedSnapshot> Function()? loadSeed;
   final NbaSeasonGameOpenCallback? onOpenGame;
   final ValueChanged<String>? onOpenTeam;
+  final NbaSeasonPlayerOpenCallback? onOpenPlayer;
   final VoidCallback? onOpenSchedule;
 
   @override
@@ -60,6 +65,38 @@ class _ProductNbaSeasonScreenState extends State<ProductNbaSeasonScreen> {
   Future<NbaTerminalSeedSnapshot> _load() =>
       widget.loadSeed?.call() ?? const NbaTerminalSeedRepository().load();
 
+  void _routeSeason(
+    NbaTerminalSeedSnapshot seed,
+    String targetRoute,
+  ) {
+    final controller = RoutePayloadScope.maybeOf(context);
+    if (controller == null) {
+      _notice('Shared RoutePayload state is unavailable in this shell.');
+      return;
+    }
+    try {
+      final payload = const NbaSeasonWorkflowService().package(
+        seed,
+        seasonId: widget.seasonId,
+        seasonType: _seasonType,
+        targetRoute: targetRoute,
+      );
+      controller.setActivePayload(
+        payload,
+        origin: 'NBA Season · ${widget.seasonId} · $_seasonType',
+      );
+      _notice('${payload.displayLabel} routed to $targetRoute.');
+    } catch (error) {
+      _notice('Unable to route season: $error');
+    }
+  }
+
+  void _notice(String message) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => FutureBuilder<NbaTerminalSeedSnapshot>(
         future: _seedFuture,
@@ -77,8 +114,9 @@ class _ProductNbaSeasonScreenState extends State<ProductNbaSeasonScreen> {
               ),
             );
           }
+          final seed = snapshot.data!;
           final season = const NbaSeasonIntelligenceEngine().build(
-            snapshot.data!,
+            seed,
             seasonId: widget.seasonId,
             seasonType: _seasonType,
           );
@@ -89,46 +127,18 @@ class _ProductNbaSeasonScreenState extends State<ProductNbaSeasonScreen> {
               _Hero(
                 title: '${widget.seasonId} NBA Season',
                 body:
-                    'Canonical season spine for schedule/results and scored-game-derived standings. Scheduled games never alter records, and every visible game/team remains a permanent entity link.',
+                    'Canonical season operating surface for standings, schedule/results, player leaders, team distributions, observed playoff matchup context and analyst workflows. Scheduled games never alter records, and unavailable structure is never synthesized.',
               ),
               const SizedBox(height: 12),
-              _Panel(
-                child: Wrap(
-                  spacing: 9,
-                  runSpacing: 9,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    DropdownButton<String>(
-                      key: const ValueKey('season-type-filter'),
-                      value: _seasonType,
-                      dropdownColor: _panel2,
-                      style: const TextStyle(color: _text, fontSize: 10),
-                      items: const [
-                        DropdownMenuItem(value: 'All', child: Text('All games')),
-                        DropdownMenuItem(
-                          value: 'Regular Season',
-                          child: Text('Regular Season'),
-                        ),
-                        DropdownMenuItem(value: 'Playoffs', child: Text('Playoffs')),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) setState(() => _seasonType = value);
-                      },
-                    ),
-                    _kpi('GAMES', '${season.gameCount}'),
-                    _kpi('COMPLETED', '${season.completedGames}'),
-                    _kpi('SCHEDULED', '${season.scheduledGames}'),
-                    _kpi('TEAMS', '${season.teamCount}'),
-                    _kpi('DATES', season.dateRangeLabel),
-                    if (widget.onOpenSchedule != null)
-                      OutlinedButton.icon(
-                        key: const ValueKey('season-open-schedule'),
-                        onPressed: widget.onOpenSchedule,
-                        icon: const Icon(Icons.calendar_month_rounded, size: 16),
-                        label: const Text('OPEN FULL SCHEDULE'),
-                      ),
-                  ],
-                ),
+              _controls(seed, season),
+              const SizedBox(height: 12),
+              NbaSeasonAnalyticsPanel(
+                seed: seed,
+                seasonId: widget.seasonId,
+                seasonType: _seasonType,
+                onOpenPlayer: widget.onOpenPlayer,
+                onOpenTeam: widget.onOpenTeam,
+                onOpenGame: widget.onOpenGame,
               ),
               const SizedBox(height: 12),
               _standings(season),
@@ -151,6 +161,86 @@ class _ProductNbaSeasonScreenState extends State<ProductNbaSeasonScreen> {
             ],
           );
         },
+      );
+
+  Widget _controls(
+    NbaTerminalSeedSnapshot seed,
+    NbaSeasonIntelligenceSnapshot season,
+  ) =>
+      _Panel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 9,
+              runSpacing: 9,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                DropdownButton<String>(
+                  key: const ValueKey('season-type-filter'),
+                  value: _seasonType,
+                  dropdownColor: _panel2,
+                  style: const TextStyle(color: _text, fontSize: 10),
+                  items: const [
+                    DropdownMenuItem(value: 'All', child: Text('All games')),
+                    DropdownMenuItem(
+                      value: 'Regular Season',
+                      child: Text('Regular Season'),
+                    ),
+                    DropdownMenuItem(value: 'Playoffs', child: Text('Playoffs')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) setState(() => _seasonType = value);
+                  },
+                ),
+                _kpi('GAMES', '${season.gameCount}'),
+                _kpi('COMPLETED', '${season.completedGames}'),
+                _kpi('SCHEDULED', '${season.scheduledGames}'),
+                _kpi('TEAMS', '${season.teamCount}'),
+                _kpi('DATES', season.dateRangeLabel),
+                if (widget.onOpenSchedule != null)
+                  OutlinedButton.icon(
+                    key: const ValueKey('season-open-schedule'),
+                    onPressed: widget.onOpenSchedule,
+                    icon: const Icon(Icons.calendar_month_rounded, size: 16),
+                    label: const Text('OPEN FULL SCHEDULE'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'SEASON WORKFLOWS',
+              style: TextStyle(
+                color: _amber,
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: .6,
+              ),
+            ),
+            const SizedBox(height: 7),
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children: [
+                _routeButton(seed, 'Workspace', 'season-route-workspace'),
+                _routeButton(seed, 'Python Lab', 'season-route-python'),
+                _routeButton(seed, 'Compare', 'season-route-compare'),
+                _routeButton(seed, 'Source Audit', 'season-route-source-audit'),
+              ],
+            ),
+          ],
+        ),
+      );
+
+  Widget _routeButton(
+    NbaTerminalSeedSnapshot seed,
+    String target,
+    String key,
+  ) =>
+      OutlinedButton(
+        key: ValueKey(key),
+        onPressed: () => _routeSeason(seed, target),
+        child: Text(target.toUpperCase()),
       );
 
   Widget _standings(NbaSeasonIntelligenceSnapshot season) => _Panel(
@@ -424,5 +514,4 @@ Widget _pill(String label, Color color) => Container(
 String _signed(num value) =>
     '${value > 0 ? '+' : ''}${value.toStringAsFixed(1)}';
 
-// Retained here for route wrappers that want a canonical season background.
 const nbaSeasonBackground = _bg;
