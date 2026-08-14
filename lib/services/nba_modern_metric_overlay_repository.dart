@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'nba_stats_metric_catalog.dart';
 import 'nba_stats_workstation_engine.dart';
 import 'product_local_store.dart';
 
@@ -39,6 +40,16 @@ class NbaModernMetricOverlay {
         byCanonicalPlayerKey[row.playerId] ??
         byPlayerName[_normalizeName(row.player)];
     if (metrics == null || metrics.isEmpty) return row;
+    final nextRaw = <String, dynamic>{...row.raw};
+    for (final entry in metrics.entries) {
+      nextRaw[entry.key] = entry.value;
+      final definition = nbaTerminalMetricByKey[entry.key];
+      if (definition != null) {
+        for (final alias in definition.rawAliases) {
+          nextRaw[alias] = entry.value;
+        }
+      }
+    }
     return NbaStatsRow(
       playerId: row.playerId,
       player: row.player,
@@ -46,7 +57,7 @@ class NbaModernMetricOverlay {
       position: row.position,
       values: row.values,
       percentiles: row.percentiles,
-      raw: {...row.raw, ...metrics},
+      raw: nextRaw,
       possessionsEstimated: row.possessionsEstimated,
     );
   }
