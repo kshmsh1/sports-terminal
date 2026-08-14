@@ -45,6 +45,12 @@ jobs:
       - name: Audit declared NBA API metric coverage
         run: python tools/audit_nba_api_metric_coverage.py --check
 
+      - name: Validate modern NBA API collection plan
+        run: python tools/collect_nba_api_modern_stats.py --dry-run --check --season 2025-26 --season-type regular
+
+      - name: Test modern NBA API archive and materialization contract
+        run: python backend/scripts/nba_api_modern_collection_contract_test.py
+
       - name: Retain NBA API coverage report
         uses: actions/upload-artifact@v4
         with:
