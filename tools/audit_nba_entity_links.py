@@ -22,7 +22,7 @@ CONTRACTS: dict[str, tuple[str, ...]] = {
         "_StandingRow",
     ),
     "lib/screens/product_nba_advanced_stats_page_screen.dart": (
-        "openNbaPlayerPage(context, row.playerId, row.player)",
+        "openNbaPlayerPage(",
         "openNbaTeamPage(context, id, id)",
     ),
     "lib/screens/product_nba_awards_v2_screen.dart": (
