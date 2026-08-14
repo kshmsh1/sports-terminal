@@ -51,7 +51,10 @@ void main() {
     await tester.pump();
     expect(openedTeam, 'AAA');
 
-    await tester.tap(find.text('Example Guard'));
+    final player = find.text('Example Guard');
+    await tester.ensureVisible(player);
+    await tester.pumpAndSettle();
+    await tester.tap(player);
     await tester.pump();
     expect(openedPlayer, ('p1', 'Example Guard'));
   });
@@ -84,16 +87,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(observer.lastPushed?.settings.name, '/nba/games/g1');
 
-    await tester.tap(find.byKey(const ValueKey('open-nba-schedule')));
+    final scheduleButton = find.byKey(const ValueKey('open-nba-schedule'));
+    await tester.ensureVisible(scheduleButton);
+    await tester.pumpAndSettle();
+    await tester.tap(scheduleButton);
     await tester.pumpAndSettle();
 
     expect(observer.lastPushed?.settings.name, '/nba/schedule');
     expect(find.text('Canonical game calendar'), findsOneWidget);
     expect(find.text('AAA'), findsWidgets);
     expect(find.text('BBB'), findsWidgets);
-    expect(find.byKey(const ValueKey('schedule-game-g1')), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('schedule-game-g1')));
+    final gameLink = find.byKey(const ValueKey('schedule-game-g1'));
+    expect(gameLink, findsOneWidget);
+    await tester.ensureVisible(gameLink);
+    await tester.pumpAndSettle();
+    await tester.tap(gameLink);
     await tester.pumpAndSettle();
 
     expect(observer.lastPushed?.settings.name, '/nba/games/g1');
