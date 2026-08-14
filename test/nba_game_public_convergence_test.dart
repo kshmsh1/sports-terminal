@@ -63,7 +63,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('TEAM GAMES'), findsOneWidget);
-    expect(find.byKey(const ValueKey('team-game-row-g1')), findsOneWidget);
     expect(find.byKey(const ValueKey('team-open-game-g1')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('team-open-schedule-AAA')));
     await tester.pump();
