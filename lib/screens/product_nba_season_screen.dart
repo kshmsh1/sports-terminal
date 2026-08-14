@@ -5,6 +5,8 @@ import '../services/nba_season_intelligence_engine.dart';
 import '../services/nba_season_workflow_service.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../widgets/nba_season_analytics_panel.dart';
+import '../widgets/nba_season_cross_season_panel.dart';
+import '../widgets/nba_season_source_context_panel.dart';
 
 const _bg = Color(0xFF090D12);
 const _panel = Color(0xFF0F151C);
@@ -20,12 +22,19 @@ typedef NbaSeasonGameOpenCallback = void Function(
   String gameId,
   String gameLabel,
 );
+typedef NbaSeasonComparisonSeedLoader = Future<NbaTerminalSeedSnapshot> Function(
+  String seasonId,
+);
+typedef NbaSeasonSourcePayloadLoader = Future<Map<String, dynamic>> Function();
 
 class ProductNbaSeasonScreen extends StatefulWidget {
   const ProductNbaSeasonScreen({
     super.key,
     required this.seasonId,
     this.loadSeed,
+    this.loadComparisonSeason,
+    this.loadSourceContext,
+    this.workflowService = const NbaSeasonWorkflowService(),
     this.onOpenGame,
     this.onOpenTeam,
     this.onOpenPlayer,
@@ -34,6 +43,9 @@ class ProductNbaSeasonScreen extends StatefulWidget {
 
   final String seasonId;
   final Future<NbaTerminalSeedSnapshot> Function()? loadSeed;
+  final NbaSeasonComparisonSeedLoader? loadComparisonSeason;
+  final NbaSeasonSourcePayloadLoader? loadSourceContext;
+  final NbaSeasonWorkflowService workflowService;
   final NbaSeasonGameOpenCallback? onOpenGame;
   final ValueChanged<String>? onOpenTeam;
   final NbaSeasonPlayerOpenCallback? onOpenPlayer;
@@ -75,7 +87,7 @@ class _ProductNbaSeasonScreenState extends State<ProductNbaSeasonScreen> {
       return;
     }
     try {
-      final payload = const NbaSeasonWorkflowService().package(
+      final payload = widget.workflowService.package(
         seed,
         seasonId: widget.seasonId,
         seasonType: _seasonType,
@@ -127,7 +139,7 @@ class _ProductNbaSeasonScreenState extends State<ProductNbaSeasonScreen> {
               _Hero(
                 title: '${widget.seasonId} NBA Season',
                 body:
-                    'Canonical season operating surface for standings, schedule/results, player leaders, team distributions, observed playoff matchup context and analyst workflows. Scheduled games never alter records, and unavailable structure is never synthesized.',
+                    'Canonical season operating surface for standings, schedule/results, player leaders, team distributions, observed playoff matchup context, cross-season benchmarking, source-backed season context and persistent analyst workflows. Scheduled games never alter records, and unavailable structure is never synthesized.',
               ),
               const SizedBox(height: 12),
               _controls(seed, season),
@@ -139,6 +151,22 @@ class _ProductNbaSeasonScreenState extends State<ProductNbaSeasonScreen> {
                 onOpenPlayer: widget.onOpenPlayer,
                 onOpenTeam: widget.onOpenTeam,
                 onOpenGame: widget.onOpenGame,
+              ),
+              const SizedBox(height: 12),
+              NbaSeasonCrossSeasonPanel(
+                seed: seed,
+                seasonId: widget.seasonId,
+                seasonType: _seasonType,
+                loadHistoricalSeason: widget.loadComparisonSeason,
+                onOpenTeam: widget.onOpenTeam,
+              ),
+              const SizedBox(height: 12),
+              NbaSeasonSourceContextPanel(
+                seasonId: widget.seasonId,
+                seasonType: _seasonType,
+                loadContext: widget.loadSourceContext,
+                onOpenPlayer: widget.onOpenPlayer,
+                onOpenTeam: widget.onOpenTeam,
               ),
               const SizedBox(height: 12),
               _standings(season),
@@ -226,6 +254,13 @@ class _ProductNbaSeasonScreenState extends State<ProductNbaSeasonScreen> {
                 _routeButton(seed, 'Python Lab', 'season-route-python'),
                 _routeButton(seed, 'Compare', 'season-route-compare'),
                 _routeButton(seed, 'Source Audit', 'season-route-source-audit'),
+                _SeasonPersistentWorkflowControls(
+                  key: ValueKey('season-persistent-workflows-${widget.seasonId}-$_seasonType'),
+                  seed: seed,
+                  seasonId: widget.seasonId,
+                  seasonType: _seasonType,
+                  workflows: widget.workflowService,
+                ),
               ],
             ),
           ],
@@ -420,6 +455,130 @@ class _ProductNbaSeasonScreenState extends State<ProductNbaSeasonScreen> {
               ),
           ],
         ),
+      );
+}
+
+class _SeasonPersistentWorkflowControls extends StatefulWidget {
+  const _SeasonPersistentWorkflowControls({
+    super.key,
+    required this.seed,
+    required this.seasonId,
+    required this.seasonType,
+    required this.workflows,
+  });
+
+  final NbaTerminalSeedSnapshot seed;
+  final String seasonId;
+  final String seasonType;
+  final NbaSeasonWorkflowService workflows;
+
+  @override
+  State<_SeasonPersistentWorkflowControls> createState() =>
+      _SeasonPersistentWorkflowControlsState();
+}
+
+class _SeasonPersistentWorkflowControlsState
+    extends State<_SeasonPersistentWorkflowControls> {
+  late Future<bool> _watchedFuture;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _watchedFuture = _loadWatched();
+  }
+
+  @override
+  void didUpdateWidget(_SeasonPersistentWorkflowControls oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.seasonId != widget.seasonId ||
+        oldWidget.seasonType != widget.seasonType ||
+        oldWidget.seed.assetPath != widget.seed.assetPath) {
+      _watchedFuture = _loadWatched();
+      _busy = false;
+    }
+  }
+
+  Future<bool> _loadWatched() => widget.workflows.isWatched(
+        widget.seed,
+        seasonId: widget.seasonId,
+        seasonType: widget.seasonType,
+      );
+
+  Future<void> _activateResearch() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final context = await widget.workflows.activateResearch(
+        widget.seed,
+        seasonId: widget.seasonId,
+        seasonType: widget.seasonType,
+      );
+      if (!mounted) return;
+      _notice('Season research context activated · ${context.scopeLabel}.');
+    } catch (error) {
+      if (mounted) _notice('Unable to activate season research context: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _toggleWatch() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final watched = await widget.workflows.toggleWatch(
+        widget.seed,
+        seasonId: widget.seasonId,
+        seasonType: widget.seasonType,
+      );
+      if (!mounted) return;
+      setState(() => _watchedFuture = Future.value(watched));
+      _notice(
+        watched
+            ? 'Season added to NBA watchlist.'
+            : 'Season removed from NBA watchlist.',
+      );
+    } catch (error) {
+      if (mounted) _notice('Unable to update season watchlist: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _notice(String message) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+        spacing: 7,
+        runSpacing: 7,
+        children: [
+          OutlinedButton.icon(
+            key: const ValueKey('season-activate-research'),
+            onPressed: _busy ? null : _activateResearch,
+            icon: const Icon(Icons.manage_search_rounded, size: 15),
+            label: const Text('RESEARCH CONTEXT'),
+          ),
+          FutureBuilder<bool>(
+            future: _watchedFuture,
+            builder: (context, snapshot) {
+              final watched = snapshot.data == true;
+              return OutlinedButton.icon(
+                key: const ValueKey('season-toggle-watch'),
+                onPressed: _busy ? null : _toggleWatch,
+                icon: Icon(
+                  watched ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                  size: 15,
+                ),
+                label: Text(watched ? 'UNWATCH SEASON' : 'WATCH SEASON'),
+              );
+            },
+          ),
+        ],
       );
 }
 
