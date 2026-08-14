@@ -86,12 +86,6 @@ Future<void> openNbaGamePage(
   );
 }
 
-/// Opens the first-class NBA schedule workspace from any surface that already
-/// participates in canonical game navigation.
-///
-/// Optional initial constraints are carried as route arguments and initialized
-/// into visible schedule controls so a team/game/search handoff is inspectable
-/// and reversible by the user rather than hidden in navigation state.
 Future<void> openNbaSchedulePage(
   BuildContext context, {
   Future<NbaTerminalSeedSnapshot> Function()? loadSeed,
@@ -199,6 +193,7 @@ Future<void> openNbaSeasonPage(
                 seasonId: normalizedSeason,
                 loadSeed: loadSeed,
                 onOpenTeam: onOpenTeam,
+                onOpenPlayer: onOpenPlayer,
                 onOpenGame: (gameId, gameLabel) => openNbaGamePage(
                   seasonContext,
                   gameId: gameId,
@@ -219,6 +214,32 @@ Future<void> openNbaSeasonPage(
         ),
       ),
     ),
+  );
+}
+
+/// Opens a permanent historical Season route against the historical seed API.
+/// The requested season remains the canonical route identity while its loader
+/// is pinned to that same season so current-release rows cannot leak in.
+Future<void> openHistoricalNbaSeasonPage(
+  BuildContext context, {
+  required String seasonId,
+  String league = 'NBA',
+  String seasonType = 'regular',
+  ValueChanged<String>? onOpenTeam,
+  NbaGamePlayerOpenCallback? onOpenPlayer,
+}) {
+  final normalizedSeason = seasonId.trim();
+  if (normalizedSeason.isEmpty) return Future.value();
+  return openNbaSeasonPage(
+    context,
+    seasonId: normalizedSeason,
+    loadSeed: () => const NbaTerminalSeedRepository().loadHistoricalSeason(
+      normalizedSeason,
+      league: league,
+      seasonType: seasonType,
+    ),
+    onOpenTeam: onOpenTeam,
+    onOpenPlayer: onOpenPlayer,
   );
 }
 
