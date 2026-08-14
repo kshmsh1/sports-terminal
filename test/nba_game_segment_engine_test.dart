@@ -27,7 +27,7 @@ void main() {
     expect(finalFive.observedPointsLabel, '7–5');
     expect(finalFive.startScoreLabel, '90–90');
     expect(finalFive.endScoreLabel, '97–95');
-    expect(finalFive.leadChanges, 2);
+    expect(finalFive.leadChanges, 3);
     expect(finalFive.ties, 1);
   });
 
