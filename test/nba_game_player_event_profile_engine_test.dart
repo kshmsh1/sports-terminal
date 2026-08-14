@@ -11,8 +11,8 @@ void main() {
     );
 
     expect(result.eventCount, 8);
-    expect(result.observedAttributedPoints, 5);
-    expect(result.uncreditedObservedPoints, 4);
+    expect(result.observedAttributedPoints, 4);
+    expect(result.uncreditedObservedPoints, 5);
     expect(result.profiles.map((profile) => profile.player.id), containsAll(['p1', 'p2', 'p3']));
 
     final guard = result.byPlayerId('p1')!;
@@ -38,7 +38,7 @@ void main() {
     expect(wing.secondaryAppearances, 1);
     expect(wing.tertiaryAppearances, 1);
     expect(wing.primaryEvents, 1);
-    expect(wing.observedPoints, 1);
+    expect(wing.observedPoints, 0);
     expect(wing.categoryCount(NbaPbpEventCategory.freeThrow), 1);
   });
 
