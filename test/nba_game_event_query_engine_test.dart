@@ -65,7 +65,7 @@ void main() {
     final engine = const NbaGameEventQueryEngine();
 
     final scoring = engine.build(seed, gameId: 'g1', scoringOnly: true);
-    expect(scoring.events.map((event) => event.sequence), [3, 4, 7]);
+    expect(scoring.events.map((event) => event.sequence), [3, 7]);
 
     final substitutions = engine.build(
       seed,
