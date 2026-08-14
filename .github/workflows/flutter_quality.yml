@@ -93,6 +93,9 @@ jobs:
       - name: Test unified NBA terminal contract
         run: python backend/scripts/nba_terminal_contract_test.py
 
+      - name: Test pre-capital readiness boundary
+        run: python backend/scripts/pre_capital_readiness_contract_test.py
+
       - name: Audit page scroll ownership
         run: python tools/audit_page_scroll_ownership.py --check
 
