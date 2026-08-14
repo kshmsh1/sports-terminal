@@ -69,9 +69,13 @@ class NbaGameEventQueryEngine {
       if (eventTeam.isNotEmpty) {
         teamCounts[eventTeam] = (teamCounts[eventTeam] ?? 0) + 1;
       }
+      final seenPlayers = <String>{};
       for (final participant in _participants(event)) {
-        if (participant.id.trim().isEmpty) continue;
-        playerCounts[participant.id] = (playerCounts[participant.id] ?? 0) + 1;
+        final participantId = participant.id.trim();
+        if (participantId.isEmpty) continue;
+        final normalizedId = _normalize(participantId);
+        if (!seenPlayers.add(normalizedId)) continue;
+        playerCounts[participantId] = (playerCounts[participantId] ?? 0) + 1;
       }
     }
 
