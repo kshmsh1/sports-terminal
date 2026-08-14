@@ -44,14 +44,14 @@ void main() {
     expect(find.text('Beta @ Alpha'), findsOneWidget);
     expect(find.text('Alpha'), findsOneWidget);
     expect(find.text('Beta'), findsOneWidget);
-    expect(find.text('Example Guard'), findsOneWidget);
+    expect(find.text('Example Guard'), findsNWidgets(2));
     expect(find.text('GAME WORKFLOWS'), findsOneWidget);
 
     await tester.tap(find.text('Alpha'));
     await tester.pump();
     expect(openedTeam, 'AAA');
 
-    final player = find.text('Example Guard');
+    final player = find.text('Example Guard').first;
     await tester.ensureVisible(player);
     await tester.pumpAndSettle();
     await tester.tap(player);
