@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sports_terminal/services/nba_game_event_batch_route_service.dart';
 import 'package:sports_terminal/services/nba_game_event_query_engine.dart';
 import 'package:sports_terminal/services/nba_game_intelligence_engine.dart';
-import 'package:sports_terminal/services/nba_game_play_by_play_engine.dart';
 import 'package:sports_terminal/services/nba_terminal_seed_repository.dart';
 
 void main() {
@@ -81,53 +80,34 @@ void main() {
   });
 
   test('blocks a selection containing an event from another parent game', () {
-    final seed = _seed();
+    final seed = _seed(playByPlay: [
+      {
+        'game_id': 'g2',
+        'event_num': 99,
+        'period': 4,
+        'clock': '0:10',
+        'event_type': '5',
+        'description': 'Foreign canonical turnover',
+        'team_id': 'BBB',
+        'player_id': 'p2',
+        'home_score': 12,
+        'away_score': 11,
+        'source_id': 'test',
+      },
+    ]);
     final game = const NbaGameIntelligenceEngine().build(seed: seed, gameId: 'g1');
-    final original = const NbaGameEventQueryEngine().build(seed, gameId: 'g1');
-    final foreign = NbaGamePlayByPlayEvent(
+    final foreignSelection = const NbaGameEventQueryEngine().build(
+      seed,
       gameId: 'g2',
-      sequence: 99,
-      period: 4,
-      periodLabel: 'Q4',
-      clock: '0:10',
-      clockSecondsRemaining: 10,
-      elapsedGameSeconds: 2870,
-      eventType: '5',
-      actionType: '',
-      subType: '',
-      category: NbaPbpEventCategory.turnover,
-      result: NbaPbpEventResult.unknown,
-      description: 'Foreign event',
-      team: original.events.first.team,
-      player: original.events.first.player,
-      secondaryPlayer: original.events.first.secondaryPlayer,
-      tertiaryPlayer: original.events.first.tertiaryPlayer,
-      substitutionOut: original.events.first.substitutionOut,
-      substitutionIn: original.events.first.substitutionIn,
-      homeScore: 10,
-      awayScore: 9,
-      margin: 1,
-      sourceId: 'test',
-    );
-    final mixed = NbaGameEventQueryResult(
-      events: [foreign],
-      totalEvents: 1,
-      matchedEvents: 1,
-      returnedEvents: 1,
-      truncated: false,
-      filterSummary: 'No filters',
-      categoryCounts: const {},
-      periodCounts: const {},
-      teamCounts: const {},
-      playerCounts: const {},
-      availabilityLabel: 'AVAILABLE',
     );
 
     final payload = const NbaGameEventBatchRouteService().package(
       game: game,
-      result: mixed,
+      result: foreignSelection,
     );
 
+    expect(foreignSelection.events, hasLength(1));
+    expect(foreignSelection.events.single.gameId, 'g2');
     expect(payload.readinessState, 'Blocked');
     expect(payload.blockers, contains('event-game-mismatch'));
   });
@@ -156,11 +136,24 @@ NbaTerminalSeedSnapshot _seed({List<Map<String, dynamic>>? playByPlay}) =>
           'away_score': 9,
           'status': 'Final',
         },
+        {
+          'game_id': 'g2',
+          'season_id': '2025-26',
+          'game_date': '2026-01-16',
+          'season_type': 'Regular Season',
+          'home_team_id': 'BBB',
+          'away_team_id': 'AAA',
+          'home_score': 12,
+          'away_score': 11,
+          'status': 'Final',
+        },
       ],
       'team_records': const [],
       'team_game_logs': [
         {'game_id': 'g1', 'team_id': 'AAA', 'points': 10},
         {'game_id': 'g1', 'team_id': 'BBB', 'points': 9},
+        {'game_id': 'g2', 'team_id': 'AAA', 'points': 11},
+        {'game_id': 'g2', 'team_id': 'BBB', 'points': 12},
       ],
       'player_season_totals': const [],
       'player_leaders': const {},
