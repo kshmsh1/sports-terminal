@@ -105,14 +105,14 @@ app.include_router(nba_data_router)
 app.include_router(front_office_hardened_router)
 app.include_router(front_office_router)
 app.include_router(trust_safety_router)
-# Community and profile both reuse launch/trust services and can participate in a
-# circular import when contract harnesses import their modules before main_launch.
-# Use the same final-route attachment contract as the historical composition layer
-# so the launch app always exposes the completed network/account API graph.
+# Community, profile and readiness reuse launch/trust/completion services and can
+# participate in circular imports when contract harnesses import their modules before
+# main_launch. Attach their final route objects explicitly so the composed launch app
+# cannot lose them through FastAPI's router snapshot behavior.
 _attach_router_routes(community_router)
 _attach_router_routes(profile_router)
 app.include_router(python_runtime_router)
 app.include_router(customer_operations_router)
 app.include_router(automation_governance_router)
 app.include_router(completion_status_router)
-app.include_router(pre_capital_readiness_router)
+_attach_router_routes(pre_capital_readiness_router)
