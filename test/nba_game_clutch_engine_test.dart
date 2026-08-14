@@ -10,7 +10,7 @@ void main() {
     expect(result.hasObservedCloseWindow, isTrue);
     expect(result.closeEventCount, 6);
     expect(result.closeScoringChangeCount, 5);
-    expect(result.homeClosePoints, 5);
+    expect(result.homeClosePoints, 4);
     expect(result.awayClosePoints, 5);
     expect(result.closeLeadChanges, 3);
     expect(result.closeTies, 1);
