@@ -24,8 +24,10 @@ from .launch_security import ensure_organization
 from .main import app
 from .nba_awards_api import router as nba_awards_router
 from .nba_data_api import router as nba_data_router
+from .nba_modern_metrics_api import router as nba_modern_metrics_router
 from .nba_terminal_api import router as nba_terminal_router
 from .operations import launch_operations_middleware
+from .pre_capital_readiness_api import router as pre_capital_readiness_router
 from .profile_api import router as profile_router
 from .python_runtime_api import router as python_runtime_router
 from .trust_safety_api import router as trust_safety_router
@@ -43,13 +45,14 @@ front_office_module.front_office_reconciliation = hardened_reconciliation(
 )
 
 app.title = "Sports Terminal Launch API"
-app.version = "1.9.0"
+app.version = "1.10.0"
 app.description = (
     "Launch-oriented Sports Terminal API for authentication, certified and historical NBA data, "
-    "canonical awards and voting, canonical contracts and draft assets, transaction ledgers, "
-    "ranked community discovery, threaded discussion, moderation and messaging, isolated Python "
-    "analysis, customer operations, launch automation, organization governance, versioned "
-    "workspaces, saved sports objects, platform operations, and the unified NBA terminal."
+    "source-aware modern NBA tracking/stat overlays, canonical awards and voting, canonical "
+    "contracts and draft assets, transaction ledgers, ranked community discovery, threaded "
+    "discussion, moderation and messaging, isolated Python analysis, customer operations, launch "
+    "automation, organization governance, versioned workspaces, saved sports objects, platform "
+    "operations, pre-capital readiness, and the unified NBA terminal."
 )
 
 app.middleware("http")(enforce_launch_auth)
@@ -87,11 +90,13 @@ def _attach_router_routes(router) -> None:
 app.include_router(auth_router)
 app.include_router(launch_router)
 app.include_router(workspace_router)
-# Historical and awards routes must be registered before /v2/nba/{season}/{dataset};
-# otherwise the dynamic certified-release route can interpret their path prefix as a season.
+# Historical, awards, modern-metric and terminal routes must be registered before
+# /v2/nba/{season}/{dataset}; otherwise the dynamic certified-release route can
+# interpret their path prefix as a season.
 _attach_router_routes(historical_nba_router)
 _attach_router_routes(historical_nba_compat_router)
 _attach_router_routes(nba_awards_router)
+_attach_router_routes(nba_modern_metrics_router)
 # Terminal routes receive the same explicit ordering guarantee. This also avoids
 # FastAPI route-snapshot behavior when the shared app object has been imported by a
 # contract harness before launch composition finishes.
@@ -100,13 +105,14 @@ app.include_router(nba_data_router)
 app.include_router(front_office_hardened_router)
 app.include_router(front_office_router)
 app.include_router(trust_safety_router)
-# Community and profile both reuse launch/trust services and can participate in a
-# circular import when contract harnesses import their modules before main_launch.
-# Use the same final-route attachment contract as the historical composition layer
-# so the launch app always exposes the completed network/account API graph.
+# Community, profile and readiness reuse launch/trust/completion services and can
+# participate in circular imports when contract harnesses import their modules before
+# main_launch. Attach their final route objects explicitly so the composed launch app
+# cannot lose them through FastAPI's router snapshot behavior.
 _attach_router_routes(community_router)
 _attach_router_routes(profile_router)
 app.include_router(python_runtime_router)
 app.include_router(customer_operations_router)
 app.include_router(automation_governance_router)
 app.include_router(completion_status_router)
+_attach_router_routes(pre_capital_readiness_router)

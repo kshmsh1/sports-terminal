@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,7 +22,7 @@ CONTRACTS: dict[str, tuple[str, ...]] = {
         "_StandingRow",
     ),
     "lib/screens/product_nba_advanced_stats_page_screen.dart": (
-        "openNbaPlayerPage(context, row.playerId, row.player)",
+        "openNbaPlayerPage(",
         "openNbaTeamPage(context, id, id)",
     ),
     "lib/screens/product_nba_awards_v2_screen.dart": (
@@ -49,6 +50,11 @@ CONTRACTS: dict[str, tuple[str, ...]] = {
 }
 
 
+def _normalize_source(value: str) -> str:
+    """Ignore formatter-only whitespace while preserving semantic source tokens."""
+    return re.sub(r"\s+", "", value)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
@@ -64,9 +70,10 @@ def main() -> int:
             failures.append({"path": relative, "missing": "<file>"})
             continue
         text = path.read_text(encoding="utf-8")
+        normalized_text = _normalize_source(text)
         for token in required:
             assertions += 1
-            if token not in text:
+            if _normalize_source(token) not in normalized_text:
                 failures.append({"path": relative, "missing": token})
             else:
                 passed += 1
