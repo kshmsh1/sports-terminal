@@ -710,8 +710,8 @@ class _ScoreMarginPainter extends CustomPainter {
 
     Offset position(NbaGameScorePoint point, int index) {
       final fraction = useElapsed
-          ? ((point.elapsedGameSeconds ?? minElapsed!) - minElapsed!) /
-              (maxElapsed! - minElapsed!)
+          ? ((point.elapsedGameSeconds ?? minElapsed) - minElapsed) /
+              (maxElapsed - minElapsed)
           : points.length == 1
               ? 0.5
               : index / (points.length - 1);
