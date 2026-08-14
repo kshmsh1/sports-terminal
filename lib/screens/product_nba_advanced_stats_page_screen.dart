@@ -87,7 +87,9 @@ class _ProductNbaAdvancedStatsPageScreenState
   }
 
   void _refreshSources() {
-    setState(() => _source = _loadSource());
+    setState(() {
+      _source = _loadSource();
+    });
   }
 
   @override
