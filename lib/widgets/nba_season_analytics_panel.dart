@@ -362,7 +362,7 @@ class _NbaSeasonAnalyticsPanelState extends State<NbaSeasonAnalyticsPanel> {
                     ),
                   ),
                 ),
-                trailing?,
+                ?trailing,
               ],
             ),
             const SizedBox(height: 8),
