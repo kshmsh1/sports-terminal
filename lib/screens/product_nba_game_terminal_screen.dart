@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import '../services/nba_game_intelligence_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../widgets/nba_game_deep_intelligence_panel.dart';
+import '../widgets/nba_game_event_intelligence_panel.dart';
 import 'product_nba_game_command_center_screen.dart';
 
-/// Permanent canonical Game route composition. The base Command Center and the
+/// Permanent canonical Game route composition. The base Command Center and all
 /// deeper event/context intelligence share one seed future so provenance and
 /// scope cannot drift between sections.
 class ProductNbaGameTerminalScreen extends StatefulWidget {
@@ -84,13 +85,26 @@ class _ProductNbaGameTerminalScreenState extends State<ProductNbaGameTerminalScr
 
             return Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: NbaGameDeepIntelligencePanel(
-                key: ValueKey('game-deep-intelligence-${game.gameId}'),
-                seed: snapshot.data!,
-                game: game,
-                onOpenGame: widget.onOpenGame,
-                onOpenTeam: widget.onOpenTeam,
-                onOpenPlayer: widget.onOpenPlayer,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  NbaGameDeepIntelligencePanel(
+                    key: ValueKey('game-deep-intelligence-${game.gameId}'),
+                    seed: snapshot.data!,
+                    game: game,
+                    onOpenGame: widget.onOpenGame,
+                    onOpenTeam: widget.onOpenTeam,
+                    onOpenPlayer: widget.onOpenPlayer,
+                  ),
+                  const SizedBox(height: 12),
+                  NbaGameEventIntelligencePanel(
+                    key: ValueKey('game-event-intelligence-panel-${game.gameId}'),
+                    seed: snapshot.data!,
+                    game: game,
+                    onOpenTeam: widget.onOpenTeam,
+                    onOpenPlayer: widget.onOpenPlayer,
+                  ),
+                ],
               ),
             );
           },
