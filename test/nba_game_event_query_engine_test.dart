@@ -54,7 +54,7 @@ void main() {
       closeGameOnly: true,
     );
 
-    expect(result.events.map((event) => event.sequence), [2, 3, 4, 5, 6, 7]);
+    expect(result.events.map((event) => event.sequence), [2, 3, 4, 5, 6, 7, 8]);
     expect(result.events.every((event) => event.period! >= 4), isTrue);
     expect(result.events.every((event) => event.clockSecondsRemaining! <= 300), isTrue);
     expect(result.events.every((event) => event.margin!.abs() <= 5), isTrue);
@@ -92,7 +92,7 @@ void main() {
     expect(result.categoryCounts[NbaPbpEventCategory.freeThrow], 1);
     expect(result.periodCounts[4], 7);
     expect(result.teamCounts['AAA'], 4);
-    expect(result.playerCounts['p1'], 3);
+    expect(result.playerCounts['p1'], 4);
   });
 
   test('empty upstream event rows stay explicitly unavailable', () {
