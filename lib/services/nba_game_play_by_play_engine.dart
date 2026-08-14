@@ -47,9 +47,23 @@ class NbaGamePlayByPlayEngine {
       );
     }
 
+    NbaPbpPlayerIdentity resolvePlayer(
+      Map<String, dynamic> raw,
+      List<String> idKeys,
+      List<String> nameKeys,
+    ) {
+      final id = _text(raw, idKeys);
+      final name = _text(raw, nameKeys);
+      if (id.isEmpty && name.isEmpty) return NbaPbpPlayerIdentity.empty;
+      return players[_normalize(id)] ?? NbaPbpPlayerIdentity(id: id, name: name);
+    }
+
     final parsed = <_IndexedEvent>[];
     var sourceRowsWithGameId = 0;
     var rowsForOtherGames = 0;
+    var classifiedEvents = 0;
+    var explicitSubstitutionEvents = 0;
+
     for (var index = 0; index < seed.playByPlay.length; index += 1) {
       final raw = seed.playByPlay[index];
       final rowGameId = _text(raw, _gameIdKeys);
@@ -67,17 +81,6 @@ class NbaGamePlayByPlayEngine {
           'team_tricode',
           'teamTricode',
           'possession_team_id',
-        ],
-      );
-      final playerId = _text(
-        raw,
-        const [
-          'player_id',
-          'playerId',
-          'person_id',
-          'personId',
-          'player1_id',
-          'player1Id',
         ],
       );
       final period = _integer(
@@ -122,20 +125,6 @@ class NbaGamePlayByPlayEngine {
           'pts_away',
         ],
       );
-      final rawPlayerName = _text(
-        raw,
-        const [
-          'player_name',
-          'playerName',
-          'person_name',
-          'personName',
-          'player1_name',
-          'player1Name',
-        ],
-      );
-      final player = players[_normalize(playerId)] ??
-          NbaPbpPlayerIdentity(id: playerId, name: rawPlayerName);
-      final team = teams[_normalize(teamId)] ?? NbaPbpTeamIdentity.fromId(teamId);
       final actionType = _text(
         raw,
         const [
@@ -153,6 +142,121 @@ class NbaGamePlayByPlayEngine {
         const ['sub_type', 'subType', 'event_subtype', 'eventSubtype', 'action_subtype'],
       );
       final description = _description(raw);
+      final category = _classifyEvent(actionType, subType, description);
+      if (category != NbaPbpEventCategory.other) classifiedEvents += 1;
+
+      final primaryPlayer = resolvePlayer(
+        raw,
+        const [
+          'player_id',
+          'playerId',
+          'person_id',
+          'personId',
+          'player1_id',
+          'player1Id',
+        ],
+        const [
+          'player_name',
+          'playerName',
+          'person_name',
+          'personName',
+          'player1_name',
+          'player1Name',
+        ],
+      );
+      final secondaryPlayer = resolvePlayer(
+        raw,
+        const [
+          'player2_id',
+          'player2Id',
+          'person2_id',
+          'person2Id',
+          'secondary_player_id',
+          'secondaryPlayerId',
+        ],
+        const [
+          'player2_name',
+          'player2Name',
+          'person2_name',
+          'person2Name',
+          'secondary_player_name',
+          'secondaryPlayerName',
+        ],
+      );
+      final tertiaryPlayer = resolvePlayer(
+        raw,
+        const [
+          'player3_id',
+          'player3Id',
+          'person3_id',
+          'person3Id',
+          'tertiary_player_id',
+          'tertiaryPlayerId',
+        ],
+        const [
+          'player3_name',
+          'player3Name',
+          'person3_name',
+          'person3Name',
+          'tertiary_player_name',
+          'tertiaryPlayerName',
+        ],
+      );
+
+      var substitutionOut = resolvePlayer(
+        raw,
+        const [
+          'player_out_id',
+          'playerOutId',
+          'out_player_id',
+          'outPlayerId',
+          'substitution_out_player_id',
+        ],
+        const [
+          'player_out_name',
+          'playerOutName',
+          'out_player_name',
+          'outPlayerName',
+          'substitution_out_player_name',
+        ],
+      );
+      var substitutionIn = resolvePlayer(
+        raw,
+        const [
+          'player_in_id',
+          'playerInId',
+          'in_player_id',
+          'inPlayerId',
+          'substitution_in_player_id',
+        ],
+        const [
+          'player_in_name',
+          'playerInName',
+          'in_player_name',
+          'inPlayerName',
+          'substitution_in_player_name',
+        ],
+      );
+
+      // Legacy NBA play-by-play substitution rows use PLAYER1 as the player
+      // leaving and PLAYER2 as the player entering. We use that convention only
+      // when the row itself is explicitly classified as a substitution.
+      if (category == NbaPbpEventCategory.substitution &&
+          substitutionOut.isEmpty &&
+          substitutionIn.isEmpty &&
+          !primaryPlayer.isEmpty &&
+          !secondaryPlayer.isEmpty) {
+        substitutionOut = primaryPlayer;
+        substitutionIn = secondaryPlayer;
+      }
+      final hasExplicitSubstitution =
+          category == NbaPbpEventCategory.substitution &&
+          !substitutionOut.isEmpty &&
+          !substitutionIn.isEmpty;
+      if (hasExplicitSubstitution) explicitSubstitutionEvents += 1;
+
+      final result = _eventResult(raw, actionType, subType, description, category);
+      final team = teams[_normalize(teamId)] ?? NbaPbpTeamIdentity.fromId(teamId);
 
       parsed.add(
         _IndexedEvent(
@@ -166,9 +270,16 @@ class NbaGamePlayByPlayEngine {
             elapsedGameSeconds: _elapsedGameSeconds(period, clockRemaining),
             actionType: actionType,
             subType: subType,
+            category: category,
+            result: result,
             description: description,
             team: team,
-            player: player,
+            player: primaryPlayer,
+            secondaryPlayer: secondaryPlayer,
+            tertiaryPlayer: tertiaryPlayer,
+            substitutionOut: substitutionOut,
+            substitutionIn: substitutionIn,
+            hasExplicitSubstitution: hasExplicitSubstitution,
             homeScore: homeScore,
             awayScore: awayScore,
             sourceId: _text(
@@ -189,7 +300,10 @@ class NbaGamePlayByPlayEngine {
     var previousAway = 0;
     var hasPreviousScore = false;
     for (final event in events) {
-      if (event.team.id.isNotEmpty || event.player.id.isNotEmpty) {
+      if (!event.player.isEmpty ||
+          !event.secondaryPlayer.isEmpty ||
+          !event.tertiaryPlayer.isEmpty ||
+          event.team.id.isNotEmpty) {
         participantEvents += 1;
       }
       if (!event.hasScore) continue;
@@ -211,6 +325,8 @@ class NbaGamePlayByPlayEngine {
       rowsForOtherGames: rowsForOtherGames,
       scoreEvents: scoreEvents,
       participantEvents: participantEvents,
+      classifiedEvents: classifiedEvents,
+      explicitSubstitutionEvents: explicitSubstitutionEvents,
       declaredNormalizedEventCount: seed.playByPlayEvents,
       datasetStatus: seed.datasetStatus,
       validationStatus: seed.validationStatus,
@@ -229,6 +345,8 @@ class NbaGamePlayByPlayResult {
     required this.rowsForOtherGames,
     required this.scoreEvents,
     required this.participantEvents,
+    required this.classifiedEvents,
+    required this.explicitSubstitutionEvents,
     required this.declaredNormalizedEventCount,
     required this.datasetStatus,
     required this.validationStatus,
@@ -243,6 +361,8 @@ class NbaGamePlayByPlayResult {
   final int rowsForOtherGames;
   final int scoreEvents;
   final int participantEvents;
+  final int classifiedEvents;
+  final int explicitSubstitutionEvents;
   final int declaredNormalizedEventCount;
   final String datasetStatus;
   final String validationStatus;
@@ -265,6 +385,26 @@ class NbaGamePlayByPlayResult {
   }
 }
 
+enum NbaPbpEventCategory {
+  madeFieldGoal,
+  missedFieldGoal,
+  freeThrow,
+  rebound,
+  turnover,
+  foul,
+  violation,
+  substitution,
+  timeout,
+  jumpBall,
+  periodStart,
+  periodEnd,
+  review,
+  ejection,
+  other,
+}
+
+enum NbaPbpEventResult { made, missed, successful, unsuccessful, unknown }
+
 class NbaGamePlayByPlayEvent {
   const NbaGamePlayByPlayEvent({
     required this.gameId,
@@ -275,9 +415,16 @@ class NbaGamePlayByPlayEvent {
     required this.elapsedGameSeconds,
     required this.actionType,
     required this.subType,
+    required this.category,
+    required this.result,
     required this.description,
     required this.team,
     required this.player,
+    required this.secondaryPlayer,
+    required this.tertiaryPlayer,
+    required this.substitutionOut,
+    required this.substitutionIn,
+    required this.hasExplicitSubstitution,
     required this.homeScore,
     required this.awayScore,
     required this.sourceId,
@@ -291,9 +438,16 @@ class NbaGamePlayByPlayEvent {
   final double? elapsedGameSeconds;
   final String actionType;
   final String subType;
+  final NbaPbpEventCategory category;
+  final NbaPbpEventResult result;
   final String description;
   final NbaPbpTeamIdentity team;
   final NbaPbpPlayerIdentity player;
+  final NbaPbpPlayerIdentity secondaryPlayer;
+  final NbaPbpPlayerIdentity tertiaryPlayer;
+  final NbaPbpPlayerIdentity substitutionOut;
+  final NbaPbpPlayerIdentity substitutionIn;
+  final bool hasExplicitSubstitution;
   final int? homeScore;
   final int? awayScore;
   final String sourceId;
@@ -301,6 +455,10 @@ class NbaGamePlayByPlayEvent {
   bool get hasScore => homeScore != null && awayScore != null;
   int? get margin => hasScore ? homeScore! - awayScore! : null;
   String get scoreLabel => hasScore ? '$awayScore–$homeScore' : '—';
+  bool get made => result == NbaPbpEventResult.made;
+  bool get isScoringAction =>
+      category == NbaPbpEventCategory.madeFieldGoal ||
+      (category == NbaPbpEventCategory.freeThrow && made);
 
   String get periodLabel {
     final value = period;
@@ -309,11 +467,29 @@ class NbaGamePlayByPlayEvent {
     return 'OT${value - 4}';
   }
 
+  String get categoryLabel => switch (category) {
+        NbaPbpEventCategory.madeFieldGoal => 'MADE FG',
+        NbaPbpEventCategory.missedFieldGoal => 'MISSED FG',
+        NbaPbpEventCategory.freeThrow => 'FREE THROW',
+        NbaPbpEventCategory.rebound => 'REBOUND',
+        NbaPbpEventCategory.turnover => 'TURNOVER',
+        NbaPbpEventCategory.foul => 'FOUL',
+        NbaPbpEventCategory.violation => 'VIOLATION',
+        NbaPbpEventCategory.substitution => 'SUBSTITUTION',
+        NbaPbpEventCategory.timeout => 'TIMEOUT',
+        NbaPbpEventCategory.jumpBall => 'JUMP BALL',
+        NbaPbpEventCategory.periodStart => 'PERIOD START',
+        NbaPbpEventCategory.periodEnd => 'PERIOD END',
+        NbaPbpEventCategory.review => 'REVIEW',
+        NbaPbpEventCategory.ejection => 'EJECTION',
+        NbaPbpEventCategory.other => 'EVENT',
+      };
+
   String get typeLabel {
     final values = [actionType, subType]
         .where((value) => value.trim().isNotEmpty)
         .toList(growable: false);
-    return values.isEmpty ? 'EVENT' : values.join(' · ').toUpperCase();
+    return values.isEmpty ? categoryLabel : values.join(' · ').toUpperCase();
   }
 }
 
@@ -338,8 +514,13 @@ class NbaPbpTeamIdentity {
 class NbaPbpPlayerIdentity {
   const NbaPbpPlayerIdentity({required this.id, required this.name});
 
+  static const empty = NbaPbpPlayerIdentity(id: '', name: '');
+
   final String id;
   final String name;
+
+  bool get isEmpty => id.trim().isEmpty && name.trim().isEmpty;
+  String get label => name.trim().isNotEmpty ? name.trim() : id.trim();
 }
 
 class _IndexedEvent {
@@ -377,6 +558,126 @@ int _compareIndexedEvents(_IndexedEvent left, _IndexedEvent right) {
 
   return left.sourceIndex.compareTo(right.sourceIndex);
 }
+
+NbaPbpEventCategory _classifyEvent(
+  String actionType,
+  String subType,
+  String description,
+) {
+  final action = _normalize(actionType);
+  final combined = _normalize('$actionType $subType $description');
+
+  switch (action) {
+    case '1':
+      return NbaPbpEventCategory.madeFieldGoal;
+    case '2':
+      return NbaPbpEventCategory.missedFieldGoal;
+    case '3':
+      return NbaPbpEventCategory.freeThrow;
+    case '4':
+      return NbaPbpEventCategory.rebound;
+    case '5':
+      return NbaPbpEventCategory.turnover;
+    case '6':
+      return NbaPbpEventCategory.foul;
+    case '7':
+      return NbaPbpEventCategory.violation;
+    case '8':
+      return NbaPbpEventCategory.substitution;
+    case '9':
+      return NbaPbpEventCategory.timeout;
+    case '10':
+      return NbaPbpEventCategory.jumpBall;
+    case '11':
+      return NbaPbpEventCategory.ejection;
+    case '12':
+      return NbaPbpEventCategory.periodStart;
+    case '13':
+      return NbaPbpEventCategory.periodEnd;
+    case '18':
+      return NbaPbpEventCategory.review;
+  }
+
+  if (_containsAny(combined, const ['SUBSTITUTION', 'SUB:'])) {
+    return NbaPbpEventCategory.substitution;
+  }
+  if (_containsAny(combined, const ['TIMEOUT'])) return NbaPbpEventCategory.timeout;
+  if (_containsAny(combined, const ['JUMP BALL'])) return NbaPbpEventCategory.jumpBall;
+  if (_containsAny(combined, const ['TURNOVER'])) return NbaPbpEventCategory.turnover;
+  if (_containsAny(combined, const ['REBOUND'])) return NbaPbpEventCategory.rebound;
+  if (_containsAny(combined, const ['FREE THROW', 'FREETHROW'])) {
+    return NbaPbpEventCategory.freeThrow;
+  }
+  if (_containsAny(combined, const ['MISS', 'MISSED SHOT', 'MISSED FG'])) {
+    return NbaPbpEventCategory.missedFieldGoal;
+  }
+  if (_containsAny(combined, const ['MADE SHOT', 'MADE FG', '3PT', '2PT', 'DUNK', 'LAYUP', 'JUMPER', 'JUMP SHOT'])) {
+    return NbaPbpEventCategory.madeFieldGoal;
+  }
+  if (_containsAny(combined, const ['FOUL'])) return NbaPbpEventCategory.foul;
+  if (_containsAny(combined, const ['VIOLATION'])) return NbaPbpEventCategory.violation;
+  if (_containsAny(combined, const ['START OF', 'PERIOD START', 'QUARTER START'])) {
+    return NbaPbpEventCategory.periodStart;
+  }
+  if (_containsAny(combined, const ['END OF', 'PERIOD END', 'QUARTER END'])) {
+    return NbaPbpEventCategory.periodEnd;
+  }
+  if (_containsAny(combined, const ['REVIEW', 'REPLAY'])) return NbaPbpEventCategory.review;
+  if (_containsAny(combined, const ['EJECTION', 'EJECTED'])) return NbaPbpEventCategory.ejection;
+  return NbaPbpEventCategory.other;
+}
+
+NbaPbpEventResult _eventResult(
+  Map<String, dynamic> row,
+  String actionType,
+  String subType,
+  String description,
+  NbaPbpEventCategory category,
+) {
+  final explicit = _text(
+    row,
+    const [
+      'shot_result',
+      'shotResult',
+      'result',
+      'event_result',
+      'eventResult',
+      'outcome',
+    ],
+  );
+  final explicitNormalized = _normalize(explicit);
+  if (_containsAny(explicitNormalized, const ['MADE', 'MAKE', 'GOOD', 'SUCCESS'])) {
+    return category == NbaPbpEventCategory.freeThrow
+        ? NbaPbpEventResult.made
+        : NbaPbpEventResult.successful;
+  }
+  if (_containsAny(explicitNormalized, const ['MISS', 'FAILED', 'UNSUCCESS'])) {
+    return category == NbaPbpEventCategory.freeThrow
+        ? NbaPbpEventResult.missed
+        : NbaPbpEventResult.unsuccessful;
+  }
+
+  final madeFlag = _boolean(
+    row,
+    const ['is_made', 'isMade', 'made', 'shot_made_flag', 'shotMadeFlag'],
+  );
+  if (madeFlag != null) {
+    return madeFlag ? NbaPbpEventResult.made : NbaPbpEventResult.missed;
+  }
+
+  if (category == NbaPbpEventCategory.madeFieldGoal) return NbaPbpEventResult.made;
+  if (category == NbaPbpEventCategory.missedFieldGoal) return NbaPbpEventResult.missed;
+
+  final combined = _normalize('$actionType $subType $description');
+  if (category == NbaPbpEventCategory.freeThrow) {
+    if (_containsAny(combined, const ['MISS', 'MISSED'])) return NbaPbpEventResult.missed;
+    if (_containsAny(combined, const ['MADE', 'GOOD'])) return NbaPbpEventResult.made;
+  }
+  return NbaPbpEventResult.unknown;
+}
+
+bool _containsAny(String value, List<String> tokens) =>
+    tokens.any((token) => value.contains(token));
 
 String _description(Map<String, dynamic> row) {
   final direct = _text(
@@ -461,6 +762,20 @@ int? _integer(Map<String, dynamic> row, List<String> keys) {
     if (value != null) {
       final parsed = num.tryParse(value.toString().replaceAll(',', ''));
       if (parsed != null) return parsed.round();
+    }
+  }
+  return null;
+}
+
+bool? _boolean(Map<String, dynamic> row, List<String> keys) {
+  for (final key in keys) {
+    final value = row[key];
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value != null) {
+      final text = value.toString().trim().toLowerCase();
+      if (const {'true', 't', 'yes', 'y', '1', 'made', 'make'}.contains(text)) return true;
+      if (const {'false', 'f', 'no', 'n', '0', 'missed', 'miss'}.contains(text)) return false;
     }
   }
   return null;
