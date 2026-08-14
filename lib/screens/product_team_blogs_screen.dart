@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
+import '../widgets/nba_game_navigation.dart';
 import 'product_nba_public_pages_screen.dart';
 
 const _bPanel = Color(0xFF0F151C);
@@ -316,45 +317,78 @@ class _TeamPublication extends StatelessWidget {
                   for (final game in games)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 5),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                            width: 94,
-                            child: Text(
-                              '${game['game_date'] ?? '—'}',
-                              style: const TextStyle(color: _bMuted),
-                            ),
-                          ),
-                          Expanded(
-                            child: InkWell(
-                              onTap: () {
-                                final opponent =
-                                    '${game['opponent_team_id'] ?? ''}';
-                                if (opponent.isNotEmpty && opponent != '—') {
-                                  openNbaTeamPage(
-                                    context,
-                                    opponent,
-                                    opponent,
-                                  );
-                                }
-                              },
-                              child: Text(
-                                '${game['opponent_team_id'] ?? '—'}',
-                                style: const TextStyle(
-                                  color: _bBlue,
-                                  fontWeight: FontWeight.w800,
+                      child: Builder(
+                        builder: (context) {
+                          final gameId = _firstGameValue(
+                            game,
+                            const ['game_id', 'gameId', 'id'],
+                          );
+                          final opponent = _firstGameValue(
+                            game,
+                            const ['opponent_team_id', 'opponent_team', 'opponent'],
+                          );
+                          return Row(
+                            children: [
+                              SizedBox(
+                                width: 94,
+                                child: Text(
+                                  '${game['game_date'] ?? '—'}',
+                                  style: const TextStyle(color: _bMuted),
                                 ),
                               ),
-                            ),
-                          ),
-                          Text(
-                            '${game['result'] ?? ''}',
-                            style: const TextStyle(
-                              color: _bText,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ],
+                              Expanded(
+                                child: InkWell(
+                                  onTap: opponent == '—'
+                                      ? null
+                                      : () => openNbaTeamPage(
+                                            context,
+                                            opponent,
+                                            opponent,
+                                          ),
+                                  child: Text(
+                                    opponent,
+                                    style: TextStyle(
+                                      color: opponent == '—' ? _bMuted : _bBlue,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '${game['result'] ?? ''}',
+                                style: const TextStyle(
+                                  color: _bText,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              if (gameId != '—') ...[
+                                const SizedBox(width: 5),
+                                IconButton(
+                                  tooltip: 'Open Game Command Center',
+                                  visualDensity: VisualDensity.compact,
+                                  icon: const Icon(
+                                    Icons.sports_basketball_rounded,
+                                    size: 17,
+                                    color: _bAmber,
+                                  ),
+                                  onPressed: () => openNbaGamePage(
+                                    context,
+                                    gameId: gameId,
+                                    gameLabel: '$team vs $opponent',
+                                    onOpenTeam: (teamId) =>
+                                        openNbaTeamPage(context, teamId, teamId),
+                                    onOpenPlayer: (playerId, playerName) =>
+                                        openNbaPlayerPage(
+                                      context,
+                                      playerId,
+                                      playerName,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          );
+                        },
                       ),
                     ),
                 ],
@@ -585,6 +619,14 @@ class _BlogTitle extends StatelessWidget {
           letterSpacing: .5,
         ),
       );
+}
+
+String _firstGameValue(Map<String, dynamic> row, List<String> keys) {
+  for (final key in keys) {
+    final value = '${row[key] ?? ''}'.trim();
+    if (value.isNotEmpty && value != 'null') return value;
+  }
+  return '—';
 }
 
 extension _First<T> on Iterable<T> {
