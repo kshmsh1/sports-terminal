@@ -4,14 +4,15 @@ import 'package:sports_terminal/services/nba_terminal_seed_repository.dart';
 import 'package:sports_terminal/widgets/nba_game_navigation.dart';
 
 void main() {
-  testWidgets('permanent game route mounts deep intelligence and related-game routing', (
+  testWidgets('permanent game route mounts deep and event intelligence', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1440, 1600);
+    tester.view.physicalSize = const Size(1440, 2400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final observer = _RecordingObserver();
+    (String, String)? openedPlayer;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -24,6 +25,8 @@ void main() {
                 gameId: 'g1',
                 gameLabel: 'AAA @ BBB',
                 loadSeed: () async => _seed(),
+                onOpenPlayer: (playerId, playerName) =>
+                    openedPlayer = (playerId, playerName),
               ),
               child: const Text('Open game'),
             ),
@@ -43,6 +46,23 @@ void main() {
     expect(find.text('PLAYER FORM ENTERING GAME'), findsOneWidget);
     expect(find.byKey(const ValueKey('pbp-event-1')), findsOneWidget);
 
+    expect(find.byKey(const ValueKey('game-clutch-observatory')), findsOneWidget);
+    expect(find.byKey(const ValueKey('game-segment-matrix')), findsOneWidget);
+    expect(find.byKey(const ValueKey('game-player-scoring-ledger')), findsOneWidget);
+    expect(find.byKey(const ValueKey('game-substitution-ledger')), findsOneWidget);
+    expect(find.text('LATE-GAME / CLUTCH OBSERVATORY'), findsOneWidget);
+    expect(find.text('GAME SEGMENT MATRIX'), findsOneWidget);
+    expect(find.text('OBSERVED PLAYER SCORING LEDGER'), findsOneWidget);
+    expect(find.text('CONFIRMED SUBSTITUTION LEDGER'), findsOneWidget);
+    expect(find.byKey(const ValueKey('confirmed-substitution-5')), findsOneWidget);
+
+    final scoringPlayer = find.byKey(const ValueKey('event-scoring-player-p1'));
+    expect(scoringPlayer, findsOneWidget);
+    await tester.ensureVisible(scoringPlayer);
+    await tester.tap(scoringPlayer);
+    await tester.pump();
+    expect(openedPlayer, ('p1', 'Alpha Guard'));
+
     final related = find.byKey(const ValueKey('related-game-g2'));
     expect(related, findsOneWidget);
     await tester.ensureVisible(related);
@@ -53,7 +73,7 @@ void main() {
   });
 
   testWidgets('permanent game route exposes missing row-level PBP state', (tester) async {
-    tester.view.physicalSize = const Size(1440, 1500);
+    tester.view.physicalSize = const Size(1440, 2200);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -84,6 +104,10 @@ void main() {
       find.textContaining('125 normalized events are declared by release metadata'),
       findsOneWidget,
     );
+    expect(find.byKey(const ValueKey('game-clutch-observatory')), findsOneWidget);
+    expect(find.byKey(const ValueKey('game-segment-matrix')), findsOneWidget);
+    expect(find.byKey(const ValueKey('game-player-scoring-ledger')), findsOneWidget);
+    expect(find.byKey(const ValueKey('game-substitution-ledger')), findsOneWidget);
   });
 }
 
@@ -112,6 +136,8 @@ NbaTerminalSeedSnapshot _seed({
       ],
       'players': [
         {'player_id': 'p1', 'player_name': 'Alpha Guard', 'team_id': 'AAA'},
+        {'player_id': 'p2', 'player_name': 'Beta Scorer', 'team_id': 'BBB'},
+        {'player_id': 'p3', 'player_name': 'Alpha Reserve', 'team_id': 'AAA'},
       ],
       'games': [
         {
@@ -172,9 +198,23 @@ NbaTerminalSeedSnapshot _seed({
           'player_id': 'p1',
           'player_name': 'Alpha Guard',
           'team_id': 'AAA',
-          'points': 4,
+          'points': 2,
           'rebounds': 2,
           'assists': 1,
+        },
+        {
+          'game_id': 'g1',
+          'player_id': 'p2',
+          'player_name': 'Beta Scorer',
+          'team_id': 'BBB',
+          'points': 5,
+        },
+        {
+          'game_id': 'g1',
+          'player_id': 'p3',
+          'player_name': 'Alpha Reserve',
+          'team_id': 'AAA',
+          'points': 2,
         },
       ],
       'search_index': const [],
@@ -187,6 +227,7 @@ NbaTerminalSeedSnapshot _seed({
               {
                 'game_id': 'g1',
                 'event_num': 1,
+                'event_msg_type': 12,
                 'period': 1,
                 'clock': '12:00',
                 'home_score': 0,
@@ -196,6 +237,7 @@ NbaTerminalSeedSnapshot _seed({
               {
                 'game_id': 'g1',
                 'event_num': 2,
+                'event_type': 'made shot',
                 'period': 1,
                 'clock': '11:30',
                 'home_score': 0,
@@ -207,33 +249,64 @@ NbaTerminalSeedSnapshot _seed({
               {
                 'game_id': 'g1',
                 'event_num': 3,
+                'event_type': 'made shot',
                 'period': 1,
                 'clock': '10:55',
                 'home_score': 3,
                 'away_score': 2,
                 'team_id': 'BBB',
-                'description': 'Beta three',
+                'player_id': 'p2',
+                'description': 'Beta Scorer three',
               },
               {
                 'game_id': 'g1',
                 'event_num': 4,
-                'period': 1,
-                'clock': '10:10',
+                'event_type': 'timeout',
+                'period': 4,
+                'clock': '5:30',
                 'home_score': 3,
-                'away_score': 4,
-                'team_id': 'AAA',
-                'player_id': 'p1',
-                'description': 'Alpha Guard layup',
+                'away_score': 2,
+                'team_id': 'BBB',
+                'description': 'Timeout',
               },
               {
                 'game_id': 'g1',
                 'event_num': 5,
-                'period': 1,
-                'clock': '9:40',
+                'event_msg_type': 8,
+                'period': 4,
+                'clock': '4:30',
+                'home_score': 3,
+                'away_score': 2,
+                'team_id': 'AAA',
+                'player1_id': 'p1',
+                'player1_name': 'Alpha Guard',
+                'player2_id': 'p3',
+                'player2_name': 'Alpha Reserve',
+                'description': 'SUB: Alpha Reserve FOR Alpha Guard',
+              },
+              {
+                'game_id': 'g1',
+                'event_num': 6,
+                'event_type': 'made shot',
+                'period': 4,
+                'clock': '4:00',
+                'home_score': 3,
+                'away_score': 4,
+                'team_id': 'AAA',
+                'player_id': 'p3',
+                'description': 'Alpha Reserve jumper',
+              },
+              {
+                'game_id': 'g1',
+                'event_num': 7,
+                'event_type': 'made shot',
+                'period': 4,
+                'clock': '2:00',
                 'home_score': 5,
                 'away_score': 4,
                 'team_id': 'BBB',
-                'description': 'Beta basket',
+                'player_id': 'p2',
+                'description': 'Beta Scorer jumper',
               },
             ]
           : const [],
