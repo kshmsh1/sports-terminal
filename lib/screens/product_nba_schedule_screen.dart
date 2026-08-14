@@ -24,11 +24,19 @@ class ProductNbaScheduleScreen extends StatefulWidget {
     this.loadSeed,
     this.onOpenGame,
     this.onOpenTeam,
+    this.initialTeamId = 'All',
+    this.initialQuery = '',
+    this.initialSeasonType = 'All',
+    this.initialAscending = true,
   });
 
   final Future<NbaTerminalSeedSnapshot> Function()? loadSeed;
   final NbaScheduleGameOpenCallback? onOpenGame;
   final ValueChanged<String>? onOpenTeam;
+  final String initialTeamId;
+  final String initialQuery;
+  final String initialSeasonType;
+  final bool initialAscending;
 
   @override
   State<ProductNbaScheduleScreen> createState() => _ProductNbaScheduleScreenState();
@@ -36,18 +44,22 @@ class ProductNbaScheduleScreen extends StatefulWidget {
 
 class _ProductNbaScheduleScreenState extends State<ProductNbaScheduleScreen> {
   static const _engine = NbaGameScheduleEngine();
-  final TextEditingController _search = TextEditingController();
+  late final TextEditingController _search;
   late Future<NbaTerminalSeedSnapshot> _seedFuture;
-  String _team = 'All';
+  late String _team;
   String _status = 'All';
-  String _seasonType = 'All';
+  late String _seasonType;
   DateTime? _dateFrom;
   DateTime? _dateTo;
-  bool _ascending = true;
+  late bool _ascending;
 
   @override
   void initState() {
     super.initState();
+    _search = TextEditingController(text: widget.initialQuery.trim());
+    _team = _normalizedInitial(widget.initialTeamId);
+    _seasonType = _normalizedInitial(widget.initialSeasonType);
+    _ascending = widget.initialAscending;
     _seedFuture = _load();
   }
 
@@ -56,6 +68,15 @@ class _ProductNbaScheduleScreenState extends State<ProductNbaScheduleScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.loadSeed != widget.loadSeed) {
       _seedFuture = _load();
+    }
+    if (oldWidget.initialQuery != widget.initialQuery ||
+        oldWidget.initialTeamId != widget.initialTeamId ||
+        oldWidget.initialSeasonType != widget.initialSeasonType ||
+        oldWidget.initialAscending != widget.initialAscending) {
+      _search.text = widget.initialQuery.trim();
+      _team = _normalizedInitial(widget.initialTeamId);
+      _seasonType = _normalizedInitial(widget.initialSeasonType);
+      _ascending = widget.initialAscending;
     }
   }
 
@@ -213,6 +234,9 @@ class _ProductNbaScheduleScreenState extends State<ProductNbaScheduleScreen> {
               _pill(result.historicalContext ? 'HISTORICAL CONTEXT' : 'CURRENT CONTEXT', _sBlue),
               _pill(result.datasetStatus.toUpperCase(), _sGreen),
               _pill('VALIDATION ${result.validationStatus.toUpperCase()}', _sGreen),
+              if (_team != 'All') _pill('TEAM $_team', _sBlue),
+              if (_seasonType != 'All') _pill(_seasonType.toUpperCase(), _sBlue),
+              if (_search.text.trim().isNotEmpty) _pill('QUERY ${_search.text.trim()}', _sBlue),
               if (result.usedFallbackDataset) _pill('FALLBACK DATASET', _sAmber),
             ],
           ),
@@ -510,6 +534,11 @@ class _ScheduleError extends StatelessWidget {
           ],
         ),
       );
+}
+
+String _normalizedInitial(String value) {
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? 'All' : trimmed;
 }
 
 String _dateLabel(DateTime value) =>
