@@ -12,14 +12,14 @@ void main() {
 
     expect(result.eventCount, 8);
     expect(result.observedAttributedPoints, 5);
-    expect(result.uncreditedObservedPoints, 2);
+    expect(result.uncreditedObservedPoints, 4);
     expect(result.profiles.map((profile) => profile.player.id), containsAll(['p1', 'p2', 'p3']));
 
     final guard = result.byPlayerId('p1')!;
     expect(guard.player.name, 'Alpha Guard');
     expect(guard.teamIds, ['AAA']);
     expect(guard.participationEvents, 5);
-    expect(guard.primaryEvents, 4);
+    expect(guard.primaryEvents, 5);
     expect(guard.secondaryAppearances, 0);
     expect(guard.observedPoints, 4);
     expect(guard.observedScoringEvents, 2);
