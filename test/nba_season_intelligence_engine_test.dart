@@ -26,8 +26,10 @@ void main() {
     );
     final gamma = result.standings.firstWhere((row) => row.teamId == 'CCC');
 
-    expect(gamma.games, 1);
-    expect(gamma.recordLabel, '0-1');
+    // Gamma has two completed losses (g2 and g3). The scheduled g4 remains
+    // visible in the season inventory but does not become a third decision.
+    expect(gamma.games, 2);
+    expect(gamma.recordLabel, '0-2');
     expect(result.games.last.gameId, 'g4');
     expect(result.games.last.hasScore, isFalse);
   });
