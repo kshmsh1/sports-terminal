@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "nba_api_version": "1.11.4",
+  "principles": [
+    "Regular season and playoffs are collected as separate scopes.",
+    "Raw source responses are archived before any metric transformation.",
+    "Collection failures are recorded and do not erase previously successful scopes.",
+    "The collector is deliberately rate-limited and should not run in CI against stats.nba.com.",
+    "Only deterministic metric recipes may populate the Sports Terminal overlay."
+  ],
+  "endpoints": [
+    {
+      "key": "league_player_stats",
+      "module": "league_dash_player_stats",
+      "class": "LeagueDashPlayerStats",
+      "datasets": ["LeagueDashPlayerStats"],
+      "first_season": "1996-97",
+      "enabled": true,
+      "variants": [
+        {"key": "base", "measure_type": "Base", "per_mode": "Totals"},
+        {"key": "advanced", "measure_type": "Advanced", "per_mode": "Totals"}
+      ]
+    },
+    {
+      "key": "player_bio_stats",
+      "module": "league_dash_player_bio_stats",
+      "class": "LeagueDashPlayerBioStats",
+      "datasets": ["LeagueDashPlayerBioStats"],
+      "first_season": "1996-97",
+      "enabled": true,
+      "variants": [{"key": "default", "per_mode": "Totals"}]
+    },
+    {
+      "key": "estimated_metrics",
+      "module": "player_estimated_metrics",
+      "class": "PlayerEstimatedMetrics",
+      "datasets": ["PlayerEstimatedMetrics"],
+      "first_season": "1996-97",
+      "enabled": true,
+      "variants": [{"key": "default"}]
+    },
+    {
+      "key": "hustle",
+      "module": "league_hustle_stats_player",
+      "class": "LeagueHustleStatsPlayer",
+      "datasets": ["HustleStatsPlayer"],
+      "first_season": "2016-17",
+      "enabled": true,
+      "variants": [{"key": "default"}]
+    },
+    {
+      "key": "defense_overall",
+      "module": "league_dash_pt_defend",
+      "class": "LeagueDashPtDefend",
+      "datasets": ["LeagueDashPTDefend"],
+      "first_season": "2013-14",
+      "enabled": true,
+      "variants": [
+        {"key": "overall", "defense_category": "Overall"},
+        {"key": "less_than_6ft", "defense_category": "Less Than 6Ft"},
+        {"key": "three_pointers", "defense_category": "3 Pointers"}
+      ]
+    },
+    {
+      "key": "clutch",
+      "module": "league_dash_player_clutch",
+      "class": "LeagueDashPlayerClutch",
+      "datasets": ["LeagueDashPlayerClutch"],
+      "first_season": "1996-97",
+      "enabled": true,
+      "variants": [{"key": "last_5_close", "clutch_time": "Last 5 Minutes", "ahead_behind": "Ahead or Behind", "point_diff": 5, "per_mode": "Totals"}]
+    },
+    {
+      "key": "player_shot_profile",
+      "module": "league_dash_player_pt_shot",
+      "class": "LeagueDashPlayerPtShot",
+      "datasets": ["LeagueDashPTShots"],
+      "first_season": "2013-14",
+      "enabled": true,
+      "variants": [{"key": "default", "per_mode": "Totals"}]
+    },
+    {
+      "key": "shot_locations",
+      "module": "league_dash_player_shot_locations",
+      "class": "LeagueDashPlayerShotLocations",
+      "datasets": ["ShotLocations"],
+      "first_season": "1996-97",
+      "enabled": true,
+      "variants": [{"key": "default", "distance_range": "By Zone", "per_mode": "Totals"}]
+    },
+    {
+      "key": "tracking",
+      "module": "league_dash_pt_stats",
+      "class": "LeagueDashPtStats",
+      "datasets": ["LeagueDashPtStats"],
+      "first_season": "2013-14",
+      "enabled": true,
+      "variants": [
+        {"key": "passing", "pt_measure_type": "Passing", "player_or_team": "Player"},
+        {"key": "rebounding", "pt_measure_type": "Rebounding", "player_or_team": "Player"},
+        {"key": "speed_distance", "pt_measure_type": "SpeedDistance", "player_or_team": "Player"},
+        {"key": "drives", "pt_measure_type": "Drives", "player_or_team": "Player"},
+        {"key": "catch_shoot", "pt_measure_type": "CatchShoot", "player_or_team": "Player"},
+        {"key": "pull_up", "pt_measure_type": "PullUpShot", "player_or_team": "Player"}
+      ]
+    },
+    {
+      "key": "synergy_play_types",
+      "module": "synergy_play_types",
+      "class": "SynergyPlayTypes",
+      "datasets": ["SynergyPlayType"],
+      "first_season": "2015-16",
+      "enabled": true,
+      "variants": [
+        {"key": "isolation", "play_type": "Isolation", "player_or_team": "P", "type_grouping": "offensive"},
+        {"key": "transition", "play_type": "Transition", "player_or_team": "P", "type_grouping": "offensive"},
+        {"key": "pnr_ball_handler", "play_type": "PRBallHandler", "player_or_team": "P", "type_grouping": "offensive"},
+        {"key": "pnr_roll_man", "play_type": "PRRollman", "player_or_team": "P", "type_grouping": "offensive"},
+        {"key": "post_up", "play_type": "Postup", "player_or_team": "P", "type_grouping": "offensive"},
+        {"key": "spot_up", "play_type": "Spotup", "player_or_team": "P", "type_grouping": "offensive"}
+      ]
+    },
+    {
+      "key": "gravity",
+      "module": "gravity_leaders",
+      "class": "GravityLeaders",
+      "datasets": [],
+      "first_season": "2013-14",
+      "enabled": false,
+      "notes": "Schema is audited, but live constructor/result behavior is left opt-in until a local probe validates the current endpoint contract.",
+      "variants": [{"key": "default"}]
+    },
+    {
+      "key": "dunk_tracking",
+      "module": "dunk_score_leaders",
+      "class": "DunkScoreLeaders",
+      "datasets": [],
+      "first_season": "2024-25",
+      "enabled": false,
+      "notes": "New endpoint; keep opt-in until current-season live probing confirms availability and semantics.",
+      "variants": [{"key": "default"}]
+    }
+  ]
+}
