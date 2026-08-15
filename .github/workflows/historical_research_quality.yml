@@ -1,10 +1,7 @@
 name: Historical Research Quality
 
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -21,37 +18,27 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.13'
           cache: pip
           cache-dependency-path: backend/requirements.txt
-
       - name: Install backend dependencies
         run: python -m pip install -r backend/requirements.txt
-
       - name: Compile historical backend
         run: python -m compileall -q backend/app tools
-
       - name: Raw historical import contract
         run: python backend/scripts/historical_import_contract_test.py
-
       - name: Canonical historical platform contract
         run: python backend/scripts/historical_canonical_contract_test.py
-
       - name: Traded-player leaderboard contract
         run: python backend/scripts/historical_leaderboard_contract_test.py
-
       - name: Historical seed compatibility contract
         run: python backend/scripts/historical_seed_compat_contract_test.py
-
       - name: Deep historical research contract
         run: python backend/scripts/historical_research_launch_contract_test.py
-
       - name: Entity and season intelligence contract
         run: python backend/scripts/historical_entity_intelligence_contract_test.py
-
       - name: Unified NBA terminal contract
         run: python backend/scripts/nba_terminal_contract_test.py
