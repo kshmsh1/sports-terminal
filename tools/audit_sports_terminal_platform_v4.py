@@ -28,13 +28,15 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
         "Historical basketball data is now a static website concern",
         "FastAPI request",
         "runtime SQLite query",
-        "Future live current-season overlays",
+        "current-season overlays",
     ),
     "lib/services/website_nba_static_repository.dart": (
         "data/nba_static",
         "seasonSnapshot",
         "playerDossier",
         "teamDossier",
+        "gameDetail",
+        "gamePlayByPlay",
         "searchEntities",
         "history/awards.json",
         "history/all_star.json",
@@ -53,6 +55,12 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
         "sqlite_required_by_browser",
         "live_overlay_supported",
         "correlated aggregates",
+    ),
+    "tools/build_static_nba_game_data.py": (
+        "sports-terminal-static-game-v1",
+        "sports-terminal-static-pbp-v1",
+        "canon_fact_play_by_play",
+        "coverage_is_source_bounded",
     ),
     "lib/screens/website_nba_home_dashboard.dart": (
         "NBA Dashboard",
@@ -114,16 +122,28 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
         "Trade passes modeled structural checks",
         "Final execution still requires authoritative current contracts",
     ),
+    "lib/services/front_office_registry_service.dart": (
+        "Cache-first product read",
+        "loadRemote",
+        "loadCached",
+    ),
     "scripts/open_terminal.sh": (
         "data/warehouse/nba_history.sqlite",
         "SPORTS_TERMINAL_NBA_HISTORY_DB",
         "build_historical_nba_canonical.py",
         "build_static_nba_website_data_v2.py",
+        "build_static_nba_game_data.py",
+        "--materialize-pbp",
         "web/data/nba_static",
         "Historical NBA pages are served from static files, not the API.",
     ),
     ".gitignore": (
         "/web/data/nba_static/",
+    ),
+    "docs/static_nba_website_architecture.md": (
+        "static base + live overlay",
+        "--materialize-pbp",
+        "does not claim possession-level PBP",
     ),
     "lib/widgets/blueprint_terminal_frame.dart": (
         "TerminalCommandBar",
