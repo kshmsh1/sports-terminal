@@ -7,6 +7,7 @@ import '../services/nba_research_context_store.dart';
 import '../services/nba_terminal_command_engine.dart';
 import '../services/nba_terminal_repository.dart';
 import '../services/nba_terminal_state_store.dart';
+import '../widgets/nba_game_navigation.dart';
 import 'product_analytics_suite_screen.dart';
 import 'product_automation_governance_screen.dart';
 import 'product_connected_data_studio_screen.dart';
@@ -18,6 +19,7 @@ import 'product_fantasy_community_screens.dart';
 import 'product_front_office_registry_screen.dart';
 import 'product_nba_entity_command_center_screen.dart';
 import 'product_nba_historical_intelligence_screen.dart';
+import 'product_nba_public_pages_screen.dart';
 import 'product_nba_research_command_center_screen.dart';
 import 'product_nba_stats_center_screen.dart';
 import 'product_nba_universe_screen.dart';
@@ -366,6 +368,32 @@ class _ProductNbaTerminalScreenState extends State<ProductNbaTerminalScreen> {
                 onActivate: () async {
                   await _activateEntity(kind, row);
                   if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                  if (kind == 'game' && mounted) {
+                    final away = (row['away_team_name'] ??
+                            row['away_team_id'] ??
+                            'Away')
+                        .toString();
+                    final home = (row['home_team_name'] ??
+                            row['home_team_id'] ??
+                            'Home')
+                        .toString();
+                    await openNbaGamePage(
+                      this.context,
+                      gameId: key,
+                      gameLabel: '$away @ $home',
+                      onOpenTeam: (teamId) =>
+                          openNbaTeamPage(this.context, teamId, teamId),
+                      onOpenPlayer: (playerId, playerName) =>
+                          openNbaPlayerPage(
+                        this.context,
+                        playerId,
+                        playerName,
+                      ),
+                    );
+                  }
+                  if (kind == 'season' && mounted) {
+                    await _openHistoricalSeason(row, seasonId: key);
+                  }
                 },
               );
             },
@@ -403,13 +431,34 @@ class _ProductNbaTerminalScreenState extends State<ProductNbaTerminalScreen> {
   Future<void> _activateSeason(Map<String, dynamic> row) async {
     final season = row['season_id']?.toString() ?? '';
     if (season.isEmpty) return;
-    await _contexts.activateHistorical(season: season, league: _league);
+    await _contexts.activateHistorical(
+      season: season,
+      league: _league,
+      seasonType: (row['season_type'] ?? 'regular').toString(),
+    );
     if (!mounted) return;
     setState(() {
       _contextFuture = _contexts.load();
       _recentContextsFuture = _contexts.recent();
-      _desk = _TerminalDesk.context;
     });
+    await _openHistoricalSeason(row, seasonId: season);
+  }
+
+  Future<void> _openHistoricalSeason(
+    Map<String, dynamic> row, {
+    required String seasonId,
+  }) {
+    final league = (row['league_id'] ?? _league).toString().trim();
+    final seasonType = (row['season_type'] ?? 'regular').toString().trim();
+    return openHistoricalNbaSeasonPage(
+      context,
+      seasonId: seasonId,
+      league: league.isEmpty ? 'NBA' : league,
+      seasonType: seasonType.isEmpty ? 'regular' : seasonType,
+      onOpenTeam: (teamId) => openNbaTeamPage(context, teamId, teamId),
+      onOpenPlayer: (playerId, playerName) =>
+          openNbaPlayerPage(context, playerId, playerName),
+    );
   }
 
   Future<void> _restoreContext(NbaResearchContext context) async {
@@ -908,14 +957,15 @@ class _ProductNbaTerminalScreenState extends State<ProductNbaTerminalScreen> {
                           ),
                         ),
                         TextButton.icon(
+                          key: ValueKey('terminal-open-season-${row['season_id']}'),
                           onPressed: () => _activateSeason(row),
-                          icon: const Icon(Icons.bolt_rounded, size: 16),
-                          label: const Text('Activate'),
+                          icon: const Icon(Icons.calendar_view_month_rounded, size: 16),
+                          label: const Text('Open Season'),
                         ),
                         IconButton(
                           tooltip: 'Inspect season',
                           onPressed: () => _inspectEntity('season', row),
-                          icon: const Icon(Icons.open_in_new_rounded, color: _tBlue),
+                          icon: const Icon(Icons.info_outline_rounded, color: _tBlue),
                         ),
                       ],
                     ),
@@ -1347,7 +1397,11 @@ class _EntityPreview extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onActivate,
                 icon: const Icon(Icons.bolt_rounded),
-                label: const Text('Activate context'),
+                label: Text(switch (kind) {
+                  'game' => 'Open game',
+                  'season' => 'Open season',
+                  _ => 'Activate context',
+                }),
               ),
             ],
           ),

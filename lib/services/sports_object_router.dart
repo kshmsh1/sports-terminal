@@ -1,7 +1,226 @@
 import '../models/route_payload.dart';
+import 'nba_game_intelligence_engine.dart';
+import 'nba_game_play_by_play_engine.dart';
 
 class SportsObjectRouter {
   const SportsObjectRouter();
+
+  RoutePayload packageGame({
+    required NbaGameIntelligenceSnapshot game,
+    String targetRoute = 'Open',
+  }) {
+    final blockingIssues = [
+      for (final issue in game.integrityIssues)
+        if (issue.severity == NbaGameIntegritySeverity.blocking) issue.code,
+    ];
+    final warnings = [
+      for (final issue in game.integrityIssues)
+        if (issue.severity == NbaGameIntegritySeverity.warning) issue.code,
+    ];
+    final missing = game.coverage.missingSections;
+    final readinessState = blockingIssues.isNotEmpty
+        ? 'Blocked'
+        : missing.isEmpty
+            ? 'Ready'
+            : 'Partial';
+    final matchup = '${game.awayTeam.abbreviation} @ ${game.homeTeam.abbreviation}';
+    final sourceSnapshot = game.provenance.assetPath.trim().isNotEmpty
+        ? game.provenance.assetPath
+        : game.provenance.datasetStatus;
+
+    return packageRows(
+      datasetId: 'nba_game_${game.gameId}',
+      packageId: game.gameId,
+      displayLabel: game.gameDate.isEmpty ? matchup : '$matchup · ${game.gameDate}',
+      sourceObjectType: 'NBA Game',
+      targetRoute: targetRoute,
+      sourceSnapshot: sourceSnapshot,
+      readinessState: readinessState,
+      filterSummary: 'Canonical game ${game.gameId}',
+      rowKey: 'game_id',
+      blockers: blockingIssues,
+      preferredColumns: const [
+        'game_id',
+        'season_id',
+        'season_type',
+        'game_date',
+        'status',
+        'away_team_id',
+        'away_team',
+        'away_score',
+        'home_team_id',
+        'home_team',
+        'home_score',
+        'winner_team_id',
+        'arena',
+        'city',
+        'player_lines',
+        'periods',
+      ],
+      rows: [
+        {
+          'game_id': game.gameId,
+          'season_id': game.seasonId,
+          'season_type': game.seasonType,
+          'game_date': game.gameDate,
+          'status': game.status,
+          'away_team_id': game.awayTeam.id,
+          'away_team': game.awayTeam.name,
+          'away_score': game.awayScore,
+          'home_team_id': game.homeTeam.id,
+          'home_team': game.homeTeam.name,
+          'home_score': game.homeScore,
+          'winner_team_id': game.winnerTeamId,
+          'arena': game.arena,
+          'city': game.city,
+          'player_lines': game.playerLines.length,
+          'periods': game.periods.length,
+        },
+      ],
+      metadata: {
+        'gameId': game.gameId,
+        'requestedGameId': game.requestedGameId,
+        'historicalContext': game.provenance.historicalContext,
+        'datasetStatus': game.provenance.datasetStatus,
+        'validationStatus': game.provenance.validationStatus,
+        'releaseId': game.provenance.releaseId,
+        'releaseVersion': game.provenance.releaseVersion,
+        'releaseStatus': game.provenance.releaseStatus,
+        'sourceIds': game.provenance.sourceIds,
+        'asOfValues': game.provenance.asOfValues,
+        'usedFallbackDataset': game.provenance.usedFallbackDataset,
+        'usedCompatibilityJoin': game.coverage.usedCompatibilityJoin,
+        'missingSections': missing,
+        'integrityWarnings': warnings,
+        'integrityBlockers': blockingIssues,
+      },
+    );
+  }
+
+  /// Packages one normalized play-by-play event into the shared Sports Terminal
+  /// routing contract. This preserves the event's exact evidence and the parent
+  /// game's provenance; it never expands an event into inferred possession,
+  /// lineup, or win-probability data.
+  RoutePayload packageGameEvent({
+    required NbaGameIntelligenceSnapshot game,
+    required NbaGamePlayByPlayEvent event,
+    String targetRoute = 'Open',
+  }) {
+    final blockers = <String>[];
+    if (_normalizedIdentity(event.gameId) != _normalizedIdentity(game.gameId)) {
+      blockers.add('event-game-mismatch');
+    }
+    final missingCore = <String>[
+      if (event.sequence == null) 'sequence',
+      if (event.period == null) 'period',
+      if (event.clock.trim().isEmpty) 'clock',
+    ];
+    final readinessState = blockers.isNotEmpty
+        ? 'Blocked'
+        : missingCore.isEmpty
+            ? 'Ready'
+            : 'Partial';
+    final sequenceLabel = event.sequence?.toString() ?? 'unsequenced';
+    final eventKey = '${game.gameId}:$sequenceLabel';
+    final matchup = '${game.awayTeam.abbreviation} @ ${game.homeTeam.abbreviation}';
+    final eventTime = '${event.periodLabel} ${event.clock}'.trim();
+    final sourceSnapshot = game.provenance.assetPath.trim().isNotEmpty
+        ? game.provenance.assetPath
+        : game.provenance.datasetStatus;
+
+    return packageRows(
+      datasetId: 'nba_game_event_${game.gameId}_$sequenceLabel',
+      packageId: eventKey,
+      displayLabel: '$matchup · $eventTime · ${event.categoryLabel}',
+      sourceObjectType: 'NBA Game Event',
+      targetRoute: targetRoute,
+      sourceSnapshot: sourceSnapshot,
+      readinessState: readinessState,
+      filterSummary: 'Canonical event $eventKey',
+      rowKey: 'event_key',
+      blockers: blockers,
+      preferredColumns: const [
+        'event_key',
+        'game_id',
+        'sequence',
+        'period',
+        'period_label',
+        'clock',
+        'elapsed_game_seconds',
+        'category',
+        'result',
+        'action_type',
+        'sub_type',
+        'team_id',
+        'team',
+        'player_id',
+        'player',
+        'secondary_player_id',
+        'secondary_player',
+        'tertiary_player_id',
+        'tertiary_player',
+        'substitution_out_id',
+        'substitution_out',
+        'substitution_in_id',
+        'substitution_in',
+        'home_score',
+        'away_score',
+        'home_margin',
+        'description',
+        'source_id',
+      ],
+      rows: [
+        {
+          'event_key': eventKey,
+          'game_id': game.gameId,
+          'sequence': event.sequence,
+          'period': event.period,
+          'period_label': event.periodLabel,
+          'clock': event.clock,
+          'elapsed_game_seconds': event.elapsedGameSeconds,
+          'category': event.category.name,
+          'result': event.result.name,
+          'action_type': event.actionType,
+          'sub_type': event.subType,
+          'team_id': event.team.id,
+          'team': event.team.name,
+          'player_id': event.player.id,
+          'player': event.player.label,
+          'secondary_player_id': event.secondaryPlayer.id,
+          'secondary_player': event.secondaryPlayer.label,
+          'tertiary_player_id': event.tertiaryPlayer.id,
+          'tertiary_player': event.tertiaryPlayer.label,
+          'substitution_out_id': event.substitutionOut.id,
+          'substitution_out': event.substitutionOut.label,
+          'substitution_in_id': event.substitutionIn.id,
+          'substitution_in': event.substitutionIn.label,
+          'home_score': event.homeScore,
+          'away_score': event.awayScore,
+          'home_margin': event.margin,
+          'description': event.description,
+          'source_id': event.sourceId,
+        },
+      ],
+      metadata: {
+        'gameId': game.gameId,
+        'eventSequence': event.sequence,
+        'eventCategory': event.category.name,
+        'eventResult': event.result.name,
+        'eventHasScore': event.hasScore,
+        'eventHasExplicitSubstitution': event.hasExplicitSubstitution,
+        'missingCoreFields': missingCore,
+        'historicalContext': game.provenance.historicalContext,
+        'datasetStatus': game.provenance.datasetStatus,
+        'validationStatus': game.provenance.validationStatus,
+        'releaseId': game.provenance.releaseId,
+        'releaseVersion': game.provenance.releaseVersion,
+        'releaseStatus': game.provenance.releaseStatus,
+        'sourceIds': game.provenance.sourceIds,
+        'asOfValues': game.provenance.asOfValues,
+        'usedFallbackDataset': game.provenance.usedFallbackDataset,
+      },
+    );
+  }
 
   RoutePayload packageRows({
     required String datasetId,
@@ -213,3 +432,5 @@ st.export_to_workspace($variable, sheet="$escapedLabel")
     return value.toString();
   }
 }
+
+String _normalizedIdentity(String value) => value.trim().toUpperCase();

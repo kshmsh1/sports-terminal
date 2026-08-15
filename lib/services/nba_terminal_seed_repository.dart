@@ -222,6 +222,14 @@ class NbaTerminalSeedRepository {
       _loadOptionalObject(resolvedBasePath, 'asset_manifest.json'),
       _loadOptionalObject(resolvedBasePath, 'release_manifest.json'),
       _loadOptionalList(resolvedBasePath, 'standings.json'),
+      _loadOptionalFirstList(
+        resolvedBasePath,
+        const [
+          'play_by_play.json',
+          'play_by_play_events.json',
+          'pbp.json',
+        ],
+      ),
     ]);
 
     return NbaTerminalSeedSnapshot(
@@ -241,6 +249,7 @@ class NbaTerminalSeedRepository {
       assetManifest: documents[13] as Map<String, dynamic>?,
       releaseManifest: documents[14] as Map<String, dynamic>?,
       standings: documents[15] as List<Map<String, dynamic>>? ?? const [],
+      playByPlay: documents[16] as List<Map<String, dynamic>>? ?? const [],
       launchConfig: launchConfig,
       assetPath: resolvedBasePath,
       usedFallback: usedFallback,
@@ -256,6 +265,17 @@ class NbaTerminalSeedRepository {
     );
     if (complete != null) return complete;
     return _loadList(resolvedBasePath, 'player_game_logs_top.json');
+  }
+
+  Future<List<Map<String, dynamic>>?> _loadOptionalFirstList(
+    String resolvedBasePath,
+    List<String> filenames,
+  ) async {
+    for (final filename in filenames) {
+      final rows = await _loadOptionalList(resolvedBasePath, filename);
+      if (rows != null) return rows;
+    }
+    return null;
   }
 
   Future<bool> _assetExists(String path) async {
@@ -347,6 +367,7 @@ class NbaTerminalSeedSnapshot {
     required this.assetManifest,
     this.releaseManifest,
     this.standings = const [],
+    this.playByPlay = const [],
     this.launchConfig = const {},
     this.assetPath = '',
     this.usedFallback = false,
@@ -384,6 +405,12 @@ class NbaTerminalSeedSnapshot {
         payload['release_manifest'] ?? payload['releaseManifest'],
       ),
       standings: _seedList(payload['standings']),
+      playByPlay: _seedList(
+        payload['play_by_play'] ??
+            payload['playByPlay'] ??
+            payload['play_by_play_events'] ??
+            payload['playByPlayEvents'],
+      ),
       launchConfig: _seedMap(
         payload['launch_config'] ?? payload['launchConfig'],
       ),
@@ -410,6 +437,7 @@ class NbaTerminalSeedSnapshot {
   final Map<String, dynamic>? assetManifest;
   final Map<String, dynamic>? releaseManifest;
   final List<Map<String, dynamic>> standings;
+  final List<Map<String, dynamic>> playByPlay;
   final Map<String, dynamic> launchConfig;
   final String assetPath;
   final bool usedFallback;
@@ -439,6 +467,7 @@ class NbaTerminalSeedSnapshot {
   }
 
   int get playByPlayEvents {
+    if (playByPlay.isNotEmpty) return playByPlay.length;
     final build = manifest['warehouseBuild'];
     if (build is Map && build['playByPlayEventsNormalized'] is num) {
       return (build['playByPlayEventsNormalized'] as num).toInt();

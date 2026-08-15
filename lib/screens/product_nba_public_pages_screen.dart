@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../services/nba_stats_metric_catalog.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
+import '../widgets/nba_game_discovery_panel.dart';
+import '../widgets/nba_game_navigation.dart';
+import '../widgets/nba_player_game_log_panel.dart';
+import '../widgets/nba_team_game_log_panel.dart';
 
 const _pBg = Color(0xFF090D12);
 const _pPanel = Color(0xFF0F151C);
@@ -308,6 +312,40 @@ Future<void> openNbaTeamPage(
   );
 }
 
+Future<void> _openPublicGame(
+  BuildContext context,
+  String gameId, {
+  String gameLabel = 'NBA Game',
+}) {
+  return openNbaGamePage(
+    context,
+    gameId: gameId,
+    gameLabel: gameLabel,
+    onOpenTeam: (teamId) => openNbaTeamPage(context, teamId, teamId),
+    onOpenPlayer: (playerId, playerName) =>
+        openNbaPlayerPage(context, playerId, playerName),
+  );
+}
+
+Future<void> _openPublicSchedule(
+  BuildContext context, {
+  String initialTeamId = 'All',
+  String initialQuery = '',
+  String initialSeasonType = 'All',
+  bool initialAscending = true,
+}) {
+  return openNbaSchedulePage(
+    context,
+    initialTeamId: initialTeamId,
+    initialQuery: initialQuery,
+    initialSeasonType: initialSeasonType,
+    initialAscending: initialAscending,
+    onOpenTeam: (teamId) => openNbaTeamPage(context, teamId, teamId),
+    onOpenPlayer: (playerId, playerName) =>
+        openNbaPlayerPage(context, playerId, playerName),
+  );
+}
+
 class ProductNbaPlayerPage extends StatefulWidget {
   const ProductNbaPlayerPage({
     super.key,
@@ -438,6 +476,20 @@ class _ProductNbaPlayerPageState extends State<ProductNbaPlayerPage> {
               const SizedBox(height: 12),
               _PlayerGlossary(family: family),
               const SizedBox(height: 12),
+              NbaPlayerGameLogPanel(
+                seed: snapshot.data!,
+                playerId: widget.playerId,
+                playerName: row.player,
+                seasonType: _seasonType.label,
+                onOpenGame: (gameId, gameLabel) => _openPublicGame(
+                  context,
+                  gameId,
+                  gameLabel: gameLabel,
+                ),
+                onOpenTeam: (teamId) =>
+                    openNbaTeamPage(context, teamId, teamId),
+              ),
+              const SizedBox(height: 12),
               _Panel(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -445,7 +497,7 @@ class _ProductNbaPlayerPageState extends State<ProductNbaPlayerPage> {
                     _Section('PLAYER WORKSPACE'),
                     SizedBox(height: 8),
                     Text(
-                      'This permanent player route is the consolidation point for statistics, game logs, historical seasons, shooting and tracking, impact models, awards, contracts, transactions, injuries, articles, community discussion, fantasy notes and saved research. Metrics with no authoritative source remain visibly unavailable rather than being fabricated.',
+                      'This permanent player route is the consolidation point for statistics, canonical game logs, historical seasons, shooting and tracking, impact models, awards, contracts, transactions, injuries, articles, community discussion, fantasy notes and saved research. Metrics with no authoritative source remain visibly unavailable rather than being fabricated.',
                       style: TextStyle(color: _pMuted, height: 1.5),
                     ),
                   ],
@@ -653,12 +705,6 @@ class _ProductNbaTeamPageState extends State<ProductNbaTeamPage> {
               (left, right) =>
                   (right.value('pts') ?? 0).compareTo(left.value('pts') ?? 0),
             );
-          final games = data.teamGameLogs
-              .where((record) => '${record['team_id']}' == widget.teamId)
-              .toList()
-              .reversed
-              .take(15)
-              .toList();
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -666,7 +712,7 @@ class _ProductNbaTeamPageState extends State<ProductNbaTeamPage> {
                 eyebrow: 'NBA / TEAM',
                 title: widget.teamId,
                 body:
-                    'Roster, performance, recent games and linked league entities consolidated into one permanent team route. Front-office, draft, contract, editorial and community objects can attach to this identity.',
+                    'Roster, performance, canonical games and linked league entities consolidated into one permanent team route. Front-office, draft, contract, editorial and community objects attach to this identity.',
               ),
               const SizedBox(height: 12),
               _Panel(
@@ -738,57 +784,22 @@ class _ProductNbaTeamPageState extends State<ProductNbaTeamPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              _Panel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const _Section('RECENT GAMES'),
-                    const SizedBox(height: 8),
-                    for (final game in games)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 5),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 105,
-                              child: Text(
-                                '${game['game_date'] ?? '—'}',
-                                style: const TextStyle(color: _pMuted),
-                              ),
-                            ),
-                            Expanded(
-                              child: InkWell(
-                                onTap: () {
-                                  final opponent =
-                                      '${game['opponent_team_id'] ?? ''}';
-                                  if (opponent.isNotEmpty && opponent != '—') {
-                                    openNbaTeamPage(
-                                      context,
-                                      opponent,
-                                      opponent,
-                                    );
-                                  }
-                                },
-                                child: Text(
-                                  '${game['opponent_team_id'] ?? '—'} · ${game['result'] ?? '—'}',
-                                  style: const TextStyle(
-                                    color: _pBlue,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Text(
-                              '${game['points'] ?? '—'} PTS',
-                              style: const TextStyle(
-                                color: _pText,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
+              NbaTeamGameLogPanel(
+                seed: data,
+                teamId: widget.teamId,
+                seasonType: _seasonType.label,
+                onOpenGame: (gameId, gameLabel) => _openPublicGame(
+                  context,
+                  gameId,
+                  gameLabel: gameLabel,
+                ),
+                onOpenTeam: (teamId) =>
+                    openNbaTeamPage(context, teamId, teamId),
+                onOpenSchedule: () => _openPublicSchedule(
+                  context,
+                  initialTeamId: widget.teamId,
+                  initialSeasonType: _seasonType.label,
+                  initialAscending: false,
                 ),
               ),
             ],
@@ -861,7 +872,7 @@ class _ProductNbaHubV2ScreenState extends State<ProductNbaHubV2Screen> {
                 eyebrow: 'NBA HUB',
                 title: 'The league operating homepage',
                 body:
-                    'A data-first command page for the NBA: canonical teams and players, standings, schedule context, leaders, historical research, awards, transactions, front-office workflows, editorial and community. Entity names stay linked throughout the experience.',
+                    'A data-first command page for the NBA: canonical teams, players and games, standings, schedule context, leaders, historical research, awards, transactions, front-office workflows, editorial and community. Entity names stay linked throughout the experience.',
               ),
               const SizedBox(height: 12),
               _Panel(
@@ -887,7 +898,7 @@ class _ProductNbaHubV2ScreenState extends State<ProductNbaHubV2Screen> {
                         style: const TextStyle(color: _pText),
                         decoration: const InputDecoration(
                           prefixIcon: Icon(Icons.search_rounded),
-                          hintText: 'Search players and teams…',
+                          hintText: 'Search players, teams and games…',
                           border: OutlineInputBorder(),
                           isDense: true,
                         ),
@@ -897,9 +908,38 @@ class _ProductNbaHubV2ScreenState extends State<ProductNbaHubV2Screen> {
                     _Kpi('Players', '${players.length}'),
                     _Kpi('Games', '${data.games.length}'),
                     _Kpi('PBP', '${data.playByPlayEvents}'),
+                    TextButton.icon(
+                      onPressed: () => _openPublicSchedule(
+                        context,
+                        initialSeasonType: seasonType.label,
+                      ),
+                      icon: const Icon(Icons.calendar_month_rounded, size: 16),
+                      label: const Text('Schedule'),
+                    ),
                   ],
                 ),
               ),
+              if (query.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                NbaGameDiscoveryPanel(
+                  seed: data,
+                  query: search.text,
+                  seasonType: seasonType.label,
+                  onOpenGame: (gameId, gameLabel) => _openPublicGame(
+                    context,
+                    gameId,
+                    gameLabel: gameLabel,
+                  ),
+                  onOpenTeam: (teamId) =>
+                      openNbaTeamPage(context, teamId, teamId),
+                  onOpenSchedule: () => _openPublicSchedule(
+                    context,
+                    initialQuery: search.text,
+                    initialSeasonType: seasonType.label,
+                    initialAscending: false,
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
               const _Section('TEAMS'),
               const SizedBox(height: 8),
@@ -1126,6 +1166,7 @@ class _GameCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final gameId = _firstText(game, const ['game_id', 'gameId', 'id']);
     final home = _firstText(game, const ['home_team_id', 'home_team', 'home']);
     final away = _firstText(game, const ['away_team_id', 'away_team', 'away', 'visitor_team_id']);
     final date = _firstText(game, const ['game_date', 'date', 'gameDate']);
@@ -1152,6 +1193,22 @@ class _GameCard extends StatelessWidget {
           if (status != '—') ...[
             const SizedBox(height: 7),
             Text(status, style: const TextStyle(color: _pAmber, fontSize: 10)),
+          ],
+          if (gameId != '—') ...[
+            const SizedBox(height: 7),
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+              ),
+              onPressed: () => _openPublicGame(
+                context,
+                gameId,
+                gameLabel: '$away @ $home',
+              ),
+              icon: const Icon(Icons.sports_basketball_rounded, size: 15),
+              label: const Text('Open game'),
+            ),
           ],
         ],
       ),
