@@ -47,6 +47,7 @@ CONTRACTS = (
     "oidc_login_contract_test.py",
     "organization_security_contract_test.py",
     "auth_policy_enforcement_contract_test.py",
+    "local_session_contract_test.py",
 )
 
 
