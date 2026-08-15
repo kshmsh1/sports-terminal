@@ -26,6 +26,8 @@ def main() -> None:
     require(dockerfile, "SPORTS_TERMINAL_RATE_LIMIT_BACKEND=database", "Dockerfile")
     require(dockerfile, "SPORTS_TERMINAL_BILLING_MODE=disabled", "Dockerfile")
     require(dockerfile, "COPY migrations ./migrations", "Dockerfile")
+    require(dockerfile, "socket.create_connection", "Dockerfile liveness")
+    reject(dockerfile, "urllib.request.urlopen", "Dockerfile liveness")
     reject(dockerfile, "SPORTS_TERMINAL_DB_PATH=/data", "Dockerfile")
 
     startup = (BACKEND / "start_production.sh").read_text(encoding="utf-8")
@@ -43,11 +45,19 @@ def main() -> None:
     require(assured_auth, "production bootstrap verifies the schema", "assured auth")
     reject(assured_auth, "run_migrations()", "assured auth request path")
 
+    migration_cli = (BACKEND / "scripts" / "migrate.py").read_text(encoding="utf-8")
+    require(migration_cli, "bootstrap_core_schema()", "migration CLI")
+    require(migration_cli, "bind_database_boundary()", "migration CLI")
+    require(migration_cli, "auth_api.init_auth_db()", "migration CLI")
+
     production_env = (ROOT / ".env.production.example").read_text(encoding="utf-8")
     require(production_env, "SPORTS_TERMINAL_DATABASE_URL=postgresql://", "production env")
     require(production_env, "SPORTS_TERMINAL_BILLING_MODE=disabled", "production env")
     require(production_env, "SPORTS_TERMINAL_AUTO_MIGRATE=false", "production env")
     require(production_env, "SPORTS_TERMINAL_MFA_ENCRYPTION_KEY=REPLACE_", "production env")
+    require(production_env, "SPORTS_TERMINAL_EMAIL_PROVIDER=http", "production env")
+    require(production_env, "SPORTS_TERMINAL_OBJECT_STORE=http", "production env")
+    require(production_env, "SPORTS_TERMINAL_ALLOW_DATABASE_RESTORE=false", "production env")
 
     dockerignore = (BACKEND / ".dockerignore").read_text(encoding="utf-8")
     for token in (".env", "*.db", ".data/", ".git/"):
@@ -60,6 +70,7 @@ def main() -> None:
     runbook = (ROOT / "docs" / "production_runbook.md").read_text(encoding="utf-8")
     require(runbook, "Production does not silently fall back to SQLite", "runbook")
     require(runbook, "candidate → certified → active", "runbook")
+    require(runbook, "SSO enforcement is intentionally unavailable", "runbook")
     require(runbook, "Repository workflows are manual-only", "runbook")
 
     cost_guard = (ROOT / ".github" / "COST_GUARD.md").read_text(encoding="utf-8")
