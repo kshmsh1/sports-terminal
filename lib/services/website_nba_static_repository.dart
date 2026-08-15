@@ -95,10 +95,13 @@ class WebsiteNbaStaticRepository {
     final cached = _playerCache[playerKey];
     if (cached != null) return cached;
     final index = await playerIndex();
-    final match = index.cast<Map<String, dynamic>?>().firstWhere(
-          (row) => row?['player_key']?.toString() == playerKey,
-          orElse: () => null,
-        );
+    Map<String, dynamic>? match;
+    for (final row in index) {
+      if (row['player_key']?.toString() == playerKey) {
+        match = row;
+        break;
+      }
+    }
     if (match == null) {
       throw WebsiteNbaStaticException('Historical player not found: $playerKey');
     }
@@ -119,10 +122,13 @@ class WebsiteNbaStaticRepository {
     final cached = _teamCache[resolved];
     if (cached != null) return cached;
     final index = await teamIndex();
-    final match = index.cast<Map<String, dynamic>?>().firstWhere(
-          (row) => row?['team_key']?.toString() == resolved,
-          orElse: () => null,
-        );
+    Map<String, dynamic>? match;
+    for (final row in index) {
+      if (row['team_key']?.toString() == resolved) {
+        match = row;
+        break;
+      }
+    }
     if (match == null) {
       throw WebsiteNbaStaticException('Static team index is missing $resolved');
     }
