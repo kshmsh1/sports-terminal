@@ -48,9 +48,12 @@ class WebsiteNbaStaticRepository {
   List<WebsiteNbaStaticSeason>? _seasons;
   List<Map<String, dynamic>>? _players;
   List<Map<String, dynamic>>? _teams;
+  List<Map<String, dynamic>>? _games;
   final Map<String, NbaTerminalSeedSnapshot> _seasonCache = {};
   final Map<String, Map<String, dynamic>> _playerCache = {};
   final Map<String, Map<String, dynamic>> _teamCache = {};
+  final Map<String, Map<String, dynamic>> _gameCache = {};
+  final Map<String, List<Map<String, dynamic>>> _pbpCache = {};
 
   Future<Map<String, dynamic>> manifest() async {
     return _manifest ??= await _object('manifest.json');
@@ -72,6 +75,10 @@ class WebsiteNbaStaticRepository {
 
   Future<List<Map<String, dynamic>>> teamIndex() async {
     return _teams ??= await _list('teams/index.json');
+  }
+
+  Future<List<Map<String, dynamic>>> gameIndex() async {
+    return _games ??= await _list('games/index.json');
   }
 
   Future<NbaTerminalSeedSnapshot> seasonSnapshot(
@@ -139,6 +146,43 @@ class WebsiteNbaStaticRepository {
     final dossier = await _object(file);
     _teamCache[resolved] = dossier;
     return dossier;
+  }
+
+  Future<Map<String, dynamic>> gameDetail(String gameKey) async {
+    final cached = _gameCache[gameKey];
+    if (cached != null) return cached;
+    final match = await _gameIndexRow(gameKey);
+    final file = match?['file']?.toString() ?? '';
+    if (file.isEmpty) {
+      throw WebsiteNbaStaticException(
+        'Static game detail has not been materialized for $gameKey',
+      );
+    }
+    final detail = await _object(file);
+    _gameCache[gameKey] = detail;
+    return detail;
+  }
+
+  Future<List<Map<String, dynamic>>> gamePlayByPlay(String gameKey) async {
+    final cached = _pbpCache[gameKey];
+    if (cached != null) return cached;
+    final match = await _gameIndexRow(gameKey);
+    final file = match?['pbp_file']?.toString() ?? '';
+    if (file.isEmpty) return const [];
+    final payload = await _object(file);
+    final rows = _mapList(payload['rows']);
+    _pbpCache[gameKey] = rows;
+    return rows;
+  }
+
+  Future<Map<String, dynamic>?> _gameIndexRow(String gameKey) async {
+    for (final row in await gameIndex()) {
+      if (row['game_key']?.toString() == gameKey ||
+          row['nba_game_id']?.toString() == gameKey) {
+        return row;
+      }
+    }
+    return null;
   }
 
   Future<String?> resolveTeamKey(String idOrAbbreviation) async {
@@ -227,10 +271,7 @@ class WebsiteNbaStaticRepository {
     if (decoded is! List) {
       throw WebsiteNbaStaticException('Static NBA list has an invalid shape: $relative');
     }
-    return [
-      for (final item in decoded)
-        if (item is Map) item.map((key, value) => MapEntry(key.toString(), value)),
-    ];
+    return _mapList(decoded);
   }
 
   Future<Object?> _json(String relative) async {
@@ -261,6 +302,15 @@ class WebsiteNbaStaticException implements Exception {
 
   @override
   String toString() => message;
+}
+
+List<Map<String, dynamic>> _mapList(Object? value) {
+  if (value is! List) return const [];
+  return [
+    for (final item in value)
+      if (item is Map)
+        item.map((key, field) => MapEntry(key.toString(), field)),
+  ];
 }
 
 int? _int(Object? value) {
