@@ -55,6 +55,21 @@ def main() -> None:
         assert "information_schema.tables" in master
         assert "sqlite_master" not in master
 
+        master_unordered = database.translate_sql(
+            "SELECT name FROM sqlite_master WHERE type = 'table'",
+            backend="postgresql",
+        )
+        assert "information_schema.tables" in master_unordered
+        assert "sqlite_master" not in master_unordered
+
+        table_info = database.translate_sql(
+            "PRAGMA table_info(auth_sessions)",
+            backend="postgresql",
+        )
+        assert "information_schema.columns" in table_info
+        assert "column_name AS name" in table_info
+        assert "table_name = 'auth_sessions'" in table_info
+
         script = "CREATE TABLE a (id TEXT); CREATE TABLE b (label TEXT);"
         assert len(database.split_sql_script(script)) == 2
         print("database_contract: PASS")
