@@ -129,7 +129,7 @@ ASSERTIONS: dict[str, tuple[str, ...]] = {
     "docs/institutional_research_os_40_unit_convergence.md": (
         "40-Unit Convergence",
         "unknown rights stay unverified",
-        "Portable Research Bundle",
+        "Portable research and universal UI",
     ),
 }
 
