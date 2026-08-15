@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../controllers/route_payload_controller.dart';
 import '../models/route_payload.dart';
+import 'route_payload_generated_report_panel.dart';
 import 'terminal_primitives.dart';
 
 class ActiveRoutePayloadPanel extends StatelessWidget {
@@ -38,6 +39,7 @@ class ActiveRoutePayloadPanel extends StatelessWidget {
         }
 
         final interpretation = _interpretPayload(consumerName, payload);
+        final isReportConsumer = consumerName.toLowerCase().contains('report');
         return TerminalCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(child: Text('$consumerName RoutePayload Intake', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800))),
@@ -58,6 +60,10 @@ class ActiveRoutePayloadPanel extends StatelessWidget {
           ]),
           const SizedBox(height: 16),
           _PayloadDetailGrid(payload: payload, origin: controller.lastOrigin, compact: compact),
+          if (isReportConsumer) ...[
+            const SizedBox(height: 16),
+            RoutePayloadGeneratedReportPanel(payload: payload),
+          ],
           if (!compact) ...[
             const SizedBox(height: 16),
             _PayloadHistoryStrip(history: controller.history),
@@ -86,7 +92,7 @@ String _interpretPayload(String consumerName, RoutePayload payload) {
     return 'Compare can use ${payload.displayLabel} as a comparison slot seed. Identity fields work now, while deeper statistical/contextual scorecards remain gated by source-backed data.';
   }
   if (normalized.contains('report')) {
-    return 'Reports can create a source-aware report block from ${payload.displayLabel}, preserving readiness, blockers, selected fields, and source-as-of state.';
+    return 'Reports generates a source-aware report shell from ${payload.displayLabel}, preserving structured rows, missing values, readiness, blockers, selected fields, and source-as-of state without inventing unsupported sports claims.';
   }
   if (normalized.contains('saved')) {
     return 'Saved Views can serialize this payload into non-persistent view memory: selected rows, selected columns, filters, source snapshot, output route, and blocker state.';
