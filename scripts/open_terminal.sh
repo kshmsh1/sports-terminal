@@ -14,10 +14,14 @@ for arg in "$@"; do
       cat <<'EOF'
 Usage: bash scripts/open_terminal.sh [--postgres] [--no-browser]
 
-Starts a local Sports Terminal review session without GitHub Actions or hosted services.
-Default: SQLite + bundled NBA assets.
+Starts a local Sports Terminal review session without hosted services.
+Default: SQLite + locally available NBA data.
   --postgres    Use the repository's loopback-only Postgres 17 container.
   --no-browser  Do not automatically open http://127.0.0.1:8080.
+
+When the Flutter NBA seed is missing, the launcher automatically rebuilds or
+syncs it when an existing local raw catalog, warehouse, or exported seed is
+available. It never invents sports data and never downloads a source silently.
 
 Stop the session with Ctrl-C.
 EOF
@@ -41,6 +45,59 @@ if [[ "${SPORTS_TERMINAL_SKIP_DEP_INSTALL:-false}" != "true" ]]; then
   echo "==> Resolving backend dependencies"
   "$PYTHON" -m pip install --disable-pip-version-check -q -r backend/requirements.txt
 fi
+
+prepare_nba_seed() {
+  local asset_dir="$ROOT/assets/data/nba/terminal_seed/nba_2025"
+  local asset_manifest="$asset_dir/manifest.json"
+  local exported_seed="$ROOT/data/terminal_seed/nba_2025"
+  local warehouse="$ROOT/data/warehouse/nba_2025.sqlite"
+  local raw_catalog="$ROOT/raw/basketball_reference/catalog.sqlite"
+
+  if [[ -s "$asset_manifest" ]]; then
+    echo "==> NBA website data is ready"
+    return 0
+  fi
+
+  if [[ -s "$exported_seed/manifest.json" ]]; then
+    echo "==> Syncing existing NBA seed into Flutter assets"
+    if "$PYTHON" tools/sync_nba_terminal_assets.py \
+      --seed "$exported_seed" \
+      --asset-output "$asset_dir" \
+      --clean; then
+      return 0
+    fi
+    echo "    NBA seed sync failed; the website will show a clean data-setup state." >&2
+    return 0
+  fi
+
+  if [[ -s "$warehouse" ]]; then
+    echo "==> Exporting NBA website data from the existing local warehouse"
+    if "$PYTHON" tools/run_nba_terminal_data_pipeline.py \
+      --skip-warehouse-build; then
+      return 0
+    fi
+    echo "    NBA seed export failed; the website will show a clean data-setup state." >&2
+    return 0
+  fi
+
+  if [[ -s "$raw_catalog" ]]; then
+    echo "==> Building NBA website data from the existing local source catalog"
+    if "$PYTHON" tools/run_nba_terminal_data_pipeline.py; then
+      return 0
+    fi
+    echo "    NBA data preparation failed; the website will show a clean data-setup state." >&2
+    return 0
+  fi
+
+  cat <<'EOF'
+==> NBA source data is not installed on this checkout
+    The website will still launch, but NBA data-dependent pages will show a
+    friendly setup state instead of an asset exception. Sports Terminal will
+    never synthesize player statistics to hide a missing source dataset.
+EOF
+}
+
+prepare_nba_seed
 
 echo "==> Resolving Flutter dependencies"
 flutter pub get >/dev/null
@@ -121,7 +178,7 @@ if ! kill -0 "$BACKEND_PID" >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "==> Starting Sports Terminal web session at http://127.0.0.1:8080"
+echo "==> Starting Sports Terminal website at http://127.0.0.1:8080"
 flutter run -d web-server --web-hostname 127.0.0.1 --web-port 8080 \
   >"$ROOT/.data/logs/flutter.log" 2>&1 &
 FLUTTER_PID=$!
@@ -143,12 +200,11 @@ fi
 cat <<'EOF'
 
 Sports Terminal is running locally.
-  Terminal: http://127.0.0.1:8080
+  Website:  http://127.0.0.1:8080
   API:      http://127.0.0.1:8000
   Backend:  .data/logs/backend.log
   Flutter:  .data/logs/flutter.log
 
-This session does not dispatch GitHub Actions or provision hosted services.
 Press Ctrl-C to stop it.
 EOF
 
