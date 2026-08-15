@@ -13,6 +13,9 @@ from uuid import uuid4
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from .rate_limit import DatabaseRateLimiter
+from .runtime_config import load_runtime_config
+
 logger = logging.getLogger("sports_terminal.api")
 if not logger.handlers:
     handler = logging.StreamHandler()
@@ -26,26 +29,39 @@ _BUCKET_LOCK = threading.Lock()
 
 
 def _rate_limit_enabled() -> bool:
-    return os.getenv("SPORTS_TERMINAL_RATE_LIMITS", "false").lower() == "true"
+    return load_runtime_config().rate_limits_enabled
+
+
+def _rate_limit_backend() -> str:
+    explicit = os.getenv("SPORTS_TERMINAL_RATE_LIMIT_BACKEND", "").strip().lower()
+    if explicit:
+        if explicit not in {"memory", "database"}:
+            raise RuntimeError("SPORTS_TERMINAL_RATE_LIMIT_BACKEND must be memory or database")
+        return explicit
+    return "database" if load_runtime_config().production else "memory"
 
 
 def _limit_for(path: str) -> tuple[int, int]:
     if path.startswith("/v2/auth/login") or path.startswith("/v2/auth/signup"):
         return int(os.getenv("SPORTS_TERMINAL_AUTH_REQUESTS_PER_MINUTE", "12")), 60
+    if path.startswith("/v2/billing/webhooks/"):
+        return int(os.getenv("SPORTS_TERMINAL_WEBHOOK_REQUESTS_PER_MINUTE", "120")), 60
     if path.startswith("/v2/nba/"):
         return int(os.getenv("SPORTS_TERMINAL_DATA_REQUESTS_PER_MINUTE", "240")), 60
     return int(os.getenv("SPORTS_TERMINAL_API_REQUESTS_PER_MINUTE", "120")), 60
 
 
 def _client_key(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    config = load_runtime_config()
+    forwarded = ""
+    if config.trust_proxy_headers:
+        forwarded = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
     host = forwarded or (request.client.host if request.client else "unknown")
     user_id = getattr(request.state, "user_id", "")
     return f"{host}:{user_id}:{request.url.path}"
 
 
-def _consume_rate_limit(request: Request) -> tuple[bool, int, int]:
-    limit, window = _limit_for(request.url.path)
+def _consume_memory(request: Request, limit: int, window: int) -> tuple[bool, int, int]:
     now = time.monotonic()
     key = _client_key(request)
     with _BUCKET_LOCK:
@@ -55,18 +71,58 @@ def _consume_rate_limit(request: Request) -> tuple[bool, int, int]:
             bucket.popleft()
         if len(bucket) >= limit:
             retry_after = max(1, int(window - (now - bucket[0])))
-            return False, limit, retry_after
+            return False, 0, retry_after
         bucket.append(now)
-        return True, limit, 0
+        return True, max(0, limit - len(bucket)), 0
+
+
+def _consume_rate_limit(request: Request) -> tuple[bool, int, int, int]:
+    limit, window = _limit_for(request.url.path)
+    if _rate_limit_backend() == "database":
+        try:
+            decision = DatabaseRateLimiter().consume(
+                _client_key(request), limit=limit, window_seconds=window
+            )
+            return decision.allowed, limit, decision.remaining, decision.retry_after
+        except Exception:
+            if load_runtime_config().production:
+                raise
+            logger.exception("database rate limiter unavailable; using development memory fallback")
+    allowed, remaining, retry_after = _consume_memory(request, limit, window)
+    return allowed, limit, remaining, retry_after
 
 
 async def launch_operations_middleware(request: Request, call_next: Any):
     request_id = request.headers.get("x-request-id", "").strip() or uuid4().hex
     request.state.request_id = request_id
     started = time.perf_counter()
+    rate_limit_headers: dict[str, str] = {}
 
     if _rate_limit_enabled():
-        allowed, limit, retry_after = _consume_rate_limit(request)
+        try:
+            allowed, limit, remaining, retry_after = _consume_rate_limit(request)
+        except Exception:
+            logger.exception(
+                json.dumps(
+                    {
+                        "event": "rate_limit_backend_error",
+                        "request_id": request_id,
+                        "path": request.url.path,
+                        "method": request.method,
+                        "recorded_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                    separators=(",", ":"),
+                )
+            )
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "Request safety backend unavailable", "request_id": request_id},
+                headers={"X-Request-ID": request_id},
+            )
+        rate_limit_headers = {
+            "X-RateLimit-Limit": str(limit),
+            "X-RateLimit-Remaining": str(remaining),
+        }
         if not allowed:
             logger.warning(
                 json.dumps(
@@ -88,6 +144,7 @@ async def launch_operations_middleware(request: Request, call_next: Any):
                 headers={
                     "Retry-After": str(retry_after),
                     "X-Request-ID": request_id,
+                    **rate_limit_headers,
                 },
             )
 
@@ -116,7 +173,10 @@ async def launch_operations_middleware(request: Request, call_next: Any):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    if os.getenv("SPORTS_TERMINAL_HSTS", "false").lower() == "true":
+    response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    for key, value in rate_limit_headers.items():
+        response.headers[key] = value
+    if load_runtime_config().hsts_enabled:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
     logger.info(
