@@ -67,6 +67,8 @@ jobs:
         run: python tools/audit_production_platform_v1.py --check
       - name: Audit recursive production platform v2
         run: python tools/audit_production_platform_v2.py --check
+      - name: Audit final code-complete local review platform v3
+        run: python tools/audit_production_platform_v3.py --check
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
