@@ -11,6 +11,7 @@ from app.main import make_id, now_iso
 from app.mfa import SecretVault, TotpService, issue_recovery_codes
 from app.mfa_login import MfaLoginService
 from app.migrations import run_migrations
+from app.production_bootstrap import bind_database_boundary
 from app.security_tokens import SecurityTokenService
 
 
@@ -28,6 +29,7 @@ def main() -> None:
         os.environ["SPORTS_TERMINAL_MFA_ENCRYPTION_KEY"] = vault_key
         with tempfile.TemporaryDirectory() as directory:
             database.DEFAULT_SQLITE_PATH = Path(directory) / "mfa-login.db"
+            bind_database_boundary()
             init_auth_db()
             run_migrations()
             user_id = make_id("usr")
