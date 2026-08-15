@@ -23,6 +23,7 @@ PUBLIC_V2_PATHS = {
     "/v2/launch/readiness",
 }
 PUBLIC_V2_PREFIXES = (
+    "/v2/auth/sso/",
     "/v2/billing/webhooks/",
 )
 _MFA_VERIFY_PATH = re.compile(r"^/v2/security/mfa/totp/[^/]+/verify$")
@@ -110,9 +111,9 @@ async def enforce_launch_auth(request: Request, call_next: Any):
     """Require valid sessions and enforce session-assurance policy on `/v2` routes.
 
     Local development stays permissive unless `SPORTS_TERMINAL_ENFORCE_AUTH=true`.
-    Billing webhook ingress is bearer-exempt because it is authenticated independently
-    with request-body HMAC. Verification/recovery and MFA completion are also public
-    because they exist specifically to establish or recover authentication.
+    Billing webhooks and OIDC start/callback ingress are bearer-exempt because they
+    authenticate with their own HMAC or state/PKCE/JWT protocol. Verification,
+    recovery and MFA completion are public because they establish or recover auth.
     """
 
     if not auth_enforcement_enabled():
