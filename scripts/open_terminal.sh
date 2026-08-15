@@ -8,26 +8,35 @@ cd "$ROOT"
 USE_POSTGRES=false
 NO_BROWSER=false
 FORCE_STATIC=false
+MATERIALIZE_PBP=false
 for arg in "$@"; do
   case "$arg" in
     --postgres) USE_POSTGRES=true ;;
     --no-browser) NO_BROWSER=true ;;
     --rebuild-static) FORCE_STATIC=true ;;
+    --materialize-pbp) MATERIALIZE_PBP=true ;;
     -h|--help)
       cat <<'EOF'
-Usage: bash scripts/open_terminal.sh [--postgres] [--no-browser] [--rebuild-static]
+Usage: bash scripts/open_terminal.sh [--postgres] [--no-browser] [--rebuild-static] [--materialize-pbp]
 
 Starts Sports Terminal locally.
 
 Historical NBA website data is compiled once from the canonical warehouse into
 sharded static JSON under web/data/nba_static. Home, Stats, Advanced Stats,
-player pages, team pages, awards and historical game metadata read those files
-directly in the browser. FastAPI/SQLite are not in the historical page-rendering
-path.
+player pages, team pages, awards, drafts and historical game details read those
+files directly in the browser. FastAPI/SQLite are not in the historical page-
+rendering path.
 
-  --postgres        Use the loopback-only Postgres 17 app database.
-  --no-browser      Do not automatically open http://127.0.0.1:8080.
-  --rebuild-static  Force a static NBA rebuild even if the warehouse fingerprint matches.
+  --postgres         Use the loopback-only Postgres 17 app database.
+  --no-browser       Do not automatically open http://127.0.0.1:8080.
+  --rebuild-static   Force rebuilding static NBA files even when the warehouse fingerprint matches.
+  --materialize-pbp  Also materialize all source-backed canonical historical play-by-play into per-game static shards. This can take much longer the first time.
+
+Game box-score/detail shards are built once during normal launch and then
+fingerprint-skipped. Historical PBP is intentionally optional because it can be
+millions of event rows and is not needed for Home, Stats or Advanced Stats.
+Only rows already exposed by canon_fact_play_by_play are materialized; missing
+era/game coverage remains missing.
 
 The launcher checks the current checkout and immediately previous repo root for
 nba_history.sqlite. If no canonical warehouse exists but already-downloaded
@@ -133,10 +142,18 @@ prepare_nba_history() {
 prepare_nba_history
 
 STATIC_ARGS=(--database "$HISTORY_DB" --output "$ROOT/web/data/nba_static")
-if $FORCE_STATIC; then STATIC_ARGS+=(--force); fi
+GAME_ARGS=(--database "$HISTORY_DB" --output "$ROOT/web/data/nba_static")
+if $FORCE_STATIC; then
+  STATIC_ARGS+=(--force)
+  GAME_ARGS+=(--force)
+fi
+if $MATERIALIZE_PBP; then GAME_ARGS+=(--include-pbp); fi
 
 echo "==> Preparing immutable static NBA website data"
 "$PYTHON" tools/build_static_nba_website_data_v2.py "${STATIC_ARGS[@]}"
+
+echo "==> Preparing static historical game detail"
+"$PYTHON" tools/build_static_nba_game_data.py "${GAME_ARGS[@]}"
 
 echo "==> Resolving Flutter dependencies"
 flutter pub get >/dev/null
@@ -199,9 +216,9 @@ else
   unset SPORTS_TERMINAL_DATABASE_URL || true
 fi
 
-# The backend still powers dynamic product features (accounts, saved work,
-# front-office edits, community, future live overlays). Historical NBA pages do
-# not depend on it anymore.
+# Dynamic services still power accounts, saved work, community, mutable
+# front-office edits and future active-season overlays. Historical basketball
+# pages do not depend on them.
 echo "==> Initializing application database"
 "$PYTHON" backend/scripts/migrate.py >/dev/null
 
