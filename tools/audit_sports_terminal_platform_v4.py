@@ -9,9 +9,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
-    # Advanced Bloomberg-inspired primitives remain implemented, but the
-    # default customer experience is now a conventional NBA website backed by
-    # the canonical historical warehouse.
     "lib/widgets/app_entry_gate.dart": (
         "TraditionalWebsiteShellV2",
     ),
@@ -27,11 +24,34 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
         "WebsiteTradeMachineScreen",
     ),
     "lib/services/website_nba_api_service.dart": (
-        "/v2/nba/history/seasons",
-        "loadHistoricalSeason",
-        "/dossier",
-        "/entities/search",
-        "canonical historical warehouse/API is the primary source",
+        "WebsiteNbaStaticRepository",
+        "Historical basketball data is now a static website concern",
+        "No FastAPI request or runtime SQLite query is required",
+        "Future live current-season overlays",
+    ),
+    "lib/services/website_nba_static_repository.dart": (
+        "data/nba_static",
+        "seasonSnapshot",
+        "playerDossier",
+        "teamDossier",
+        "searchEntities",
+        "history/awards.json",
+        "history/all_star.json",
+        "history/draft.json",
+        "history/coverage.json",
+    ),
+    "tools/build_static_nba_website_data_v2.py": (
+        "sports-terminal-static-nba-website-v2",
+        "players/index.json",
+        "teams/index.json",
+        "games/index.json",
+        "history/awards.json",
+        "history/all_star.json",
+        "history/draft.json",
+        "historical_http_api_required",
+        "sqlite_required_by_browser",
+        "live_overlay_supported",
+        "correlated aggregates",
     ),
     "lib/screens/website_nba_home_dashboard.dart": (
         "NBA Dashboard",
@@ -97,10 +117,15 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
         "data/warehouse/nba_history.sqlite",
         "SPORTS_TERMINAL_NBA_HISTORY_DB",
         "build_historical_nba_canonical.py",
-        "never downloads or scrapes a sports source silently",
+        "build_static_nba_website_data_v2.py",
+        "web/data/nba_static",
+        "Historical NBA pages are served from static files, not the API.",
     ),
-    # Deep professional capabilities remain in the repository for secondary
-    # workflows without being forced into the primary website chrome.
+    ".gitignore": (
+        "/web/data/nba_static/",
+    ),
+    # Deep professional capabilities remain implemented, but they are not
+    # forced into the default customer navigation or historical page runtime.
     "lib/widgets/blueprint_terminal_frame.dart": (
         "TerminalCommandBar",
         "TerminalStatusBar",
@@ -122,6 +147,7 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
     ),
     ".github/workflows/flutter_quality.yml": (
         "workflow_dispatch",
+        "static_nba_website_contract_test.py",
         "audit_sports_terminal_platform_v4.py --check",
     ),
 }
@@ -197,6 +223,22 @@ def main() -> int:
                 "missing": f"primary website must not expose {forbidden}",
             })
 
+    historical_facade = (ROOT / "lib/services/website_nba_api_service.dart").read_text(encoding="utf-8")
+    for forbidden in (
+        "http://127.0.0.1:8000",
+        "/v2/nba/history/seed/",
+        "LaunchBackendTransport",
+        "loadHistoricalSeason(",
+    ):
+        assertions += 1
+        if forbidden not in historical_facade:
+            passed += 1
+        else:
+            failures.append({
+                "path": "lib/services/website_nba_api_service.dart",
+                "missing": f"historical website runtime must not depend on {forbidden}",
+            })
+
     legacy_code, legacy_output = _run("tools/audit_production_platform_v3.py")
     blueprint_code, blueprint_output = _run("tools/audit_sports_terminal_blueprint_v1.py")
     if legacy_code != 0:
@@ -212,7 +254,7 @@ def main() -> int:
 
     payload = {
         "contract": "sports-terminal-blueprint-converged-platform-v4",
-        "presentation": "warehouse-first-traditional-responsive-website",
+        "presentation": "static-first-traditional-responsive-nba-website",
         "composes": [
             "sports-terminal-code-complete-local-review-v3",
             "sports-terminal-master-blueprint-v1",
