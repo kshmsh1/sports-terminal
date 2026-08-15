@@ -1,0 +1,57 @@
+{
+  "contract": "sports-terminal-master-blueprint-v1",
+  "asOf": "2026-08-15",
+  "principles": [
+    "platform-not-website",
+    "canonical-identities-and-events",
+    "rights-are-architecture",
+    "every-statistic-actionable-and-traceable",
+    "reproducible-research",
+    "tool-backed-ai",
+    "shared-data-distinct-density-experiences",
+    "programmable-data-access",
+    "evidence-native-community",
+    "data-consumer-to-infrastructure-partner"
+  ],
+  "softwareNow": {
+    "universal_terminal_shell": "implemented",
+    "terminal_design_system": "implemented",
+    "universal_object_header": "implemented",
+    "universal_actions": "implemented",
+    "actionable_metrics": "implemented",
+    "contextual_navigation": "implemented",
+    "density_modes": "implemented",
+    "boards": "implemented",
+    "research_objects": "implemented",
+    "research_reproduction_and_fork": "implemented",
+    "certified_release_ux": "implemented",
+    "data_rights_envelope": "implemented",
+    "source_audit_v2": "implemented",
+    "universal_query_object": "implemented",
+    "query_chart_compare_lab_continuity": "implemented",
+    "historical_player_convergence": "implemented",
+    "terminal_command_system_v2": "implemented",
+    "canonical_nba_graph": "implemented",
+    "production_control_plane": "implemented"
+  },
+  "rightsOrExternalDependency": {
+    "official_live_nba_feed": "rights-blocked",
+    "licensed_tracking": "rights-blocked",
+    "licensed_game_video": "rights-blocked",
+    "commercial_social_streams": "rights-blocked",
+    "production_email_provider": "vendor-blocked",
+    "production_object_storage": "vendor-blocked",
+    "hosted_managed_postgres": "vendor-blocked",
+    "external_monitoring_delivery": "vendor-blocked",
+    "payment_provider": "vendor-blocked",
+    "enterprise_idp_registration": "customer-or-vendor-config",
+    "nba_commercial_data_rights": "business-development-blocked"
+  },
+  "deliberatelyLater": {
+    "native_sportsbook_execution": "regulated-later",
+    "real_money_fantasy": "regulated-later",
+    "global_minor_profiles": "privacy-policy-later",
+    "multi_sport_production_rollout": "after-nba-reference-platform",
+    "official_league_capture_hardware": "capital-partnership-later"
+  }
+}
