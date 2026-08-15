@@ -5,7 +5,8 @@ import tempfile
 from pathlib import Path
 
 from app import database
-from app.migrations import discover_migrations, run_migrations
+from app.migrations import current_schema_version, discover_migrations, run_migrations
+from scripts.migrate import bootstrap_core_schema
 
 
 def main() -> None:
@@ -54,6 +55,19 @@ def main() -> None:
                 assert "entitlement_grants" in tables
                 assert "certified_releases" in tables
                 assert "backup_manifests" in tables
+
+        # A brand-new database must not require hand-created foreign-key parents.
+        # The migration CLI owns this bootstrap sequence before applying migrations.
+        with tempfile.TemporaryDirectory() as directory:
+            database.DEFAULT_SQLITE_PATH = Path(directory) / "fresh.db"
+            bootstrap_core_schema()
+            fresh = run_migrations(migrations)
+            assert fresh.applied == ("0001", "0002", "0003", "0004", "0005")
+            assert current_schema_version() == "0005"
+            with database.connect() as connection:
+                tables = set(database.list_tables(connection))
+                assert {"users", "organizations", "auth_sessions"}.issubset(tables)
+                assert {"auth_delivery_tokens", "sso_connections"}.issubset(tables)
 
         print("migration_contract: PASS")
     finally:
