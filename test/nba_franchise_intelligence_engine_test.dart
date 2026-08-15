@@ -72,7 +72,10 @@ void main() {
     ]);
     expect(result.teamIdentities.first.eraLabel, '1990-91 → 1999-00');
     expect(result.seasons.length, 2);
-    expect(result.seasons.first.winPct, closeTo(0.609756, 0.000001));
+    final regular = result.seasons.singleWhere(
+      (row) => row.seasonType == 'regular',
+    );
+    expect(regular.winPct, closeTo(0.609756, 0.000001));
     expect(result.declaredIdentityCount, 2);
     expect(result.declaredSeasonCount, 20);
     expect(result.seasonRangeLabel, '1990-91 → 2025-26');
