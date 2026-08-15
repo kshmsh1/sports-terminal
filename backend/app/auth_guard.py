@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -24,6 +25,7 @@ PUBLIC_V2_PATHS = {
 PUBLIC_V2_PREFIXES = (
     "/v2/billing/webhooks/",
 )
+_MFA_VERIFY_PATH = re.compile(r"^/v2/security/mfa/totp/[^/]+/verify$")
 
 
 def auth_enforcement_enabled() -> bool:
@@ -32,6 +34,12 @@ def auth_enforcement_enabled() -> bool:
 
 def _error(status: int, detail: str) -> JSONResponse:
     return JSONResponse(status_code=status, content={"detail": detail})
+
+
+def _mfa_bootstrap_allowed(request: Request, path: str) -> bool:
+    if request.method.upper() != "POST":
+        return False
+    return path == "/v2/security/mfa/totp/enroll" or bool(_MFA_VERIFY_PATH.match(path))
 
 
 def _session_assurance(connection: Any, token_hash: str) -> str:
@@ -156,7 +164,8 @@ async def enforce_launch_auth(request: Request, call_next: Any):
         if created_at + maximum_age <= now:
             return _error(401, "Session exceeds organization maximum lifetime")
         if policy["require_mfa"] and assurance not in {"mfa", "sso_mfa"}:
-            return _error(403, "MFA is required by organization policy")
+            if not _mfa_bootstrap_allowed(request, path):
+                return _error(403, "MFA is required by organization policy")
         if policy["sso_required"] and assurance not in {"sso", "sso_mfa"}:
             return _error(403, "SSO is required by organization policy")
 
