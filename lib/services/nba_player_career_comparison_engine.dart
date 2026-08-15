@@ -57,7 +57,7 @@ class NbaPlayerCareerComparisonSnapshot {
         !hasCalendarOverlap) {
       return 'NON-OVERLAPPING CALENDAR ERAS';
     }
-    return '${pairedObservations} PAIRED · ${pairs.length} AXIS ROWS';
+    return '$pairedObservations PAIRED · ${pairs.length} AXIS ROWS';
   }
 }
 
