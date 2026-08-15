@@ -9,6 +9,8 @@ from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
 SCRIPTS = BACKEND / "scripts"
+LEGACY_CONTRACT = "sports-terminal-production-readiness-v1"
+CURRENT_CONTRACT = "sports-terminal-production-readiness-v2"
 
 CONTRACTS = (
     "runtime_config_contract_test.py",
@@ -87,7 +89,8 @@ def main() -> None:
             failed = True
 
     payload = {
-        "contract": "sports-terminal-production-readiness-v2",
+        "contract": CURRENT_CONTRACT,
+        "legacy_contract": LEGACY_CONTRACT,
         "contracts": len(CONTRACTS),
         "passed": sum(1 for item in results if item["status"] == "pass"),
         "failed": sum(1 for item in results if item["status"] != "pass"),
