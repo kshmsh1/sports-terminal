@@ -12,10 +12,10 @@ from .sso import SsoConfigurationError, SsoConnectionService
 
 router = APIRouter(prefix="/v2/organizations", tags=["organization-security"])
 
-# OIDC connection/state scaffolding exists, but ID-token/JWKS callback verification
-# and SSO-authenticated session issuance are deliberately not claimed yet. Keep SSO
-# enforcement impossible to enable until that authentication path is complete.
-SSO_LOGIN_ENFORCEMENT_READY = False
+# The OIDC login path now performs authorization-code + PKCE exchange, JWKS signature
+# verification, issuer/audience/expiry/nonce checks, verified-email/domain checks,
+# existing-account membership linking, and sso/sso_mfa session assurance.
+SSO_LOGIN_ENFORCEMENT_READY = True
 
 
 class OrganizationSecurityPolicyUpdate(BaseModel):
@@ -92,22 +92,20 @@ def update_security_policy(
     if payload.sso_required and not domains:
         raise HTTPException(status_code=400, detail="SSO-required organizations must declare an allowed email domain")
     if payload.sso_required and not SSO_LOGIN_ENFORCEMENT_READY:
-        raise HTTPException(
-            status_code=409,
-            detail="SSO enforcement is unavailable until OIDC callback verification and SSO session issuance are complete",
-        )
+        raise HTTPException(status_code=409, detail="SSO enforcement is not ready")
     timestamp = now_iso()
     encoded = json.dumps(domains, separators=(",", ":"))
     with connect() as connection:
         if payload.sso_required:
             enabled = connection.execute(
-                "SELECT 1 FROM sso_connections WHERE organization_id = ? AND status = 'enabled' LIMIT 1",
+                "SELECT 1 FROM sso_connections WHERE organization_id = ? "
+                "AND connection_type = 'oidc' AND status = 'enabled' LIMIT 1",
                 (organization_id,),
             ).fetchone()
             if enabled is None:
                 raise HTTPException(
                     status_code=409,
-                    detail="SSO cannot be required until an enabled SSO connection exists",
+                    detail="SSO cannot be required until an enabled OIDC connection exists",
                 )
         connection.execute(
             "DELETE FROM organization_security_policies WHERE organization_id = ?",
