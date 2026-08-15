@@ -7,29 +7,32 @@ cd "$ROOT"
 
 USE_POSTGRES=false
 NO_BROWSER=false
+FORCE_STATIC=false
 for arg in "$@"; do
   case "$arg" in
     --postgres) USE_POSTGRES=true ;;
     --no-browser) NO_BROWSER=true ;;
+    --rebuild-static) FORCE_STATIC=true ;;
     -h|--help)
       cat <<'EOF'
-Usage: bash scripts/open_terminal.sh [--postgres] [--no-browser]
+Usage: bash scripts/open_terminal.sh [--postgres] [--no-browser] [--rebuild-static]
 
-Starts a local Sports Terminal review session without hosted services.
-Default: SQLite + the canonical local NBA history warehouse.
-  --postgres    Use the repository's loopback-only Postgres 17 container.
-  --no-browser  Do not automatically open http://127.0.0.1:8080.
+Starts Sports Terminal locally.
 
-The website reads NBA data through the backend from nba_history.sqlite rather
-than requiring generated Flutter seed assets. The launcher checks both this
-checkout and the immediately previous repo-root location so a historical
-warehouse created before a nested/fresh clone is reused automatically.
+Historical NBA website data is compiled once from the canonical warehouse into
+sharded static JSON under web/data/nba_static. Home, Stats, Advanced Stats,
+player pages, team pages, awards and historical game metadata read those files
+directly in the browser. FastAPI/SQLite are not in the historical page-rendering
+path.
 
-If no warehouse is found but already-downloaded historical source packages
-exist under raw/historical, the launcher imports and canonicalizes those local
-files. It never downloads or scrapes a sports source silently.
+  --postgres        Use the loopback-only Postgres 17 app database.
+  --no-browser      Do not automatically open http://127.0.0.1:8080.
+  --rebuild-static  Force a static NBA rebuild even if the warehouse fingerprint matches.
 
-Stop the session with Ctrl-C.
+The launcher checks the current checkout and immediately previous repo root for
+nba_history.sqlite. If no canonical warehouse exists but already-downloaded
+raw/historical sources exist, it can rebuild locally. It never silently scrapes
+or downloads sports data.
 EOF
       exit 0
       ;;
@@ -38,7 +41,7 @@ EOF
 done
 
 command -v python3 >/dev/null 2>&1 || { echo "python3 is required." >&2; exit 1; }
-command -v flutter >/dev/null 2>&1 || { echo "Flutter is required. Install Flutter stable and ensure 'flutter' is on PATH." >&2; exit 1; }
+command -v flutter >/dev/null 2>&1 || { echo "Flutter is required." >&2; exit 1; }
 
 VENV="$ROOT/.venv"
 if [[ ! -x "$VENV/bin/python" ]]; then
@@ -58,7 +61,7 @@ if [[ -s "$CURRENT_HISTORY_DB" ]]; then
   HISTORY_DB="$CURRENT_HISTORY_DB"
 elif [[ -s "$PARENT_HISTORY_DB" ]]; then
   HISTORY_DB="$PARENT_HISTORY_DB"
-  echo "==> Rediscovered NBA history warehouse from previous repo root: $HISTORY_DB"
+  echo "==> Rediscovered NBA history warehouse: $HISTORY_DB"
 else
   HISTORY_DB="$CURRENT_HISTORY_DB"
 fi
@@ -79,15 +82,9 @@ history_db_has_canonical_tables() {
   [[ -s "$HISTORY_DB" ]] || return 1
   "$PYTHON" - "$HISTORY_DB" <<'PY' >/dev/null 2>&1
 import sqlite3, sys
-path = sys.argv[1]
-with sqlite3.connect(path) as db:
-    names = {
-        row[0]
-        for row in db.execute(
-            "SELECT name FROM sqlite_master WHERE type IN ('table','view')"
-        )
-    }
-required = {"canon_dim_player", "canon_dim_team", "canon_fact_player_season"}
+with sqlite3.connect(sys.argv[1]) as db:
+    names = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type IN ('table','view')")}
+required = {"canon_dim_player", "canon_dim_team", "canon_dim_season", "canon_fact_player_season", "canon_fact_team_season"}
 raise SystemExit(0 if required.issubset(names) else 1)
 PY
 }
@@ -97,72 +94,49 @@ history_db_has_import_inventory() {
   "$PYTHON" - "$HISTORY_DB" <<'PY' >/dev/null 2>&1
 import sqlite3, sys
 with sqlite3.connect(sys.argv[1]) as db:
-    row = db.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='historical_table_inventory'"
-    ).fetchone()
+    row = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='historical_table_inventory'").fetchone()
 raise SystemExit(0 if row else 1)
 PY
 }
 
 local_historical_sources_exist() {
   [[ -d "$HISTORICAL_SOURCE_ROOT" ]] || return 1
-  find "$HISTORICAL_SOURCE_ROOT" -type f \
-    \( -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.db' -o -name '*.csv' \) \
-    -print -quit 2>/dev/null | grep -q .
+  find "$HISTORICAL_SOURCE_ROOT" -type f \( -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.db' -o -name '*.csv' \) -print -quit 2>/dev/null | grep -q .
 }
 
 prepare_nba_history() {
   mkdir -p "$(dirname "$HISTORY_DB")"
-
   if history_db_has_canonical_tables; then
-    echo "==> Using canonical NBA history warehouse: $HISTORY_DB"
+    echo "==> Canonical NBA history warehouse ready: $HISTORY_DB"
     return 0
   fi
-
   if history_db_has_import_inventory; then
-    echo "==> Canonicalizing the existing historical NBA warehouse"
-    if "$PYTHON" tools/build_historical_nba_canonical.py --database "$HISTORY_DB"; then
-      if history_db_has_canonical_tables; then
-        echo "==> Canonical NBA history warehouse is ready"
-        return 0
-      fi
-    fi
-    echo "    Existing historical warehouse could not be canonicalized." >&2
+    echo "==> Canonicalizing existing historical NBA warehouse"
+    "$PYTHON" tools/build_historical_nba_canonical.py --database "$HISTORY_DB" || true
+    history_db_has_canonical_tables && return 0
   fi
-
   if local_historical_sources_exist; then
-    echo "==> Importing already-downloaded historical NBA source packages from $HISTORICAL_SOURCE_ROOT"
-    if "$PYTHON" tools/run_historical_nba_import.py \
+    echo "==> Importing already-downloaded historical NBA sources"
+    "$PYTHON" tools/run_historical_nba_import.py \
       --source-root "$HISTORICAL_SOURCE_ROOT" \
       --output "$HISTORY_DB" \
-      --report "$(dirname "$HISTORY_DB")/nba_history_import_report.json"; then
-      echo "==> Building canonical NBA dimensions and facts"
-      if "$PYTHON" tools/build_historical_nba_canonical.py --database "$HISTORY_DB"; then
-        if history_db_has_canonical_tables; then
-          echo "==> Canonical NBA history warehouse is ready"
-          return 0
-        fi
-      fi
-    fi
-    echo "    Local historical source import did not produce a usable canonical warehouse." >&2
+      --report "$(dirname "$HISTORY_DB")/nba_history_import_report.json"
+    "$PYTHON" tools/build_historical_nba_canonical.py --database "$HISTORY_DB"
+    history_db_has_canonical_tables && return 0
   fi
-
-  cat <<EOF
-==> Canonical NBA history warehouse is not available
-    Checked: $CURRENT_HISTORY_DB
-    Checked: $PARENT_HISTORY_DB
-    Sources: $CURRENT_SOURCE_ROOT
-    Sources: $PARENT_SOURCE_ROOT
-
-    Sports Terminal no longer treats generated Flutter seed assets as the
-    source of truth. Restore either nba_history.sqlite or the already-downloaded
-    raw/historical source packages and restart this launcher.
-
-    No network download or scraper has been started automatically.
-EOF
+  echo "Canonical NBA history warehouse is unavailable." >&2
+  echo "Checked: $CURRENT_HISTORY_DB" >&2
+  echo "Checked: $PARENT_HISTORY_DB" >&2
+  return 1
 }
 
 prepare_nba_history
+
+STATIC_ARGS=(--database "$HISTORY_DB" --output "$ROOT/web/data/nba_static")
+if $FORCE_STATIC; then STATIC_ARGS+=(--force); fi
+
+echo "==> Preparing immutable static NBA website data"
+"$PYTHON" tools/build_static_nba_website_data.py "${STATIC_ARGS[@]}"
 
 echo "==> Resolving Flutter dependencies"
 flutter pub get >/dev/null
@@ -191,8 +165,8 @@ FLUTTER_PID=""
 cleanup() {
   echo
   echo "==> Stopping Sports Terminal local session"
-  if [[ -n "$FLUTTER_PID" ]]; then kill "$FLUTTER_PID" >/dev/null 2>&1 || true; fi
-  if [[ -n "$BACKEND_PID" ]]; then kill "$BACKEND_PID" >/dev/null 2>&1 || true; fi
+  [[ -n "$FLUTTER_PID" ]] && kill "$FLUTTER_PID" >/dev/null 2>&1 || true
+  [[ -n "$BACKEND_PID" ]] && kill "$BACKEND_PID" >/dev/null 2>&1 || true
   if $STARTED_POSTGRES; then
     docker compose -f backend/docker-compose.postgres.yml --profile local-postgres down >/dev/null 2>&1 || true
   fi
@@ -200,14 +174,11 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 wait_for_port() {
-  local port="$1"
-  local label="$2"
+  local port="$1" label="$2"
   for _ in $(seq 1 60); do
     if "$PYTHON" - "$port" <<'PY' >/dev/null 2>&1
 import socket, sys
-port = int(sys.argv[1])
-with socket.create_connection(("127.0.0.1", port), timeout=0.5):
-    pass
+with socket.create_connection(("127.0.0.1", int(sys.argv[1])), timeout=0.5): pass
 PY
     then return 0; fi
     sleep 1
@@ -223,18 +194,19 @@ if $USE_POSTGRES; then
   STARTED_POSTGRES=true
   export SPORTS_TERMINAL_DATABASE_URL="postgresql://sports_terminal:local-development-only@127.0.0.1:54329/sports_terminal"
   wait_for_port 54329 "Postgres"
-  echo "==> Verifying PostgreSQL compatibility"
   "$PYTHON" backend/scripts/local_postgres_smoke.py
 else
   unset SPORTS_TERMINAL_DATABASE_URL || true
 fi
 
-echo "==> Initializing local database schema"
+# The backend still powers dynamic product features (accounts, saved work,
+# front-office edits, community, future live overlays). Historical NBA pages do
+# not depend on it anymore.
+echo "==> Initializing application database"
 "$PYTHON" backend/scripts/migrate.py >/dev/null
 
-echo "==> Starting Sports Terminal API at http://127.0.0.1:8000"
-"$PYTHON" -m uvicorn app.main_launch:app --host 127.0.0.1 --port 8000 \
-  >"$ROOT/.data/logs/backend.log" 2>&1 &
+echo "==> Starting dynamic Sports Terminal services at http://127.0.0.1:8000"
+"$PYTHON" -m uvicorn app.main_launch:app --host 127.0.0.1 --port 8000 >"$ROOT/.data/logs/backend.log" 2>&1 &
 BACKEND_PID=$!
 wait_for_port 8000 "Sports Terminal API"
 
@@ -244,8 +216,7 @@ if ! kill -0 "$BACKEND_PID" >/dev/null 2>&1; then
 fi
 
 echo "==> Starting Sports Terminal website at http://127.0.0.1:8080"
-flutter run -d web-server --web-hostname 127.0.0.1 --web-port 8080 \
-  >"$ROOT/.data/logs/flutter.log" 2>&1 &
+flutter run -d web-server --web-hostname 127.0.0.1 --web-port 8080 >"$ROOT/.data/logs/flutter.log" 2>&1 &
 FLUTTER_PID=$!
 wait_for_port 8080 "Flutter web server"
 
@@ -265,12 +236,14 @@ fi
 cat <<EOF
 
 Sports Terminal is running locally.
-  Website:  http://127.0.0.1:8080
-  API:      http://127.0.0.1:8000
-  NBA DB:   $HISTORY_DB
-  Backend:  .data/logs/backend.log
-  Flutter:  .data/logs/flutter.log
+  Website:        http://127.0.0.1:8080
+  Dynamic API:    http://127.0.0.1:8000
+  NBA warehouse:  $HISTORY_DB
+  Static NBA:      $ROOT/web/data/nba_static
+  Backend log:     .data/logs/backend.log
+  Flutter log:     .data/logs/flutter.log
 
+Historical NBA pages are served from static files, not the API.
 Press Ctrl-C to stop it.
 EOF
 
