@@ -92,8 +92,8 @@ def team_rows(db: sqlite3.Connection) -> dict[str, list[dict[str, Any]]]:
     cursor = db.execute(
         "SELECT * FROM canon_fact_team_game WHERE league_id='NBA' ORDER BY game_key,is_home DESC"
     )
-    for game_key, rows in grouped(cursor, "game_key"):
-        result[game_key] = rows
+    for game_key, items in grouped(cursor, "game_key"):
+        result[game_key] = items
     return result
 
 
@@ -135,7 +135,6 @@ def materialize_games(
         if count % 5000 == 0:
             print(f"  game detail shards: {count}")
 
-    # Preserve games for which team rows exist but player rows do not.
     for game_key, game in games.items():
         if game_key in seen or game_key not in teams:
             continue
@@ -197,6 +196,10 @@ def materialize_pbp(
     return game_count, event_count, files
 
 
+def current_core_fingerprint(manifest: dict[str, Any]) -> Any:
+    return manifest.get("database_fingerprint")
+
+
 def main() -> int:
     args = parse_args()
     database = Path(args.database).expanduser().resolve()
@@ -209,15 +212,44 @@ def main() -> int:
             "Core static NBA corpus is missing. Run build_static_nba_website_data_v2.py first."
         )
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    fingerprint = current_core_fingerprint(manifest)
+    detail = manifest.get("game_detail") if isinstance(manifest.get("game_detail"), dict) else {}
+    pbp = manifest.get("play_by_play") if isinstance(manifest.get("play_by_play"), dict) else {}
+
+    detail_current = (
+        not args.force
+        and detail.get("database_fingerprint") == fingerprint
+        and int(detail.get("game_files") or 0) > 0
+        and (output / "games").is_dir()
+    )
+    pbp_current = (
+        not args.force
+        and pbp.get("database_fingerprint") == fingerprint
+        and bool(pbp.get("materialized"))
+        and (output / "pbp").is_dir()
+    )
+
+    if detail_current and (not args.include_pbp or pbp_current):
+        print("Static game/PBP shards are current; nothing to rebuild.")
+        return 0
 
     with sqlite3.connect(str(database)) as db:
         db.row_factory = sqlite3.Row
         games = game_metadata(db)
-        detail_count, detail_files = materialize_games(db, output, games)
-        pbp_game_count = 0
-        pbp_event_count = 0
+        if detail_current:
+            detail_count = int(detail.get("game_files") or 0)
+            detail_files = {
+                str(item.get("game_key") or ""): str(item.get("file") or "")
+                for item in json.loads((output / "games/index.json").read_text(encoding="utf-8"))
+                if isinstance(item, dict) and item.get("file")
+            }
+        else:
+            detail_count, detail_files = materialize_games(db, output, games)
+
+        pbp_game_count = int(pbp.get("game_files") or 0) if pbp_current else 0
+        pbp_event_count = int(pbp.get("event_rows") or 0) if pbp_current else 0
         pbp_files: dict[str, str] = {}
-        if args.include_pbp:
+        if args.include_pbp and not pbp_current:
             pbp_game_count, pbp_event_count, pbp_files = materialize_pbp(
                 db, output, games
             )
@@ -229,9 +261,9 @@ def main() -> int:
             if not isinstance(item, dict):
                 continue
             key = str(item.get("game_key") or "")
-            if key in detail_files:
+            if key in detail_files and detail_files[key]:
                 item["file"] = detail_files[key]
-            if key in pbp_files:
+            if key in pbp_files and pbp_files[key]:
                 item["pbp_file"] = pbp_files[key]
         write_json(index_path, index)
 
@@ -239,15 +271,18 @@ def main() -> int:
         "contract": "sports-terminal-static-game-v1",
         "game_files": detail_count,
         "runtime_api_required": False,
+        "database_fingerprint": fingerprint,
     }
-    manifest["play_by_play"] = {
-        "contract": "sports-terminal-static-pbp-v1",
-        "materialized": bool(args.include_pbp),
-        "game_files": pbp_game_count,
-        "event_rows": pbp_event_count,
-        "runtime_api_required": False,
-        "coverage_is_source_bounded": True,
-    }
+    if args.include_pbp or not pbp:
+        manifest["play_by_play"] = {
+            "contract": "sports-terminal-static-pbp-v1",
+            "materialized": bool(args.include_pbp and (pbp_game_count > 0 or table_or_view_exists(sqlite3.connect(str(database)), "canon_fact_play_by_play"))),
+            "game_files": pbp_game_count,
+            "event_rows": pbp_event_count,
+            "runtime_api_required": False,
+            "coverage_is_source_bounded": True,
+            "database_fingerprint": fingerprint if args.include_pbp else None,
+        }
     write_json(manifest_path, manifest)
     print(
         f"Static game materialization complete: {detail_count} game files; "
