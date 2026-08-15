@@ -16,6 +16,9 @@ PUBLIC_V2_PATHS = {
     "/v2/launch/config",
     "/v2/launch/readiness",
 }
+PUBLIC_V2_PREFIXES = (
+    "/v2/billing/webhooks/",
+)
 
 
 def auth_enforcement_enabled() -> bool:
@@ -28,12 +31,16 @@ async def enforce_launch_auth(request: Request, call_next: Any):
     Local development stays permissive unless `SPORTS_TERMINAL_ENFORCE_AUTH=true`.
     Staging and public deployments can turn on enforcement without rebuilding the
     Flutter application because the client already sends its bearer token.
+
+    Billing webhook ingress is intentionally exempt from bearer auth because it is
+    authenticated independently with a request-body HMAC and provider event id.
     """
 
     if not auth_enforcement_enabled():
         return await call_next(request)
     path = request.url.path.rstrip("/") or "/"
-    if not path.startswith("/v2") or path in PUBLIC_V2_PATHS:
+    public_prefix = any(path.startswith(prefix) for prefix in PUBLIC_V2_PREFIXES)
+    if not path.startswith("/v2") or path in PUBLIC_V2_PATHS or public_prefix:
         return await call_next(request)
 
     authorization = request.headers.get("authorization", "")
