@@ -7,9 +7,11 @@ import '../services/nba_player_career_comparison_discovery_service.dart';
 import '../services/nba_player_career_comparison_engine.dart';
 import '../services/nba_player_career_comparison_loader.dart';
 import '../services/nba_player_career_comparison_metric_engine.dart';
+import '../services/nba_player_career_comparison_state_store.dart';
 import '../services/nba_player_career_comparison_workflow_service.dart';
 import '../widgets/nba_player_career_comparison_chart.dart';
 import '../widgets/nba_player_career_comparison_context_panel.dart';
+import '../widgets/nba_player_career_comparison_research_workbench.dart';
 import '../widgets/nba_player_career_comparison_summary_panel.dart';
 import '../widgets/nba_player_career_comparison_table.dart';
 
@@ -31,6 +33,8 @@ class ProductNbaPlayerCareerComparisonScreen extends StatefulWidget {
     this.rightPlayerName = 'Player B',
     this.league = 'NBA',
     this.initialSeasonType = 'regular',
+    this.initialAlignment = NbaPlayerCareerComparisonAlignment.calendarSeason,
+    this.initialMetric = NbaPlayerCareerMetric.pointsPerGame,
     this.loader = const NbaPlayerCareerComparisonLoader(),
     this.discovery = const NbaPlayerCareerComparisonDiscoveryService(),
     this.workflowService = const NbaPlayerCareerComparisonWorkflowService(),
@@ -47,6 +51,8 @@ class ProductNbaPlayerCareerComparisonScreen extends StatefulWidget {
   final String rightPlayerName;
   final String league;
   final String initialSeasonType;
+  final NbaPlayerCareerComparisonAlignment initialAlignment;
+  final NbaPlayerCareerMetric initialMetric;
   final NbaPlayerCareerComparisonLoader loader;
   final NbaPlayerCareerComparisonDiscoveryService discovery;
   final NbaPlayerCareerComparisonWorkflowService workflowService;
@@ -69,9 +75,8 @@ class _ProductNbaPlayerCareerComparisonScreenState
   late String _rightKey;
   late String _rightName;
   late String _seasonType;
-  NbaPlayerCareerComparisonAlignment _alignment =
-      NbaPlayerCareerComparisonAlignment.calendarSeason;
-  NbaPlayerCareerMetric _metric = NbaPlayerCareerMetric.pointsPerGame;
+  late NbaPlayerCareerComparisonAlignment _alignment;
+  late NbaPlayerCareerMetric _metric;
   Future<NbaPlayerCareerComparisonBundle>? _bundleFuture;
   List<NbaPlayerCareerComparisonCandidate> _candidates = const [];
   bool _searching = false;
@@ -81,12 +86,18 @@ class _ProductNbaPlayerCareerComparisonScreenState
   void initState() {
     super.initState();
     _leftKey = widget.leftPlayerKey.trim();
-    _leftName = widget.leftPlayerName.trim().isEmpty ? 'Player A' : widget.leftPlayerName.trim();
+    _leftName = widget.leftPlayerName.trim().isEmpty
+        ? 'Player A'
+        : widget.leftPlayerName.trim();
     _rightKey = widget.rightPlayerKey.trim();
-    _rightName = widget.rightPlayerName.trim().isEmpty ? 'Player B' : widget.rightPlayerName.trim();
+    _rightName = widget.rightPlayerName.trim().isEmpty
+        ? 'Player B'
+        : widget.rightPlayerName.trim();
     _seasonType = widget.initialSeasonType.trim().toLowerCase() == 'playoffs'
         ? 'playoffs'
         : 'regular';
+    _alignment = widget.initialAlignment;
+    _metric = widget.initialMetric;
     _reload();
   }
 
@@ -177,6 +188,21 @@ class _ProductNbaPlayerCareerComparisonScreenState
     });
   }
 
+  void _restoreComparison(NbaPlayerCareerComparisonStateItem item) {
+    setState(() {
+      _leftKey = item.leftPlayerKey;
+      _leftName = item.leftPlayerName.isEmpty ? item.leftPlayerKey : item.leftPlayerName;
+      _rightKey = item.rightPlayerKey;
+      _rightName = item.rightPlayerName.isEmpty ? item.rightPlayerKey : item.rightPlayerName;
+      _seasonType = item.seasonType == 'playoffs' ? 'playoffs' : 'regular';
+      _alignment = item.alignment;
+      _metric = item.metric;
+      _query.clear();
+      _candidates = const [];
+      _reload();
+    });
+  }
+
   void _route(
     NbaPlayerCareerComparisonSnapshot comparison,
     NbaPlayerCareerComparisonMetricResult metric,
@@ -198,7 +224,8 @@ class _ProductNbaPlayerCareerComparisonScreenState
     );
     controller.setActivePayload(
       payload,
-      origin: 'NBA Player Career Comparison · ${comparison.left.playerName} vs ${comparison.right.playerName}',
+      origin:
+          'NBA Player Career Comparison · ${comparison.left.playerName} vs ${comparison.right.playerName}',
     );
     _notice('${payload.displayLabel} routed to $target.');
   }
@@ -218,7 +245,10 @@ class _ProductNbaPlayerCareerComparisonScreenState
         _hero(),
         const SizedBox(height: 12),
         _controls(),
-        if (_rightKey.isEmpty || _candidates.isNotEmpty || _searching || _searchError.isNotEmpty) ...[
+        if (_rightKey.isEmpty ||
+            _candidates.isNotEmpty ||
+            _searching ||
+            _searchError.isNotEmpty) ...[
           const SizedBox(height: 12),
           _discoveryPanel(),
         ],
@@ -251,18 +281,32 @@ class _ProductNbaPlayerCareerComparisonScreenState
   Widget _hero() => Container(
         width: double.infinity,
         padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(color: _ccPanel, border: Border.all(color: _ccLine)),
+        decoration: BoxDecoration(
+          color: _ccPanel,
+          border: Border.all(color: _ccLine),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'NBA / HISTORICAL PLAYER CAREER COMPARISON',
-              style: TextStyle(color: _ccBlue, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: .8),
+              style: TextStyle(
+                color: _ccBlue,
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: .8,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
-              _rightKey.isEmpty ? '$_leftName vs SELECT PLAYER' : '$_leftName vs $_rightName',
-              style: const TextStyle(color: _ccText, fontSize: 29, fontWeight: FontWeight.w900),
+              _rightKey.isEmpty
+                  ? '$_leftName vs SELECT PLAYER'
+                  : '$_leftName vs $_rightName',
+              style: const TextStyle(
+                color: _ccText,
+                fontSize: 29,
+                fontWeight: FontWeight.w900,
+              ),
             ),
             const SizedBox(height: 6),
             const Text(
@@ -285,7 +329,10 @@ class _ProductNbaPlayerCareerComparisonScreenState
               dropdownColor: _ccPanel2,
               style: const TextStyle(color: _ccText),
               items: const [
-                DropdownMenuItem(value: 'regular', child: Text('REGULAR SEASON')),
+                DropdownMenuItem(
+                  value: 'regular',
+                  child: Text('REGULAR SEASON'),
+                ),
                 DropdownMenuItem(value: 'playoffs', child: Text('PLAYOFFS')),
               ],
               onChanged: (value) {
@@ -299,7 +346,10 @@ class _ProductNbaPlayerCareerComparisonScreenState
               style: const TextStyle(color: _ccText),
               items: [
                 for (final alignment in NbaPlayerCareerComparisonAlignment.values)
-                  DropdownMenuItem(value: alignment, child: Text(alignment.label)),
+                  DropdownMenuItem(
+                    value: alignment,
+                    child: Text(alignment.label),
+                  ),
               ],
               onChanged: (value) {
                 if (value != null) setState(() => _alignment = value);
@@ -344,7 +394,11 @@ class _ProductNbaPlayerCareerComparisonScreenState
           children: [
             const Text(
               'SELECT COMPARISON PLAYER',
-              style: TextStyle(color: _ccAmber, fontSize: 10, fontWeight: FontWeight.w900),
+              style: TextStyle(
+                color: _ccAmber,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+              ),
             ),
             const SizedBox(height: 8),
             Row(
@@ -379,19 +433,32 @@ class _ProductNbaPlayerCareerComparisonScreenState
             if (_searchError.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 10),
-                child: Text('Historical Player search unavailable: $_searchError', style: const TextStyle(color: Colors.redAccent)),
+                child: Text(
+                  'Historical Player search unavailable: $_searchError',
+                  style: const TextStyle(color: Colors.redAccent),
+                ),
               ),
             for (final candidate in _candidates)
               ListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
-                title: Text(candidate.playerName, style: const TextStyle(color: _ccText, fontWeight: FontWeight.w800)),
+                title: Text(
+                  candidate.playerName,
+                  style: const TextStyle(
+                    color: _ccText,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 subtitle: Text(
-                  [candidate.position, candidate.lastSeason, candidate.leagueId].where((value) => value.isNotEmpty).join(' · '),
+                  [candidate.position, candidate.lastSeason, candidate.leagueId]
+                      .where((value) => value.isNotEmpty)
+                      .join(' · '),
                   style: const TextStyle(color: _ccMuted),
                 ),
                 trailing: TextButton(
-                  key: ValueKey('career-comparison-select-${candidate.playerKey}'),
+                  key: ValueKey(
+                    'career-comparison-select-${candidate.playerKey}',
+                  ),
                   onPressed: () => _selectRight(candidate),
                   child: const Text('COMPARE'),
                 ),
@@ -422,17 +489,28 @@ class _ProductNbaPlayerCareerComparisonScreenState
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final target in const ['Workspace', 'Python Lab', 'Compare', 'Source Audit'])
+              for (final target in const [
+                'Workspace',
+                'Python Lab',
+                'Compare',
+                'Source Audit',
+              ])
                 OutlinedButton(
-                  key: ValueKey('career-comparison-route-${target.toLowerCase().replaceAll(' ', '-')}'),
-                  onPressed: () => _route(comparison, metric, contextResult, target),
+                  key: ValueKey(
+                    'career-comparison-route-${target.toLowerCase().replaceAll(' ', '-')}',
+                  ),
+                  onPressed: () =>
+                      _route(comparison, metric, contextResult, target),
                   child: Text(target.toUpperCase()),
                 ),
             ],
           ),
         ),
         const SizedBox(height: 12),
-        NbaPlayerCareerComparisonSummaryPanel(comparison: comparison, metric: metric),
+        NbaPlayerCareerComparisonSummaryPanel(
+          comparison: comparison,
+          metric: metric,
+        ),
         const SizedBox(height: 12),
         _ComparisonPanel(
           child: Column(
@@ -440,7 +518,11 @@ class _ProductNbaPlayerCareerComparisonScreenState
             children: [
               const Text(
                 'OBSERVED CAREER TREND',
-                style: TextStyle(color: _ccAmber, fontSize: 10, fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  color: _ccAmber,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 8),
               NbaPlayerCareerComparisonChart(
@@ -466,6 +548,18 @@ class _ProductNbaPlayerCareerComparisonScreenState
           context: contextResult,
         ),
         const SizedBox(height: 12),
+        NbaPlayerCareerComparisonResearchWorkbench(
+          comparison: comparison,
+          currentBundle: bundle,
+          metric: _metric,
+          league: widget.league,
+          seasonType: _seasonType,
+          loader: widget.loader,
+          loadPlayer: widget.loadPlayer,
+          loadTeam: widget.loadTeam,
+          onRestore: _restoreComparison,
+        ),
+        const SizedBox(height: 12),
         _ComparisonPanel(
           child: Text(
             'SOURCE BOUNDARY · ${comparison.left.playerName}: ${comparison.left.tenureCoverageLabel} · ${comparison.right.playerName}: ${comparison.right.tenureCoverageLabel} · ${contextResult.boundaryLabel}',
@@ -485,7 +579,10 @@ class _ComparisonPanel extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: _ccPanel, border: Border.all(color: _ccLine)),
+        decoration: BoxDecoration(
+          color: _ccPanel,
+          border: Border.all(color: _ccLine),
+        ),
         child: child,
       );
 }
