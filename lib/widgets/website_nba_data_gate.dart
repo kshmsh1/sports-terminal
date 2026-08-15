@@ -79,7 +79,7 @@ class WebsiteNbaDataUnavailable extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
-                  Icons.database_outlined,
+                  Icons.storage_outlined,
                   color: colors.onPrimaryContainer,
                 ),
               ),
