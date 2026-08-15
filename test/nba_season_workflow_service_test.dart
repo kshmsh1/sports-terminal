@@ -6,6 +6,7 @@ import 'package:sports_terminal/services/nba_terminal_seed_repository.dart';
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  // Legacy v10 contract: packages canonical season standings into shared RoutePayload state.
   test('packages canonical season operating rows into shared RoutePayload state', () {
     final payload = const NbaSeasonWorkflowService().package(
       _seed(),
@@ -68,6 +69,7 @@ void main() {
     expect(payload.metadata['gameRows'], 1);
   });
 
+  // Legacy v10 contract: empty season scope is partial instead of fabricating standings.
   test('empty season scope is partial instead of fabricating operating rows', () {
     final payload = const NbaSeasonWorkflowService().package(
       _seed(),
