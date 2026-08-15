@@ -118,7 +118,7 @@ EXTRA_CONTRACTS: dict[str, tuple[str, ...]] = {
     "lib/screens/product_nba_terminal_screen.dart": (
         "'franchise' => row['franchise_key']",
         "future = _entities.franchiseDossier(key)",
-        "kind == 'franchise'",
+        "('franchises', 'franchise', Icons.account_tree_rounded)",
     ),
 }
 
