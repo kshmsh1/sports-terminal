@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
 from . import front_office_api as front_office_module
 from . import launch_api as launch_module
 from . import production_bootstrap as production_bootstrap_module
@@ -36,6 +38,7 @@ from .production_readiness_api import router as production_readiness_router
 from .profile_api import router as profile_router
 from .python_runtime_api import router as python_runtime_router
 from .release_management_api import router as release_management_router
+from .runtime_config import load_runtime_config
 from .trust_safety_api import router as trust_safety_router
 from .workspace_api import router as workspace_router
 
@@ -44,6 +47,7 @@ from .workspace_api import router as workspace_router
 # so old and new modules share one managed database boundary without a route rewrite.
 _BOUND_DATABASE_MODULES = production_bootstrap_module.bind_database_boundary()
 _BOOTSTRAP_STATUS = None
+_RUNTIME_CONFIG = load_runtime_config()
 
 launch_module._ensure_organization = ensure_organization
 front_office_module._record_dimensions = record_dimensions
@@ -67,6 +71,11 @@ app.description = (
     "platform operations, and the unified NBA terminal."
 )
 
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=list(_RUNTIME_CONFIG.allowed_hosts or ("*",)),
+    www_redirect=False,
+)
 app.middleware("http")(enforce_launch_auth)
 app.middleware("http")(launch_operations_middleware)
 app.middleware("http")(enforce_launch_authorization)
