@@ -70,26 +70,33 @@ class TerminalBoardWorkspace extends StatelessWidget {
                   : constraints.maxWidth >= 720
                       ? 2
                       : 1;
-              final width = (constraints.maxWidth - (columns - 1) * tokens.space3) / columns;
+              final width =
+                  (constraints.maxWidth - (columns - 1) * tokens.space3) /
+                      columns;
               return Wrap(
                 spacing: tokens.space3,
                 runSpacing: tokens.space3,
                 children: [
                   for (final panel in board.panels)
-                    SizedBox(
-                      width: width * panel.width.clamp(1, columns) +
-                          tokens.space3 * (panel.width.clamp(1, columns) - 1),
-                      child: TerminalPanel(
-                        title: panel.title,
-                        trailing: onRemovePanel == null
-                            ? null
-                            : IconButton(
-                                tooltip: 'Remove panel',
-                                onPressed: () => onRemovePanel!(panel.id),
-                                icon: const Icon(Icons.close_rounded, size: 17),
-                              ),
-                        child: _buildPanel(panel, tokens),
-                      ),
+                    Builder(
+                      builder: (context) {
+                        final panelSpan = panel.width.clamp(1, columns).toInt();
+                        return SizedBox(
+                          width: width * panelSpan +
+                              tokens.space3 * (panelSpan - 1),
+                          child: TerminalPanel(
+                            title: panel.title,
+                            trailing: onRemovePanel == null
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Remove panel',
+                                    onPressed: () => onRemovePanel!(panel.id),
+                                    icon: const Icon(Icons.close_rounded, size: 17),
+                                  ),
+                            child: _buildPanel(panel, tokens),
+                          ),
+                        );
+                      },
                     ),
                 ],
               );
