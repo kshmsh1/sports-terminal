@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -31,8 +32,12 @@ def _record_assurance(connection: Any, token: str, auth_level: str) -> None:
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
     timestamp = now_iso()
     connection.execute(
+        "DELETE FROM auth_session_security WHERE token_hash = ?",
+        (token_hash,),
+    )
+    connection.execute(
         """
-        INSERT OR REPLACE INTO auth_session_security
+        INSERT INTO auth_session_security
           (token_hash, auth_level, mfa_verified_at, created_at)
         VALUES (?, ?, ?, ?)
         """,
@@ -97,7 +102,6 @@ def sign_in(payload: auth_api.SignInRequest) -> dict[str, Any]:
             raise HTTPException(status_code=401, detail="Email or password is incorrect")
         if row["status"] != "active":
             raise HTTPException(status_code=403, detail="Account is not active")
-        import os
         if os.getenv("SPORTS_TERMINAL_REQUIRE_EMAIL_VERIFICATION", "false").lower() == "true" and not bool(row["email_verified"]):
             raise HTTPException(status_code=403, detail="Email verification is required")
 
