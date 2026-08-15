@@ -64,7 +64,7 @@ Restore verification re-fetches the stored object, verifies the object digest an
 
 ## Observability, health, and incidents
 
-Every request receives an `X-Request-ID`. API logs are structured JSON and include request duration, path, method, status, user ID when authenticated, and timestamp. Security responses include restrictive browser headers. Platform audit events form a hash chain; a failed audit-chain verification is an incident and must not be repaired by rewriting history.
+Every request receives an `X-Request-ID`. API logs are structured JSON and include request duration, path, method, status, user ID when authenticated, and timestamp. Security responses include restrictive browser headers. Platform audit events form a hash chain. A failed audit-chain verification is an incident and must not be repaired by rewriting history.
 
 `/v2/operations/metrics` exposes vendor-neutral JSON metrics and `/v2/operations/metrics/prometheus` exposes Prometheus-compatible text. `/v2/operations/alerts` evaluates health failure, stale/missing backups, security-email failures, billing-webhook failures, and missing active releases without requiring an external monitoring vendor.
 
@@ -80,4 +80,4 @@ Neither local command dispatches GitHub Actions or provisions a hosted service.
 
 ## GitHub / CI cost safety
 
-Repository workflows are manual-only. A push or pull-request update must not automatically start GitHub-hosted Actions. Run CI only when an operator deliberately chooses to dispatch it and has independently confirmed account-level billing/budget settings. The repository does not enable paid runners or any paid external deployment service.
+The repository is public, so normal validation uses standard GitHub-hosted runners with automatic `push` and `pull_request` triggers plus optional `workflow_dispatch`. CI remains read-only (`contents: read`) and must not deploy infrastructure, publish packages/releases, invoke paid hosting providers, or use larger/self-hosted paid runner capacity without an explicit operator decision. Local validation remains independent of GitHub Actions.
