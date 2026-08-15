@@ -2,14 +2,19 @@ import '../models/route_payload.dart';
 import 'nba_entity_watchlist_store.dart';
 import 'nba_research_context_store.dart';
 import 'nba_season_intelligence_engine.dart';
+import 'nba_season_leader_matrix_engine.dart';
+import 'nba_season_player_leader_engine.dart';
+import 'nba_season_rest_density_engine.dart';
 import 'nba_terminal_seed_repository.dart';
 import 'sports_object_router.dart';
 
 /// Coordinates shared workflow actions for one canonical NBA Season.
 ///
 /// The season projection remains owned by [NbaSeasonIntelligenceEngine]. This
-/// service only packages it for shared RoutePayload state, activates the exact
-/// research scope, and creates a canonical persistent watchlist identity.
+/// service packages its standings, game inventory, source-backed player leader
+/// observations, and date-only schedule-density rows into shared RoutePayload
+/// state, activates the exact research scope, and creates a canonical watchlist
+/// identity. No source-context rows are invented or synchronously fetched here.
 class NbaSeasonWorkflowService {
   const NbaSeasonWorkflowService({
     NbaResearchContextStore contextStore = const NbaResearchContextStore(),
@@ -31,9 +36,30 @@ class NbaSeasonWorkflowService {
       seasonId: seasonId,
       seasonType: seasonType,
     );
-    final rows = [
+    final leaders = const NbaSeasonLeaderMatrixEngine().build(
+      seed,
+      seasonId: seasonId,
+      seasonType: seasonType,
+      metrics: [
+        NbaSeasonLeaderMetric.points,
+        NbaSeasonLeaderMetric.rebounds,
+        NbaSeasonLeaderMetric.assists,
+        NbaSeasonLeaderMetric.steals,
+        NbaSeasonLeaderMetric.blocks,
+        NbaSeasonLeaderMetric.trueShooting,
+      ],
+      topPerMetric: 5,
+    );
+    final rest = const NbaSeasonRestDensityEngine().build(
+      seed,
+      seasonId: seasonId,
+      seasonType: seasonType,
+    );
+
+    final standingRows = [
       for (var index = 0; index < season.standings.length; index++)
         {
+          'row_type': 'standing',
           'season_id': season.seasonId,
           'season_type': season.seasonType,
           'rank': index + 1,
@@ -50,11 +76,69 @@ class NbaSeasonWorkflowService {
           'average_differential': season.standings[index].averageDifferential,
         },
     ];
-    final readiness = !season.hasGames
-        ? 'Partial'
-        : rows.isEmpty
-            ? 'Partial'
-            : 'Ready';
+    final gameRows = [
+      for (final game in season.games)
+        {
+          'row_type': 'game',
+          'season_id': season.seasonId,
+          'season_type': game.seasonType,
+          'game_id': game.gameId,
+          'game_date': game.gameDate,
+          'status': game.status,
+          'home_team_id': game.homeTeamId,
+          'away_team_id': game.awayTeamId,
+          'home_score': game.homeScore,
+          'away_score': game.awayScore,
+          'matchup': game.matchupLabel,
+        },
+    ];
+    final leaderRows = <Map<String, dynamic>>[
+      for (final player in leaders.players)
+        for (final entry in player.cells.entries)
+          {
+            'row_type': 'leader',
+            'season_id': leaders.seasonId,
+            'season_type': leaders.seasonType,
+            'player_id': player.playerId,
+            'player': player.playerName,
+            'team': player.teamLabel,
+            'position': player.position,
+            'games': player.games,
+            'metric': entry.key.key,
+            'metric_label': entry.key.label,
+            'rank': entry.value.rank,
+            'value': entry.value.value,
+          },
+    ];
+    final restRows = [
+      for (final team in rest.teams)
+        {
+          'row_type': 'rest_density',
+          'season_id': rest.seasonId,
+          'season_type': rest.seasonType,
+          'team_id': team.teamId,
+          'team': team.teamName,
+          'abbreviation': team.abbreviation,
+          'dated_games': team.datedGames,
+          'undated_games': team.undatedGames,
+          'home_games': team.homeGames,
+          'away_games': team.awayGames,
+          'back_to_backs': team.backToBacks,
+          'one_day_rest_occurrences': team.oneDayRestOccurrences,
+          'average_rest_days': team.averageRestDays,
+          'minimum_rest_days': team.minimumRestDays,
+          'maximum_rest_days': team.maximumRestDays,
+          'max_games_in_seven_days': team.maxGamesInSevenDays,
+          'four_plus_in_six_day_windows': team.fourPlusInSixDayWindows,
+        },
+    ];
+    final rows = <Map<String, dynamic>>[
+      ...standingRows,
+      ...gameRows,
+      ...leaderRows,
+      ...restRows,
+    ];
+    final readiness = !season.hasGames || rows.isEmpty ? 'Partial' : 'Ready';
     final sourceSnapshot = seed.assetPath.trim().isEmpty
         ? seed.datasetStatus
         : seed.assetPath;
@@ -69,22 +153,34 @@ class NbaSeasonWorkflowService {
       sourceSnapshot: sourceSnapshot,
       readinessState: readiness,
       filterSummary: 'season=${season.seasonId}; season_type=${season.seasonType}',
-      rowKey: 'team_id',
+      rowKey: 'row_type',
       preferredColumns: const [
+        'row_type',
         'season_id',
         'season_type',
         'rank',
         'team_id',
         'team',
         'abbreviation',
+        'player_id',
+        'player',
+        'game_id',
+        'game_date',
+        'matchup',
+        'status',
         'games',
         'wins',
         'losses',
-        'ties',
         'win_pct',
         'points_for_per_game',
         'points_against_per_game',
         'average_differential',
+        'metric',
+        'metric_label',
+        'value',
+        'back_to_backs',
+        'average_rest_days',
+        'max_games_in_seven_days',
       ],
       metadata: {
         'seasonId': season.seasonId,
@@ -96,6 +192,10 @@ class NbaSeasonWorkflowService {
         'playoffGames': season.playoffGames,
         'teamCount': season.teamCount,
         'dateRange': season.dateRangeLabel,
+        'standingRows': standingRows.length,
+        'gameRows': gameRows.length,
+        'leaderRows': leaderRows.length,
+        'restDensityRows': restRows.length,
         'historicalContext': season.historicalContext,
         'datasetStatus': season.datasetStatus,
         'validationStatus': season.validationStatus,
@@ -134,7 +234,8 @@ class NbaSeasonWorkflowService {
     if (normalizedSeason.isEmpty) {
       throw ArgumentError.value(seasonId, 'seasonId', 'Season is required.');
     }
-    final normalizedLeague = league.trim().isEmpty ? 'NBA' : league.trim().toUpperCase();
+    final normalizedLeague =
+        league.trim().isEmpty ? 'NBA' : league.trim().toUpperCase();
     final normalizedType = _normalizedSeasonType(seasonType);
     return NbaEntityWatchItem(
       kind: 'season',
