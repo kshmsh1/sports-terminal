@@ -89,6 +89,17 @@ void main() {
           },
         ]);
       }
+      if (path.endsWith('/data/nba_static/games/index.json')) {
+        return _json([
+          {
+            'game_key': 'game:1',
+            'nba_game_id': '001',
+            'season_id': '2025-26',
+            'file': 'games/2025-26/game1.json',
+            'pbp_file': 'pbp/2025-26/game1.json',
+          },
+        ]);
+      }
       if (path.endsWith('/data/nba_static/players/tatum.json')) {
         return _json({
           'kind': 'player',
@@ -108,6 +119,23 @@ void main() {
           'seasons': [],
           'recent_games': [],
           'notable_players': [],
+        });
+      }
+      if (path.endsWith('/data/nba_static/games/2025-26/game1.json')) {
+        return _json({
+          'contract': 'sports-terminal-static-game-v1',
+          'game': {'game_key': 'game:1', 'home_score': 110, 'away_score': 104},
+          'teams': [],
+          'players': [],
+        });
+      }
+      if (path.endsWith('/data/nba_static/pbp/2025-26/game1.json')) {
+        return _json({
+          'contract': 'sports-terminal-static-pbp-v1',
+          'game_key': 'game:1',
+          'rows': [
+            {'game_key': 'game:1', 'period': 1, 'event_number': 1, 'description': 'Tip'},
+          ],
         });
       }
       return http.Response('not found', 404);
@@ -134,6 +162,12 @@ void main() {
     expect((player['profile'] as Map)['canonical_name'], 'Jayson Tatum');
     final team = await repository.teamDossier('BOS');
     expect((team['profile'] as Map)['canonical_name'], 'Boston Celtics');
+
+    final game = await repository.gameDetail('game:1');
+    expect((game['game'] as Map)['home_score'], 110);
+    final pbp = await repository.gamePlayByPlay('001');
+    expect(pbp, hasLength(1));
+    expect(pbp.single['description'], 'Tip');
 
     expect(requested, isNot(contains(predicate<String>((path) => path.contains('/v2/nba/history/')))));
     expect(requested, everyElement(contains('/data/nba_static/')));
