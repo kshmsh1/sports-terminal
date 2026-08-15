@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../screens/product_nba_player_career_screen.dart';
 import '../services/nba_entity_intelligence_repository.dart';
+import '../services/nba_player_career_analytics_engine.dart';
+import '../services/nba_player_career_comparison_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import 'nba_franchise_navigation.dart';
 import 'nba_game_navigation.dart';
@@ -25,7 +27,8 @@ Future<void> openNbaPlayerCareerPage(
   if (normalizedKey.isEmpty) return Future.value();
   final normalizedLeague =
       league.trim().isEmpty ? 'NBA' : league.trim().toUpperCase();
-  final normalizedName = playerName.trim().isEmpty ? 'NBA Player' : playerName.trim();
+  final normalizedName =
+      playerName.trim().isEmpty ? 'NBA Player' : playerName.trim();
 
   return Navigator.of(context).push<void>(
     MaterialPageRoute(
@@ -81,7 +84,8 @@ Future<void> openNbaPlayerCareerPage(
                 careerContext,
                 gameId: gameKey,
                 gameLabel: gameLabel,
-                loadSeed: () => const NbaTerminalSeedRepository().loadHistoricalSeason(
+                loadSeed: () => const NbaTerminalSeedRepository()
+                    .loadHistoricalSeason(
                   seasonId,
                   league: normalizedLeague,
                   seasonType: 'regular',
@@ -90,6 +94,25 @@ Future<void> openNbaPlayerCareerPage(
                 onOpenPlayer: openCareerPlayer,
               );
             };
+
+        void openComparison({
+          NbaPlayerCareerComparisonAlignment alignment =
+              NbaPlayerCareerComparisonAlignment.calendarSeason,
+          NbaPlayerCareerMetric metric =
+              NbaPlayerCareerMetric.pointsPerGame,
+        }) {
+          openNbaPlayerCareerComparisonPage(
+            careerContext,
+            leftPlayerKey: normalizedKey,
+            leftPlayerName: normalizedName,
+            league: normalizedLeague,
+            initialSeasonType: initialSeasonType,
+            initialAlignment: alignment,
+            initialMetric: metric,
+            onOpenPlayer: openCareerPlayer,
+            onOpenSeason: seasonCallback,
+          );
+        }
 
         return Scaffold(
           backgroundColor: nbaPlayerCareerBackground,
@@ -101,16 +124,35 @@ Future<void> openNbaPlayerCareerPage(
               IconButton(
                 key: const ValueKey('player-career-open-comparison'),
                 tooltip: 'Compare historical careers',
-                onPressed: () => openNbaPlayerCareerComparisonPage(
-                  careerContext,
-                  leftPlayerKey: normalizedKey,
-                  leftPlayerName: normalizedName,
-                  league: normalizedLeague,
-                  initialSeasonType: initialSeasonType,
-                  onOpenPlayer: openCareerPlayer,
-                  onOpenSeason: seasonCallback,
-                ),
+                onPressed: openComparison,
                 icon: const Icon(Icons.compare_arrows_rounded),
+              ),
+              PopupMenuButton<String>(
+                key: const ValueKey('player-career-comparison-modes'),
+                tooltip: 'Career comparison modes',
+                onSelected: (value) {
+                  switch (value) {
+                    case 'career-year':
+                      openComparison(
+                        alignment:
+                            NbaPlayerCareerComparisonAlignment.careerYear,
+                      );
+                    case 'efficiency':
+                      openComparison(
+                        metric: NbaPlayerCareerMetric.trueShootingPct,
+                      );
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'career-year',
+                    child: Text('Compare by career year'),
+                  ),
+                  PopupMenuItem(
+                    value: 'efficiency',
+                    child: Text('Compare TS% by season'),
+                  ),
+                ],
               ),
             ],
           ),
@@ -165,9 +207,10 @@ Future<void> openResolvedNbaPlayerCareerPage(
       );
       final profile = _navMap(direct['profile']);
       historicalKey = profile['player_key']?.toString().trim() ?? '';
-      historicalName = profile['canonical_name']?.toString().trim().isNotEmpty == true
-          ? profile['canonical_name'].toString().trim()
-          : historicalName;
+      historicalName =
+          profile['canonical_name']?.toString().trim().isNotEmpty == true
+              ? profile['canonical_name'].toString().trim()
+              : historicalName;
     } catch (_) {
       // Release IDs are not assumed to equal historical player keys.
     }
@@ -186,13 +229,16 @@ Future<void> openResolvedNbaPlayerCareerPage(
       if (players is List) {
         final candidates = [
           for (final raw in players)
-            if (raw is Map) raw.map((key, value) => MapEntry(key.toString(), value)),
+            if (raw is Map)
+              raw.map((key, value) => MapEntry(key.toString(), value)),
         ];
         Map<String, dynamic>? match;
         for (final candidate in candidates) {
-          final candidateKey = candidate['player_key']?.toString().trim() ?? '';
+          final candidateKey =
+              candidate['player_key']?.toString().trim() ?? '';
           final candidateNbaId = candidate['nba_id']?.toString().trim() ?? '';
-          final candidateName = candidate['canonical_name']?.toString().trim() ?? '';
+          final candidateName =
+              candidate['canonical_name']?.toString().trim() ?? '';
           if (normalizedId.isNotEmpty &&
               (candidateKey == normalizedId || candidateNbaId == normalizedId)) {
             match = candidate;
@@ -204,9 +250,10 @@ Future<void> openResolvedNbaPlayerCareerPage(
         }
         if (match != null) {
           historicalKey = match['player_key']?.toString().trim() ?? '';
-          historicalName = match['canonical_name']?.toString().trim().isNotEmpty == true
-              ? match['canonical_name'].toString().trim()
-              : historicalName;
+          historicalName =
+              match['canonical_name']?.toString().trim().isNotEmpty == true
+                  ? match['canonical_name'].toString().trim()
+                  : historicalName;
         }
       }
     } catch (_) {
