@@ -12,6 +12,11 @@ from .sso import SsoConfigurationError, SsoConnectionService
 
 router = APIRouter(prefix="/v2/organizations", tags=["organization-security"])
 
+# OIDC connection/state scaffolding exists, but ID-token/JWKS callback verification
+# and SSO-authenticated session issuance are deliberately not claimed yet. Keep SSO
+# enforcement impossible to enable until that authentication path is complete.
+SSO_LOGIN_ENFORCEMENT_READY = False
+
 
 class OrganizationSecurityPolicyUpdate(BaseModel):
     require_mfa: bool = False
@@ -86,6 +91,11 @@ def update_security_policy(
     domains = _domains(payload.allowed_email_domains)
     if payload.sso_required and not domains:
         raise HTTPException(status_code=400, detail="SSO-required organizations must declare an allowed email domain")
+    if payload.sso_required and not SSO_LOGIN_ENFORCEMENT_READY:
+        raise HTTPException(
+            status_code=409,
+            detail="SSO enforcement is unavailable until OIDC callback verification and SSO session issuance are complete",
+        )
     timestamp = now_iso()
     encoded = json.dumps(domains, separators=(",", ":"))
     with connect() as connection:
