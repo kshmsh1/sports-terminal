@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/nba_player_game_log_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import 'nba_game_navigation.dart';
+import 'nba_player_career_navigation.dart';
 import 'nba_player_trend_panel.dart';
 
 const _panel = Color(0xFF0F151C);
@@ -99,21 +100,38 @@ class NbaPlayerGameLogPanel extends StatelessWidget {
             ),
           ),
           const Divider(height: 1, color: _line),
-          if (seed.supportedSeason.trim().isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 9, 14, 0),
-              child: OutlinedButton.icon(
-                key: ValueKey('player-open-season-$playerId'),
-                onPressed: () => openNbaSeasonPage(
-                  context,
-                  seasonId: seed.supportedSeason,
-                  loadSeed: () async => seed,
-                  onOpenTeam: onOpenTeam,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 9, 14, 0),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  key: ValueKey('player-open-career-$playerId'),
+                  onPressed: () => openResolvedNbaPlayerCareerPage(
+                    context,
+                    playerId: playerId,
+                    playerName: playerName,
+                    onOpenTeam: onOpenTeam,
+                  ),
+                  icon: const Icon(Icons.timeline_rounded, size: 15),
+                  label: const Text('OPEN HISTORICAL CAREER'),
                 ),
-                icon: const Icon(Icons.calendar_view_month_rounded, size: 15),
-                label: Text('OPEN ${seed.supportedSeason} SEASON'),
-              ),
+                if (seed.supportedSeason.trim().isNotEmpty)
+                  OutlinedButton.icon(
+                    key: ValueKey('player-open-season-$playerId'),
+                    onPressed: () => openNbaSeasonPage(
+                      context,
+                      seasonId: seed.supportedSeason,
+                      loadSeed: () async => seed,
+                      onOpenTeam: onOpenTeam,
+                    ),
+                    icon: const Icon(Icons.calendar_view_month_rounded, size: 15),
+                    label: Text('OPEN ${seed.supportedSeason} SEASON'),
+                  ),
+              ],
             ),
+          ),
           if (result.rows.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 14, vertical: 34),
