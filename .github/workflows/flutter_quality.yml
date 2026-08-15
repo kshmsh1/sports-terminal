@@ -41,7 +41,7 @@ jobs:
         run: python backend/scripts/historical_canonical_contract_test.py
       - name: Test historical traded-player leaderboard semantics
         run: python backend/scripts/historical_leaderboard_contract_test.py
-      - name: Test historical seed compatibility projection
+      - name: Test historical seed compatibility contract
         run: python backend/scripts/historical_seed_compat_contract_test.py
       - name: Test deep historical NBA research contract
         run: python backend/scripts/historical_research_launch_contract_test.py
@@ -61,10 +61,12 @@ jobs:
         run: python tools/audit_page_scroll_ownership.py --check
       - name: Audit canonical NBA platform graph v16
         run: python tools/audit_nba_platform_graph_v16.py --check
-      - name: Test production readiness contract
+      - name: Test production readiness contract v2
         run: python backend/scripts/production_readiness_contract_test.py
-      - name: Audit recursive production platform
+      - name: Audit recursive production platform v1
         run: python tools/audit_production_platform_v1.py --check
+      - name: Audit recursive production platform v2
+        run: python tools/audit_production_platform_v2.py --check
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
