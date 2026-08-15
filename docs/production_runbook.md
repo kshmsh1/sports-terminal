@@ -4,45 +4,63 @@ This runbook describes the production contract for the NBA-first Sports Terminal
 
 ## Deployment invariants
 
-Production must set `SPORTS_TERMINAL_ENV=production`, use PostgreSQL through `SPORTS_TERMINAL_DATABASE_URL`, provide explicit CORS origins and allowed hosts, enable first-party authentication and shared rate limits, and supply independent high-entropy secrets for sessions, MFA encryption, certified-release signing, and backup-manifest signing. `SPORTS_TERMINAL_BILLING_MODE` remains `disabled` until a payment provider is deliberately configured.
+Production must set `SPORTS_TERMINAL_ENV=production`, use PostgreSQL through `SPORTS_TERMINAL_DATABASE_URL`, provide explicit CORS origins and allowed hosts, enable first-party authentication and shared rate limits, and supply independent high-entropy secrets for sessions, MFA encryption, certified-release signing, backup-manifest signing, and any configured SSO client-secret encryption. `SPORTS_TERMINAL_BILLING_MODE` remains `disabled` until a payment provider is deliberately configured.
 
 The application fails closed if production configuration is unsafe. It also refuses to serve against a schema older than the latest checked-in migration. Production does not silently fall back to SQLite.
 
-## Database promotion
+## Database bootstrap and promotion
 
-1. Take and verify a database backup before schema promotion.
-2. Run `PYTHONPATH=. python scripts/migrate.py` from `backend/` against the target PostgreSQL database.
+For local PostgreSQL verification, use the repository's `backend/docker-compose.postgres.yml` `local-postgres` profile and `backend/scripts/local_postgres_smoke.py`. It binds only to loopback and does not provision a hosted database.
+
+For a target production database:
+
+1. Take and verify a database backup before schema promotion when upgrading an existing database.
+2. Run `PYTHONPATH=. python scripts/migrate.py` from `backend/` against the target PostgreSQL database. On a brand-new database, the migration command first creates the legacy core schema that numbered migrations extend, then applies migrations `0001+`.
 3. Confirm the reported schema version equals the latest migration version.
 4. Start the application with `SPORTS_TERMINAL_AUTO_MIGRATE=false`.
 5. Check `/v2/operations/production-readiness` and `/v2/operations/database` from an authenticated operator context.
 
-`SPORTS_TERMINAL_RUN_MIGRATIONS_ON_START=true` is an explicit operator escape hatch for controlled environments; it is not the default production deployment path.
+`SPORTS_TERMINAL_RUN_MIGRATIONS_ON_START=true` is an explicit operator escape hatch for controlled environments; it is not the default production deployment path. Authentication requests never run the versioned migration runner.
 
-## Certified NBA release promotion
+## Environment and certified-release promotion
 
 A dataset release moves through candidate → certified → active. Release manifests are canonical JSON, SHA-256 hashed, and HMAC signed. A release version cannot be reused with different manifest content. Activation records the prior release and the database schema version so rollback history is explicit.
 
-Promote a release to staging first. Verify ingestion/source coverage, historical/current isolation, application contracts, and analyst workflows before production activation. Rollback means activating a previously certified release; never mutate an old certified manifest in place.
+Application/environment promotion follows development → staging → production. Direct development-to-production promotion is rejected. The source environment must have a current schema, healthy status, and a certified/active release. Promotion and health transitions are written to the tamper-evident platform audit trail.
 
-## Authentication and account security
+Rollback means activating a previously certified release; never mutate an old certified manifest in place.
 
-Production requires a session pepper and MFA encryption key. TOTP secrets are authenticated-encrypted at rest. Recovery codes are returned once and stored only as purpose-separated hashes. Operators should investigate `auth_security_events` for unexpected session revocation, MFA enrollment, or account-security activity without storing raw client IP or user-agent strings there.
+## Authentication, recovery, and account security
+
+Production requires a session pepper and MFA encryption key. TOTP secrets are authenticated-encrypted at rest. Recovery codes are returned once and stored only as purpose-separated hashes. A user with a verified MFA factor does not receive a bearer session after password-only authentication; a short-lived MFA challenge must complete first.
+
+Email-verification and password-reset tokens are purpose-bound, short-lived, single-use, and stored only as peppered hashes. Request endpoints use anti-enumeration responses. Security mail goes through the provider-neutral HTTPS gateway configured by `SPORTS_TERMINAL_EMAIL_*`; console mail is forbidden in production, and raw addresses/tokens are not written to the delivery ledger.
+
+A successful password reset revokes existing sessions. Operators should investigate `auth_security_events` for unexpected session revocation, MFA enrollment, or account-security activity without storing raw client IP or user-agent strings there.
+
+## Organization security and SSO
+
+Organization policy can require MFA, constrain maximum session lifetime, and configure allowed email domains. OIDC connection metadata, encrypted client secrets, and one-time state/nonce handling are implemented, but **SSO enforcement is intentionally unavailable** until ID-token/JWKS callback verification and SSO-authenticated session issuance are complete. The API rejects attempts to set `sso_required=true` before that capability lands; configuring an OIDC connection alone does not claim a working SSO login flow.
 
 ## Billing and entitlements
 
-Entitlements are provider-neutral. `SPORTS_TERMINAL_BILLING_MODE=disabled` is the safe default and causes webhook ingress to fail closed. Enabling test/live billing requires an explicit webhook secret. Webhook event IDs are idempotent and cannot be replayed with changed payload contents.
+Entitlements are provider-neutral. `SPORTS_TERMINAL_BILLING_MODE=disabled` is the safe default and causes webhook ingress to fail closed. Enabling test/live billing requires an explicit webhook secret. Webhook event IDs are idempotent and cannot be replayed with changed payload contents. No billing provider is provisioned by repository code.
 
 ## Rate limiting and proxy trust
 
 Production defaults to the database-backed rate limiter so multiple API workers share one quota. A limiter-backend failure returns 503 instead of removing protection. `X-Forwarded-For` is ignored unless `SPORTS_TERMINAL_TRUST_PROXY_HEADERS=true`; only enable that setting behind a trusted reverse proxy that replaces untrusted forwarding headers.
 
-## Backups and restore verification
+## Backups, object storage, and restore drills
 
-The application records signed backup manifests containing database backend, schema version, release identity, object key, byte size, and SHA-256 digest. Actual database dump/storage execution belongs to the infrastructure layer. A restore should not be declared successful until the backup bytes match the recorded digest, the manifest signature verifies, migrations/schema are compatible, and smoke checks pass against the restored environment.
+Production readiness requires the provider-neutral HTTPS object-store gateway; local filesystem object storage is a development-only default. The application can execute SQLite backups directly and PostgreSQL backups through `pg_dump`; the production image includes PostgreSQL client tools. Stored backup bytes are SHA-256 bound to signed manifests immediately after upload.
 
-## Observability and incidents
+Restore verification re-fetches the stored object, verifies the object digest and signed manifest, and runs SQLite integrity checks for local restore drills. PostgreSQL restore uses `pg_restore` and is blocked unless both the caller explicitly opts into destructive restore and `SPORTS_TERMINAL_ALLOW_DATABASE_RESTORE=true`. A restore is never marked successful before integrity verification completes.
+
+## Observability, health, and incidents
 
 Every request receives an `X-Request-ID`. API logs are structured JSON and include request duration, path, method, status, user ID when authenticated, and timestamp. Security responses include restrictive browser headers. Platform audit events form a hash chain; a failed audit-chain verification is an incident and must not be repaired by rewriting history.
+
+`/v2/operations/metrics` exposes vendor-neutral JSON metrics and `/v2/operations/metrics/prometheus` exposes Prometheus-compatible text. `/v2/operations/alerts` evaluates health failure, stale/missing backups, security-email failures, billing-webhook failures, and missing active releases without requiring an external monitoring vendor.
 
 For an incident: preserve logs and audit evidence, stop unsafe promotion/automation, rotate compromised secrets, revoke affected sessions, activate the last known-good certified data release when relevant, restore from a verified backup only when needed, and document the recovery action in the platform audit trail.
 
