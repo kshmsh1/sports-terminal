@@ -18,6 +18,7 @@ from app.auth_recovery_api import (
 )
 from app.main import make_id, now_iso
 from app.migrations import run_migrations
+from app.production_bootstrap import bind_database_boundary
 
 
 def main() -> None:
@@ -33,6 +34,7 @@ def main() -> None:
         os.environ["SPORTS_TERMINAL_EMAIL_PROVIDER"] = "disabled"
         with tempfile.TemporaryDirectory() as directory:
             database.DEFAULT_SQLITE_PATH = Path(directory) / "recovery.db"
+            bind_database_boundary()
             init_auth_db()
             run_migrations()
             timestamp = now_iso()
@@ -50,9 +52,6 @@ def main() -> None:
                 verify = AuthDeliveryTokenService(pepper).issue(
                     connection, user_id=user_id, purpose="verify-email", ttl_minutes=30
                 )
-                reset = AuthDeliveryTokenService(pepper).issue(
-                    connection, user_id=user_id, purpose="password-reset", ttl_minutes=30
-                )
                 token_hash = "session-token-hash"
                 connection.execute(
                     "INSERT INTO auth_sessions (token_hash, user_id, expires_at, created_at, last_seen_at) VALUES (?, ?, '2099-01-01T00:00:00+00:00', ?, ?)",
@@ -68,7 +67,13 @@ def main() -> None:
 
             assert request_password_reset(EmailRequest(email="unknown@example.com")) == {"accepted": True}
             assert request_password_reset(EmailRequest(email="analyst@example.com")) == {"accepted": True}
-            # Use the already-issued reset token; public request responses never expose one.
+            # Public request responses never expose reset material. Issue a fresh fixture
+            # token after the anti-enumeration request so supersession semantics are preserved.
+            with database.connect() as connection:
+                reset = AuthDeliveryTokenService(pepper).issue(
+                    connection, user_id=user_id, purpose="password-reset", ttl_minutes=30
+                )
+                connection.commit()
             result = confirm_password_reset(
                 PasswordResetConfirm(token=reset.plaintext, new_password="DifferentStrong456!")
             )
