@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    profiles: ["local-postgres"]
+    environment:
+      POSTGRES_DB: sports_terminal
+      POSTGRES_USER: sports_terminal
+      POSTGRES_PASSWORD: local-development-only
+    ports:
+      - "127.0.0.1:54329:5432"
+    volumes:
+      - sports_terminal_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sports_terminal -d sports_terminal"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    restart: "no"
+
+volumes:
+  sports_terminal_postgres_data:
+    name: sports-terminal-local-postgres
