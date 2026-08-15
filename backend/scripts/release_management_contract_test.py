@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 from app import database, release_management_api
-from app.migrations import run_migrations
+from app.migrations import current_schema_version, run_migrations
 from app.release_management_api import ReleaseCreateRequest, ReleaseService
 
 
@@ -23,6 +23,7 @@ def main() -> None:
                     "CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL)"
                 )
             run_migrations()
+            expected_schema_version = current_schema_version()
 
             service = ReleaseService()
             candidate = service.create_candidate(
@@ -51,7 +52,7 @@ def main() -> None:
             active = service.active("staging")
             assert active is not None
             assert active["release_version"] == "2026.08.15.1"
-            assert active["database_schema_version"] == "0003"
+            assert active["database_schema_version"] == expected_schema_version
             history = service.history("staging")
             assert len(history) == 1
             assert history[0]["release_id"] == candidate["id"]
