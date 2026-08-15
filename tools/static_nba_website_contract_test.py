@@ -56,6 +56,12 @@ def test_static_runtime_contract() -> None:
         "Historical NBA pages are served from static files, not the API.",
     )
     require(
+        "tools/build_static_nba_website_data_v2.py",
+        '"historical_http_api_required": False',
+        '"sqlite_required_by_browser": False',
+        '"live_overlay_supported": True',
+    )
+    require(
         "lib/services/website_nba_static_repository.dart",
         "data/nba_static",
         "seasonSnapshot",
@@ -65,8 +71,8 @@ def test_static_runtime_contract() -> None:
     )
     require(
         "lib/services/website_nba_api_service.dart",
-        "historical_http_api_required",
         "WebsiteNbaStaticRepository",
+        "Historical basketball data is now a static website concern",
         "No FastAPI request or runtime SQLite query is required",
     )
     reject(
@@ -74,6 +80,7 @@ def test_static_runtime_contract() -> None:
         "http://127.0.0.1:8000",
         "/v2/nba/history/seed/",
         "LaunchBackendTransport",
+        "loadHistoricalSeason(",
     )
     require(
         ".gitignore",
