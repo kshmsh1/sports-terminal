@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import '../models/app_session.dart';
@@ -60,7 +61,24 @@ class FrontOfficeRegistryService {
   static const _assetsKey = 'sports_terminal.front_office.draft_assets.v1';
   static const _ledgerKey = 'sports_terminal.front_office.ledger.v1';
 
+  /// Cache-first product read.
+  ///
+  /// Player pages and the Trade Machine must never be held behind mutable
+  /// front-office networking. Return the last known browser snapshot
+  /// immediately and refresh the cache in the background for the next read.
   Future<FrontOfficeRegistrySnapshot> load({
+    required AppSession session,
+    String season = '2025-26',
+  }) async {
+    final cached = await loadCached();
+    unawaited(
+      loadRemote(session: session, season: season).catchError((_) => cached),
+    );
+    return cached;
+  }
+
+  /// Explicit fresh read for dedicated front-office workflows.
+  Future<FrontOfficeRegistrySnapshot> loadRemote({
     required AppSession session,
     String season = '2025-26',
   }) async {
@@ -103,11 +121,6 @@ class FrontOfficeRegistryService {
   }
 
   /// Reads only the browser's last known front-office snapshot.
-  ///
-  /// Static NBA pages use this method so a dynamic backend outage can never
-  /// hold historical player/team pages or the Trade Machine roster behind a
-  /// network spinner. A separate refresh can still call [load] when live
-  /// contract/cap information is desired.
   Future<FrontOfficeRegistrySnapshot> loadCached() async {
     final results = await Future.wait([
       _loadCachedCollection(_contractsKey),
