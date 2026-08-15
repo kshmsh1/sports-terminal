@@ -89,7 +89,22 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
       - name: Analyze project
-        run: flutter analyze
+        shell: bash
+        run: |
+          set +e
+          flutter analyze 2>&1 | tee /tmp/flutter-analyze.txt
+          status=${PIPESTATUS[0]}
+          if [[ $status -ne 0 ]]; then
+            grep -E '^[[:space:]]*(error|warning|info)[[:space:]]+•' /tmp/flutter-analyze.txt \
+              | head -50 \
+              | while IFS= read -r line; do
+                  safe=${line//'%'/'%25'}
+                  safe=${safe//$'\r'/'%0D'}
+                  safe=${safe//$'\n'/'%0A'}
+                  echo "::error title=Flutter analyze::$safe"
+                done
+            exit "$status"
+          fi
       - name: Run test suite
         run: flutter test
       - name: Build web application
