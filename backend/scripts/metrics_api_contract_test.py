@@ -6,27 +6,29 @@ from pathlib import Path
 
 from app import database, platform_audit
 from app.metrics_api import metrics_prometheus, operational_metrics
+from app.migrations import discover_migrations
 
 
 def main() -> None:
     original = os.environ.get("SPORTS_TERMINAL_DATABASE_URL")
     try:
         os.environ.pop("SPORTS_TERMINAL_DATABASE_URL", None)
+        target_schema = discover_migrations()[-1].version
         with tempfile.TemporaryDirectory() as directory:
             database.DEFAULT_SQLITE_PATH = Path(directory) / "metrics.db"
             platform_audit.connect = database.connect
             with database.connect() as connection:
                 connection.executescript(
-                    """
+                    f"""
                     CREATE TABLE schema_migrations (
                       version TEXT PRIMARY KEY, name TEXT NOT NULL,
                       checksum TEXT NOT NULL, applied_at TEXT NOT NULL
                     );
-                    INSERT INTO schema_migrations VALUES ('0005', 'current', 'checksum', CURRENT_TIMESTAMP);
+                    INSERT INTO schema_migrations VALUES ('{target_schema}', 'current', 'checksum', CURRENT_TIMESTAMP);
                     CREATE TABLE platform_audit_events (
                       id TEXT PRIMARY KEY, actor_type TEXT NOT NULL, actor_id TEXT,
                       action TEXT NOT NULL, object_type TEXT, object_id TEXT,
-                      request_id TEXT, metadata TEXT NOT NULL DEFAULT '{}',
+                      request_id TEXT, metadata TEXT NOT NULL DEFAULT '{{}}',
                       previous_event_sha256 TEXT, event_sha256 TEXT, recorded_at TEXT NOT NULL
                     );
                     CREATE TABLE auth_sessions (
