@@ -211,7 +211,9 @@ class _NbaPlayerCareerComparisonResearchWorkbenchState
       ),
     );
     if (!mounted) return;
-    setState(() => _researchFuture = Future.value(checkpoint));
+    setState(() {
+      _researchFuture = Future.value(checkpoint);
+    });
   }
 
   bool _isActiveResearch(
