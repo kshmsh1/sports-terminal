@@ -3,7 +3,9 @@ name: Pre-Data Gate
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+      - agent/nba-game-command-center
   pull_request:
     branches: [main]
 
