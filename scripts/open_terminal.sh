@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PARENT_ROOT="$(cd "$ROOT/.." && pwd)"
 cd "$ROOT"
 
 USE_POSTGRES=false
@@ -19,12 +20,14 @@ Default: SQLite + the canonical local NBA history warehouse.
   --postgres    Use the repository's loopback-only Postgres 17 container.
   --no-browser  Do not automatically open http://127.0.0.1:8080.
 
-The website reads NBA data through the backend from
-  data/warehouse/nba_history.sqlite
-rather than requiring generated Flutter seed assets. If that warehouse is
-missing but already-downloaded historical source packages exist under
-raw/historical, the launcher imports and canonicalizes those local files.
-It never downloads or scrapes a sports source silently.
+The website reads NBA data through the backend from nba_history.sqlite rather
+than requiring generated Flutter seed assets. The launcher checks both this
+checkout and the immediately previous repo-root location so a historical
+warehouse created before a nested/fresh clone is reused automatically.
+
+If no warehouse is found but already-downloaded historical source packages
+exist under raw/historical, the launcher imports and canonicalizes those local
+files. It never downloads or scrapes a sports source silently.
 
 Stop the session with Ctrl-C.
 EOF
@@ -49,7 +52,27 @@ if [[ "${SPORTS_TERMINAL_SKIP_DEP_INSTALL:-false}" != "true" ]]; then
   "$PYTHON" -m pip install --disable-pip-version-check -q -r backend/requirements.txt
 fi
 
-HISTORY_DB="$ROOT/data/warehouse/nba_history.sqlite"
+CURRENT_HISTORY_DB="$ROOT/data/warehouse/nba_history.sqlite"
+PARENT_HISTORY_DB="$PARENT_ROOT/data/warehouse/nba_history.sqlite"
+if [[ -s "$CURRENT_HISTORY_DB" ]]; then
+  HISTORY_DB="$CURRENT_HISTORY_DB"
+elif [[ -s "$PARENT_HISTORY_DB" ]]; then
+  HISTORY_DB="$PARENT_HISTORY_DB"
+  echo "==> Rediscovered NBA history warehouse from previous repo root: $HISTORY_DB"
+else
+  HISTORY_DB="$CURRENT_HISTORY_DB"
+fi
+
+CURRENT_SOURCE_ROOT="$ROOT/raw/historical"
+PARENT_SOURCE_ROOT="$PARENT_ROOT/raw/historical"
+if [[ -d "$CURRENT_SOURCE_ROOT" ]]; then
+  HISTORICAL_SOURCE_ROOT="$CURRENT_SOURCE_ROOT"
+elif [[ -d "$PARENT_SOURCE_ROOT" ]]; then
+  HISTORICAL_SOURCE_ROOT="$PARENT_SOURCE_ROOT"
+else
+  HISTORICAL_SOURCE_ROOT="$CURRENT_SOURCE_ROOT"
+fi
+
 export SPORTS_TERMINAL_NBA_HISTORY_DB="$HISTORY_DB"
 
 history_db_has_canonical_tables() {
@@ -82,17 +105,17 @@ PY
 }
 
 local_historical_sources_exist() {
-  [[ -d "$ROOT/raw/historical" ]] || return 1
-  find "$ROOT/raw/historical" -type f \
+  [[ -d "$HISTORICAL_SOURCE_ROOT" ]] || return 1
+  find "$HISTORICAL_SOURCE_ROOT" -type f \
     \( -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.db' -o -name '*.csv' \) \
     -print -quit 2>/dev/null | grep -q .
 }
 
 prepare_nba_history() {
-  mkdir -p "$ROOT/data/warehouse"
+  mkdir -p "$(dirname "$HISTORY_DB")"
 
   if history_db_has_canonical_tables; then
-    echo "==> Using canonical NBA history warehouse: data/warehouse/nba_history.sqlite"
+    echo "==> Using canonical NBA history warehouse: $HISTORY_DB"
     return 0
   fi
 
@@ -108,11 +131,11 @@ prepare_nba_history() {
   fi
 
   if local_historical_sources_exist; then
-    echo "==> Importing already-downloaded historical NBA source packages"
+    echo "==> Importing already-downloaded historical NBA source packages from $HISTORICAL_SOURCE_ROOT"
     if "$PYTHON" tools/run_historical_nba_import.py \
-      --source-root "$ROOT/raw/historical" \
+      --source-root "$HISTORICAL_SOURCE_ROOT" \
       --output "$HISTORY_DB" \
-      --report "$ROOT/data/warehouse/nba_history_import_report.json"; then
+      --report "$(dirname "$HISTORY_DB")/nba_history_import_report.json"; then
       echo "==> Building canonical NBA dimensions and facts"
       if "$PYTHON" tools/build_historical_nba_canonical.py --database "$HISTORY_DB"; then
         if history_db_has_canonical_tables; then
@@ -124,13 +147,15 @@ prepare_nba_history() {
     echo "    Local historical source import did not produce a usable canonical warehouse." >&2
   fi
 
-  cat <<'EOF'
-==> Canonical NBA history warehouse is not available on this checkout
-    Expected: data/warehouse/nba_history.sqlite
+  cat <<EOF
+==> Canonical NBA history warehouse is not available
+    Checked: $CURRENT_HISTORY_DB
+    Checked: $PARENT_HISTORY_DB
+    Sources: $CURRENT_SOURCE_ROOT
+    Sources: $PARENT_SOURCE_ROOT
 
     Sports Terminal no longer treats generated Flutter seed assets as the
-    source of truth. If you previously downloaded/imported the historical NBA
-    datasets, restore either the nba_history.sqlite warehouse or the local
+    source of truth. Restore either nba_history.sqlite or the already-downloaded
     raw/historical source packages and restart this launcher.
 
     No network download or scraper has been started automatically.
@@ -237,12 +262,12 @@ if ! $NO_BROWSER; then
   fi
 fi
 
-cat <<'EOF'
+cat <<EOF
 
 Sports Terminal is running locally.
   Website:  http://127.0.0.1:8080
   API:      http://127.0.0.1:8000
-  NBA DB:   data/warehouse/nba_history.sqlite
+  NBA DB:   $HISTORY_DB
   Backend:  .data/logs/backend.log
   Flutter:  .data/logs/flutter.log
 
