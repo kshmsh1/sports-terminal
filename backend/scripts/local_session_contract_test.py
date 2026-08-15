@@ -51,14 +51,22 @@ def main() -> None:
     require(validator, "flutter build web --release", "local validator")
 
     workflows = list((ROOT / ".github" / "workflows").glob("*.yml"))
+    if not workflows:
+        raise AssertionError("at least one GitHub workflow must be configured")
     for workflow in workflows:
         text = workflow.read_text(encoding="utf-8")
         require(text, "workflow_dispatch", workflow.name)
-        reject(text, "\n  push:", workflow.name)
-        reject(text, "\n  pull_request:", workflow.name)
+        require(text, "\n  push:", workflow.name)
+        require(text, "\n  pull_request:", workflow.name)
+        require(text, "runs-on: ubuntu-latest", workflow.name)
+        require(text, "contents: read", workflow.name)
         reject(text, "\n  schedule:", workflow.name)
+        reject(text, "\n  workflow_run:", workflow.name)
+        reject(text, "self-hosted", workflow.name)
+        reject(text, "permissions: write-all", workflow.name)
+        reject(text, "contents: write", workflow.name)
 
-    print(f"local_session_contract: PASS ({len(workflows)} manual-only workflows)")
+    print(f"local_session_contract: PASS ({len(workflows)} safe automatic workflows; local scripts remain Actions-independent)")
 
 
 if __name__ == "__main__":
