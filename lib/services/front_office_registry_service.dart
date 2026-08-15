@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import '../models/app_session.dart';
+import 'front_office_static_snapshot_repository.dart';
 import 'launch_backend_transport.dart';
 import 'product_local_store.dart';
 
@@ -56,6 +57,9 @@ class FrontOfficeRegistryService {
   final LaunchBackendTransport _transport;
   final ProductLocalStore _store;
 
+  static final FrontOfficeStaticSnapshotRepository _staticRepository =
+      FrontOfficeStaticSnapshotRepository();
+
   static const _contractsKey = 'sports_terminal.front_office.contracts.v1';
   static const _positionsKey = 'sports_terminal.front_office.positions.v1';
   static const _assetsKey = 'sports_terminal.front_office.draft_assets.v1';
@@ -64,8 +68,9 @@ class FrontOfficeRegistryService {
   /// Cache-first product read.
   ///
   /// Player pages and the Trade Machine must never be held behind mutable
-  /// front-office networking. Return the last known browser snapshot
-  /// immediately and refresh the cache in the background for the next read.
+  /// front-office networking. Return the published static snapshot merged with
+  /// any newer browser cache immediately, then refresh the mutable cache in the
+  /// background for the next read.
   Future<FrontOfficeRegistrySnapshot> load({
     required AppSession session,
     String season = '2025-26',
@@ -120,8 +125,11 @@ class FrontOfficeRegistryService {
     );
   }
 
-  /// Reads only the browser's last known front-office snapshot.
+  /// Reads the published static registry plus the browser's newer local cache.
+  /// Local cached rows win by record ID, so mutable updates overlay rather than
+  /// rewrite the immutable published snapshot.
   Future<FrontOfficeRegistrySnapshot> loadCached() async {
+    final staticSnapshot = await _staticRepository.load();
     final results = await Future.wait([
       _loadCachedCollection(_contractsKey),
       _loadCachedCollection(_positionsKey),
@@ -129,10 +137,10 @@ class FrontOfficeRegistryService {
       _loadCachedCollection(_ledgerKey),
     ]);
     return FrontOfficeRegistrySnapshot(
-      contracts: results[0],
-      teamPositions: results[1],
-      draftAssets: results[2],
-      ledger: results[3],
+      contracts: _mergeById(staticSnapshot.contracts, results[0]),
+      teamPositions: _mergeById(staticSnapshot.teamPositions, results[1]),
+      draftAssets: _mergeById(staticSnapshot.draftAssets, results[2]),
+      ledger: _mergeById(staticSnapshot.ledger, results[3]),
       remoteAvailable: false,
     );
   }
@@ -285,6 +293,23 @@ class FrontOfficeRegistryService {
     rows.insert(0, item);
     await _store.saveString(cacheKey, jsonEncode(rows));
     return item;
+  }
+
+  static List<Map<String, dynamic>> _mergeById(
+    List<Map<String, dynamic>> published,
+    List<Map<String, dynamic>> local,
+  ) {
+    final merged = <String, Map<String, dynamic>>{};
+    var anonymous = 0;
+    for (final row in published) {
+      final id = row['id']?.toString() ?? '';
+      merged[id.isEmpty ? 'published-${anonymous++}' : id] = row;
+    }
+    for (final row in local) {
+      final id = row['id']?.toString() ?? '';
+      merged[id.isEmpty ? 'local-${anonymous++}' : id] = row;
+    }
+    return merged.values.toList();
   }
 
   static List<Map<String, dynamic>> _list(Object? value) {
