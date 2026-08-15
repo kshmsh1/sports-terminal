@@ -9,40 +9,98 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
-    # Bloomberg-inspired primitives remain implemented, but the visible
-    # customer experience is website-first. The blueprint is a capability
-    # contract rather than a requirement to surround every page with chrome.
+    # Advanced Bloomberg-inspired primitives remain implemented, but the
+    # default customer experience is now a conventional NBA website backed by
+    # the canonical historical warehouse.
     "lib/widgets/app_entry_gate.dart": (
-        "TraditionalWebsiteShell",
-        "conventional",
-        "responsive website",
+        "TraditionalWebsiteShellV2",
     ),
-    "lib/widgets/traditional_website_shell.dart": (
-        "traditional_website_shell_impl.dart",
-    ),
-    "lib/widgets/traditional_website_shell_impl.dart": (
+    "lib/widgets/traditional_website_shell_v2.dart": (
         "Home",
-        "NBA",
         "Stats",
-        "Analytics",
+        "Advanced Stats",
         "Trade Machine",
-        "Front Office",
-        "deliberately detached from the primary customer navigation",
-        "WebsiteNbaDataGate",
+        "Search players & teams",
+        "WebsiteNbaHomeDashboard",
         "WebsiteNbaStatsScreen",
+        "WebsiteNbaAdvancedStatsScreen",
+        "WebsiteTradeMachineScreen",
     ),
-    "lib/widgets/website_nba_data_gate.dart": (
-        "NBA data is not installed yet",
-        "will not invent player statistics",
-        "WebsiteNbaDataUnavailable",
+    "lib/services/website_nba_api_service.dart": (
+        "/v2/nba/history/seasons",
+        "loadHistoricalSeason",
+        "/dossier",
+        "/entities/search",
+        "canonical historical warehouse/API is the primary source",
+    ),
+    "lib/screens/website_nba_home_dashboard.dart": (
+        "NBA Dashboard",
+        "League leaders",
+        "Teams",
+        "openWebsiteNbaPlayerPage",
+        "openWebsiteNbaTeamPage",
     ),
     "lib/screens/website_nba_stats_screen.dart": (
         "NBA Stats",
         "Regular Season",
         "Playoffs",
         "Search players",
+        "Team",
+        "Position",
+        "GP",
+        "MPG",
+        "PPG",
+        "RPG",
+        "APG",
+        "SPG",
+        "BPG",
+        "TOV",
+        "FG%",
+        "3P%",
+        "FT%",
         "DataTable",
+        "openWebsiteNbaPlayerPage",
+        "openWebsiteNbaTeamPage",
     ),
+    "lib/screens/website_nba_advanced_stats_screen.dart": (
+        "Advanced Stats",
+        "Shooting & Efficiency",
+        "Playmaking & Creation",
+        "Defense",
+        "Rebounding",
+        "Impact",
+        "Rate Adjusted",
+        "Clutch",
+        "Gravity & Spacing",
+        "On / Off",
+        "Lineups & Play Types",
+        "will not manufacture values",
+    ),
+    "lib/screens/website_nba_entity_pages.dart": (
+        "WebsiteNbaPlayerPage",
+        "WebsiteNbaTeamPage",
+        "Career statistics",
+        "Contract",
+        "Awards & honors",
+        "Recent games",
+        "Season history",
+    ),
+    "lib/screens/website_trade_machine_screen.dart": (
+        "NBA Trade Machine",
+        "TradeMachineEngine",
+        "Draft assets",
+        "salary_source",
+        "Trade passes modeled structural checks",
+        "Final execution still requires authoritative current contracts",
+    ),
+    "scripts/open_terminal.sh": (
+        "data/warehouse/nba_history.sqlite",
+        "SPORTS_TERMINAL_NBA_HISTORY_DB",
+        "build_historical_nba_canonical.py",
+        "never downloads or scrapes a sports source silently",
+    ),
+    # Deep professional capabilities remain in the repository for secondary
+    # workflows without being forced into the primary website chrome.
     "lib/widgets/blueprint_terminal_frame.dart": (
         "TerminalCommandBar",
         "TerminalStatusBar",
@@ -56,11 +114,6 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
         "TerminalContextRail",
         "TerminalIntelligenceRail",
         "TerminalDensitySelector",
-    ),
-    "docs/traditional_website_ux_reset.md": (
-        "conventional responsive website",
-        "Python Lab and spreadsheet/Excel-style Workspace are deliberately detached",
-        "Missing source data must never be hidden by fabricated statistics",
     ),
     "docs/sports_terminal_blueprint_status.json": (
         '"sports-terminal-master-blueprint-v1"',
@@ -114,6 +167,7 @@ def main() -> int:
         "RoleResearchAugmentedShell(",
         "LaunchRoleProductShell(",
         "AdminNbaTerminalOverlay(",
+        "TraditionalWebsiteShell(",
     ):
         assertions += 1
         if forbidden not in entry_text:
@@ -121,10 +175,10 @@ def main() -> int:
         else:
             failures.append({
                 "path": "lib/widgets/app_entry_gate.dart",
-                "missing": f"must not mount {forbidden}",
+                "missing": f"default customer entry must not mount {forbidden}",
             })
 
-    website_text = (ROOT / "lib/widgets/traditional_website_shell_impl.dart").read_text(encoding="utf-8")
+    website_text = (ROOT / "lib/widgets/traditional_website_shell_v2.dart").read_text(encoding="utf-8")
     for forbidden in (
         "label: 'Workspace'",
         "label: 'Python Lab'",
@@ -139,7 +193,7 @@ def main() -> int:
             passed += 1
         else:
             failures.append({
-                "path": "lib/widgets/traditional_website_shell_impl.dart",
+                "path": "lib/widgets/traditional_website_shell_v2.dart",
                 "missing": f"primary website must not expose {forbidden}",
             })
 
@@ -158,7 +212,7 @@ def main() -> int:
 
     payload = {
         "contract": "sports-terminal-blueprint-converged-platform-v4",
-        "presentation": "traditional-responsive-website",
+        "presentation": "warehouse-first-traditional-responsive-website",
         "composes": [
             "sports-terminal-code-complete-local-review-v3",
             "sports-terminal-master-blueprint-v1",
