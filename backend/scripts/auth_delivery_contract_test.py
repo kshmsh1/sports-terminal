@@ -9,6 +9,7 @@ from app.auth_api import init_auth_db
 from app.auth_delivery import AuthDeliveryTokenService
 from app.migrations import run_migrations
 from app.main import make_id, now_iso
+from app.production_bootstrap import bind_database_boundary
 
 
 def main() -> None:
@@ -17,6 +18,7 @@ def main() -> None:
         os.environ.pop("SPORTS_TERMINAL_DATABASE_URL", None)
         with tempfile.TemporaryDirectory() as directory:
             database.DEFAULT_SQLITE_PATH = Path(directory) / "delivery-token.db"
+            bind_database_boundary()
             init_auth_db()
             run_migrations()
             with database.connect() as connection:
