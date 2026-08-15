@@ -53,7 +53,11 @@ class CompatCursor:
         return self._wrap(self._cursor.fetchone())
 
     def fetchall(self) -> list[CompatRow]:
-        return [self._wrap(row) for row in self._cursor.fetchall() if row is not None]  # type: ignore[misc]
+        return [
+            wrapped
+            for row in self._cursor.fetchall()
+            if (wrapped := self._wrap(row)) is not None
+        ]
 
     def __iter__(self) -> Iterator[CompatRow]:
         for row in self._cursor:
@@ -109,6 +113,10 @@ _INSERT_OR_IGNORE = re.compile(r"\bINSERT\s+OR\s+IGNORE\s+INTO\b", re.IGNORECASE
 _AUTOINCREMENT_PK = re.compile(
     r"\bINTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT\b", re.IGNORECASE
 )
+_PRAGMA_TABLE_INFO = re.compile(
+    r"^PRAGMA\s+table_info\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)\s*;?$",
+    re.IGNORECASE,
+)
 
 
 def translate_sql(sql: str, *, backend: str) -> str:
@@ -117,12 +125,30 @@ def translate_sql(sql: str, *, backend: str) -> str:
     statement = sql.strip()
     if not statement:
         return statement
+    pragma_table = _PRAGMA_TABLE_INFO.match(statement)
+    if pragma_table:
+        table = pragma_table.group(1)
+        return (
+            "SELECT ordinal_position - 1 AS cid, column_name AS name, data_type AS type, "
+            "CASE WHEN is_nullable = 'NO' THEN 1 ELSE 0 END AS notnull, "
+            "column_default AS dflt_value, 0 AS pk "
+            "FROM information_schema.columns "
+            f"WHERE table_schema = 'public' AND table_name = '{table}' "
+            "ORDER BY ordinal_position"
+        )
     if statement.upper().startswith("PRAGMA "):
+        # Non-schema SQLite PRAGMAs have no Postgres equivalent and are no-ops.
         return "SELECT 1"
     if "sqlite_master" in statement:
         statement = re.sub(
             r"SELECT\s+name\s+FROM\s+sqlite_master\s+WHERE\s+type\s*=\s*'table'\s+ORDER\s+BY\s+name",
             "SELECT table_name AS name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name",
+            statement,
+            flags=re.IGNORECASE,
+        )
+        statement = re.sub(
+            r"SELECT\s+name\s+FROM\s+sqlite_master\s+WHERE\s+type\s*=\s*'table'",
+            "SELECT table_name AS name FROM information_schema.tables WHERE table_schema = 'public'",
             statement,
             flags=re.IGNORECASE,
         )
