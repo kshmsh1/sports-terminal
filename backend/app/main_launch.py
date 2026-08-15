@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from . import front_office_api as front_office_module
 from . import launch_api as launch_module
+from . import production_bootstrap as production_bootstrap_module
 from .auth_api import router as auth_router
 from .auth_guard import enforce_launch_auth
 from .authorization_guard import enforce_launch_authorization
@@ -26,10 +27,17 @@ from .nba_awards_api import router as nba_awards_router
 from .nba_data_api import router as nba_data_router
 from .nba_terminal_api import router as nba_terminal_router
 from .operations import launch_operations_middleware
+from .production_readiness_api import router as production_readiness_router
 from .profile_api import router as profile_router
 from .python_runtime_api import router as python_runtime_router
 from .trust_safety_api import router as trust_safety_router
 from .workspace_api import router as workspace_router
+
+# Rebind every already-imported legacy route module that copied `connect` from
+# app.main. This occurs before FastAPI startup, so the existing init_db/startup
+# handlers use the managed database adapter without a route-by-route rewrite.
+_BOUND_DATABASE_MODULES = production_bootstrap_module.bind_database_boundary()
+_BOOTSTRAP_STATUS = None
 
 launch_module._ensure_organization = ensure_organization
 front_office_module._record_dimensions = record_dimensions
@@ -43,9 +51,9 @@ front_office_module.front_office_reconciliation = hardened_reconciliation(
 )
 
 app.title = "Sports Terminal Launch API"
-app.version = "1.9.0"
+app.version = "2.0.0"
 app.description = (
-    "Launch-oriented Sports Terminal API for authentication, certified and historical NBA data, "
+    "Production-oriented Sports Terminal API for authentication, certified and historical NBA data, "
     "canonical awards and voting, canonical contracts and draft assets, transaction ledgers, "
     "ranked community discovery, threaded discussion, moderation and messaging, isolated Python "
     "analysis, customer operations, launch automation, organization governance, versioned "
@@ -55,6 +63,12 @@ app.description = (
 app.middleware("http")(enforce_launch_auth)
 app.middleware("http")(launch_operations_middleware)
 app.middleware("http")(enforce_launch_authorization)
+
+
+@app.on_event("startup")
+def production_bootstrap_startup() -> None:
+    global _BOOTSTRAP_STATUS
+    _BOOTSTRAP_STATUS = production_bootstrap_module.bootstrap()
 
 
 def _attach_router_routes(router) -> None:
@@ -110,3 +124,4 @@ app.include_router(python_runtime_router)
 app.include_router(customer_operations_router)
 app.include_router(automation_governance_router)
 app.include_router(completion_status_router)
+app.include_router(production_readiness_router)
