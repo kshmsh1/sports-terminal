@@ -76,10 +76,18 @@ class WebsiteNbaApiService {
     );
   }
 
-  Future<Map<String, dynamic>> playerDossier(String playerKey) {
+  Future<Map<String, dynamic>> playerDossier(
+    String playerKey, {
+    String seasonType = 'combined',
+    int recentGames = 30,
+  }) {
     return _get(
       '/v2/nba/history/players/${Uri.encodeComponent(playerKey)}/dossier',
-      query: const {'league': 'NBA', 'season_type': 'combined', 'recent_games': '30'},
+      query: {
+        'league': 'NBA',
+        'season_type': seasonType,
+        'recent_games': '$recentGames',
+      },
     );
   }
 
