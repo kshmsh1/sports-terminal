@@ -55,8 +55,8 @@ def main() -> None:
             assert "app.database" in rebound
             status = bootstrap(_config())
             assert status.database_backend == "sqlite"
-            assert status.schema_version == "0005"
-            assert status.target_schema_version == "0005"
+            assert status.schema_version == "0006"
+            assert status.target_schema_version == "0006"
             assert status.auto_migrated is True
 
         print("production_bootstrap_contract: PASS")
