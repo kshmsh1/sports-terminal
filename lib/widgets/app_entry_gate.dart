@@ -5,6 +5,7 @@ import '../controllers/internal_workspace_controller.dart';
 import '../models/app_session.dart';
 import '../screens/login_screen.dart';
 import 'admin_nba_terminal_overlay.dart';
+import 'blueprint_terminal_frame.dart';
 import 'role_research_augmented_shell.dart';
 import 'terminal_shell.dart';
 
@@ -30,16 +31,24 @@ class AppEntryGate extends StatelessWidget {
         if (session == null) {
           return LoginScreen(controller: authController);
         }
-        if (session.role.canAccessPlatformAdmin) {
-          return AdminNbaTerminalOverlay(
-            session: session,
-            child: const TerminalShell(),
-          );
-        }
-        return RoleResearchAugmentedShell(
+
+        final product = session.role.canAccessPlatformAdmin
+            ? AdminNbaTerminalOverlay(
+                session: session,
+                child: const TerminalShell(),
+              )
+            : RoleResearchAugmentedShell(
+                session: session,
+                workspaceController: workspaceController,
+                onSignOut: authController.signOut,
+              );
+
+        // The blueprint frame is deliberately outside every authenticated
+        // product role so command, density and source/release status behavior
+        // stay uniform across the platform rather than being page-local.
+        return BlueprintTerminalFrame(
           session: session,
-          workspaceController: workspaceController,
-          onSignOut: authController.signOut,
+          child: product,
         );
       },
     );
