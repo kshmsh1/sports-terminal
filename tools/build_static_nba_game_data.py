@@ -236,6 +236,7 @@ def main() -> int:
     with sqlite3.connect(str(database)) as db:
         db.row_factory = sqlite3.Row
         games = game_metadata(db)
+        pbp_view_available = table_or_view_exists(db, "canon_fact_play_by_play")
         if detail_current:
             detail_count = int(detail.get("game_files") or 0)
             detail_files = {
@@ -276,7 +277,7 @@ def main() -> int:
     if args.include_pbp or not pbp:
         manifest["play_by_play"] = {
             "contract": "sports-terminal-static-pbp-v1",
-            "materialized": bool(args.include_pbp and (pbp_game_count > 0 or table_or_view_exists(sqlite3.connect(str(database)), "canon_fact_play_by_play"))),
+            "materialized": bool(args.include_pbp and pbp_view_available),
             "game_files": pbp_game_count,
             "event_rows": pbp_event_count,
             "runtime_api_required": False,
