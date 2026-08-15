@@ -61,7 +61,7 @@ NbaPlayerCareerSnapshot _career(String key, List<double?> ppg) => _snapshot(
       key,
       [
         for (var i = 0; i < ppg.length; i++)
-          _season('200${i}-0${i + 1}', ppg: ppg[i]),
+          _season('200$i-0${i + 1}', ppg: ppg[i]),
       ],
     );
 
@@ -69,7 +69,7 @@ NbaPlayerCareerSnapshot _careerWithTs(String key, List<double> values) => _snaps
       key,
       [
         for (var i = 0; i < values.length; i++)
-          _season('200${i}-0${i + 1}', ppg: 10, ts: values[i]),
+          _season('200$i-0${i + 1}', ppg: 10, ts: values[i]),
       ],
     );
 
