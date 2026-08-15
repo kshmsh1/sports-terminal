@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../services/nba_entity_intelligence_repository.dart';
 import '../services/nba_game_schedule_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
+import 'nba_franchise_navigation.dart';
 import 'nba_game_navigation.dart';
 import 'nba_team_trend_panel.dart';
 
@@ -87,6 +89,10 @@ class NbaTeamGameLogPanel extends StatelessWidget {
                   runSpacing: 6,
                   alignment: WrapAlignment.end,
                   children: [
+                    _NbaTeamFranchiseLink(
+                      teamId: teamId,
+                      onOpenTeam: onOpenTeam,
+                    ),
                     if (seed.supportedSeason.trim().isNotEmpty)
                       TextButton.icon(
                         key: ValueKey('team-open-season-$teamId'),
@@ -250,5 +256,64 @@ class NbaTeamGameLogPanel extends StatelessWidget {
           label,
           style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.w900),
         ),
+      );
+}
+
+class _NbaTeamFranchiseLink extends StatefulWidget {
+  const _NbaTeamFranchiseLink({
+    required this.teamId,
+    required this.onOpenTeam,
+  });
+
+  final String teamId;
+  final ValueChanged<String> onOpenTeam;
+
+  @override
+  State<_NbaTeamFranchiseLink> createState() => _NbaTeamFranchiseLinkState();
+}
+
+class _NbaTeamFranchiseLinkState extends State<_NbaTeamFranchiseLink> {
+  late Future<Map<String, dynamic>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  @override
+  void didUpdateWidget(_NbaTeamFranchiseLink oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.teamId != widget.teamId) _future = _load();
+  }
+
+  Future<Map<String, dynamic>> _load() => const NbaEntityIntelligenceRepository().teamDossier(
+        widget.teamId,
+        league: 'NBA',
+        seasonType: 'regular',
+        recentGames: 0,
+      );
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>>(
+        future: _future,
+        builder: (context, snapshot) {
+          final franchise = snapshot.data?['franchise'];
+          if (franchise is! Map) return const SizedBox.shrink();
+          final franchiseKey = franchise['franchise_key']?.toString().trim() ?? '';
+          final franchiseName = franchise['canonical_name']?.toString().trim() ?? '';
+          if (franchiseKey.isEmpty) return const SizedBox.shrink();
+          return TextButton.icon(
+            key: ValueKey('team-open-franchise-${widget.teamId}'),
+            onPressed: () => openNbaFranchisePage(
+              context,
+              franchiseKey: franchiseKey,
+              franchiseName: franchiseName.isEmpty ? franchiseKey : franchiseName,
+              onOpenTeam: widget.onOpenTeam,
+            ),
+            icon: const Icon(Icons.account_tree_rounded, size: 16),
+            label: const Text('Franchise'),
+          );
+        },
       );
 }
