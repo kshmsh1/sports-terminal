@@ -90,8 +90,8 @@ jobs:
       - name: Audit page scroll ownership
         run: python tools/audit_page_scroll_ownership.py --check
 
-      - name: Audit canonical NBA platform graph v11
-        run: python tools/audit_nba_platform_graph_v11.py --check
+      - name: Audit canonical NBA platform graph v12
+        run: python tools/audit_nba_platform_graph_v12.py --check
 
       - name: Test launch backend contracts
         id: backend_contract
