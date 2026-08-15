@@ -66,7 +66,12 @@ class WebsiteNbaApiService {
   Future<NbaTerminalSeedSnapshot> seasonSnapshot(
     String season, {
     String seasonType = 'regular',
-    bool includeGameLogs = true,
+    // Website index/dashboard/stat surfaces only need season-level facts,
+    // teams and games to render. Pulling the compatibility endpoint's default
+    // 50,000 player-game rows made every primary page wait on a massive JSON
+    // response before first paint. Player/team entity pages fetch their own
+    // bounded recent-game dossiers separately when detailed logs are needed.
+    bool includeGameLogs = false,
   }) {
     return _seedRepository.loadHistoricalSeason(
       season,
