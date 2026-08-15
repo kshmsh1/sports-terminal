@@ -171,7 +171,9 @@ class _NbaPlayerCareerComparisonResearchWorkbenchState
   Future<void> _toggleSaved() async {
     final next = await widget.stateStore.toggleSaved(_item());
     if (!mounted) return;
-    setState(() => _stateFuture = Future.value(next));
+    setState(() {
+      _stateFuture = Future.value(next);
+    });
   }
 
   Future<void> _toggleWatch() async {
