@@ -44,6 +44,7 @@ CONTRACTS = (
     "metrics_api_contract_test.py",
     "alerting_contract_test.py",
     "sso_contract_test.py",
+    "oidc_login_contract_test.py",
     "organization_security_contract_test.py",
     "auth_policy_enforcement_contract_test.py",
 )
