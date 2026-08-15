@@ -15,7 +15,7 @@ For local PostgreSQL verification, use the repository's `backend/docker-compose.
 For a target production database:
 
 1. Take and verify a database backup before schema promotion when upgrading an existing database.
-2. Run `PYTHONPATH=. python scripts/migrate.py` from `backend/` against the target PostgreSQL database. On a brand-new database, the migration command first creates the legacy core schema that numbered migrations extend, then applies migrations `0001+`.
+2. Run `PYTHONPATH=. python scripts/migrate.py` from `backend/` against the target PostgreSQL database. On a brand-new database, the migration command first creates the legacy core schema that numbered migrations extend, then applies all numbered migrations.
 3. Confirm the reported schema version equals the latest migration version.
 4. Start the application with `SPORTS_TERMINAL_AUTO_MIGRATE=false`.
 5. Check `/v2/operations/production-readiness` and `/v2/operations/database` from an authenticated operator context.
@@ -40,7 +40,13 @@ A successful password reset revokes existing sessions. Operators should investig
 
 ## Organization security and SSO
 
-Organization policy can require MFA, constrain maximum session lifetime, and configure allowed email domains. OIDC connection metadata, encrypted client secrets, and one-time state/nonce handling are implemented, but **SSO enforcement is intentionally unavailable** until ID-token/JWKS callback verification and SSO-authenticated session issuance are complete. The API rejects attempts to set `sso_required=true` before that capability lands; configuring an OIDC connection alone does not claim a working SSO login flow.
+Organization policy can require MFA or SSO, constrain maximum session lifetime, and restrict allowed email domains. OIDC uses the authorization-code flow with PKCE S256. Login state and nonce are purpose-separated and single-use; the PKCE verifier and client secret are authenticated-encrypted at rest.
+
+The callback exchanges the authorization code at the configured HTTPS token endpoint, verifies the signed ID token using the configured HTTPS JWKS endpoint, restricts accepted signing algorithms, checks issuer, audience, expiry, issued-at time, nonce and verified-email state, and enforces connection and organization email-domain policy. JWKS data is cached briefly and refreshed for key rotation.
+
+Sports Terminal does not silently provision accounts from an IdP. A verified provider identity must map to an existing active Sports Terminal account with the same verified email and an active membership in the target organization. Provider subject links are durable and collision-protected. Successful sessions are marked `sso` or `sso_mfa`; an organization requiring MFA only accepts an SSO login when the IdP's `amr` claim supplies recognized MFA evidence.
+
+Set `SPORTS_TERMINAL_PUBLIC_API_ORIGIN` to the externally reachable HTTPS API origin and register the resulting `/v2/auth/sso/{organization_id}/callback` URI with the chosen IdP. Repository code does not purchase or create an IdP tenant.
 
 ## Billing and entitlements
 
@@ -63,6 +69,14 @@ Every request receives an `X-Request-ID`. API logs are structured JSON and inclu
 `/v2/operations/metrics` exposes vendor-neutral JSON metrics and `/v2/operations/metrics/prometheus` exposes Prometheus-compatible text. `/v2/operations/alerts` evaluates health failure, stale/missing backups, security-email failures, billing-webhook failures, and missing active releases without requiring an external monitoring vendor.
 
 For an incident: preserve logs and audit evidence, stop unsafe promotion/automation, rotate compromised secrets, revoke affected sessions, activate the last known-good certified data release when relevant, restore from a verified backup only when needed, and document the recovery action in the platform audit trail.
+
+## Local validation and review session
+
+GitHub Actions are not required to review or validate the application. From the repository root, `./scripts/validate_local.sh` runs the deterministic backend/production contracts and recursive platform audits locally, then runs Flutter dependency resolution, analysis, tests and a release web build when Flutter is installed. `./scripts/validate_local.sh --backend-only` skips Flutter.
+
+`./scripts/open_terminal.sh` starts a zero-cost local development session using SQLite, the checked-in NBA data/assets and a loopback backend. It opens the Flutter web application at `http://127.0.0.1:8080` and the API at `http://127.0.0.1:8000`. `./scripts/open_terminal.sh --postgres` instead starts the repository's loopback-only local PostgreSQL container and runs the PostgreSQL smoke check before launching.
+
+Neither local command dispatches GitHub Actions or provisions a hosted service.
 
 ## GitHub / CI cost safety
 
