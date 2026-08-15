@@ -15,13 +15,16 @@ for arg in "$@"; do
 Usage: bash scripts/open_terminal.sh [--postgres] [--no-browser]
 
 Starts a local Sports Terminal review session without hosted services.
-Default: SQLite + locally available NBA data.
+Default: SQLite + the canonical local NBA history warehouse.
   --postgres    Use the repository's loopback-only Postgres 17 container.
   --no-browser  Do not automatically open http://127.0.0.1:8080.
 
-When the Flutter NBA seed is missing, the launcher automatically rebuilds or
-syncs it when an existing local raw catalog, warehouse, or exported seed is
-available. It never invents sports data and never downloads a source silently.
+The website reads NBA data through the backend from
+  data/warehouse/nba_history.sqlite
+rather than requiring generated Flutter seed assets. If that warehouse is
+missing but already-downloaded historical source packages exist under
+raw/historical, the launcher imports and canonicalizes those local files.
+It never downloads or scrapes a sports source silently.
 
 Stop the session with Ctrl-C.
 EOF
@@ -46,58 +49,95 @@ if [[ "${SPORTS_TERMINAL_SKIP_DEP_INSTALL:-false}" != "true" ]]; then
   "$PYTHON" -m pip install --disable-pip-version-check -q -r backend/requirements.txt
 fi
 
-prepare_nba_seed() {
-  local asset_dir="$ROOT/assets/data/nba/terminal_seed/nba_2025"
-  local asset_manifest="$asset_dir/manifest.json"
-  local exported_seed="$ROOT/data/terminal_seed/nba_2025"
-  local warehouse="$ROOT/data/warehouse/nba_2025.sqlite"
-  local raw_catalog="$ROOT/raw/basketball_reference/catalog.sqlite"
+HISTORY_DB="$ROOT/data/warehouse/nba_history.sqlite"
+export SPORTS_TERMINAL_NBA_HISTORY_DB="$HISTORY_DB"
 
-  if [[ -s "$asset_manifest" ]]; then
-    echo "==> NBA website data is ready"
+history_db_has_canonical_tables() {
+  [[ -s "$HISTORY_DB" ]] || return 1
+  "$PYTHON" - "$HISTORY_DB" <<'PY' >/dev/null 2>&1
+import sqlite3, sys
+path = sys.argv[1]
+with sqlite3.connect(path) as db:
+    names = {
+        row[0]
+        for row in db.execute(
+            "SELECT name FROM sqlite_master WHERE type IN ('table','view')"
+        )
+    }
+required = {"dim_player", "dim_team", "fact_player_season"}
+raise SystemExit(0 if required.issubset(names) else 1)
+PY
+}
+
+history_db_has_import_inventory() {
+  [[ -s "$HISTORY_DB" ]] || return 1
+  "$PYTHON" - "$HISTORY_DB" <<'PY' >/dev/null 2>&1
+import sqlite3, sys
+with sqlite3.connect(sys.argv[1]) as db:
+    row = db.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='historical_table_inventory'"
+    ).fetchone()
+raise SystemExit(0 if row else 1)
+PY
+}
+
+local_historical_sources_exist() {
+  [[ -d "$ROOT/raw/historical" ]] || return 1
+  find "$ROOT/raw/historical" -type f \
+    \( -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.db' -o -name '*.csv' \) \
+    -print -quit 2>/dev/null | grep -q .
+}
+
+prepare_nba_history() {
+  mkdir -p "$ROOT/data/warehouse"
+
+  if history_db_has_canonical_tables; then
+    echo "==> Using canonical NBA history warehouse: data/warehouse/nba_history.sqlite"
     return 0
   fi
 
-  if [[ -s "$exported_seed/manifest.json" ]]; then
-    echo "==> Syncing existing NBA seed into Flutter assets"
-    if "$PYTHON" tools/sync_nba_terminal_assets.py \
-      --seed "$exported_seed" \
-      --asset-output "$asset_dir" \
-      --clean; then
-      return 0
+  if history_db_has_import_inventory; then
+    echo "==> Canonicalizing the existing historical NBA warehouse"
+    if "$PYTHON" tools/build_historical_nba_canonical.py --database "$HISTORY_DB"; then
+      if history_db_has_canonical_tables; then
+        echo "==> Canonical NBA history warehouse is ready"
+        return 0
+      fi
     fi
-    echo "    NBA seed sync failed; the website will show a clean data-setup state." >&2
-    return 0
+    echo "    Existing historical warehouse could not be canonicalized." >&2
   fi
 
-  if [[ -s "$warehouse" ]]; then
-    echo "==> Exporting NBA website data from the existing local warehouse"
-    if "$PYTHON" tools/run_nba_terminal_data_pipeline.py \
-      --skip-warehouse-build; then
-      return 0
+  if local_historical_sources_exist; then
+    echo "==> Importing already-downloaded historical NBA source packages"
+    if "$PYTHON" tools/run_historical_nba_import.py \
+      --source-root "$ROOT/raw/historical" \
+      --output "$HISTORY_DB" \
+      --report "$ROOT/data/warehouse/nba_history_import_report.json"; then
+      echo "==> Building canonical NBA dimensions and facts"
+      if "$PYTHON" tools/build_historical_nba_canonical.py --database "$HISTORY_DB"; then
+        if history_db_has_canonical_tables; then
+          echo "==> Canonical NBA history warehouse is ready"
+          return 0
+        fi
+      fi
     fi
-    echo "    NBA seed export failed; the website will show a clean data-setup state." >&2
-    return 0
-  fi
-
-  if [[ -s "$raw_catalog" ]]; then
-    echo "==> Building NBA website data from the existing local source catalog"
-    if "$PYTHON" tools/run_nba_terminal_data_pipeline.py; then
-      return 0
-    fi
-    echo "    NBA data preparation failed; the website will show a clean data-setup state." >&2
-    return 0
+    echo "    Local historical source import did not produce a usable canonical warehouse." >&2
   fi
 
   cat <<'EOF'
-==> NBA source data is not installed on this checkout
-    The website will still launch, but NBA data-dependent pages will show a
-    friendly setup state instead of an asset exception. Sports Terminal will
-    never synthesize player statistics to hide a missing source dataset.
+==> Canonical NBA history warehouse is not available on this checkout
+    Expected: data/warehouse/nba_history.sqlite
+
+    Sports Terminal no longer treats generated Flutter seed assets as the
+    source of truth. If you previously downloaded/imported the historical NBA
+    datasets, restore either the nba_history.sqlite warehouse or the local
+    raw/historical source packages and restart this launcher.
+
+    No network download or scraper has been started automatically.
 EOF
 }
 
-prepare_nba_seed
+prepare_nba_history
 
 echo "==> Resolving Flutter dependencies"
 flutter pub get >/dev/null
@@ -202,6 +242,7 @@ cat <<'EOF'
 Sports Terminal is running locally.
   Website:  http://127.0.0.1:8080
   API:      http://127.0.0.1:8000
+  NBA DB:   data/warehouse/nba_history.sqlite
   Backend:  .data/logs/backend.log
   Flutter:  .data/logs/flutter.log
 
