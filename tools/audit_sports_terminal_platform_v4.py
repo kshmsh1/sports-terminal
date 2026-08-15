@@ -9,10 +9,23 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
+    # The Bloomberg-inspired primitives remain implemented, but the customer
+    # experience is intentionally website-first. The blueprint is an
+    # underlying capability contract rather than a requirement to surround
+    # every page with terminal chrome.
     "lib/widgets/app_entry_gate.dart": (
-        "BlueprintTerminalFrame",
-        "session: session",
-        "child: product",
+        "TraditionalWebsiteShell",
+        "conventional",
+        "responsive website",
+    ),
+    "lib/widgets/traditional_website_shell.dart": (
+        "Home",
+        "NBA",
+        "Stats",
+        "Analytics",
+        "Trade Machine",
+        "Front Office",
+        "deliberately detached from the primary customer navigation",
     ),
     "lib/widgets/blueprint_terminal_frame.dart": (
         "TerminalCommandBar",
@@ -27,6 +40,11 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
         "TerminalContextRail",
         "TerminalIntelligenceRail",
         "TerminalDensitySelector",
+    ),
+    "docs/traditional_website_ux_reset.md": (
+        "conventional responsive website",
+        "Python Lab and spreadsheet/Excel-style Workspace are deliberately detached",
+        "Missing source data must never be hidden by fabricated statistics",
     ),
     "docs/sports_terminal_blueprint_status.json": (
         '"sports-terminal-master-blueprint-v1"',
@@ -74,6 +92,35 @@ def main() -> int:
             else:
                 failures.append({"path": relative, "missing": token})
 
+    # Guard the core simplification explicitly. These systems may remain in the
+    # codebase, but they must not be mounted by the authenticated entry gate.
+    entry_text = (ROOT / "lib/widgets/app_entry_gate.dart").read_text(encoding="utf-8")
+    for forbidden in (
+        "BlueprintTerminalFrame(",
+        "RoleResearchAugmentedShell(",
+        "LaunchRoleProductShell(",
+        "AdminNbaTerminalOverlay(",
+    ):
+        assertions += 1
+        if forbidden not in entry_text:
+            passed += 1
+        else:
+            failures.append({"path": "lib/widgets/app_entry_gate.dart", "missing": f"must not mount {forbidden}"})
+
+    website_text = (ROOT / "lib/widgets/traditional_website_shell.dart").read_text(encoding="utf-8")
+    for forbidden in (
+        "label: 'Workspace'",
+        "label: 'Python Lab'",
+        "Checking launch status",
+        "Quick research",
+        "NBA Universe",
+    ):
+        assertions += 1
+        if forbidden not in website_text:
+            passed += 1
+        else:
+            failures.append({"path": "lib/widgets/traditional_website_shell.dart", "missing": f"primary website must not expose {forbidden}"})
+
     legacy_code, legacy_output = _run("tools/audit_production_platform_v3.py")
     blueprint_code, blueprint_output = _run("tools/audit_sports_terminal_blueprint_v1.py")
     if legacy_code != 0:
@@ -89,6 +136,7 @@ def main() -> int:
 
     payload = {
         "contract": "sports-terminal-blueprint-converged-platform-v4",
+        "presentation": "traditional-responsive-website",
         "composes": [
             "sports-terminal-code-complete-local-review-v3",
             "sports-terminal-master-blueprint-v1",
