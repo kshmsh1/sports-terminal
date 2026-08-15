@@ -36,7 +36,10 @@ ENV SPORTS_TERMINAL_ENV=production \
 
 EXPOSE 8000
 
+# Liveness must never initialize or mutate schema. Deeper database/readiness checks
+# are authenticated operational endpoints; the container probe only verifies that
+# Uvicorn is accepting loopback TCP connections.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+  CMD python -c "import socket; s=socket.create_connection(('127.0.0.1', int(__import__('os').environ.get('PORT', '8000'))), 3); s.close()"
 
 CMD ["/app/start_production.sh"]
