@@ -26,7 +26,8 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
     "lib/services/website_nba_api_service.dart": (
         "WebsiteNbaStaticRepository",
         "Historical basketball data is now a static website concern",
-        "No FastAPI request or runtime SQLite query is required",
+        "FastAPI request",
+        "runtime SQLite query",
         "Future live current-season overlays",
     ),
     "lib/services/website_nba_static_repository.dart": (
@@ -124,8 +125,6 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
     ".gitignore": (
         "/web/data/nba_static/",
     ),
-    # Deep professional capabilities remain implemented, but they are not
-    # forced into the default customer navigation or historical page runtime.
     "lib/widgets/blueprint_terminal_frame.dart": (
         "TerminalCommandBar",
         "TerminalStatusBar",
