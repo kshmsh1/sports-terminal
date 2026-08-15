@@ -87,8 +87,21 @@ def main() -> None:
             assert updated["require_mfa"] is True
             assert updated["max_session_days"] == 14
             assert updated["allowed_email_domains"] == ["example.com"]
-            assert security_policy("org_1", admin)["require_mfa"] is True
 
+            required = update_security_policy(
+                "org_1",
+                OrganizationSecurityPolicyUpdate(
+                    require_mfa=True,
+                    sso_required=True,
+                    max_session_days=14,
+                    allowed_email_domains=["example.com"],
+                ),
+                admin,
+            )
+            assert required["sso_required"] is True
+
+            with database.connect() as connection:
+                connection.execute("UPDATE sso_connections SET status = 'disabled' WHERE id = 'sso_1'")
             try:
                 update_security_policy(
                     "org_1",
@@ -102,10 +115,9 @@ def main() -> None:
                 )
             except HTTPException as error:
                 assert error.status_code == 409
-                assert "OIDC callback verification" in str(error.detail)
-                assert "SSO session issuance" in str(error.detail)
+                assert "enabled OIDC connection" in str(error.detail)
             else:
-                raise AssertionError("SSO enforcement must remain unavailable until login completion exists")
+                raise AssertionError("SSO requirement must fail closed without an enabled connection")
 
             wrong_org = request(user_id="usr_admin", role="organization_admin", organization_id="org_2")
             try:
