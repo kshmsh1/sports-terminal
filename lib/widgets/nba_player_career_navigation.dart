@@ -5,6 +5,7 @@ import '../services/nba_entity_intelligence_repository.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import 'nba_franchise_navigation.dart';
 import 'nba_game_navigation.dart';
+import 'nba_player_career_comparison_navigation.dart';
 
 /// Opens the permanent canonical historical Player career route.
 Future<void> openNbaPlayerCareerPage(
@@ -96,6 +97,22 @@ Future<void> openNbaPlayerCareerPage(
             backgroundColor: const Color(0xFF0F151C),
             foregroundColor: const Color(0xFFE8EDF3),
             title: Text('$normalizedName · Career'),
+            actions: [
+              IconButton(
+                key: const ValueKey('player-career-open-comparison'),
+                tooltip: 'Compare historical careers',
+                onPressed: () => openNbaPlayerCareerComparisonPage(
+                  careerContext,
+                  leftPlayerKey: normalizedKey,
+                  leftPlayerName: normalizedName,
+                  league: normalizedLeague,
+                  initialSeasonType: initialSeasonType,
+                  onOpenPlayer: openCareerPlayer,
+                  onOpenSeason: seasonCallback,
+                ),
+                icon: const Icon(Icons.compare_arrows_rounded),
+              ),
+            ],
           ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(22),
