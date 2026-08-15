@@ -9,16 +9,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
-    # The Bloomberg-inspired primitives remain implemented, but the customer
-    # experience is intentionally website-first. The blueprint is an
-    # underlying capability contract rather than a requirement to surround
-    # every page with terminal chrome.
+    # Bloomberg-inspired primitives remain implemented, but the visible
+    # customer experience is website-first. The blueprint is a capability
+    # contract rather than a requirement to surround every page with chrome.
     "lib/widgets/app_entry_gate.dart": (
         "TraditionalWebsiteShell",
         "conventional",
         "responsive website",
     ),
     "lib/widgets/traditional_website_shell.dart": (
+        "traditional_website_shell_impl.dart",
+    ),
+    "lib/widgets/traditional_website_shell_impl.dart": (
         "Home",
         "NBA",
         "Stats",
@@ -26,6 +28,20 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
         "Trade Machine",
         "Front Office",
         "deliberately detached from the primary customer navigation",
+        "WebsiteNbaDataGate",
+        "WebsiteNbaStatsScreen",
+    ),
+    "lib/widgets/website_nba_data_gate.dart": (
+        "NBA data is not installed yet",
+        "will not invent player statistics",
+        "WebsiteNbaDataUnavailable",
+    ),
+    "lib/screens/website_nba_stats_screen.dart": (
+        "NBA Stats",
+        "Regular Season",
+        "Playoffs",
+        "Search players",
+        "DataTable",
     ),
     "lib/widgets/blueprint_terminal_frame.dart": (
         "TerminalCommandBar",
@@ -92,8 +108,6 @@ def main() -> int:
             else:
                 failures.append({"path": relative, "missing": token})
 
-    # Guard the core simplification explicitly. These systems may remain in the
-    # codebase, but they must not be mounted by the authenticated entry gate.
     entry_text = (ROOT / "lib/widgets/app_entry_gate.dart").read_text(encoding="utf-8")
     for forbidden in (
         "BlueprintTerminalFrame(",
@@ -105,21 +119,29 @@ def main() -> int:
         if forbidden not in entry_text:
             passed += 1
         else:
-            failures.append({"path": "lib/widgets/app_entry_gate.dart", "missing": f"must not mount {forbidden}"})
+            failures.append({
+                "path": "lib/widgets/app_entry_gate.dart",
+                "missing": f"must not mount {forbidden}",
+            })
 
-    website_text = (ROOT / "lib/widgets/traditional_website_shell.dart").read_text(encoding="utf-8")
+    website_text = (ROOT / "lib/widgets/traditional_website_shell_impl.dart").read_text(encoding="utf-8")
     for forbidden in (
         "label: 'Workspace'",
         "label: 'Python Lab'",
         "Checking launch status",
         "Quick research",
         "NBA Universe",
+        "SUMMARY",
+        "TERMINAL",
     ):
         assertions += 1
         if forbidden not in website_text:
             passed += 1
         else:
-            failures.append({"path": "lib/widgets/traditional_website_shell.dart", "missing": f"primary website must not expose {forbidden}"})
+            failures.append({
+                "path": "lib/widgets/traditional_website_shell_impl.dart",
+                "missing": f"primary website must not expose {forbidden}",
+            })
 
     legacy_code, legacy_output = _run("tools/audit_production_platform_v3.py")
     blueprint_code, blueprint_output = _run("tools/audit_sports_terminal_blueprint_v1.py")
