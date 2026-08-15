@@ -110,7 +110,9 @@ class DataRightsEnvelope {
             ? other.territories
             : other.territories.isEmpty
                 ? territories
-                : territories.where(other.territories.contains).toList(growable: false),
+                : territories
+                    .where((territory) => other.territories.contains(territory))
+                    .toList(growable: false),
         notes: 'Derived rights are the restrictive intersection of all inputs.',
       );
 }
