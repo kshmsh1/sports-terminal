@@ -4,6 +4,7 @@ import '../services/nba_season_player_leader_engine.dart';
 import '../services/nba_season_playoff_series_engine.dart';
 import '../services/nba_season_team_distribution_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
+import 'nba_player_career_navigation.dart';
 import 'nba_terminal_distribution_chart.dart';
 
 const _bg = Color(0xFF0F151C);
@@ -171,6 +172,27 @@ class _NbaSeasonAnalyticsPanelState extends State<NbaSeasonAnalyticsPanel> {
                               ),
                             ),
                           ),
+                          IconButton(
+                            key: ValueKey(
+                              'season-leader-career-${leader.playerId}',
+                            ),
+                            tooltip: 'Open canonical historical Player Career',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: leader.playerId.trim().isEmpty
+                                ? null
+                                : () => openResolvedNbaPlayerCareerPage(
+                                      context,
+                                      playerId: leader.playerId,
+                                      playerName: leader.playerName,
+                                      league: 'NBA',
+                                      onOpenTeam: widget.onOpenTeam,
+                                    ),
+                            icon: const Icon(
+                              Icons.history_edu_rounded,
+                              size: 16,
+                              color: _blue,
+                            ),
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             _leaderValue(leader),
@@ -243,11 +265,15 @@ class _NbaSeasonAnalyticsPanelState extends State<NbaSeasonAnalyticsPanel> {
                     children: [
                       for (final row in result.observations)
                         TextButton(
-                          key: ValueKey('season-distribution-team-${row.teamId}'),
+                          key: ValueKey(
+                            'season-distribution-team-${row.teamId}',
+                          ),
                           onPressed: widget.onOpenTeam == null
                               ? null
                               : () => widget.onOpenTeam!(row.teamId),
-                          child: Text('${row.abbreviation} ${_teamValue(row.value)}'),
+                          child: Text(
+                            '${row.abbreviation} ${_teamValue(row.value)}',
+                          ),
                         ),
                     ],
                   ),
@@ -283,7 +309,9 @@ class _NbaSeasonAnalyticsPanelState extends State<NbaSeasonAnalyticsPanel> {
                           Row(
                             children: [
                               TextButton(
-                                key: ValueKey('season-playoff-team-${series.teamA.id}'),
+                                key: ValueKey(
+                                  'season-playoff-team-${series.teamA.id}',
+                                ),
                                 onPressed: widget.onOpenTeam == null
                                     ? null
                                     : () => widget.onOpenTeam!(series.teamA.id),
@@ -291,7 +319,9 @@ class _NbaSeasonAnalyticsPanelState extends State<NbaSeasonAnalyticsPanel> {
                               ),
                               const Text('vs', style: TextStyle(color: _muted)),
                               TextButton(
-                                key: ValueKey('season-playoff-team-${series.teamB.id}'),
+                                key: ValueKey(
+                                  'season-playoff-team-${series.teamB.id}',
+                                ),
                                 onPressed: widget.onOpenTeam == null
                                     ? null
                                     : () => widget.onOpenTeam!(series.teamB.id),
@@ -314,14 +344,18 @@ class _NbaSeasonAnalyticsPanelState extends State<NbaSeasonAnalyticsPanel> {
                             children: [
                               for (final game in series.games)
                                 TextButton(
-                                  key: ValueKey('season-playoff-game-${game.gameId}'),
+                                  key: ValueKey(
+                                    'season-playoff-game-${game.gameId}',
+                                  ),
                                   onPressed: widget.onOpenGame == null
                                       ? null
                                       : () => widget.onOpenGame!(
                                             game.gameId,
                                             game.matchupLabel,
                                           ),
-                                  child: Text('${game.gameDate} · ${game.scoreLabel}'),
+                                  child: Text(
+                                    '${game.gameDate} · ${game.scoreLabel}',
+                                  ),
                                 ),
                             ],
                           ),
@@ -345,7 +379,10 @@ class _NbaSeasonAnalyticsPanelState extends State<NbaSeasonAnalyticsPanel> {
       Container(
         width: double.infinity,
         padding: const EdgeInsets.all(11),
-        decoration: BoxDecoration(color: _panel2, border: Border.all(color: _line)),
+        decoration: BoxDecoration(
+          color: _panel2,
+          border: Border.all(color: _line),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -373,7 +410,10 @@ class _NbaSeasonAnalyticsPanelState extends State<NbaSeasonAnalyticsPanel> {
 
   Widget _chip(String label, double? value) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-        decoration: BoxDecoration(color: _bg, border: Border.all(color: _line)),
+        decoration: BoxDecoration(
+          color: _bg,
+          border: Border.all(color: _line),
+        ),
         child: Text(
           '$label ${value == null ? '—' : _teamValue(value)}',
           style: const TextStyle(color: _text, fontSize: 8),
