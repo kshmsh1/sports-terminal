@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+import urllib.parse
 from pathlib import Path
 
 from app import database
@@ -36,8 +37,8 @@ def main() -> None:
                     CREATE TABLE sso_login_states (
                       id TEXT PRIMARY KEY, connection_id TEXT NOT NULL REFERENCES sso_connections(id),
                       state_hash TEXT NOT NULL UNIQUE, nonce_hash TEXT NOT NULL,
-                      redirect_uri TEXT NOT NULL, expires_at TEXT NOT NULL,
-                      consumed_at TEXT, created_at TEXT NOT NULL
+                      redirect_uri TEXT NOT NULL, pkce_verifier_ciphertext TEXT,
+                      expires_at TEXT NOT NULL, consumed_at TEXT, created_at TEXT NOT NULL
                     );
                     """
                 )
@@ -67,12 +68,22 @@ def main() -> None:
                     connection_id=created["id"],
                     redirect_uri="https://terminal.example.com/auth/callback",
                 )
-                assert "response_type=code" in started.authorization_url
-                assert "state=" in started.authorization_url
-                assert "nonce=" in started.authorization_url
+                query = urllib.parse.parse_qs(urllib.parse.urlparse(started.authorization_url).query)
+                assert query["response_type"] == ["code"]
+                assert query["code_challenge_method"] == ["S256"]
+                assert query["code_challenge"][0]
+                assert query["state"] == [started.state]
+                assert query["nonce"][0]
+                state_row = connection.execute(
+                    "SELECT pkce_verifier_ciphertext FROM sso_login_states WHERE connection_id = ?",
+                    (created["id"],),
+                ).fetchone()
+                assert state_row is not None
+                assert str(state_row["pkce_verifier_ciphertext"]).startswith("v1.")
                 consumed = service.consume_state(connection, plaintext_state=started.state)
                 assert consumed is not None
                 assert consumed["organization_id"] == "org_1"
+                assert len(str(consumed["pkce_verifier"])) >= 43
                 assert service.consume_state(connection, plaintext_state=started.state) is None
 
                 try:
