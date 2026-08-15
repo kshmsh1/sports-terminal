@@ -44,6 +44,7 @@ def main() -> None:
         SPORTS_TERMINAL_CORS_ORIGINS="https://terminal.example",
         SPORTS_TERMINAL_ALLOWED_HOSTS="terminal.example,api.terminal.example",
         SPORTS_TERMINAL_SESSION_PEPPER=secret,
+        SPORTS_TERMINAL_MFA_ENCRYPTION_KEY=secret,
         SPORTS_TERMINAL_RELEASE_SIGNING_SECRET=secret,
         SPORTS_TERMINAL_BACKUP_SIGNING_SECRET=secret,
         SPORTS_TERMINAL_BILLING_MODE="disabled",
@@ -59,6 +60,7 @@ def main() -> None:
         SPORTS_TERMINAL_CORS_ORIGINS="*",
         SPORTS_TERMINAL_ALLOWED_HOSTS="*",
         SPORTS_TERMINAL_SESSION_PEPPER="short",
+        SPORTS_TERMINAL_MFA_ENCRYPTION_KEY="short",
         SPORTS_TERMINAL_RELEASE_SIGNING_SECRET="",
         SPORTS_TERMINAL_BACKUP_SIGNING_SECRET="",
         SPORTS_TERMINAL_BILLING_MODE="live",
@@ -69,6 +71,7 @@ def main() -> None:
         assert any("CORS" in item for item in errors)
         assert any("allowed hosts" in item for item in errors)
         assert any("SESSION_PEPPER" in item for item in errors)
+        assert any("MFA_ENCRYPTION_KEY" in item for item in errors)
         assert any("RELEASE_SIGNING_SECRET" in item for item in errors)
         assert any("BACKUP_SIGNING_SECRET" in item for item in errors)
         assert any("live billing" in item for item in errors)
