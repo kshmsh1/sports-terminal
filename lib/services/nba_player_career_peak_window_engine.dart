@@ -44,7 +44,8 @@ class NbaPlayerCareerPeakWindowComparison {
 /// A candidate window is valid only when every row in that window exposes the
 /// requested metric. Missing seasons break eligibility; no interpolation or
 /// cross-era adjustment is performed. The window is chronological career data,
-/// not an age-equivalent or rules-adjusted claim.
+/// not an age-equivalent or rules-adjusted claim; it does not claim equivalent
+/// age, role, competition, rules, pace, or league environment.
 class NbaPlayerCareerPeakWindowEngine {
   const NbaPlayerCareerPeakWindowEngine();
 
