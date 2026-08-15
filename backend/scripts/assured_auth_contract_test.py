@@ -11,6 +11,7 @@ from app.assured_auth_api import MfaLoginCompleteRequest, complete_mfa_login, si
 from app.main import make_id, now_iso
 from app.mfa import SecretVault, TotpService
 from app.migrations import run_migrations
+from app.production_bootstrap import bind_database_boundary
 
 
 def _user(connection, *, email: str, password: str) -> str:
@@ -49,6 +50,7 @@ def main() -> None:
         os.environ["SPORTS_TERMINAL_REQUIRE_EMAIL_VERIFICATION"] = "true"
         with tempfile.TemporaryDirectory() as directory:
             database.DEFAULT_SQLITE_PATH = Path(directory) / "assured.db"
+            bind_database_boundary()
             auth_api.init_auth_db()
             run_migrations()
             password = "StrongAuthPass123!"
