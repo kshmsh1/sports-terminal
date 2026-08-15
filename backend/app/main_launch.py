@@ -6,8 +6,11 @@ from . import front_office_api as front_office_module
 from . import launch_api as launch_module
 from . import production_bootstrap as production_bootstrap_module
 from .account_security_api import router as account_security_router
+from .alerting import router as alerts_router
+from .assured_auth_api import router as assured_auth_router
 from .auth_api import router as auth_router
 from .auth_guard import enforce_launch_auth
+from .auth_recovery_api import router as auth_recovery_router
 from .authorization_guard import enforce_launch_authorization
 from .automation_governance_api import router as automation_governance_router
 from .backup_manifests import router as backup_manifest_router
@@ -16,6 +19,7 @@ from .community_api import router as community_router
 from .completion_status_api import router as completion_status_router
 from .customer_operations_api import router as customer_operations_router
 from .entitlements import router as entitlements_router
+from .environment_promotion_api import router as environment_promotion_router
 from .front_office_api import router as front_office_router
 from .front_office_hardened_routes import router as front_office_hardened_router
 from .front_office_hardening import (
@@ -29,10 +33,12 @@ from . import historical_nba_research_mount as _historical_nba_research_mount  #
 from .launch_api import router as launch_router
 from .launch_security import ensure_organization
 from .main import app
+from .metrics_api import router as metrics_router
 from .nba_awards_api import router as nba_awards_router
 from .nba_data_api import router as nba_data_router
 from .nba_terminal_api import router as nba_terminal_router
 from .operations import launch_operations_middleware
+from .organization_security_api import router as organization_security_router
 from .platform_audit import router as platform_audit_router
 from .production_readiness_api import router as production_readiness_router
 from .profile_api import router as profile_router
@@ -61,14 +67,15 @@ front_office_module.front_office_reconciliation = hardened_reconciliation(
 )
 
 app.title = "Sports Terminal Launch API"
-app.version = "2.0.0"
+app.version = "2.1.0"
 app.description = (
-    "Production-oriented Sports Terminal API for authentication and account security, entitlements, "
-    "provider-neutral billing ingress, certified and historical NBA data, canonical awards and voting, "
-    "contracts and draft assets, transaction ledgers, ranked community discovery, threaded discussion, "
-    "moderation and messaging, isolated Python analysis, customer operations, launch automation, "
-    "organization governance, versioned workspaces, signed releases/backups, tamper-evident audit, "
-    "platform operations, and the unified NBA terminal."
+    "Production-oriented Sports Terminal API for MFA-assured authentication, account recovery, "
+    "organization security and SSO policy, entitlements, provider-neutral billing ingress, "
+    "certified and historical NBA data, canonical awards and voting, contracts and draft assets, "
+    "transaction ledgers, ranked community discovery, threaded discussion, moderation and messaging, "
+    "isolated Python analysis, customer operations, launch automation, environment promotion, "
+    "versioned workspaces, signed executable backups/restores, tamper-evident audit, vendor-neutral "
+    "metrics and alerts, platform operations, and the unified NBA terminal."
 )
 
 app.add_middleware(
@@ -88,14 +95,7 @@ def production_bootstrap_startup() -> None:
 
 
 def _attach_router_routes(router) -> None:
-    """Attach already-prefixed routes without route-snapshot loss.
-
-    Several Sports Terminal routers are assembled through modules that also depend on
-    shared launch services. In those cases FastAPI ``include_router`` can snapshot a
-    router before a circular import has finished populating it. Attaching the final
-    APIRoute objects directly preserves the completed route graph and deduplicates by
-    path/method signature.
-    """
+    """Attach already-prefixed routes without route-snapshot loss."""
     existing = {
         (
             getattr(route, "path", ""),
@@ -114,8 +114,14 @@ def _attach_router_routes(router) -> None:
         existing.add(signature)
 
 
+# Assured auth is mounted first so its duplicate POST /v2/auth/login route is the
+# canonical login implementation. The legacy auth router still owns signup/session/
+# logout/password-change routes without creating a second public login behavior.
+app.include_router(assured_auth_router)
 app.include_router(auth_router)
+app.include_router(auth_recovery_router)
 app.include_router(account_security_router)
+app.include_router(organization_security_router)
 app.include_router(launch_router)
 app.include_router(workspace_router)
 # Historical and awards routes must be registered before /v2/nba/{season}/{dataset};
@@ -123,18 +129,11 @@ app.include_router(workspace_router)
 _attach_router_routes(historical_nba_router)
 _attach_router_routes(historical_nba_compat_router)
 _attach_router_routes(nba_awards_router)
-# Terminal routes receive the same explicit ordering guarantee. This also avoids
-# FastAPI route-snapshot behavior when the shared app object has been imported by a
-# contract harness before launch composition finishes.
 _attach_router_routes(nba_terminal_router)
 app.include_router(nba_data_router)
 app.include_router(front_office_hardened_router)
 app.include_router(front_office_router)
 app.include_router(trust_safety_router)
-# Community and profile both reuse launch/trust services and can participate in a
-# circular import when contract harnesses import their modules before main_launch.
-# Use the same final-route attachment contract as the historical composition layer
-# so the launch app always exposes the completed network/account API graph.
 _attach_router_routes(community_router)
 _attach_router_routes(profile_router)
 app.include_router(python_runtime_router)
@@ -146,4 +145,7 @@ app.include_router(billing_router)
 app.include_router(release_management_router)
 app.include_router(platform_audit_router)
 app.include_router(backup_manifest_router)
+app.include_router(environment_promotion_router)
+app.include_router(metrics_router)
+app.include_router(alerts_router)
 app.include_router(production_readiness_router)
