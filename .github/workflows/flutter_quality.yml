@@ -63,6 +63,8 @@ jobs:
         run: python tools/audit_nba_platform_graph_v16.py --check
       - name: Test production readiness contract
         run: python backend/scripts/production_readiness_contract_test.py
+      - name: Audit recursive production platform
+        run: python tools/audit_production_platform_v1.py --check
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
