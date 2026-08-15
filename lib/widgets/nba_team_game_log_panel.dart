@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/nba_game_schedule_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
+import 'nba_game_navigation.dart';
 import 'nba_team_trend_panel.dart';
 
 const _panel = Color(0xFF0F151C);
@@ -81,11 +82,30 @@ class NbaTeamGameLogPanel extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                TextButton.icon(
-                  key: ValueKey('team-open-schedule-$teamId'),
-                  onPressed: onOpenSchedule,
-                  icon: const Icon(Icons.calendar_month_rounded, size: 16),
-                  label: const Text('Full schedule'),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  alignment: WrapAlignment.end,
+                  children: [
+                    if (seed.supportedSeason.trim().isNotEmpty)
+                      TextButton.icon(
+                        key: ValueKey('team-open-season-$teamId'),
+                        onPressed: () => openNbaSeasonPage(
+                          context,
+                          seasonId: seed.supportedSeason,
+                          loadSeed: () async => seed,
+                          onOpenTeam: onOpenTeam,
+                        ),
+                        icon: const Icon(Icons.calendar_view_month_rounded, size: 16),
+                        label: Text('${seed.supportedSeason} Season'),
+                      ),
+                    TextButton.icon(
+                      key: ValueKey('team-open-schedule-$teamId'),
+                      onPressed: onOpenSchedule,
+                      icon: const Icon(Icons.calendar_month_rounded, size: 16),
+                      label: const Text('Full schedule'),
+                    ),
+                  ],
                 ),
               ],
             ),
