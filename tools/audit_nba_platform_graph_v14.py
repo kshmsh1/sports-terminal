@@ -16,7 +16,7 @@ EXTRA_CONTRACTS: dict[str, tuple[str, ...]] = {
         "class NbaPlayerCareerTenure",
         "completeTeamFranchiseCoverage",
         "multiTeamAggregateSeasons",
-        "does not reconstruct traded-team stints",
+        "never reconstructs traded-team stints",
     ),
     "test/nba_player_career_engine_test.dart": (
         "projects canonical Player identity, career rows and source-backed tenure",
