@@ -14,14 +14,14 @@ from starlette.responses import JSONResponse
 from app import auth_guard, database
 
 
-def request(path: str, token: str | None = None) -> Request:
+def request(path: str, token: str | None = None, *, method: str = "GET") -> Request:
     headers = []
     if token:
         headers.append((b"authorization", f"Bearer {token}".encode()))
     return Request(
         {
             "type": "http",
-            "method": "GET",
+            "method": method,
             "path": path,
             "headers": headers,
             "query_string": b"",
@@ -106,6 +106,26 @@ def main() -> None:
             )
             assert blocked.status_code == 403
             assert "MFA is required" in body(blocked)["detail"]
+
+            enroll = asyncio.run(
+                auth_guard.enforce_launch_auth(
+                    request("/v2/security/mfa/totp/enroll", token, method="POST"), allowed
+                )
+            )
+            assert enroll.status_code == 200
+            assert body(enroll)["auth_level"] == "password"
+            verify = asyncio.run(
+                auth_guard.enforce_launch_auth(
+                    request("/v2/security/mfa/totp/mfa_123/verify", token, method="POST"), allowed
+                )
+            )
+            assert verify.status_code == 200
+            disable = asyncio.run(
+                auth_guard.enforce_launch_auth(
+                    request("/v2/security/mfa/mfa_123", token, method="DELETE"), allowed
+                )
+            )
+            assert disable.status_code == 403
 
             with database.connect() as connection:
                 connection.execute(
