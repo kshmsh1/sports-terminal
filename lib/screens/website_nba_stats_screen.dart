@@ -7,9 +7,9 @@ import '../services/website_nba_api_service.dart';
 import 'website_nba_entity_pages.dart';
 
 class WebsiteNbaStatsScreen extends StatefulWidget {
-  const WebsiteNbaStatsScreen({super.key, required this.session});
+  const WebsiteNbaStatsScreen({super.key, this.session});
 
-  final AppSession session;
+  final AppSession? session;
 
   @override
   State<WebsiteNbaStatsScreen> createState() => _WebsiteNbaStatsScreenState();
@@ -277,28 +277,32 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
                           row.player,
                           style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700),
                         ),
-                        onTap: () => openWebsiteNbaPlayerPage(
-                          context,
-                          session: widget.session,
-                          playerKey: row.playerId,
-                          playerName: row.player,
-                        ),
+                        onTap: widget.session == null
+                            ? null
+                            : () => openWebsiteNbaPlayerPage(
+                                  context,
+                                  session: widget.session!,
+                                  playerKey: row.playerId,
+                                  playerName: row.player,
+                                ),
                       ),
                       DataCell(
                         Text(
                           row.team,
                           style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700),
                         ),
-                        onTap: () {
-                          final team = _primaryTeam(row.team);
-                          if (team.isEmpty) return;
-                          openWebsiteNbaTeamPage(
-                            context,
-                            session: widget.session,
-                            teamKey: team,
-                            teamName: team,
-                          );
-                        },
+                        onTap: widget.session == null
+                            ? null
+                            : () {
+                                final team = _primaryTeam(row.team);
+                                if (team.isEmpty) return;
+                                openWebsiteNbaTeamPage(
+                                  context,
+                                  session: widget.session!,
+                                  teamKey: team,
+                                  teamName: team,
+                                );
+                              },
                       ),
                       DataCell(Text(row.position)),
                       for (final metric in _metrics)
