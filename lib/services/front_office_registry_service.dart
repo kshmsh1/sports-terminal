@@ -19,6 +19,14 @@ class FrontOfficeRegistrySnapshot {
   final List<Map<String, dynamic>> ledger;
   final bool remoteAvailable;
 
+  static const empty = FrontOfficeRegistrySnapshot(
+    contracts: [],
+    teamPositions: [],
+    draftAssets: [],
+    ledger: [],
+    remoteAvailable: false,
+  );
+
   int get verifiedCount => [
         ...contracts,
         ...teamPositions,
@@ -91,6 +99,28 @@ class FrontOfficeRegistryService {
       draftAssets: results[2].rows,
       ledger: results[3].rows,
       remoteAvailable: results.any((result) => result.remoteAvailable),
+    );
+  }
+
+  /// Reads only the browser's last known front-office snapshot.
+  ///
+  /// Static NBA pages use this method so a dynamic backend outage can never
+  /// hold historical player/team pages or the Trade Machine roster behind a
+  /// network spinner. A separate refresh can still call [load] when live
+  /// contract/cap information is desired.
+  Future<FrontOfficeRegistrySnapshot> loadCached() async {
+    final results = await Future.wait([
+      _loadCachedCollection(_contractsKey),
+      _loadCachedCollection(_positionsKey),
+      _loadCachedCollection(_assetsKey),
+      _loadCachedCollection(_ledgerKey),
+    ]);
+    return FrontOfficeRegistrySnapshot(
+      contracts: results[0],
+      teamPositions: results[1],
+      draftAssets: results[2],
+      ledger: results[3],
+      remoteAvailable: false,
     );
   }
 
@@ -200,13 +230,16 @@ class FrontOfficeRegistryService {
       await _store.saveString(cacheKey, jsonEncode(rows));
       return _CollectionResult(rows, true);
     }
+    return _CollectionResult(await _loadCachedCollection(cacheKey), false);
+  }
+
+  Future<List<Map<String, dynamic>>> _loadCachedCollection(String cacheKey) async {
     final cached = await _store.loadString(cacheKey);
-    if (cached.isEmpty) return const _CollectionResult([], false);
+    if (cached.isEmpty) return const [];
     try {
-      final decoded = jsonDecode(cached);
-      return _CollectionResult(_list(decoded), false);
+      return _list(jsonDecode(cached));
     } catch (_) {
-      return const _CollectionResult([], false);
+      return const [];
     }
   }
 
