@@ -79,6 +79,8 @@ jobs:
         run: python tools/audit_sports_terminal_blueprint_v1.py --check
       - name: Audit blueprint-converged Sports Terminal platform v4
         run: python tools/audit_sports_terminal_platform_v4.py --check
+      - name: Audit institutional-research Sports Terminal platform v5
+        run: python tools/audit_sports_terminal_platform_v5.py --check
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:

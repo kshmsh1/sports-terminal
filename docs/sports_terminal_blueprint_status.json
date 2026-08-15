@@ -32,7 +32,16 @@
     "historical_player_convergence": "implemented",
     "terminal_command_system_v2": "implemented",
     "canonical_nba_graph": "implemented",
-    "production_control_plane": "implemented"
+    "production_control_plane": "implemented",
+    "generated_report_persistence": "implemented",
+    "research_library": "implemented",
+    "research_revision_lineage": "implemented",
+    "metric_registry": "implemented",
+    "model_registry": "implemented",
+    "deterministic_watch_engine": "implemented",
+    "portable_research_bundles": "implemented",
+    "rights_gated_research_export": "implemented",
+    "institutional_research_os": "implemented"
   },
   "rightsOrExternalDependency": {
     "official_live_nba_feed": "rights-blocked",

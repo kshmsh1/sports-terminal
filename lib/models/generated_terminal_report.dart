@@ -78,6 +78,7 @@ class GeneratedTerminalReport {
   int get rowCount => rows.length;
   int get columnCount => columns.length;
   bool get hasStructuredData => rows.isNotEmpty && columns.isNotEmpty;
+  String get contentFingerprint => _fnv1a32(jsonEncode(toJson()));
 
   Map<String, dynamic> toJson() => {
         'title': title,
@@ -108,6 +109,7 @@ class GeneratedTerminalReport {
       ..writeln('## Scope')
       ..writeln('- Object: ${_markdown(sourceObjectType)} · ${_markdown(sourceObjectId)}')
       ..writeln('- Coverage: ${coverage.label}')
+      ..writeln('- Fingerprint: $contentFingerprint')
       ..writeln('- Upstream readiness: ${_markdown(readinessState)}')
       ..writeln('- Filter: ${_markdown(filterSummary.isEmpty ? 'None declared' : filterSummary)}')
       ..writeln('- Structured rows: $rowCount')
@@ -160,6 +162,15 @@ class GeneratedTerminalReport {
     }
     return buffer.toString().trimRight();
   }
+}
+
+String _fnv1a32(String input) {
+  var hash = 0x811C9DC5;
+  for (final byte in utf8.encode(input)) {
+    hash ^= byte;
+    hash = (hash * 0x01000193) & 0xFFFFFFFF;
+  }
+  return hash.toRadixString(16).padLeft(8, '0');
 }
 
 String _displayValue(dynamic value) {

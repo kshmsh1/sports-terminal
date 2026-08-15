@@ -98,6 +98,9 @@ echo "==> Auditing master Sports Terminal blueprint coverage"
 echo "==> Auditing blueprint-converged Sports Terminal platform v4"
 "$PYTHON" tools/audit_sports_terminal_platform_v4.py --check
 
+echo "==> Auditing institutional-research Sports Terminal platform v5"
+"$PYTHON" tools/audit_sports_terminal_platform_v5.py --check
+
 if $BACKEND_ONLY; then
   echo "==> Backend-only validation complete"
   exit 0

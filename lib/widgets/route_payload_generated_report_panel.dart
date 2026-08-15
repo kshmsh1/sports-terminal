@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/generated_terminal_report.dart';
 import '../models/route_payload.dart';
 import '../services/route_payload_report_generator.dart';
+import '../services/terminal_research_workflow_service.dart';
 import 'terminal_primitives.dart';
 
 enum _GeneratedReportView {
@@ -17,10 +18,14 @@ class RoutePayloadGeneratedReportPanel extends StatefulWidget {
     super.key,
     required this.payload,
     this.generator = const RoutePayloadReportGenerator(),
+    this.workflowService = const TerminalResearchWorkflowService(),
+    this.authorId = 'local-user',
   });
 
   final RoutePayload payload;
   final RoutePayloadReportGenerator generator;
+  final TerminalResearchWorkflowService workflowService;
+  final String authorId;
 
   @override
   State<RoutePayloadGeneratedReportPanel> createState() =>
@@ -30,6 +35,56 @@ class RoutePayloadGeneratedReportPanel extends StatefulWidget {
 class _RoutePayloadGeneratedReportPanelState
     extends State<RoutePayloadGeneratedReportPanel> {
   _GeneratedReportView _view = _GeneratedReportView.preview;
+  bool _workflowBusy = false;
+  String _workflowMessage = '';
+
+  Future<void> _saveResearch(GeneratedTerminalReport report) async {
+    if (_workflowBusy) return;
+    setState(() {
+      _workflowBusy = true;
+      _workflowMessage = '';
+    });
+    try {
+      final research = await widget.workflowService.saveGeneratedReport(
+        report,
+        authorId: widget.authorId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _workflowMessage =
+            'Research saved: ${research.revisionKey} · ${research.contentFingerprint}';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _workflowMessage = 'Research save failed: $error');
+    } finally {
+      if (mounted) setState(() => _workflowBusy = false);
+    }
+  }
+
+  Future<void> _addToBoard(GeneratedTerminalReport report) async {
+    if (_workflowBusy) return;
+    setState(() {
+      _workflowBusy = true;
+      _workflowMessage = '';
+    });
+    try {
+      final board = await widget.workflowService.addGeneratedReportToBoard(
+        report,
+        authorId: widget.authorId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _workflowMessage =
+            'Added to ${board.title}: ${board.panels.length} panel(s) now persisted.';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _workflowMessage = 'Board handoff failed: $error');
+    } finally {
+      if (mounted) setState(() => _workflowBusy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +131,7 @@ class _RoutePayloadGeneratedReportPanelState
               InfoPill(label: '${report.rowCount} structured row(s)'),
               InfoPill(label: '${report.columnCount} column(s)'),
               InfoPill(label: 'RoutePayload v${report.schemaVersion}'),
+              InfoPill(label: 'FP ${report.contentFingerprint}'),
               InfoPill(
                 label: report.blockers.isEmpty
                     ? 'No declared blockers'
@@ -118,6 +174,33 @@ class _RoutePayloadGeneratedReportPanelState
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              FilledButton.icon(
+                key: const ValueKey('generated-report-save-research'),
+                onPressed: _workflowBusy ? null : () => _saveResearch(report),
+                icon: const Icon(Icons.bookmark_add_outlined),
+                label: const Text('SAVE RESEARCH SNAPSHOT'),
+              ),
+              OutlinedButton.icon(
+                key: const ValueKey('generated-report-add-board'),
+                onPressed: _workflowBusy ? null : () => _addToBoard(report),
+                icon: const Icon(Icons.dashboard_customize_outlined),
+                label: const Text('ADD TO RESEARCH BOARD'),
+              ),
+            ],
+          ),
+          if (_workflowMessage.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              _workflowMessage,
+              key: const ValueKey('generated-report-workflow-message'),
+              style: const TextStyle(color: terminalAccent, height: 1.35),
+            ),
+          ],
           const SizedBox(height: 14),
           if (_view == _GeneratedReportView.preview)
             _GeneratedReportPreview(report: report)
@@ -174,6 +257,7 @@ class _GeneratedReportPreview extends StatelessWidget {
               ? 'Unspecified'
               : report.createdAtIso,
         ),
+        _ReportLine(label: 'Fingerprint', value: report.contentFingerprint),
         _ReportLine(
           label: 'Blockers',
           value: report.blockers.isEmpty

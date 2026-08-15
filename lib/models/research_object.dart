@@ -20,6 +20,15 @@ class ResearchObject {
     this.code = '',
     this.discussionId = '',
     this.published = false,
+    this.schemaVersion = 2,
+    this.artifactType = 'research',
+    this.artifactPayload = const {},
+    this.tags = const [],
+    this.status = 'draft',
+    this.contentFingerprint = '',
+    this.rightsEnvelopes = const [],
+    this.summary = '',
+    this.previousRevisionKey = '',
   });
 
   final String id;
@@ -40,11 +49,24 @@ class ResearchObject {
   final String code;
   final String discussionId;
   final bool published;
+  final int schemaVersion;
+  final String artifactType;
+  final Map<String, dynamic> artifactPayload;
+  final List<String> tags;
+  final String status;
+  final String contentFingerprint;
+  final List<Map<String, dynamic>> rightsEnvelopes;
+  final String summary;
+  final String previousRevisionKey;
 
   String get revisionKey => '$id@$version';
   bool get isFork => parentResearchId.isNotEmpty;
+  bool get isGeneratedReport => artifactType == 'generated-report';
+  bool get hasRightsMetadata => rightsEnvelopes.isNotEmpty;
+  String get releaseLabel => dataRelease.trim().isEmpty ? 'UNSPECIFIED RELEASE' : dataRelease;
 
   Map<String, dynamic> toJson() => {
+        'schemaVersion': schemaVersion,
         'id': id,
         'version': version,
         'title': title,
@@ -63,9 +85,18 @@ class ResearchObject {
         'code': code,
         'discussionId': discussionId,
         'published': published,
+        'artifactType': artifactType,
+        'artifactPayload': artifactPayload,
+        'tags': tags,
+        'status': status,
+        'contentFingerprint': contentFingerprint,
+        'rightsEnvelopes': rightsEnvelopes,
+        'summary': summary,
+        'previousRevisionKey': previousRevisionKey,
       };
 
   factory ResearchObject.fromJson(Map<String, dynamic> json) => ResearchObject(
+        schemaVersion: (json['schemaVersion'] as num?)?.toInt() ?? 1,
         id: json['id']?.toString() ?? '',
         version: (json['version'] as num?)?.toInt() ?? 1,
         title: json['title']?.toString() ?? 'Untitled Research',
@@ -84,6 +115,14 @@ class ResearchObject {
         code: json['code']?.toString() ?? '',
         discussionId: json['discussionId']?.toString() ?? '',
         published: json['published'] == true,
+        artifactType: json['artifactType']?.toString() ?? 'research',
+        artifactPayload: _stringMap(json['artifactPayload']),
+        tags: _stringList(json['tags']),
+        status: json['status']?.toString() ?? 'draft',
+        contentFingerprint: json['contentFingerprint']?.toString() ?? '',
+        rightsEnvelopes: _mapList(json['rightsEnvelopes']),
+        summary: json['summary']?.toString() ?? '',
+        previousRevisionKey: json['previousRevisionKey']?.toString() ?? '',
       );
 
   String encode() => jsonEncode(toJson());
@@ -96,6 +135,11 @@ List<Map<String, dynamic>> _mapList(dynamic value) {
       if (item is Map)
         item.map((key, value) => MapEntry(key.toString(), value)),
   ];
+}
+
+List<String> _stringList(dynamic value) {
+  if (value is! List) return const [];
+  return [for (final item in value) item.toString()];
 }
 
 Map<String, dynamic> _stringMap(dynamic value) {

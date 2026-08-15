@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/app_session.dart';
 import '../models/terminal_action.dart';
 import '../screens/excel_like_workspace_screen.dart';
+import '../screens/institutional_research_hub_screen.dart';
 import '../screens/product_nba_terminal_screen.dart';
 import '../screens/product_python_dev_lab_screen.dart';
 import '../screens/product_trade_machine_screen.dart';
@@ -39,6 +40,23 @@ class _BlueprintTerminalFrameState extends State<BlueprintTerminalFrame> {
           aliases: ['NBA', 'stats', 'research', 'games', 'players', 'teams'],
           subtitle: 'Canonical NBA search, objects, analytics and research',
           payload: {'route': 'nba'},
+        ),
+        TerminalCommandEntry(
+          id: 'research-os',
+          label: 'Research OS',
+          kind: 'institutional-research',
+          aliases: [
+            'RESEARCH',
+            'library',
+            'metrics',
+            'models',
+            'watches',
+            'boards',
+            'bundles',
+          ],
+          subtitle:
+              'Durable research library, registries, watches, Boards and portable bundles',
+          payload: {'route': 'research'},
         ),
         TerminalCommandEntry(
           id: 'trade-machine',
@@ -99,6 +117,13 @@ class _BlueprintTerminalFrameState extends State<BlueprintTerminalFrame> {
         ),
       );
 
+  void _openResearchOs() {
+    _open(
+      InstitutionalResearchHubScreen(session: widget.session),
+      'Institutional Research OS',
+    );
+  }
+
   void _handleCommand(TerminalCommandResult result) {
     final route = result.entry?.payload['route']?.toString() ?? '';
     switch (route) {
@@ -107,6 +132,9 @@ class _BlueprintTerminalFrameState extends State<BlueprintTerminalFrame> {
           ProductNbaTerminalScreen(session: widget.session),
           'Sports Terminal · NBA',
         );
+        return;
+      case 'research':
+        _openResearchOs();
         return;
       case 'trade':
         _open(
@@ -127,6 +155,14 @@ class _BlueprintTerminalFrameState extends State<BlueprintTerminalFrame> {
       if (action.kind == TerminalActionKind.lab ||
           action.kind == TerminalActionKind.model) {
         _open(const ProductPythonDevLabScreen(), 'Python Lab');
+        return;
+      }
+      if ({
+        TerminalActionKind.watch,
+        TerminalActionKind.board,
+        TerminalActionKind.share,
+      }.contains(action.kind)) {
+        _openResearchOs();
         return;
       }
       if ({
