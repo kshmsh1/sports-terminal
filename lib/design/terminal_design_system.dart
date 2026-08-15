@@ -1,5 +1,3 @@
-import 'dart:ui' show FontFeature;
-
 import 'package:flutter/material.dart';
 
 import '../services/terminal_density_service.dart';
@@ -159,7 +157,7 @@ class TerminalPanel extends StatelessWidget {
               Row(
                 children: [
                   Expanded(child: Text(title!, style: tokens.sectionStyle)),
-                  if (trailing != null) trailing!,
+                  ?trailing,
                 ],
               ),
               SizedBox(height: tokens.space3),
