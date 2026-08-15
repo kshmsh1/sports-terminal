@@ -61,7 +61,7 @@ class QueryContinuityService {
       if (query.seasons.isNotEmpty) 'seasons=${query.seasons.join(',')}',
       if (query.seasonType.isNotEmpty) 'seasonType=${query.seasonType}',
       for (final filter in query.filters)
-        '${filter.field}${filter.operator}${filter.value}',
+        '${filter.field}${filter.op}${filter.value}',
       if (query.groupBy.isNotEmpty) 'groupBy=${query.groupBy.join(',')}',
       if (query.sort.isNotEmpty) 'sort=${query.sort.join(',')}',
       'limit=${query.limit}',
