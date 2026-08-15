@@ -12,7 +12,6 @@ from pydantic import BaseModel
 from . import auth_api
 from .database import connect
 from .mfa_login import MfaLoginService
-from .migrations import run_migrations
 from .main import now_iso
 
 router = APIRouter(prefix="/v2/auth", tags=["authentication"])
@@ -24,8 +23,10 @@ class MfaLoginCompleteRequest(BaseModel):
 
 
 def _prepare() -> None:
+    # Core auth tables remain owned by the existing auth initializer. Versioned
+    # production migrations are intentionally NOT run from a request handler;
+    # production bootstrap verifies the schema before the server accepts traffic.
     auth_api.init_auth_db()
-    run_migrations()
 
 
 def _record_assurance(connection: Any, token: str, auth_level: str) -> None:
