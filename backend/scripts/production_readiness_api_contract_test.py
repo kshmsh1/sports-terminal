@@ -16,12 +16,16 @@ def main() -> None:
             "SPORTS_TERMINAL_ENV",
             "SPORTS_TERMINAL_DATABASE_URL",
             "SPORTS_TERMINAL_BILLING_MODE",
+            "SPORTS_TERMINAL_EMAIL_PROVIDER",
+            "SPORTS_TERMINAL_OBJECT_STORE",
         ]
     }
     try:
         os.environ["SPORTS_TERMINAL_ENV"] = "development"
         os.environ.pop("SPORTS_TERMINAL_DATABASE_URL", None)
         os.environ["SPORTS_TERMINAL_BILLING_MODE"] = "disabled"
+        os.environ["SPORTS_TERMINAL_EMAIL_PROVIDER"] = "disabled"
+        os.environ["SPORTS_TERMINAL_OBJECT_STORE"] = "filesystem"
         with tempfile.TemporaryDirectory() as directory:
             database.DEFAULT_SQLITE_PATH = Path(directory) / "readiness.db"
             with database.connect() as connection:
@@ -36,14 +40,17 @@ def main() -> None:
                       last_seen_at TEXT NOT NULL,
                       revoked_at TEXT
                     );
+                    CREATE TABLE organizations (id TEXT PRIMARY KEY);
                     """
                 )
             run_migrations()
             payload = production_readiness_payload()
-            assert payload["database"]["schema_version"] == "0003"
+            assert payload["database"]["schema_version"] == "0005"
             assert payload["billing_mode"] == "disabled"
             assert payload["checks"]["schema_current"] is True
             assert payload["checks"]["required_tables"] is True
+            assert payload["checks"]["security_email_delivery"] is True
+            assert payload["checks"]["durable_object_storage"] is True
             assert payload["status"] == "ready"
         print("production_readiness_api_contract: PASS")
     finally:
