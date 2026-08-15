@@ -70,7 +70,8 @@ def main() -> None:
     runbook = (ROOT / "docs" / "production_runbook.md").read_text(encoding="utf-8")
     require(runbook, "Production does not silently fall back to SQLite", "runbook")
     require(runbook, "candidate → certified → active", "runbook")
-    require(runbook, "SSO enforcement is intentionally unavailable", "runbook")
+    require(runbook, "OIDC uses the authorization-code flow with PKCE S256", "runbook")
+    require(runbook, "Sports Terminal does not silently provision accounts from an IdP", "runbook")
     require(runbook, "Repository workflows are manual-only", "runbook")
 
     cost_guard = (ROOT / ".github" / "COST_GUARD.md").read_text(encoding="utf-8")
