@@ -20,6 +20,7 @@ def reject(text: str, token: str, label: str) -> None:
 def main() -> None:
     dockerfile = (BACKEND / "Dockerfile").read_text(encoding="utf-8")
     require(dockerfile, "USER sports-terminal", "Dockerfile")
+    require(dockerfile, "postgresql-client", "Dockerfile")
     require(dockerfile, "SPORTS_TERMINAL_ENV=production", "Dockerfile")
     require(dockerfile, "SPORTS_TERMINAL_AUTO_MIGRATE=false", "Dockerfile")
     require(dockerfile, "SPORTS_TERMINAL_RATE_LIMIT_BACKEND=database", "Dockerfile")
@@ -37,6 +38,10 @@ def main() -> None:
         '--proxy-headers "${SPORTS_TERMINAL_TRUST_PROXY_HEADERS',
         "production startup",
     )
+
+    assured_auth = (BACKEND / "app" / "assured_auth_api.py").read_text(encoding="utf-8")
+    require(assured_auth, "production bootstrap verifies the schema", "assured auth")
+    reject(assured_auth, "run_migrations()", "assured auth request path")
 
     production_env = (ROOT / ".env.production.example").read_text(encoding="utf-8")
     require(production_env, "SPORTS_TERMINAL_DATABASE_URL=postgresql://", "production env")
