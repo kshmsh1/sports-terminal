@@ -46,6 +46,21 @@ def main() -> None:
                       created_at TEXT NOT NULL,
                       updated_at TEXT NOT NULL
                     );
+                    CREATE TABLE sso_connections (
+                      id TEXT PRIMARY KEY,
+                      organization_id TEXT NOT NULL REFERENCES organizations(id),
+                      connection_type TEXT NOT NULL,
+                      issuer TEXT NOT NULL,
+                      client_id TEXT NOT NULL,
+                      client_secret_ciphertext TEXT,
+                      authorization_endpoint TEXT,
+                      token_endpoint TEXT,
+                      jwks_uri TEXT,
+                      allowed_domains TEXT NOT NULL DEFAULT '[]',
+                      status TEXT NOT NULL,
+                      created_at TEXT NOT NULL,
+                      updated_at TEXT NOT NULL
+                    );
                     """
                 )
             admin = request(user_id="usr_admin", role="organization_admin", organization_id="org_1")
@@ -63,6 +78,50 @@ def main() -> None:
             assert updated["max_session_days"] == 14
             assert updated["allowed_email_domains"] == ["example.com"]
             assert security_policy("org_1", admin)["require_mfa"] is True
+
+            try:
+                update_security_policy(
+                    "org_1",
+                    OrganizationSecurityPolicyUpdate(
+                        require_mfa=True,
+                        sso_required=True,
+                        max_session_days=14,
+                        allowed_email_domains=["example.com"],
+                    ),
+                    admin,
+                )
+            except HTTPException as error:
+                assert error.status_code == 409
+                assert "enabled SSO connection" in str(error.detail)
+            else:
+                raise AssertionError("SSO requirement must not be enabled without an active connection")
+
+            with database.connect() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO sso_connections (
+                      id, organization_id, connection_type, issuer, client_id,
+                      authorization_endpoint, token_endpoint, jwks_uri,
+                      allowed_domains, status, created_at, updated_at
+                    ) VALUES (
+                      'sso_1', 'org_1', 'oidc', 'https://id.example.com', 'client',
+                      'https://id.example.com/auth', 'https://id.example.com/token',
+                      'https://id.example.com/jwks', '[\"example.com\"]', 'enabled',
+                      CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            required = update_security_policy(
+                "org_1",
+                OrganizationSecurityPolicyUpdate(
+                    require_mfa=True,
+                    sso_required=True,
+                    max_session_days=14,
+                    allowed_email_domains=["example.com"],
+                ),
+                admin,
+            )
+            assert required["sso_required"] is True
 
             wrong_org = request(user_id="usr_admin", role="organization_admin", organization_id="org_2")
             try:
