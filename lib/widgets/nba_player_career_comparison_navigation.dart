@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../screens/product_nba_player_career_comparison_screen.dart';
+import '../services/nba_player_career_analytics_engine.dart';
 import '../services/nba_player_career_comparison_discovery_service.dart';
+import '../services/nba_player_career_comparison_engine.dart';
 import '../services/nba_player_career_comparison_loader.dart';
 import 'nba_game_navigation.dart';
 
@@ -13,6 +15,9 @@ Future<void> openNbaPlayerCareerComparisonPage(
   String rightPlayerName = 'Player B',
   String league = 'NBA',
   String initialSeasonType = 'regular',
+  NbaPlayerCareerComparisonAlignment initialAlignment =
+      NbaPlayerCareerComparisonAlignment.calendarSeason,
+  NbaPlayerCareerMetric initialMetric = NbaPlayerCareerMetric.pointsPerGame,
   NbaPlayerCareerComparisonDossierLoader? loadPlayer,
   NbaPlayerCareerComparisonTeamLoader? loadTeam,
   NbaPlayerComparisonSearchLoader? searchLoader,
@@ -24,6 +29,10 @@ Future<void> openNbaPlayerCareerComparisonPage(
   final rightKey = rightPlayerKey.trim();
   final normalizedLeague =
       league.trim().isEmpty ? 'NBA' : league.trim().toUpperCase();
+  final normalizedSeasonType =
+      initialSeasonType.trim().toLowerCase() == 'playoffs'
+          ? 'playoffs'
+          : 'regular';
   final routeSuffix = rightKey.isEmpty
       ? Uri.encodeComponent(leftKey)
       : '${Uri.encodeComponent(leftKey)}/${Uri.encodeComponent(rightKey)}';
@@ -36,7 +45,9 @@ Future<void> openNbaPlayerCareerComparisonPage(
           'leftPlayerKey': leftKey,
           'rightPlayerKey': rightKey,
           'league': normalizedLeague,
-          'seasonType': initialSeasonType,
+          'seasonType': normalizedSeasonType,
+          'alignment': initialAlignment.name,
+          'metric': initialMetric.name,
         },
       ),
       builder: (comparisonContext) {
@@ -45,7 +56,7 @@ Future<void> openNbaPlayerCareerComparisonPage(
                   comparisonContext,
                   seasonId: seasonId,
                   league: normalizedLeague,
-                  seasonType: initialSeasonType,
+                  seasonType: normalizedSeasonType,
                   onOpenPlayer: onOpenPlayer,
                 );
         return Scaffold(
@@ -70,7 +81,9 @@ Future<void> openNbaPlayerCareerComparisonPage(
                   rightPlayerKey: rightKey,
                   rightPlayerName: rightPlayerName,
                   league: normalizedLeague,
-                  initialSeasonType: initialSeasonType,
+                  initialSeasonType: normalizedSeasonType,
+                  initialAlignment: initialAlignment,
+                  initialMetric: initialMetric,
                   loadPlayer: loadPlayer,
                   loadTeam: loadTeam,
                   searchLoader: searchLoader,
