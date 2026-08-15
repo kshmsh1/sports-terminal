@@ -136,7 +136,7 @@ STATIC_ARGS=(--database "$HISTORY_DB" --output "$ROOT/web/data/nba_static")
 if $FORCE_STATIC; then STATIC_ARGS+=(--force); fi
 
 echo "==> Preparing immutable static NBA website data"
-"$PYTHON" tools/build_static_nba_website_data.py "${STATIC_ARGS[@]}"
+"$PYTHON" tools/build_static_nba_website_data_v2.py "${STATIC_ARGS[@]}"
 
 echo "==> Resolving Flutter dependencies"
 flutter pub get >/dev/null
