@@ -20,8 +20,15 @@ else
   echo "Automatic production migrations disabled; launch bootstrap will verify schema version"
 fi
 
-exec uvicorn app.main_launch:app \
+set -- uvicorn app.main_launch:app \
   --host 0.0.0.0 \
   --port "${PORT:-8000}" \
-  --workers "${WEB_CONCURRENCY:-2}" \
-  --proxy-headers "${SPORTS_TERMINAL_TRUST_PROXY_HEADERS:-false}"
+  --workers "${WEB_CONCURRENCY:-2}"
+
+if [ "${SPORTS_TERMINAL_TRUST_PROXY_HEADERS:-false}" = "true" ]; then
+  set -- "$@" --proxy-headers
+else
+  set -- "$@" --no-proxy-headers
+fi
+
+exec "$@"
