@@ -46,7 +46,15 @@ Those require contracts, rights, vendor accounts, legal programs, or capital out
 
 ## Validation
 
-No GitHub Actions workflow runs automatically. The repository remains `workflow_dispatch` only. With GitHub-hosted Actions unavailable, validate locally:
+The repository is public and uses standard `ubuntu-latest` GitHub-hosted runners. CI now runs automatically for pull requests targeting `main` and for direct pushes to `main`; `workflow_dispatch` remains available for explicit reruns. Feature-branch push events are intentionally not duplicated when an open pull request already provides the validation event.
+
+The automated validation surfaces are:
+
+- `Historical Research Quality`
+- `Pre-Data Gate`
+- `Flutter Quality`, which composes the backend production contracts, NBA platform graph, master blueprint audit, blueprint-converged platform audit, Flutter analyzer, Flutter test suite and release web build.
+
+The same stack can still be validated locally:
 
 ```bash
 bash scripts/validate_local.sh
