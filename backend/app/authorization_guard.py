@@ -14,6 +14,7 @@ from .main import connect, now_iso
 _PUBLIC_PREFIXES = (
     "/v2/auth/",
     "/v2/launch/readiness",
+    "/v2/billing/webhooks/",
 )
 _ADMIN_PREFIXES = (
     "/v2/trust/moderation/",
@@ -26,6 +27,7 @@ _ADMIN_EXACT = {
 _PLATFORM_PREFIXES = (
     "/v2/platform/",
     "/v2/operations/",
+    "/v2/releases",
 )
 _SELF_QUERY_KEYS = {
     "actor_user_id",
@@ -171,6 +173,7 @@ def _path_claim(path: str) -> tuple[str, str] | None:
     prefixes = (
         "/v2/trust/relationships/",
         "/v2/notifications/",
+        "/v2/entitlements/users/",
     )
     for prefix in prefixes:
         if path.startswith(prefix):
