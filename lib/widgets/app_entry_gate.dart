@@ -2,12 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../controllers/auth_controller.dart';
 import '../controllers/internal_workspace_controller.dart';
-import '../models/app_session.dart';
-import '../screens/login_screen.dart';
-import 'admin_nba_terminal_overlay.dart';
-import 'blueprint_terminal_frame.dart';
-import 'role_research_augmented_shell.dart';
-import 'terminal_shell.dart';
+import 'traditional_website_shell.dart';
 
 class AppEntryGate extends StatelessWidget {
   const AppEntryGate({
@@ -32,23 +27,14 @@ class AppEntryGate extends StatelessWidget {
           return LoginScreen(controller: authController);
         }
 
-        final product = session.role.canAccessPlatformAdmin
-            ? AdminNbaTerminalOverlay(
-                session: session,
-                child: const TerminalShell(),
-              )
-            : RoleResearchAugmentedShell(
-                session: session,
-                workspaceController: workspaceController,
-                onSignOut: authController.signOut,
-              );
-
-        // The blueprint frame is deliberately outside every authenticated
-        // product role so command, density and source/release status behavior
-        // stay uniform across the platform rather than being page-local.
-        return BlueprintTerminalFrame(
+        // Product reset: the default customer experience is now a conventional
+        // responsive website. The terminal command frame, floating research
+        // launchers, automation/status overlays and developer workspaces remain
+        // implemented but are intentionally not mounted around every page.
+        return TraditionalWebsiteShell(
           session: session,
-          child: product,
+          workspaceController: workspaceController,
+          onSignOut: authController.signOut,
         );
       },
     );
@@ -61,7 +47,7 @@ class _SessionRestoreScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      backgroundColor: Color(0xFF07111F),
+      backgroundColor: Color(0xFF0A1019),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -69,16 +55,16 @@ class _SessionRestoreScreen extends StatelessWidget {
             Icon(
               Icons.sports_basketball_rounded,
               color: Color(0xFFFF7A1A),
-              size: 52,
+              size: 44,
             ),
             SizedBox(height: 18),
-            CircularProgressIndicator(color: Color(0xFF8AB4F8)),
+            CircularProgressIndicator(color: Color(0xFF2563EB)),
             SizedBox(height: 14),
             Text(
-              'Restoring Sports Terminal session…',
+              'Loading Sports Terminal…',
               style: TextStyle(
                 color: Colors.white,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
