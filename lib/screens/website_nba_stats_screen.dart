@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../models/app_session.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
-import '../widgets/website_nba_data_gate.dart';
-import 'product_nba_public_pages_screen.dart' show openNbaPlayerPage, openNbaTeamPage;
+import '../services/website_nba_api_service.dart';
+import 'website_nba_entity_pages.dart';
 
 class WebsiteNbaStatsScreen extends StatefulWidget {
-  const WebsiteNbaStatsScreen({super.key});
+  const WebsiteNbaStatsScreen({super.key, required this.session});
+
+  final AppSession session;
 
   @override
   State<WebsiteNbaStatsScreen> createState() => _WebsiteNbaStatsScreenState();
@@ -14,7 +17,13 @@ class WebsiteNbaStatsScreen extends StatefulWidget {
 
 class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
   final _engine = const NbaStatsWorkstationEngine();
+  final _api = const WebsiteNbaApiService();
   final _search = TextEditingController();
+
+  late Future<List<WebsiteNbaSeason>> _seasonsFuture;
+  Future<NbaTerminalSeedSnapshot>? _dataFuture;
+  List<WebsiteNbaSeason> _seasons = const [];
+  String _season = '2025-26';
   NbaStatsSeasonType _seasonType = NbaStatsSeasonType.regular;
   String _team = 'All';
   String _position = 'All';
@@ -22,15 +31,70 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
   bool _descending = true;
 
   @override
+  void initState() {
+    super.initState();
+    _seasonsFuture = _loadSeasons();
+  }
+
+  @override
   void dispose() {
     _search.dispose();
     super.dispose();
   }
 
+  Future<List<WebsiteNbaSeason>> _loadSeasons() async {
+    final seasons = await _api.seasons();
+    if (seasons.isNotEmpty) {
+      _seasons = seasons;
+      _season = seasons.firstWhere(
+        (item) => item.id == '2025-26',
+        orElse: () => seasons.first,
+      ).id;
+      _dataFuture = _loadData();
+    }
+    return seasons;
+  }
+
+  Future<NbaTerminalSeedSnapshot> _loadData() => _api.seasonSnapshot(
+        _season,
+        seasonType: _seasonType == NbaStatsSeasonType.playoffs ? 'playoffs' : 'regular',
+      );
+
+  void _refreshData() {
+    setState(() {
+      _team = 'All';
+      _position = 'All';
+      _dataFuture = _loadData();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return WebsiteNbaDataGate(
-      builder: (context, data) => _buildStats(context, data),
+    return FutureBuilder<List<WebsiteNbaSeason>>(
+      future: _seasonsFuture,
+      builder: (context, catalog) {
+        if (catalog.connectionState != ConnectionState.done) {
+          return const _Loading();
+        }
+        if (catalog.hasError || _seasons.isEmpty || _dataFuture == null) {
+          return _ErrorState(
+            error: catalog.error,
+            onRetry: () => setState(() => _seasonsFuture = _loadSeasons()),
+          );
+        }
+        return FutureBuilder<NbaTerminalSeedSnapshot>(
+          future: _dataFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const _Loading();
+            }
+            if (snapshot.hasError || snapshot.data == null) {
+              return _ErrorState(error: snapshot.error, onRetry: _refreshData);
+            }
+            return _buildStats(context, snapshot.data!);
+          },
+        );
+      },
     );
   }
 
@@ -53,13 +117,10 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
     final query = _search.text.trim().toLowerCase();
     final visible = rows.where((row) {
       if (query.isNotEmpty &&
-          !'${row.player} ${row.team} ${row.position}'
-              .toLowerCase()
-              .contains(query)) {
+          !'${row.player} ${row.team} ${row.position}'.toLowerCase().contains(query)) {
         return false;
       }
-      if (_team != 'All' &&
-          !row.team.split(RegExp(r'[,/ ]+')).contains(_team)) {
+      if (_team != 'All' && !row.team.split(RegExp(r'[,/ ]+')).contains(_team)) {
         return false;
       }
       if (_position != 'All' && row.position != _position) return false;
@@ -79,7 +140,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Player box-score statistics with simple filters, familiar columns and direct player/team links.',
+          'Regular season and playoff player statistics from the canonical historical NBA warehouse.',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: colors.onSurfaceVariant,
                 height: 1.45,
@@ -96,6 +157,26 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
                   runSpacing: 12,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
+                    SizedBox(
+                      width: 150,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _season,
+                        decoration: const InputDecoration(
+                          labelText: 'Season',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        items: [
+                          for (final season in _seasons)
+                            DropdownMenuItem(value: season.id, child: Text(season.id)),
+                        ],
+                        onChanged: (value) {
+                          if (value == null || value == _season) return;
+                          _season = value;
+                          _refreshData();
+                        },
+                      ),
+                    ),
                     SegmentedButton<NbaStatsSeasonType>(
                       segments: const [
                         ButtonSegment(
@@ -109,13 +190,12 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
                       ],
                       selected: {_seasonType},
                       onSelectionChanged: (value) {
-                        setState(() => _seasonType = value.first);
+                        _seasonType = value.first;
+                        _refreshData();
                       },
                     ),
                     SizedBox(
-                      width: constraints.maxWidth < 620
-                          ? constraints.maxWidth
-                          : 280,
+                      width: constraints.maxWidth < 620 ? constraints.maxWidth : 280,
                       child: TextField(
                         controller: _search,
                         onChanged: (_) => setState(() {}),
@@ -137,8 +217,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
                       value: _position,
                       values: const ['All', 'PG', 'SG', 'SF', 'PF', 'C'],
                       label: 'Position',
-                      onChanged: (value) =>
-                          setState(() => _position = value),
+                      onChanged: (value) => setState(() => _position = value),
                     ),
                   ],
                 );
@@ -152,19 +231,12 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
             Expanded(
               child: Text(
                 '${visible.length} players',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
             ),
             Text(
-              _seasonType == NbaStatsSeasonType.playoffs
-                  ? 'Playoffs'
-                  : 'Regular Season',
-              style: TextStyle(
-                color: colors.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
+              '$_season · ${_seasonType == NbaStatsSeasonType.playoffs ? 'Playoffs' : 'Regular Season'}',
+              style: TextStyle(color: colors.onSurfaceVariant, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -197,53 +269,50 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
                 ),
               ],
               rows: [
-                for (final row in visible.take(500))
+                for (final row in visible.take(750))
                   DataRow(
                     cells: [
                       DataCell(
                         Text(
                           row.player,
-                          style: TextStyle(
-                            color: colors.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700),
                         ),
-                        onTap: () => openNbaPlayerPage(
+                        onTap: () => openWebsiteNbaPlayerPage(
                           context,
-                          row.playerId,
-                          row.player,
+                          session: widget.session,
+                          playerKey: row.playerId,
+                          playerName: row.player,
                         ),
                       ),
                       DataCell(
                         Text(
                           row.team,
-                          style: TextStyle(
-                            color: colors.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700),
                         ),
                         onTap: () {
                           final team = _primaryTeam(row.team);
-                          if (team.isNotEmpty) {
-                            openNbaTeamPage(context, team, team);
-                          }
+                          if (team.isEmpty) return;
+                          openWebsiteNbaTeamPage(
+                            context,
+                            session: widget.session,
+                            teamKey: team,
+                            teamName: team,
+                          );
                         },
                       ),
                       DataCell(Text(row.position)),
                       for (final metric in _metrics)
-                        DataCell(
-                          Text(_format(row.value(metric.key), metric.percent)),
-                        ),
+                        DataCell(Text(_format(row.value(metric.key), metric.percent, metric.integer))),
                     ],
                   ),
               ],
             ),
           ),
         ),
-        if (visible.length > 500) ...[
+        if (visible.length > 750) ...[
           const SizedBox(height: 12),
           Text(
-            'Showing the first 500 matching players. Narrow the filters to refine the table.',
+            'Showing the first 750 matching players. Narrow the filters to refine the table.',
             style: TextStyle(color: colors.onSurfaceVariant),
           ),
         ],
@@ -270,18 +339,40 @@ class _FilterDropdown extends StatelessWidget {
         width: 150,
         child: DropdownButtonFormField<String>(
           initialValue: values.contains(value) ? value : values.first,
-          decoration: InputDecoration(
-            labelText: label,
-            border: const OutlineInputBorder(),
-            isDense: true,
-          ),
-          items: [
-            for (final item in values)
-              DropdownMenuItem(value: item, child: Text(item)),
-          ],
+          decoration: InputDecoration(labelText: label, border: const OutlineInputBorder(), isDense: true),
+          items: [for (final item in values) DropdownMenuItem(value: item, child: Text(item))],
           onChanged: (next) {
             if (next != null) onChanged(next);
           },
+        ),
+      );
+}
+
+class _Loading extends StatelessWidget {
+  const _Loading();
+  @override
+  Widget build(BuildContext context) => const SizedBox(height: 320, child: Center(child: CircularProgressIndicator()));
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.error, required this.onRetry});
+  final Object? error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('NBA statistics are unavailable', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 10),
+              Text('Sports Terminal could not reach the canonical historical NBA warehouse through the local API. ${error ?? ''}'),
+              const SizedBox(height: 18),
+              OutlinedButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh_rounded), label: const Text('Try again')),
+            ],
+          ),
         ),
       );
 }
@@ -301,13 +392,7 @@ const _metrics = <_TableMetric>[
 ];
 
 class _TableMetric {
-  const _TableMetric(
-    this.key,
-    this.label, {
-    this.percent = false,
-    this.integer = false,
-  });
-
+  const _TableMetric(this.key, this.label, {this.percent = false, this.integer = false});
   final String key;
   final String label;
   final bool percent;
@@ -319,8 +404,9 @@ int? _sortColumnIndex(String key) {
   return index < 0 ? null : index + 3;
 }
 
-String _format(double? value, bool percent) {
+String _format(double? value, bool percent, bool integer) {
   if (value == null) return '—';
+  if (integer) return value.round().toString();
   if (percent) return '${(value * 100).toStringAsFixed(1)}%';
   return value.toStringAsFixed(1);
 }
