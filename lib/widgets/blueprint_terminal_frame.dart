@@ -11,8 +11,8 @@ import 'terminal_command_bar.dart';
 import 'terminal_status_bar.dart';
 
 /// Global frame mounted around the existing product shells during convergence.
-/// It makes the command/status/density grammar universal without rewriting the
-/// already-deep NBA product graph or nesting a second static navigation rail.
+/// It makes command/status/density behavior universal without rewriting the
+/// already-deep NBA object graph or nesting a second static navigation rail.
 class BlueprintTerminalFrame extends StatefulWidget {
   const BlueprintTerminalFrame({
     super.key,
@@ -103,10 +103,16 @@ class _BlueprintTerminalFrameState extends State<BlueprintTerminalFrame> {
     final route = result.entry?.payload['route']?.toString() ?? '';
     switch (route) {
       case 'nba':
-        _open(ProductNbaTerminalScreen(session: widget.session), 'Sports Terminal · NBA');
+        _open(
+          ProductNbaTerminalScreen(session: widget.session),
+          'Sports Terminal · NBA',
+        );
         return;
       case 'trade':
-        _open(const SingleChildScrollView(child: ProductTradeMachineScreen()), 'Trade Machine');
+        _open(
+          const SingleChildScrollView(child: ProductTradeMachineScreen()),
+          'Trade Machine',
+        );
         return;
       case 'python':
         _open(const ProductPythonDevLabScreen(), 'Python Lab');
@@ -118,7 +124,8 @@ class _BlueprintTerminalFrameState extends State<BlueprintTerminalFrame> {
 
     final action = result.action;
     if (action != null) {
-      if (action.kind == TerminalActionKind.lab || action.kind == TerminalActionKind.model) {
+      if (action.kind == TerminalActionKind.lab ||
+          action.kind == TerminalActionKind.model) {
         _open(const ProductPythonDevLabScreen(), 'Python Lab');
         return;
       }
@@ -128,7 +135,10 @@ class _BlueprintTerminalFrameState extends State<BlueprintTerminalFrame> {
         TerminalActionKind.chart,
         TerminalActionKind.source,
       }.contains(action.kind)) {
-        _open(ProductNbaTerminalScreen(session: widget.session), 'Sports Terminal · NBA');
+        _open(
+          ProductNbaTerminalScreen(session: widget.session),
+          'Sports Terminal · NBA',
+        );
         return;
       }
     }
@@ -148,10 +158,23 @@ class _BlueprintTerminalFrameState extends State<BlueprintTerminalFrame> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        TerminalCommandBar(
-          entries: _entries,
-          actions: TerminalAction.standard,
-          onResult: _handleCommand,
+        Row(
+          children: [
+            Expanded(
+              child: TerminalCommandBar(
+                entries: _entries,
+                actions: TerminalAction.standard,
+                onResult: _handleCommand,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: TerminalDensitySelector(
+                value: _density,
+                onChanged: _setDensity,
+              ),
+            ),
+          ],
         ),
         Expanded(child: widget.child),
         TerminalStatusBar(
