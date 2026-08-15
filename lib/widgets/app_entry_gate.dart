@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/internal_workspace_controller.dart';
 import '../screens/login_screen.dart';
-import 'traditional_website_shell.dart';
+import 'traditional_website_shell_v2.dart';
 
 class AppEntryGate extends StatelessWidget {
   const AppEntryGate({
@@ -28,11 +28,7 @@ class AppEntryGate extends StatelessWidget {
           return LoginScreen(controller: authController);
         }
 
-        // Product reset: the default customer experience is now a conventional
-        // responsive website. The terminal command frame, floating research
-        // launchers, automation/status overlays and developer workspaces remain
-        // implemented but are intentionally not mounted around every page.
-        return TraditionalWebsiteShell(
+        return TraditionalWebsiteShellV2(
           session: session,
           workspaceController: workspaceController,
           onSignOut: authController.signOut,
