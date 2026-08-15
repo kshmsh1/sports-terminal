@@ -45,7 +45,7 @@ def main() -> None:
                 )
             run_migrations()
             payload = production_readiness_payload()
-            assert payload["database"]["schema_version"] == "0005"
+            assert payload["database"]["schema_version"] == "0006"
             assert payload["billing_mode"] == "disabled"
             assert payload["checks"]["schema_current"] is True
             assert payload["checks"]["required_tables"] is True
