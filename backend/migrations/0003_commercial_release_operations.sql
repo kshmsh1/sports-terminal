@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS platform_audit_events (
   object_id TEXT,
   request_id TEXT,
   metadata TEXT NOT NULL DEFAULT '{}',
+  previous_event_sha256 TEXT,
+  event_sha256 TEXT NOT NULL,
   recorded_at TEXT NOT NULL
 );
 
@@ -86,6 +88,13 @@ CREATE TABLE IF NOT EXISTS backup_manifests (
   restored_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS rate_limit_buckets (
+  bucket_key TEXT PRIMARY KEY,
+  window_started_at INTEGER NOT NULL,
+  request_count INTEGER NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_billing_events_status
   ON billing_webhook_events(status, received_at);
 CREATE INDEX IF NOT EXISTS idx_entitlements_subject
@@ -98,3 +107,5 @@ CREATE INDEX IF NOT EXISTS idx_platform_audit_recorded
   ON platform_audit_events(recorded_at, action);
 CREATE INDEX IF NOT EXISTS idx_backup_manifests_created
   ON backup_manifests(created_at, status);
+CREATE INDEX IF NOT EXISTS idx_rate_limit_updated
+  ON rate_limit_buckets(updated_at);
