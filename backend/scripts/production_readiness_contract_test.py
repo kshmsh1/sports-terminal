@@ -16,6 +16,7 @@ CONTRACTS = (
     "migration_contract_test.py",
     "production_bootstrap_contract_test.py",
     "production_readiness_api_contract_test.py",
+    "production_authorization_contract_test.py",
     "security_tokens_contract_test.py",
     "mfa_contract_test.py",
     "account_security_contract_test.py",
