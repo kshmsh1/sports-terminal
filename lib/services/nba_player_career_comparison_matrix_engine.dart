@@ -1,5 +1,4 @@
 import 'nba_player_career_analytics_engine.dart';
-import 'nba_player_career_comparison_engine.dart';
 import 'nba_player_career_comparison_scope_engine.dart';
 import 'nba_player_career_engine.dart';
 
