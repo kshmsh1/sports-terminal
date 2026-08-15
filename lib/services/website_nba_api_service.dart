@@ -80,6 +80,43 @@ class WebsiteNbaApiService {
     String playerKey, {
     String seasonType = 'combined',
     int recentGames = 30,
+  }) async {
+    if (seasonType != 'combined') {
+      return _playerDossierRequest(
+        playerKey,
+        seasonType: seasonType,
+        recentGames: recentGames,
+      );
+    }
+
+    // The backend's combined research mode intentionally collapses regular
+    // season and playoff rows. A conventional player page should preserve the
+    // two bodies of work, so the website composes separate sourced requests.
+    final regular = await _playerDossierRequest(
+      playerKey,
+      seasonType: 'regular',
+      recentGames: recentGames,
+    );
+    final playoffs = await _playerDossierRequest(
+      playerKey,
+      seasonType: 'playoffs',
+      recentGames: 0,
+    );
+    final regularRows = _mapList(regular['seasons']);
+    final playoffRows = _mapList(playoffs['seasons']);
+    return {
+      ...regular,
+      'seasons': [...regularRows, ...playoffRows],
+      'regular_seasons': regularRows,
+      'playoff_seasons': playoffRows,
+      'website_season_split': true,
+    };
+  }
+
+  Future<Map<String, dynamic>> _playerDossierRequest(
+    String playerKey, {
+    required String seasonType,
+    required int recentGames,
   }) {
     return _get(
       '/v2/nba/history/players/${Uri.encodeComponent(playerKey)}/dossier',
@@ -206,6 +243,15 @@ class WebsiteNbaApiException implements Exception {
 
   @override
   String toString() => message;
+}
+
+List<Map<String, dynamic>> _mapList(Object? value) {
+  if (value is! List) return const [];
+  return [
+    for (final item in value)
+      if (item is Map)
+        item.map((key, field) => MapEntry(key.toString(), field)),
+  ];
 }
 
 int? _int(Object? value) {
