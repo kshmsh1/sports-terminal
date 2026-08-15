@@ -14,8 +14,9 @@ def main() -> None:
     try:
         os.environ.pop("SPORTS_TERMINAL_DATABASE_URL", None)
         migrations = discover_migrations()
-        assert [item.version for item in migrations] == ["0001", "0002", "0003", "0004", "0005"]
-        assert len({item.checksum for item in migrations}) == 5
+        expected = ("0001", "0002", "0003", "0004", "0005", "0006")
+        assert tuple(item.version for item in migrations) == expected
+        assert len({item.checksum for item in migrations}) == len(expected)
 
         with tempfile.TemporaryDirectory() as directory:
             database.DEFAULT_SQLITE_PATH = Path(directory) / "migration.db"
@@ -40,11 +41,11 @@ def main() -> None:
                     """
                 )
                 first = run_migrations(migrations, connection=connection)
-                assert first.applied == ("0001", "0002", "0003", "0004", "0005")
+                assert first.applied == expected
                 assert first.already_applied == ()
                 second = run_migrations(migrations, connection=connection)
                 assert second.applied == ()
-                assert second.already_applied == ("0001", "0002", "0003", "0004", "0005")
+                assert second.already_applied == expected
                 tables = set(database.list_tables(connection))
                 assert "schema_migrations" in tables
                 assert "auth_mfa_factors" in tables
@@ -52,22 +53,27 @@ def main() -> None:
                 assert "delivery_outbox" in tables
                 assert "organization_security_policies" in tables
                 assert "sso_connections" in tables
+                assert "sso_identities" in tables
                 assert "entitlement_grants" in tables
                 assert "certified_releases" in tables
                 assert "backup_manifests" in tables
+                columns = {
+                    str(row["name"])
+                    for row in connection.execute("PRAGMA table_info(sso_login_states)").fetchall()
+                }
+                assert "pkce_verifier_ciphertext" in columns
 
         # A brand-new database must not require hand-created foreign-key parents.
-        # The migration CLI owns this bootstrap sequence before applying migrations.
         with tempfile.TemporaryDirectory() as directory:
             database.DEFAULT_SQLITE_PATH = Path(directory) / "fresh.db"
             bootstrap_core_schema()
             fresh = run_migrations(migrations)
-            assert fresh.applied == ("0001", "0002", "0003", "0004", "0005")
-            assert current_schema_version() == "0005"
+            assert fresh.applied == expected
+            assert current_schema_version() == "0006"
             with database.connect() as connection:
                 tables = set(database.list_tables(connection))
                 assert {"users", "organizations", "auth_sessions"}.issubset(tables)
-                assert {"auth_delivery_tokens", "sso_connections"}.issubset(tables)
+                assert {"auth_delivery_tokens", "sso_connections", "sso_identities"}.issubset(tables)
 
         print("migration_contract: PASS")
     finally:
