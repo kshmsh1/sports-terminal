@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from fastapi import APIRouter
@@ -14,12 +15,20 @@ REQUIRED_PRODUCTION_TABLES = {
     "schema_migrations",
     "auth_sessions",
     "auth_security_events",
+    "auth_delivery_tokens",
+    "auth_login_challenges",
+    "auth_session_security",
+    "delivery_outbox",
+    "organization_security_policies",
+    "sso_connections",
+    "sso_login_states",
     "billing_webhook_events",
     "entitlement_grants",
     "certified_releases",
     "release_activations",
     "platform_audit_events",
     "backup_manifests",
+    "rate_limit_buckets",
 }
 
 
@@ -32,12 +41,25 @@ def production_readiness_payload() -> dict[str, Any]:
         tables = set(list_tables(connection))
     missing_tables = sorted(REQUIRED_PRODUCTION_TABLES - tables)
     config_errors = config.production_errors()
+    require_verification = os.getenv(
+        "SPORTS_TERMINAL_REQUIRE_EMAIL_VERIFICATION", "false"
+    ).lower() == "true"
+    email_provider = os.getenv("SPORTS_TERMINAL_EMAIL_PROVIDER", "disabled").lower()
+    object_store = os.getenv("SPORTS_TERMINAL_OBJECT_STORE", "disabled").lower()
     checks = {
         "production_configuration": not config_errors,
         "managed_postgresql": (not config.production) or database_backend() == "postgresql",
         "schema_current": schema_version == target_version,
         "required_tables": not missing_tables,
         "billing_fail_closed": config.billing_mode in {"disabled", "test", "live"},
+        "security_email_delivery": (
+            not config.production
+            or not require_verification
+            or email_provider == "http"
+        ),
+        "durable_object_storage": (
+            not config.production or object_store == "http"
+        ),
     }
     ready = all(checks.values())
     return {
@@ -53,6 +75,8 @@ def production_readiness_payload() -> dict[str, Any]:
         "configuration_errors": config_errors,
         "missing_tables": missing_tables,
         "billing_mode": config.billing_mode,
+        "email_provider": email_provider,
+        "object_store": object_store,
         "automatic_migrations": config.auto_migrate,
     }
 
