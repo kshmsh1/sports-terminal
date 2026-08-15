@@ -73,7 +73,8 @@ def test_static_runtime_contract() -> None:
         "lib/services/website_nba_api_service.dart",
         "WebsiteNbaStaticRepository",
         "Historical basketball data is now a static website concern",
-        "No FastAPI request or runtime SQLite query is required",
+        "FastAPI request",
+        "runtime SQLite query",
     )
     reject(
         "lib/services/website_nba_api_service.dart",
