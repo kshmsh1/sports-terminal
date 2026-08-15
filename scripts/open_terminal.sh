@@ -87,7 +87,7 @@ with sqlite3.connect(path) as db:
             "SELECT name FROM sqlite_master WHERE type IN ('table','view')"
         )
     }
-required = {"dim_player", "dim_team", "fact_player_season"}
+required = {"canon_dim_player", "canon_dim_team", "canon_fact_player_season"}
 raise SystemExit(0 if required.issubset(names) else 1)
 PY
 }
