@@ -16,7 +16,6 @@ class NbaPlayerCareerComparisonMatrixPanel extends StatelessWidget {
 
   static const _panel = Color(0xFF0F151C);
   static const _line = Color(0xFF263342);
-  static const _text = Color(0xFFE8EDF3);
   static const _muted = Color(0xFF8895A5);
   static const _blue = Color(0xFF63A9FF);
   static const _amber = Color(0xFFE2B866);
