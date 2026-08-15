@@ -27,6 +27,23 @@ CONTRACTS = (
     "backup_manifest_contract_test.py",
     "rate_limit_contract_test.py",
     "deployment_contract_test.py",
+    "email_delivery_contract_test.py",
+    "auth_delivery_contract_test.py",
+    "auth_recovery_contract_test.py",
+    "mfa_login_contract_test.py",
+    "assured_auth_contract_test.py",
+    "local_postgres_orchestration_contract_test.py",
+    "object_store_contract_test.py",
+    "backup_executor_contract_test.py",
+    "restore_executor_contract_test.py",
+    "environment_promotion_contract_test.py",
+    "environment_promotion_api_contract_test.py",
+    "service_health_contract_test.py",
+    "metrics_api_contract_test.py",
+    "alerting_contract_test.py",
+    "sso_contract_test.py",
+    "organization_security_contract_test.py",
+    "auth_policy_enforcement_contract_test.py",
 )
 
 
@@ -70,7 +87,7 @@ def main() -> None:
             failed = True
 
     payload = {
-        "contract": "sports-terminal-production-readiness-v1",
+        "contract": "sports-terminal-production-readiness-v2",
         "contracts": len(CONTRACTS),
         "passed": sum(1 for item in results if item["status"] == "pass"),
         "failed": sum(1 for item in results if item["status"] != "pass"),
