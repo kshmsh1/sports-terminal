@@ -12,7 +12,7 @@ EXTRA_CONTRACTS: dict[str, tuple[str, ...]] = {
     "backend/app/runtime_config.py": (
         "class RuntimeConfig",
         "production requires a PostgreSQL DATABASE_URL",
-        "SPORTS_TERMINAL_MFA_ENCRYPTION_KEY",
+        "SPORTS_TERMINAL_MFA_ENCRYPTION_KEY must contain at least 32 characters",
         "SPORTS_TERMINAL_BILLING_MODE must be disabled, test, or live",
         "production CORS origins must be explicit",
     ),
@@ -22,6 +22,8 @@ EXTRA_CONTRACTS: dict[str, tuple[str, ...]] = {
         "import psycopg",
         "ON CONFLICT DO NOTHING",
         "information_schema.tables",
+        "information_schema.columns",
+        "PRAGMA\\s+table_info",
     ),
     "backend/app/migrations.py": (
         "class Migration",
@@ -62,6 +64,17 @@ EXTRA_CONTRACTS: dict[str, tuple[str, ...]] = {
         "schema_current",
         "billing_fail_closed",
         "/production-readiness",
+    ),
+    "backend/app/auth_guard.py": (
+        "PUBLIC_V2_PREFIXES",
+        "/v2/billing/webhooks/",
+        "Session is invalid or revoked",
+    ),
+    "backend/app/authorization_guard.py": (
+        "/v2/billing/webhooks/",
+        "/v2/releases",
+        "/v2/entitlements/users/",
+        "Platform administrator access is required",
     ),
     "backend/app/security_tokens.py": (
         "class SecurityTokenService",
@@ -166,15 +179,25 @@ EXTRA_CONTRACTS: dict[str, tuple[str, ...]] = {
         "reject(text, \"\\n  push:\"",
         "reject(text, \"\\n  pull_request:\"",
         "SPORTS_TERMINAL_BILLING_MODE=disabled",
+        "TrustedHostMiddleware",
+    ),
+    "backend/scripts/production_authorization_contract_test.py": (
+        "/v2/billing/webhooks/",
+        "/v2/releases",
+        "/v2/entitlements/users/",
+        "platform_admin",
     ),
     "backend/scripts/production_readiness_contract_test.py": (
         "sports-terminal-production-readiness-v1",
         "deployment_contract_test.py",
+        "production_authorization_contract_test.py",
         "billing_contract_test.py",
         "release_management_contract_test.py",
         "rate_limit_contract_test.py",
     ),
     "backend/app/main_launch.py": (
+        "TrustedHostMiddleware",
+        "allowed_hosts=list(_RUNTIME_CONFIG.allowed_hosts",
         "account_security_router",
         "entitlements_router",
         "billing_router",
