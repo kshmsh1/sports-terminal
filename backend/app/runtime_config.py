@@ -59,13 +59,13 @@ class RuntimeConfig:
         errors: list[str] = []
         if self.database_scheme != "postgresql":
             errors.append("production requires a PostgreSQL DATABASE_URL")
-        if not self.session_pepper or len(self.session_pepper) < 32:
+        if len(self.session_pepper) < 32:
             errors.append("SPORTS_TERMINAL_SESSION_PEPPER must contain at least 32 characters")
-        if not self.mfa_encryption_key:
-            errors.append("SPORTS_TERMINAL_MFA_ENCRYPTION_KEY is required in production")
-        if not self.release_signing_secret or len(self.release_signing_secret) < 32:
+        if len(self.mfa_encryption_key) < 32:
+            errors.append("SPORTS_TERMINAL_MFA_ENCRYPTION_KEY must contain at least 32 characters")
+        if len(self.release_signing_secret) < 32:
             errors.append("SPORTS_TERMINAL_RELEASE_SIGNING_SECRET must contain at least 32 characters")
-        if not self.backup_signing_secret or len(self.backup_signing_secret) < 32:
+        if len(self.backup_signing_secret) < 32:
             errors.append("SPORTS_TERMINAL_BACKUP_SIGNING_SECRET must contain at least 32 characters")
         if not self.cors_origins or "*" in self.cors_origins:
             errors.append("production CORS origins must be explicit and cannot include *")
