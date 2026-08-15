@@ -6,7 +6,7 @@ import 'package:sports_terminal/services/nba_terminal_seed_repository.dart';
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  test('packages canonical season standings into shared RoutePayload state', () {
+  test('packages canonical season operating rows into shared RoutePayload state', () {
     final payload = const NbaSeasonWorkflowService().package(
       _seed(),
       seasonId: '2025-26',
@@ -17,12 +17,40 @@ void main() {
     expect(payload.sourceObjectId, '2025-26');
     expect(payload.targetRoute, 'Workspace');
     expect(payload.readinessState, 'Ready');
-    expect(payload.rowCount, 2);
+    expect(payload.rowCount, 6);
+    expect(payload.rows.first['row_type'], 'standing');
     expect(payload.rows.first['team_id'], 'AAA');
     expect(payload.rows.first['wins'], 1);
+    expect(
+      payload.rows.where((row) => row['row_type'] == 'game').length,
+      2,
+    );
+    expect(
+      payload.rows.where((row) => row['row_type'] == 'rest_density').length,
+      2,
+    );
     expect(payload.metadata['gameCount'], 2);
     expect(payload.metadata['completedGames'], 1);
     expect(payload.metadata['scheduledGames'], 1);
+    expect(payload.metadata['standingRows'], 2);
+    expect(payload.metadata['gameRows'], 2);
+    expect(payload.metadata['leaderRows'], 0);
+    expect(payload.metadata['restDensityRows'], 2);
+  });
+
+  test('season export preserves scheduled games without inventing scores', () {
+    final payload = const NbaSeasonWorkflowService().package(
+      _seed(),
+      seasonId: '2025-26',
+      targetRoute: 'Workspace',
+    );
+    final scheduled = payload.rows.firstWhere(
+      (row) => row['row_type'] == 'game' && row['game_id'] == 'g2',
+    );
+
+    expect(scheduled['status'], 'Scheduled');
+    expect(scheduled['home_score'], isNull);
+    expect(scheduled['away_score'], isNull);
   });
 
   test('season type remains an explicit workflow filter', () {
@@ -37,9 +65,10 @@ void main() {
     expect(payload.filterSummary, contains('season_type=Playoffs'));
     expect(payload.metadata['playoffGames'], 1);
     expect(payload.rows.first['season_type'], 'Playoffs');
+    expect(payload.metadata['gameRows'], 1);
   });
 
-  test('empty season scope is partial instead of fabricating standings', () {
+  test('empty season scope is partial instead of fabricating operating rows', () {
     final payload = const NbaSeasonWorkflowService().package(
       _seed(),
       seasonId: '2099-00',
