@@ -80,7 +80,7 @@ class NbaPlayerCareerAnalyticsEngine {
     NbaPlayerCareerMetric metric = NbaPlayerCareerMetric.pointsPerGame,
     int rollingWindow = 3,
   }) {
-    final window = rollingWindow.clamp(2, 10);
+    final window = rollingWindow.clamp(2, 10).toInt();
     final values = <double?>[
       for (final season in career.seasons) _value(season, metric),
     ];
