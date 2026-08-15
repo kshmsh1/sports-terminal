@@ -52,6 +52,8 @@ def test_static_runtime_contract() -> None:
     require(
         "scripts/open_terminal.sh",
         "build_static_nba_website_data_v2.py",
+        "build_static_nba_game_data.py",
+        "--materialize-pbp",
         "web/data/nba_static",
         "Historical NBA pages are served from static files, not the API.",
     )
@@ -62,11 +64,21 @@ def test_static_runtime_contract() -> None:
         '"live_overlay_supported": True',
     )
     require(
+        "tools/build_static_nba_game_data.py",
+        "canon_fact_play_by_play",
+        "sports-terminal-static-game-v1",
+        "sports-terminal-static-pbp-v1",
+        '"runtime_api_required": False',
+        '"coverage_is_source_bounded": True',
+    )
+    require(
         "lib/services/website_nba_static_repository.dart",
         "data/nba_static",
         "seasonSnapshot",
         "playerDossier",
         "teamDossier",
+        "gameDetail",
+        "gamePlayByPlay",
         "searchEntities",
     )
     require(
@@ -84,8 +96,20 @@ def test_static_runtime_contract() -> None:
         "loadHistoricalSeason(",
     )
     require(
+        "lib/services/front_office_registry_service.dart",
+        "Cache-first product read",
+        "loadRemote",
+        "loadCached",
+    )
+    require(
         ".gitignore",
         "/web/data/nba_static/",
+    )
+    require(
+        "docs/static_nba_website_architecture.md",
+        "static base + live overlay",
+        "--materialize-pbp",
+        "does not claim possession-level PBP",
     )
 
 
