@@ -36,17 +36,27 @@ def main() -> None:
         os.environ.pop("SPORTS_TERMINAL_DATABASE_URL", None)
         with tempfile.TemporaryDirectory() as directory:
             database.DEFAULT_SQLITE_PATH = Path(directory) / "bootstrap.db"
-            # The legacy core user table is an explicit dependency of migration 0002.
             with database.connect() as connection:
-                connection.execute(
-                    "CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL)"
+                connection.executescript(
+                    """
+                    CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL);
+                    CREATE TABLE auth_sessions (
+                      token_hash TEXT PRIMARY KEY,
+                      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                      expires_at TEXT NOT NULL,
+                      created_at TEXT NOT NULL,
+                      last_seen_at TEXT NOT NULL,
+                      revoked_at TEXT
+                    );
+                    CREATE TABLE organizations (id TEXT PRIMARY KEY);
+                    """
                 )
             rebound = bind_database_boundary()
             assert "app.database" in rebound
             status = bootstrap(_config())
             assert status.database_backend == "sqlite"
-            assert status.schema_version == "0003"
-            assert status.target_schema_version == "0003"
+            assert status.schema_version == "0005"
+            assert status.target_schema_version == "0005"
             assert status.auto_migrated is True
 
         print("production_bootstrap_contract: PASS")
