@@ -89,6 +89,16 @@ def update_security_policy(
     timestamp = now_iso()
     encoded = json.dumps(domains, separators=(",", ":"))
     with connect() as connection:
+        if payload.sso_required:
+            enabled = connection.execute(
+                "SELECT 1 FROM sso_connections WHERE organization_id = ? AND status = 'enabled' LIMIT 1",
+                (organization_id,),
+            ).fetchone()
+            if enabled is None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="SSO cannot be required until an enabled SSO connection exists",
+                )
         connection.execute(
             "DELETE FROM organization_security_policies WHERE organization_id = ?",
             (organization_id,),
