@@ -28,9 +28,9 @@ void main() {
     );
 
     expect(result.rows, hasLength(2));
-    expect(result.rows.first.cells[0].delta, 2);
-    expect(result.rows.first.cells[1].delta, -1);
-    expect(result.rows.first.cells[2].delta, 2);
+    expect(result.rows.first.cells[0].delta, closeTo(2, 1e-9));
+    expect(result.rows.first.cells[1].delta, closeTo(-1, 1e-9));
+    expect(result.rows.first.cells[2].delta, closeTo(2, 1e-9));
     expect(result.summaries.first.leftAhead, 2);
   });
 
@@ -60,22 +60,31 @@ void main() {
     final result = const NbaPlayerCareerComparisonMatrixEngine().build(
       scope,
       metrics: [
-        NbaPlayerCareerMetric.pointsPerGame,
+        NbaPlayerCareerMetric.assistsPerGame,
         NbaPlayerCareerMetric.pointsPerGame,
         NbaPlayerCareerMetric.assistsPerGame,
       ],
     );
 
-    expect(result.metrics, [
-      NbaPlayerCareerMetric.pointsPerGame,
-      NbaPlayerCareerMetric.assistsPerGame,
-    ]);
+    expect(
+      result.metrics,
+      [
+        NbaPlayerCareerMetric.assistsPerGame,
+        NbaPlayerCareerMetric.pointsPerGame,
+      ],
+    );
   });
 
   test('shared scope removes one-sided rows before matrix construction', () {
     final comparison = const NbaPlayerCareerComparisonEngine().build(
-      left: _career('left', [_season('2019-20'), _season('2020-21')]),
-      right: _career('right', [_season('2020-21'), _season('2021-22')]),
+      left: _career('left', [
+        _season('2020-21'),
+        _season('2021-22'),
+      ]),
+      right: _career('right', [
+        _season('2021-22'),
+        _season('2022-23'),
+      ]),
     );
     final scope = const NbaPlayerCareerComparisonScopeEngine().build(
       comparison,
@@ -83,11 +92,15 @@ void main() {
     );
     final result = const NbaPlayerCareerComparisonMatrixEngine().build(scope);
 
-    expect(result.rows.map((row) => row.axisLabel), ['2020-21']);
+    expect(result.rows, hasLength(1));
+    expect(result.rows.single.axisLabel, '2021-22');
   });
 }
 
-NbaPlayerCareerSnapshot _career(String key, List<NbaPlayerCareerSeason> seasons) =>
+NbaPlayerCareerSnapshot _career(
+  String key,
+  List<NbaPlayerCareerSeason> seasons,
+) =>
     NbaPlayerCareerSnapshot(
       playerKey: key,
       playerName: key.toUpperCase(),
@@ -102,8 +115,8 @@ NbaPlayerCareerSnapshot _career(String key, List<NbaPlayerCareerSeason> seasons)
       tenures: const [],
       missingTeamDossierKeys: const [],
       multiTeamAggregateSeasons: const [],
-      declaredFirstSeason: seasons.isEmpty ? '' : seasons.first.seasonId,
-      declaredLastSeason: seasons.isEmpty ? '' : seasons.last.seasonId,
+      declaredFirstSeason: seasons.first.seasonId,
+      declaredLastSeason: seasons.last.seasonId,
       declaredSeasonRows: seasons.length,
       materialConflictCount: 0,
     );
@@ -111,9 +124,9 @@ NbaPlayerCareerSnapshot _career(String key, List<NbaPlayerCareerSeason> seasons)
 NbaPlayerCareerSeason _season(
   String season, {
   double points = 200,
-  double rebounds = 80,
+  double rebounds = 100,
   double assists = 50,
-  double? ts = .6,
+  double ts = .60,
   double? bpm = 2,
 }) =>
     NbaPlayerCareerSeason(
