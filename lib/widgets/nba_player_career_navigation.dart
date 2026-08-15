@@ -7,6 +7,7 @@ import '../services/nba_player_career_comparison_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import 'nba_franchise_navigation.dart';
 import 'nba_game_navigation.dart';
+import 'nba_player_career_comparison_history_dialog.dart';
 import 'nba_player_career_comparison_navigation.dart';
 
 /// Opens the permanent canonical historical Player career route.
@@ -127,6 +128,17 @@ Future<void> openNbaPlayerCareerPage(
                 onPressed: openComparison,
                 icon: const Icon(Icons.compare_arrows_rounded),
               ),
+              IconButton(
+                key: const ValueKey('player-career-comparison-history'),
+                tooltip: 'Resume saved and recent career comparisons',
+                onPressed: () => showNbaPlayerCareerComparisonHistory(
+                  careerContext,
+                  league: normalizedLeague,
+                  playerKey: normalizedKey,
+                  onOpenPlayer: openCareerPlayer,
+                ),
+                icon: const Icon(Icons.history_rounded),
+              ),
               PopupMenuButton<String>(
                 key: const ValueKey('player-career-comparison-modes'),
                 tooltip: 'Career comparison modes',
@@ -137,10 +149,12 @@ Future<void> openNbaPlayerCareerPage(
                         alignment:
                             NbaPlayerCareerComparisonAlignment.careerYear,
                       );
+                      return;
                     case 'efficiency':
                       openComparison(
                         metric: NbaPlayerCareerMetric.trueShootingPct,
                       );
+                      return;
                   }
                 },
                 itemBuilder: (_) => const [
