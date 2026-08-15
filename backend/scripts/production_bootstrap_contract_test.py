@@ -18,6 +18,7 @@ def _config() -> RuntimeConfig:
         cors_origins=("*",),
         allowed_hosts=("*",),
         session_pepper="",
+        mfa_encryption_key="",
         auth_session_days=30,
         rate_limits_enabled=False,
         hsts_enabled=False,
