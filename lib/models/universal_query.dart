@@ -3,23 +3,23 @@ import 'dart:convert';
 class UniversalQueryFilter {
   const UniversalQueryFilter({
     required this.field,
-    required this.operator,
+    required this.op,
     required this.value,
   });
 
   final String field;
-  final String operator;
+  final String op;
   final Object? value;
 
   Map<String, dynamic> toJson() => {
         'field': field,
-        'operator': operator,
+        'operator': op,
         'value': value,
       };
 
   factory UniversalQueryFilter.fromJson(Map<String, dynamic> json) => UniversalQueryFilter(
         field: json['field']?.toString() ?? '',
-        operator: json['operator']?.toString() ?? '=',
+        op: json['operator']?.toString() ?? '=',
         value: json['value'],
       );
 }
