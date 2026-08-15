@@ -37,12 +37,13 @@ class NbaPlayerCareerComparisonDiscoveryService {
     final normalizedQuery = query.trim();
     if (normalizedQuery.length < 2) return const [];
     final normalizedLeague = league.trim().isEmpty ? 'NBA' : league.trim().toUpperCase();
+    final boundedLimit = limit.clamp(1, 100).toInt();
     final payload = await (loader?.call(normalizedQuery, normalizedLeague) ??
         const NbaEntityIntelligenceRepository().search(
           normalizedQuery,
           league: normalizedLeague,
           kinds: const {'player'},
-          limitPerKind: limit.clamp(1, 100),
+          limitPerKind: boundedLimit,
         ));
     final groups = _comparisonMap(payload['groups']);
     final rawPlayers = groups['players'];
@@ -74,7 +75,7 @@ class NbaPlayerCareerComparisonDiscoveryService {
           ),
         ),
       );
-      if (result.length >= limit.clamp(1, 100)) break;
+      if (result.length >= boundedLimit) break;
     }
     return List.unmodifiable(result);
   }
