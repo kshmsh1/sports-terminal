@@ -13,8 +13,8 @@ def main() -> None:
     try:
         os.environ.pop("SPORTS_TERMINAL_DATABASE_URL", None)
         migrations = discover_migrations()
-        assert [item.version for item in migrations] == ["0001", "0002", "0003"]
-        assert len({item.checksum for item in migrations}) == 3
+        assert [item.version for item in migrations] == ["0001", "0002", "0003", "0004", "0005"]
+        assert len({item.checksum for item in migrations}) == 5
 
         with tempfile.TemporaryDirectory() as directory:
             database.DEFAULT_SQLITE_PATH = Path(directory) / "migration.db"
@@ -25,17 +25,32 @@ def main() -> None:
                       id TEXT PRIMARY KEY,
                       email TEXT UNIQUE NOT NULL
                     );
+                    CREATE TABLE auth_sessions (
+                      token_hash TEXT PRIMARY KEY,
+                      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                      expires_at TEXT NOT NULL,
+                      created_at TEXT NOT NULL,
+                      last_seen_at TEXT NOT NULL,
+                      revoked_at TEXT
+                    );
+                    CREATE TABLE organizations (
+                      id TEXT PRIMARY KEY
+                    );
                     """
                 )
                 first = run_migrations(migrations, connection=connection)
-                assert first.applied == ("0001", "0002", "0003")
+                assert first.applied == ("0001", "0002", "0003", "0004", "0005")
                 assert first.already_applied == ()
                 second = run_migrations(migrations, connection=connection)
                 assert second.applied == ()
-                assert second.already_applied == ("0001", "0002", "0003")
+                assert second.already_applied == ("0001", "0002", "0003", "0004", "0005")
                 tables = set(database.list_tables(connection))
                 assert "schema_migrations" in tables
                 assert "auth_mfa_factors" in tables
+                assert "auth_session_security" in tables
+                assert "delivery_outbox" in tables
+                assert "organization_security_policies" in tables
+                assert "sso_connections" in tables
                 assert "entitlement_grants" in tables
                 assert "certified_releases" in tables
                 assert "backup_manifests" in tables
