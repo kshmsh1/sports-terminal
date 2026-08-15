@@ -48,6 +48,10 @@ def main() -> None:
     for token in (".env", "*.db", ".data/", ".git/"):
         require(dockerignore, token, "dockerignore")
 
+    launch = (BACKEND / "app" / "main_launch.py").read_text(encoding="utf-8")
+    require(launch, "TrustedHostMiddleware", "launch API")
+    require(launch, "allowed_hosts=list(_RUNTIME_CONFIG.allowed_hosts", "launch API")
+
     runbook = (ROOT / "docs" / "production_runbook.md").read_text(encoding="utf-8")
     require(runbook, "Production does not silently fall back to SQLite", "runbook")
     require(runbook, "candidate → certified → active", "runbook")
