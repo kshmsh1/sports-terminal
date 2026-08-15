@@ -28,6 +28,7 @@ class RuntimeConfig:
     cors_origins: tuple[str, ...]
     allowed_hosts: tuple[str, ...]
     session_pepper: str
+    mfa_encryption_key: str
     auth_session_days: int
     rate_limits_enabled: bool
     hsts_enabled: bool
@@ -60,6 +61,8 @@ class RuntimeConfig:
             errors.append("production requires a PostgreSQL DATABASE_URL")
         if not self.session_pepper or len(self.session_pepper) < 32:
             errors.append("SPORTS_TERMINAL_SESSION_PEPPER must contain at least 32 characters")
+        if not self.mfa_encryption_key:
+            errors.append("SPORTS_TERMINAL_MFA_ENCRYPTION_KEY is required in production")
         if not self.release_signing_secret or len(self.release_signing_secret) < 32:
             errors.append("SPORTS_TERMINAL_RELEASE_SIGNING_SECRET must contain at least 32 characters")
         if not self.backup_signing_secret or len(self.backup_signing_secret) < 32:
@@ -96,6 +99,7 @@ def load_runtime_config() -> RuntimeConfig:
         cors_origins=_csv("SPORTS_TERMINAL_CORS_ORIGINS", "*" if environment != "production" else ""),
         allowed_hosts=_csv("SPORTS_TERMINAL_ALLOWED_HOSTS", "*" if environment != "production" else ""),
         session_pepper=os.getenv("SPORTS_TERMINAL_SESSION_PEPPER", ""),
+        mfa_encryption_key=os.getenv("SPORTS_TERMINAL_MFA_ENCRYPTION_KEY", ""),
         auth_session_days=max(1, int(os.getenv("SPORTS_TERMINAL_AUTH_SESSION_DAYS", "30"))),
         rate_limits_enabled=_bool("SPORTS_TERMINAL_RATE_LIMITS", default=environment == "production"),
         hsts_enabled=_bool("SPORTS_TERMINAL_HSTS", default=environment == "production"),
