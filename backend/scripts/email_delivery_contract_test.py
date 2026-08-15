@@ -8,6 +8,7 @@ from app import database
 from app.auth_api import init_auth_db
 from app.email_delivery import EmailDeliveryError, SecurityEmailDelivery
 from app.migrations import run_migrations
+from app.production_bootstrap import bind_database_boundary
 
 
 def main() -> None:
@@ -22,6 +23,7 @@ def main() -> None:
         os.environ["SPORTS_TERMINAL_EMAIL_PROVIDER"] = "console"
         with tempfile.TemporaryDirectory() as directory:
             database.DEFAULT_SQLITE_PATH = Path(directory) / "email.db"
+            bind_database_boundary()
             init_auth_db()
             run_migrations()
             receipt = SecurityEmailDelivery().send_security_email(
