@@ -35,11 +35,7 @@ def main() -> None:
     require(startup, "SPORTS_TERMINAL_RUN_MIGRATIONS_ON_START", "production startup")
     require(startup, "--proxy-headers", "production startup")
     require(startup, "--no-proxy-headers", "production startup")
-    reject(
-        startup,
-        '--proxy-headers "${SPORTS_TERMINAL_TRUST_PROXY_HEADERS',
-        "production startup",
-    )
+    reject(startup, '--proxy-headers "${SPORTS_TERMINAL_TRUST_PROXY_HEADERS', "production startup")
 
     assured_auth = (BACKEND / "app" / "assured_auth_api.py").read_text(encoding="utf-8")
     require(assured_auth, "production bootstrap verifies the schema", "assured auth")
@@ -72,24 +68,34 @@ def main() -> None:
     require(runbook, "candidate → certified → active", "runbook")
     require(runbook, "OIDC uses the authorization-code flow with PKCE S256", "runbook")
     require(runbook, "Sports Terminal does not silently provision accounts from an IdP", "runbook")
-    require(runbook, "Repository workflows are manual-only", "runbook")
 
     cost_guard = (ROOT / ".github" / "COST_GUARD.md").read_text(encoding="utf-8")
-    require(cost_guard, "workflow_dispatch", "GitHub cost guard")
-    require(cost_guard, "Pushes and pull-request updates do not automatically start", "GitHub cost guard")
+    require(cost_guard, "public repository", "GitHub cost guard")
+    require(cost_guard, "standard GitHub-hosted runners", "GitHub cost guard")
+    require(cost_guard, "contents: read", "GitHub cost guard")
 
     workflows = sorted((ROOT / ".github" / "workflows").glob("*.yml"))
     if not workflows:
-        raise AssertionError("at least one GitHub workflow must remain available for manual validation")
+        raise AssertionError("at least one GitHub workflow must remain available")
     for workflow in workflows:
         text = workflow.read_text(encoding="utf-8")
         require(text, "workflow_dispatch", workflow.name)
-        reject(text, "\n  push:", workflow.name)
-        reject(text, "\n  pull_request:", workflow.name)
+        require(text, "\n  push:", workflow.name)
+        require(text, "\n  pull_request:", workflow.name)
+        require(text, "runs-on: ubuntu-latest", workflow.name)
+        require(text, "contents: read", workflow.name)
         reject(text, "\n  schedule:", workflow.name)
         reject(text, "\n  workflow_run:", workflow.name)
+        reject(text, "ubuntu-latest-", workflow.name)
+        reject(text, "macos-latest-large", workflow.name)
+        reject(text, "windows-latest-large", workflow.name)
+        reject(text, "self-hosted", workflow.name)
+        reject(text, "permissions: write-all", workflow.name)
+        reject(text, "contents: write", workflow.name)
+        for token in ("flyctl", "railway", "vercel", "heroku", "terraform apply", "kubectl apply"):
+            reject(text.lower(), token, workflow.name)
 
-    print(f"deployment_contract: PASS ({len(workflows)} manual-only workflows)")
+    print(f"deployment_contract: PASS ({len(workflows)} safe automatic public-repo workflows)")
 
 
 if __name__ == "__main__":
