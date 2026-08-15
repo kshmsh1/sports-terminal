@@ -57,6 +57,10 @@ __pycache__/
 /data/warehouse/nba_history_import_report.json
 /data/warehouse/nba_canonical_build_report.json
 
+# Generated immutable website corpus. Built locally from nba_history.sqlite by
+# tools/build_static_nba_website_data.py before Flutter starts.
+/web/data/nba_static/
+
 # Symbolication related
 app.*.symbols
 
