@@ -2,9 +2,9 @@ name: Pre-Data Gate
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main]
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
 
 permissions:
@@ -17,7 +17,6 @@ concurrency:
 jobs:
   pre-data-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -25,8 +24,25 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: true
       - name: Install dependencies
         run: flutter pub get
       - name: Run pre import check
-        run: bash tools/check_pre_import_state.sh
+        id: pre_data
+        shell: bash
+        run: |
+          set +e
+          bash tools/check_pre_import_state.sh > pre_data.log 2>&1
+          status=$?
+          cat pre_data.log
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Retain pre data diagnostics
+        if: steps.pre_data.outputs.status != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-data-diagnostics
+          path: pre_data.log
+          retention-days: 7
+      - name: Stop on pre data failure
+        if: steps.pre_data.outputs.status != '0'
+        run: exit 1
