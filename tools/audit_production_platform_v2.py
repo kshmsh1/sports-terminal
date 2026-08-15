@@ -118,7 +118,7 @@ EXTRA_CONTRACTS: dict[str, tuple[str, ...]] = {
     ),
     "backend/app/sso.py": (
         "class SsoConnectionService",
-        "OIDC issuer and endpoints must use HTTPS",
+        "must be an HTTPS URL without embedded credentials",
         "client_secret_ciphertext",
         "oidc-state",
         "consume_state",
@@ -162,7 +162,7 @@ EXTRA_CONTRACTS: dict[str, tuple[str, ...]] = {
     "backend/scripts/sso_contract_test.py": (
         "sso_contract: PASS",
         "never-store-plaintext",
-        "response_type=code",
+        "code_challenge_method",
     ),
     "backend/scripts/auth_policy_enforcement_contract_test.py": (
         "MFA is required",
