@@ -36,7 +36,11 @@ def main() -> None:
             "users",
             "auth_sessions",
             "auth_session_security",
+            "auth_delivery_tokens",
             "organization_security_policies",
+            "sso_connections",
+            "sso_login_states",
+            "sso_identities",
             "certified_releases",
             "backup_manifests",
         }
