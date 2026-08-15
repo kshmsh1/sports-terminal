@@ -97,7 +97,7 @@ class TerminalBoardStore {
       panels: [
         for (final panel in source.panels)
           TerminalBoardPanel(
-            id: '${newId}-${panel.id}',
+            id: '$newId-${panel.id}',
             kind: panel.kind,
             title: panel.title,
             payload: Map<String, dynamic>.from(panel.payload),
