@@ -1,6 +1,7 @@
 name: Pre-Data Gate
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -8,6 +9,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: pre-data-gate-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   pre-data-gate:
