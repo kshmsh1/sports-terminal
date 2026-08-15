@@ -6,6 +6,7 @@ import '../services/nba_season_workflow_service.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../widgets/nba_season_analytics_panel.dart';
 import '../widgets/nba_season_cross_season_panel.dart';
+import '../widgets/nba_season_operations_panel.dart';
 import '../widgets/nba_season_source_context_panel.dart';
 
 const _bg = Color(0xFF090D12);
@@ -139,7 +140,7 @@ class _ProductNbaSeasonScreenState extends State<ProductNbaSeasonScreen> {
               _Hero(
                 title: '${widget.seasonId} NBA Season',
                 body:
-                    'Canonical season operating surface for standings, schedule/results, player leaders, team distributions, observed playoff matchup context, cross-season benchmarking, source-backed season context and persistent analyst workflows. Scheduled games never alter records, and unavailable structure is never synthesized.',
+                    'Canonical season operating surface for standings, schedule/results, player leaders, team distributions, observed playoff matchup context, awards/voting, All-Star selections, draft context, date-only schedule density, cross-season benchmarking, source-backed context and persistent analyst workflows. Scheduled games never alter records, and unavailable structure is never synthesized.',
               ),
               const SizedBox(height: 12),
               _controls(seed, season),
@@ -151,6 +152,15 @@ class _ProductNbaSeasonScreenState extends State<ProductNbaSeasonScreen> {
                 onOpenPlayer: widget.onOpenPlayer,
                 onOpenTeam: widget.onOpenTeam,
                 onOpenGame: widget.onOpenGame,
+              ),
+              const SizedBox(height: 12),
+              NbaSeasonOperationsPanel(
+                seed: seed,
+                seasonId: widget.seasonId,
+                seasonType: _seasonType,
+                loadContext: widget.loadSourceContext,
+                onOpenPlayer: widget.onOpenPlayer,
+                onOpenTeam: widget.onOpenTeam,
               ),
               const SizedBox(height: 12),
               NbaSeasonCrossSeasonPanel(
