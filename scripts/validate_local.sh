@@ -32,7 +32,6 @@ if [[ ! -x "$VENV/bin/python" ]]; then
   python3 -m venv "$VENV"
 fi
 PYTHON="$VENV/bin/python"
-PIP="$VENV/bin/pip"
 
 if [[ "${SPORTS_TERMINAL_SKIP_DEP_INSTALL:-false}" != "true" ]]; then
   echo "==> Resolving backend dependencies locally"
@@ -92,6 +91,12 @@ if [[ -f tools/audit_production_platform_v3.py ]]; then
   echo "==> Running final local-launch/SSO completion graph"
   "$PYTHON" tools/audit_production_platform_v3.py --check
 fi
+
+echo "==> Auditing master Sports Terminal blueprint coverage"
+"$PYTHON" tools/audit_sports_terminal_blueprint_v1.py --check
+
+echo "==> Auditing blueprint-converged Sports Terminal platform v4"
+"$PYTHON" tools/audit_sports_terminal_platform_v4.py --check
 
 if $BACKEND_ONLY; then
   echo "==> Backend-only validation complete"
