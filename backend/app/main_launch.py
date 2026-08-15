@@ -45,6 +45,7 @@ from .profile_api import router as profile_router
 from .python_runtime_api import router as python_runtime_router
 from .release_management_api import router as release_management_router
 from .runtime_config import load_runtime_config
+from .sso_auth_api import router as sso_auth_router
 from .trust_safety_api import router as trust_safety_router
 from .workspace_api import router as workspace_router
 
@@ -67,10 +68,10 @@ front_office_module.front_office_reconciliation = hardened_reconciliation(
 )
 
 app.title = "Sports Terminal Launch API"
-app.version = "2.1.0"
+app.version = "2.2.0"
 app.description = (
-    "Production-oriented Sports Terminal API for MFA-assured authentication, account recovery, "
-    "organization security and SSO policy, entitlements, provider-neutral billing ingress, "
+    "Production-oriented Sports Terminal API for password, MFA and verified OIDC/PKCE authentication, "
+    "account recovery, organization security and SSO policy, entitlements, provider-neutral billing ingress, "
     "certified and historical NBA data, canonical awards and voting, contracts and draft assets, "
     "transaction ledgers, ranked community discovery, threaded discussion, moderation and messaging, "
     "isolated Python analysis, customer operations, launch automation, environment promotion, "
@@ -115,9 +116,10 @@ def _attach_router_routes(router) -> None:
 
 
 # Assured auth is mounted first so its duplicate POST /v2/auth/login route is the
-# canonical login implementation. The legacy auth router still owns signup/session/
-# logout/password-change routes without creating a second public login behavior.
+# canonical password/MFA implementation. OIDC routes are independent public protocol
+# ingress with state + PKCE + signed ID-token verification before session issuance.
 app.include_router(assured_auth_router)
+app.include_router(sso_auth_router)
 app.include_router(auth_router)
 app.include_router(auth_recovery_router)
 app.include_router(account_security_router)
