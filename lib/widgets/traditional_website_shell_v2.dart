@@ -72,8 +72,10 @@ class _TraditionalWebsiteShellV2State extends State<TraditionalWebsiteShellV2> {
 
   void _select(String id) {
     final all = [..._primary, ..._secondary];
-    final match = all.where((item) => item.id == id).firstOrNull;
-    if (match != null && match.enabled && match.builder != null) setState(() => _selected = id);
+    final index = all.indexWhere((item) => item.id == id);
+    if (index < 0) return;
+    final match = all[index];
+    if (match.enabled && match.builder != null) setState(() => _selected = id);
   }
 
   @override
