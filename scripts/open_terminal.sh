@@ -43,10 +43,10 @@ normal launch so it cannot block opening the website. Only rows already exposed
 by the canonical warehouse are materialized. Missing historical PBP coverage
 remains missing.
 
-The launcher checks the current checkout and immediately previous repo root for
-nba_history.sqlite. If no canonical warehouse exists but already-downloaded
-raw/historical sources exist, it can rebuild locally. It never silently scrapes
-or downloads sports data.
+Dynamic services are optional for local browsing. If the local API cannot start,
+the website still launches with immutable historical NBA pages available while
+accounts, saved work, community, mutable front-office edits and other dynamic
+features remain offline.
 EOF
       exit 0
       ;;
@@ -261,6 +261,21 @@ PY
   return 1
 }
 
+launch_api_ready() {
+  "$PYTHON" - <<'PY' >/dev/null 2>&1
+import json, urllib.request
+try:
+    with urllib.request.urlopen("http://127.0.0.1:8000/v2/launch/readiness", timeout=1.0) as response:
+        if response.status != 200:
+            raise SystemExit(1)
+        payload = json.load(response)
+        if "status" not in payload or "launch_profile" not in payload:
+            raise SystemExit(1)
+except Exception:
+    raise SystemExit(1)
+PY
+}
+
 if $USE_POSTGRES; then
   command -v docker >/dev/null 2>&1 || { echo "Docker is required for --postgres." >&2; exit 1; }
   echo "==> Starting loopback-only Postgres 17"
@@ -274,33 +289,46 @@ else
   export SPORTS_TERMINAL_DB_PATH="$ROOT/backend/.data/sports_terminal.db"
 fi
 
-# Dynamic services still power accounts, saved work, community, mutable
-# front-office edits and future active-season overlays. Historical basketball
-# pages do not depend on them.
+DYNAMIC_API_AVAILABLE=false
+
 echo "==> Initializing application database"
-"$PYTHON" backend/scripts/migrate.py >/dev/null
+if "$PYTHON" backend/scripts/migrate.py >/dev/null 2>"$ROOT/.data/logs/migrate.log"; then
+  if ! $USE_POSTGRES; then
+    echo "==> Publishing static front-office snapshot"
+    if ! "$PYTHON" tools/build_static_front_office_snapshot.py \
+      --database "$SPORTS_TERMINAL_DB_PATH" \
+      --output "$STATIC_NBA_DIR/front_office" >/dev/null 2>"$ROOT/.data/logs/front_office_snapshot.log"; then
+      echo "WARNING: static front-office snapshot could not be refreshed; historical NBA browsing remains available." >&2
+    fi
+  else
+    echo "==> Postgres mode: keeping any previously published static front-office snapshot"
+  fi
 
-# Publish the last persisted contract/cap/draft registry after migrations. The
-# static NBA compiler replaces its output directory atomically, so this must run
-# after the core historical corpus has been finalized.
-if ! $USE_POSTGRES; then
-  echo "==> Publishing static front-office snapshot"
-  "$PYTHON" tools/build_static_front_office_snapshot.py \
-    --database "$SPORTS_TERMINAL_DB_PATH" \
-    --output "$STATIC_NBA_DIR/front_office" >/dev/null
+  echo "==> Starting dynamic Sports Terminal services at http://127.0.0.1:8000"
+  "$PYTHON" -m uvicorn app.main_launch:app --host 127.0.0.1 --port 8000 \
+    >"$ROOT/.data/logs/backend.log" 2>&1 &
+  BACKEND_PID=$!
+
+  for _ in $(seq 1 20); do
+    if ! kill -0 "$BACKEND_PID" >/dev/null 2>&1; then
+      break
+    fi
+    if launch_api_ready; then
+      DYNAMIC_API_AVAILABLE=true
+      break
+    fi
+    sleep 1
+  done
+
+  if ! $DYNAMIC_API_AVAILABLE; then
+    echo "WARNING: dynamic Sports Terminal API is unavailable. Historical NBA pages will still launch." >&2
+    echo "         See .data/logs/backend.log for the backend failure." >&2
+    [[ -n "$BACKEND_PID" ]] && kill "$BACKEND_PID" >/dev/null 2>&1 || true
+    BACKEND_PID=""
+  fi
 else
-  echo "==> Postgres mode: keeping any previously published static front-office snapshot"
-fi
-
-echo "==> Starting dynamic Sports Terminal services at http://127.0.0.1:8000"
-"$PYTHON" -m uvicorn app.main_launch:app --host 127.0.0.1 --port 8000 \
-  >"$ROOT/.data/logs/backend.log" 2>&1 &
-BACKEND_PID=$!
-wait_for_port 8000 "Sports Terminal API"
-
-if ! kill -0 "$BACKEND_PID" >/dev/null 2>&1; then
-  echo "Backend exited during startup. See .data/logs/backend.log" >&2
-  exit 1
+  echo "WARNING: application database migration failed. Historical NBA pages will still launch." >&2
+  echo "         See .data/logs/migrate.log for the migration failure." >&2
 fi
 
 echo "==> Starting Sports Terminal website at http://127.0.0.1:8080"
@@ -322,15 +350,22 @@ if ! $NO_BROWSER; then
   fi
 fi
 
+if $DYNAMIC_API_AVAILABLE; then
+  API_STATUS="online"
+else
+  API_STATUS="offline (historical NBA remains available)"
+fi
+
 cat <<EOF
 
 Sports Terminal is running locally.
   Website:         http://127.0.0.1:8080
-  Dynamic API:     http://127.0.0.1:8000
+  Dynamic API:     $API_STATUS
   NBA warehouse:   $HISTORY_DB
   Static NBA:      $STATIC_NBA_DIR
   Front office:    $STATIC_NBA_DIR/front_office
   Backend log:     .data/logs/backend.log
+  Migration log:   .data/logs/migrate.log
   Flutter log:     .data/logs/flutter.log
 
 Historical NBA pages are served from static files, not the API.
