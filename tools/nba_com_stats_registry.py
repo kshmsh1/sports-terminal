@@ -63,9 +63,10 @@ def _surface(
 
 # This registry intentionally distinguishes official page discovery from transport
 # discovery. NBA.com exposes the page families below, but it does not publish a
-# supported bulk-download API. endpoint_hint values are implementation clues that
-# MUST be confirmed from a user-captured HAR before any authorized ingestion job
-# treats them as a contract.
+# supported bulk-download API. endpoint_hint values are implementation clues until
+# confirmed from a normal browser capture. The Players / Advanced surface was
+# confirmed from Chrome DevTools on 2026-08-16; the other hints remain discovery
+# targets until separately observed.
 SURFACES: dict[str, NbaStatsSurface] = {
     "players_advanced": _surface(
         "players_advanced",
@@ -77,8 +78,11 @@ SURFACES: dict[str, NbaStatsSurface] = {
         "1996-97",
         endpoint_hint="leaguedashplayerstats",
         measure_type_hint="Advanced",
-        discovery_status="har_confirmation_required",
-        notes=("NBA FAQ says advanced statistics go back to 1996-97.",),
+        discovery_status="confirmed_browser_capture",
+        notes=(
+            "NBA FAQ says advanced statistics go back to 1996-97.",
+            "Chrome capture on 2026-08-16 confirmed GET stats.nba.com/stats/leaguedashplayerstats with MeasureType=Advanced and result set LeagueDashPlayerStats.",
+        ),
     ),
     "players_misc": _surface(
         "players_misc", "Players / General / Misc", "player", "misc", "/stats/players/misc", "player-season filtered aggregate", "1996-97",
@@ -175,7 +179,7 @@ def registry_payload() -> dict[str, object]:
         "official_coverage": {
             "advanced_stats_start": "1996-97",
             "lineup_data_note": "NBA FAQ says lineup data goes back to 2008.",
-            "transport_policy": "Discover request schemas from browser HAR; do not assume endpoint hints are supported public APIs.",
+            "transport_policy": "Confirm request schemas from normal browser captures; do not assume unconfirmed endpoint hints are supported public APIs.",
         },
         "surfaces": [SURFACES[key].to_dict() for key in sorted(SURFACES)],
     }
