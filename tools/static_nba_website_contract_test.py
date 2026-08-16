@@ -96,7 +96,6 @@ def test_dashboard_payload_is_small_and_deterministic() -> None:
                 "away_score": None,
             },
         ],
-        # The dashboard compiler must not copy giant season-only structures.
         "player_game_logs": [{"game_id": str(i)} for i in range(1000)],
         "play_by_play": [{"event": i} for i in range(1000)],
     }
@@ -117,7 +116,7 @@ def test_static_runtime_contract() -> None:
         "build_static_nba_game_data.py",
         "build_static_front_office_snapshot.py",
         "validate_static_nba_corpus",
-        "dashboard/${latest}.json",
+        "dashboard/{latest}.json",
         "--materialize-pbp",
         "--skip-pbp",
         "web/data/nba_static",
