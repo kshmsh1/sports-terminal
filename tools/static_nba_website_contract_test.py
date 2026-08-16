@@ -54,8 +54,8 @@ def test_season_catalog_has_no_fact_fanout() -> None:
             _season_fixture(db)
             row = season_catalog(db)[0]
         assert row["season_id"] == "2025-26", row
-        assert row["players"] == 3, row
-        assert row["teams"] == 1, row
+        assert row["players"] == 2, row
+        assert row["teams"] == 2, row
         assert row["games"] == 3, row
 
 
@@ -206,7 +206,7 @@ def test_static_runtime_contract() -> None:
     )
     require(
         "lib/screens/website_nba_stats_screen.dart",
-        "Personal Fouls", "_Metric('pf', 'PF')", "_matchesPosition",
+        "Traditional player statistics", "_Metric('pf', 'PF')", "_matchesPosition",
     )
     require(
         "lib/screens/website_nba_advanced_stats_screen.dart",
