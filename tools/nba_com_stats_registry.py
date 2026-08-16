@@ -61,12 +61,6 @@ def _surface(
     )
 
 
-# This registry intentionally distinguishes official page discovery from transport
-# discovery. NBA.com exposes the page families below, but it does not publish a
-# supported bulk-download API. endpoint_hint values are implementation clues until
-# confirmed from a normal browser capture. The Players / Advanced surface was
-# confirmed from Chrome DevTools on 2026-08-16; the other hints remain discovery
-# targets until separately observed.
 SURFACES: dict[str, NbaStatsSurface] = {
     "players_advanced": _surface(
         "players_advanced",
@@ -108,25 +102,11 @@ SURFACES: dict[str, NbaStatsSurface] = {
         "players_estimated_advanced", "Players / General / Estimated Advanced", "player", "estimated_advanced", "/stats/players/estimated-advanced", "player-season filtered aggregate", None,
     ),
     "teams_advanced": _surface(
-        "teams_advanced",
-        "Teams / General / Advanced",
-        "team",
-        "advanced",
-        "/stats/teams/advanced",
-        "team-season filtered aggregate",
-        "1996-97",
-        endpoint_hint="leaguedashteamstats",
-        measure_type_hint="Advanced",
-        discovery_status="har_confirmation_required",
+        "teams_advanced", "Teams / General / Advanced", "team", "advanced", "/stats/teams/advanced", "team-season filtered aggregate", "1996-97",
+        endpoint_hint="leaguedashteamstats", measure_type_hint="Advanced", discovery_status="har_confirmation_required",
     ),
     "lineups_advanced": _surface(
-        "lineups_advanced",
-        "Lineups / General / Advanced",
-        "lineup",
-        "lineups",
-        "/stats/lineups/advanced",
-        "lineup-season filtered aggregate",
-        "2008-09",
+        "lineups_advanced", "Lineups / General / Advanced", "lineup", "lineups", "/stats/lineups/advanced", "lineup-season filtered aggregate", "2008-09",
         notes=("NBA FAQ says lineup data goes back to 2008; exact first season should be confirmed during discovery.",),
     ),
     "players_advanced_box_scores": _surface(
@@ -137,7 +117,14 @@ SURFACES: dict[str, NbaStatsSurface] = {
         "/stats/players/boxscores-advanced",
         "player-game",
         "1996-97",
-        notes=("NBA.com states Advanced Box Score Stats only go back to the 1996-97 season.",),
+        endpoint_hint="playergamelogs",
+        measure_type_hint="Advanced",
+        discovery_status="confirmed_browser_capture",
+        notes=(
+            "NBA.com states Advanced Box Score Stats only go back to the 1996-97 season.",
+            "Chrome capture on 2026-08-16 confirmed GET stats.nba.com/stats/playergamelogs with MeasureType=Advanced and PerMode=Totals for the player-game table.",
+            "Result-set name remains pending explicit response-schema confirmation.",
+        ),
     ),
     "teams_advanced_box_scores": _surface(
         "teams_advanced_box_scores", "Teams / Advanced Box Scores / Advanced", "team", "advanced_box_score", "/stats/teams/boxscores-advanced", "team-game", "1996-97",
