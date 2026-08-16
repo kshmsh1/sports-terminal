@@ -9,9 +9,9 @@ The target architecture is:
 ```text
 NBA.com Stats browser surfaces
         ↓
-DevTools HAR endpoint/parameter discovery
+DevTools HAR / browser request discovery
         ↓
-reviewed endpoint + schema inventory
+reviewed endpoint + parameter + schema inventory
         ↓
 authorized/licensed response files
         ↓
@@ -41,6 +41,90 @@ Official references:
 
 Because Sports Terminal is intended to become a commercial product, this repository does **not** ship an automated bulk downloader that bypasses or ignores those restrictions. The tools below perform endpoint discovery from browser traffic and normalize response files that the developer is authorized to use. A future licensed collector can plug into the same contracts without changing the downstream architecture.
 
+## Confirmed browser request: Players / Advanced
+
+A normal Chrome DevTools capture on 2026-08-16 confirmed that the Players → General → Advanced surface requests:
+
+```text
+GET https://stats.nba.com/stats/leaguedashplayerstats
+```
+
+with:
+
+```text
+MeasureType=Advanced
+LeagueID=00
+PerMode=PerGame
+Season=2025-26
+SeasonType=Regular Season
+```
+
+and the full observed parameter set:
+
+```text
+College
+Conference
+Country
+DateFrom
+DateTo
+Division
+DraftPick
+DraftYear
+GameScope
+GameSegment
+Height
+ISTRound
+LastNGames
+LeagueID
+Location
+MeasureType
+Month
+OpponentTeamID
+Outcome
+PORound
+PaceAdjust
+PerMode
+Period
+PlayerExperience
+PlayerPosition
+PlusMinus
+Rank
+Season
+SeasonSegment
+SeasonType
+ShotClockRange
+StarterBench
+TeamID
+VsConference
+VsDivision
+Weight
+```
+
+The response identifies resource `leaguedashplayerstats` and result set `LeagueDashPlayerStats`, using the standard NBA Stats `headers` + `rowSet` representation.
+
+The reviewed request shape lives in:
+
+```text
+tools/nba_com_confirmed_requests.py
+```
+
+Print a safe example URL without making a network request:
+
+```bash
+python3 tools/nba_com_confirmed_requests.py \
+  --season 2025-26 \
+  --season-type "Regular Season" \
+  --per-mode PerGame
+```
+
+Machine-readable request contract:
+
+```bash
+python3 tools/nba_com_confirmed_requests.py --json
+```
+
+The request contract deliberately excludes Cookie, Authorization, API-key, token, and other browser-session material.
+
 ## What is inventoried
 
 `tools/nba_com_stats_registry.py` contains the visible NBA Stats families we want to map, including:
@@ -63,7 +147,7 @@ Because Sports Terminal is intended to become a commercial product, this reposit
 - Hustle
 - Box Outs
 
-The registry records the product surface, entity grain, known historical boundary, official page, and any endpoint hints. Endpoint hints are **not** treated as public API guarantees; the actual request path and parameters must be confirmed from the browser network trace.
+The registry records the product surface, entity grain, known historical boundary, official page, and endpoint status. Players / Advanced is now marked `confirmed_browser_capture`; other endpoint hints remain discovery targets until separately observed.
 
 List the registry:
 
@@ -81,27 +165,14 @@ python3 tools/nba_com_stats_registry.py --json
 
 Use a normal browser session and Chrome/Edge DevTools.
 
-1. Open the NBA Stats surface to investigate, for example Players → General → Advanced.
+1. Open the NBA Stats surface to investigate.
 2. Open DevTools → Network.
 3. Select Fetch/XHR and enable Preserve log.
 4. Clear the network list.
 5. Change **one filter at a time**.
-6. Record a useful sequence such as:
-   - Season
-   - Season Type
-   - Per Mode
-   - Position
-   - Team
-   - VS Team
-   - Outcome
-   - Location
-   - Shot Clock Range
-   - Quarter
-   - By Half
-   - Playoff Round
-   - Date From / Date To
-7. Export the network trace as a HAR file locally.
-8. Do not commit the HAR. HAR files may contain cookies or other browser/session material.
+6. Record a useful sequence such as Season, Season Type, Per Mode, Position, Team, VS Team, Outcome, Location, Shot Clock Range, Quarter, By Half, Playoff Round, and Date From / Date To.
+7. Export the network trace as a sanitized HAR file locally.
+8. Do not commit the raw HAR.
 
 Then run:
 
@@ -116,17 +187,7 @@ artifacts/nba_com_stats_endpoint_inventory.json
 artifacts/nba_com_stats_endpoint_inventory.md
 ```
 
-The inventory tool intentionally strips:
-
-- Cookie headers
-- Authorization headers
-- token/session/key-like query parameters
-
-It groups requests by method + host + path and records observed parameter names/values, response status, MIME type, referer surface, and observation count.
-
-### Why one filter at a time matters
-
-If Season, Position, Team, Quarter, Location, and Date Range all change together, it becomes difficult to determine which request parameter corresponds to which product control. A controlled one-variable-at-a-time trace gives us a reproducible mapping from UI semantics to request semantics.
+The inventory strips Cookie headers, Authorization headers, and token/session/key-like query parameters. It groups requests by method + host + path and records observed parameter names/values, response status, MIME type, referer surface, and observation count.
 
 ## Lowest useful grain
 
@@ -173,7 +234,7 @@ The importer deliberately defaults commercial-use and redistribution rights to *
 
 ## Planned warehouse mapping
 
-Once endpoint discovery is complete, the normalized families should map into dedicated facts rather than one enormous table:
+Once endpoint discovery is complete, normalized families should map into dedicated facts rather than one enormous table:
 
 ```text
 fact_player_game_advanced
@@ -188,21 +249,11 @@ fact_hustle
 fact_boxout
 ```
 
-Each fact should retain:
-
-- source surface
-- source request fingerprint
-- source response fingerprint
-- season
-- season type
-- observed/filter context
-- ingested timestamp
-- source/license class
-- display/export/redistribution rights state
+Each fact retains source surface, request fingerprint, response fingerprint, season, season type, observed/filter context, ingestion timestamp, source/license class, and display/export/redistribution rights state.
 
 ## Sports Terminal category mapping
 
-The new source families ultimately feed the existing analytical taxonomy:
+The source families ultimately feed the existing analytical taxonomy:
 
 - **Shooting & Efficiency:** eFG%, TS%, shot zones, catch-and-shoot, pull-ups, defender distance
 - **Playmaking & Creation:** AST%, AST/TO, potential assists, passes, touches, drives
@@ -214,7 +265,7 @@ The new source families ultimately feed the existing analytical taxonomy:
 - **On/Off & Lineups:** lineup and possession-level data where source coverage supports it
 - **Play Types:** isolation, transition, pick-and-roll, post-up, spot-up, handoff, cut, off-screen, putback, etc.
 
-Coverage must remain era-aware. A metric should be unavailable—not fabricated—when the underlying NBA source does not provide it for the selected season.
+Coverage remains era-aware. A metric is unavailable—not fabricated—when the underlying source does not provide it for the selected season.
 
 ## Validation
 
@@ -224,4 +275,4 @@ Run:
 python3 tools/nba_com_stats_contract_test.py
 ```
 
-The contract checks the registry, HAR privacy stripping, response normalization, and the intentional no-network behavior of the authorized-response importer.
+The contract checks the registry, the confirmed Players / Advanced request shape, sensitive-header exclusion, HAR privacy stripping, response normalization, and the intentional no-network behavior of the authorized-response importer.
