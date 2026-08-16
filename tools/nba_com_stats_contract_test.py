@@ -13,11 +13,14 @@ from tools.import_nba_com_authorized_response import normalize_nba_stats_respons
 from tools.inventory_nba_com_stats_har import inventory_har  # noqa: E402
 from tools.nba_com_confirmed_requests import (  # noqa: E402
     PLAYERS_ADVANCED_ENDPOINT,
+    PLAYERS_ADVANCED_GAME_LOGS_ENDPOINT,
+    PLAYERS_ADVANCED_GAME_LOGS_PARAMETER_DEFAULTS,
     PLAYERS_ADVANCED_PARAMETER_DEFAULTS,
     PLAYERS_ADVANCED_RESULT_SET,
     SENSITIVE_HEADER_NAMES,
+    players_advanced_game_logs_url,
     players_advanced_url,
-    request_contract,
+    request_contracts,
     safe_headers,
 )
 from tools.nba_com_stats_registry import SURFACES, registry_payload, surface_for_referer  # noqa: E402
@@ -27,6 +30,8 @@ def check_registry() -> None:
     assert len(SURFACES) >= 25
     assert SURFACES["players_advanced"].minimum_season == "1996-97"
     assert SURFACES["players_advanced_box_scores"].grain == "player-game"
+    assert SURFACES["players_advanced_box_scores"].endpoint_hint == "playergamelogs"
+    assert SURFACES["players_advanced_box_scores"].discovery_status == "confirmed_browser_capture"
     assert SURFACES["lineups_advanced"].minimum_season == "2008-09"
     assert SURFACES["players_advanced"].discovery_status == "confirmed_browser_capture"
     assert SURFACES["players_advanced"].endpoint_hint == "leaguedashplayerstats"
@@ -35,12 +40,22 @@ def check_registry() -> None:
     assert payload["contract"] == "sports-terminal-nba-com-stats-surface-registry-v1"
 
 
-def check_confirmed_request_contract() -> None:
-    contract = request_contract()
-    assert contract["path"] == PLAYERS_ADVANCED_ENDPOINT
-    assert contract["result_set"] == PLAYERS_ADVANCED_RESULT_SET
+def check_confirmed_request_contracts() -> None:
+    contract = request_contracts()
+    assert contract["contract"] == "sports-terminal-nba-com-confirmed-requests-v2"
     assert contract["confirmed_from"] == "normal_browser_capture"
     assert contract["sensitive_headers_persisted"] is False
+
+    aggregate = contract["requests"]["players_advanced"]
+    assert aggregate["path"] == PLAYERS_ADVANCED_ENDPOINT
+    assert aggregate["result_set"] == PLAYERS_ADVANCED_RESULT_SET
+
+    game_logs = contract["requests"]["players_advanced_box_scores"]
+    assert game_logs["path"] == PLAYERS_ADVANCED_GAME_LOGS_ENDPOINT
+    assert game_logs["grain"] == "player-game"
+    assert game_logs["parameters"]["MeasureType"] == "Advanced"
+    assert game_logs["parameters"]["PerMode"] == "Totals"
+    assert game_logs["result_set"] is None
 
     url = players_advanced_url(Season="2024-25", SeasonType="Playoffs", PlayerPosition="F")
     parsed = urlparse(url)
@@ -52,6 +67,17 @@ def check_confirmed_request_contract() -> None:
     assert query["MeasureType"] == ["Advanced"]
     assert query["PlayerPosition"] == ["F"]
     assert set(query) == set(PLAYERS_ADVANCED_PARAMETER_DEFAULTS)
+
+    game_url = players_advanced_game_logs_url(Season="2024-25", SeasonType="Playoffs")
+    game_parsed = urlparse(game_url)
+    game_query = parse_qs(game_parsed.query, keep_blank_values=True)
+    assert game_parsed.netloc == "stats.nba.com"
+    assert game_parsed.path == "/stats/playergamelogs"
+    assert game_query["Season"] == ["2024-25"]
+    assert game_query["SeasonType"] == ["Playoffs"]
+    assert game_query["MeasureType"] == ["Advanced"]
+    assert game_query["PerMode"] == ["Totals"]
+    assert set(game_query) == set(PLAYERS_ADVANCED_GAME_LOGS_PARAMETER_DEFAULTS)
 
     headers = safe_headers(user_agent="Browser")
     lowered = {name.lower() for name in headers}
@@ -131,7 +157,7 @@ def check_importer_has_no_network_dependency() -> None:
 
 def main() -> int:
     check_registry()
-    check_confirmed_request_contract()
+    check_confirmed_request_contracts()
     check_har_privacy_and_inventory()
     check_response_normalization()
     check_importer_has_no_network_dependency()
