@@ -155,7 +155,7 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
         "build_static_nba_game_data.py",
         "build_static_front_office_snapshot.py",
         "validate_static_nba_corpus",
-        "dashboard/${latest}.json",
+        "dashboard/{latest}.json",
         "--materialize-pbp",
         "--skip-pbp",
         "web/data/nba_static",
