@@ -48,20 +48,89 @@ def test_season_catalog_has_no_fact_fanout() -> None:
         assert row["games"] == 3, row
 
 
+def test_dashboard_payload_is_small_and_deterministic() -> None:
+    from build_static_nba_website_data_v2 import dashboard_payload
+
+    season = {
+        "player_season_totals": [
+            {
+                "player_id": "p1",
+                "player_name": "Alpha Guard",
+                "team_id": "t1",
+                "team_ids": "AAA",
+                "position": "PG",
+                "games": 10,
+                "points": 250,
+                "rebounds": 40,
+                "assists": 90,
+                "steals": 12,
+                "blocks": 2,
+            },
+            {
+                "player_id": "p2",
+                "player_name": "Beta Wing",
+                "team_id": "t2",
+                "team_ids": "BBB",
+                "position": "SF",
+                "games": 10,
+                "points": 200,
+                "rebounds": 80,
+                "assists": 30,
+                "steals": 8,
+                "blocks": 6,
+            },
+        ],
+        "teams": [{"team_id": "t1"}, {"team_id": "t2"}],
+        "team_records": [{"team_id": "t1", "wins": 7, "losses": 3}],
+        "games": [
+            {
+                "game_id": "g1",
+                "game_date": "2026-04-01",
+                "home_score": 110,
+                "away_score": 100,
+            },
+            {
+                "game_id": "future",
+                "game_date": "2026-04-02",
+                "home_score": None,
+                "away_score": None,
+            },
+        ],
+        # The dashboard compiler must not copy giant season-only structures.
+        "player_game_logs": [{"game_id": str(i)} for i in range(1000)],
+        "play_by_play": [{"event": i} for i in range(1000)],
+    }
+    payload = dashboard_payload("2025-26", season)
+    assert payload["runtime_api_required"] is False
+    assert payload["leaders"]["points"][0]["player_id"] == "p1"
+    assert payload["leaders"]["points"][0]["value"] == 25.0
+    assert payload["leaders"]["rebounds"][0]["player_id"] == "p2"
+    assert len(payload["recent_games"]) == 1
+    assert "player_game_logs" not in payload
+    assert "play_by_play" not in payload
+
+
 def test_static_runtime_contract() -> None:
     require(
         "scripts/open_terminal.sh",
         "build_static_nba_website_data_v2.py",
         "build_static_nba_game_data.py",
+        "build_static_front_office_snapshot.py",
+        "validate_static_nba_corpus",
+        "dashboard/${latest}.json",
         "--materialize-pbp",
+        "--skip-pbp",
         "web/data/nba_static",
         "Historical NBA pages are served from static files, not the API.",
     )
     require(
         "tools/build_static_nba_website_data_v2.py",
+        "sports-terminal-static-nba-website-v3",
+        "sports-terminal-static-dashboard-v1",
         '"historical_http_api_required": False',
         '"sqlite_required_by_browser": False',
         '"live_overlay_supported": True',
+        '"dashboard_precomputed": True',
     )
     require(
         "tools/build_static_nba_game_data.py",
@@ -72,8 +141,15 @@ def test_static_runtime_contract() -> None:
         '"coverage_is_source_bounded": True',
     )
     require(
+        "tools/build_static_front_office_snapshot.py",
+        "contracts.json",
+        "draft_assets.json",
+        "team_positions.json",
+    )
+    require(
         "lib/services/website_nba_static_repository.dart",
         "data/nba_static",
+        "seasonDashboard",
         "seasonSnapshot",
         "playerDossier",
         "teamDossier",
@@ -87,6 +163,7 @@ def test_static_runtime_contract() -> None:
         "Historical basketball data is now a static website concern",
         "FastAPI request",
         "runtime SQLite query",
+        "seasonDashboard",
     )
     reject(
         "lib/services/website_nba_api_service.dart",
@@ -94,12 +171,25 @@ def test_static_runtime_contract() -> None:
         "/v2/nba/history/seed/",
         "LaunchBackendTransport",
         "loadHistoricalSeason(",
+        "package:http/http.dart",
+    )
+    require(
+        "lib/screens/website_nba_home_dashboard.dart",
+        "seasonDashboard",
+        "No runtime NBA API is required",
     )
     require(
         "lib/services/front_office_registry_service.dart",
         "Cache-first product read",
         "loadRemote",
         "loadCached",
+    )
+    require(
+        "lib/services/front_office_static_snapshot_repository.dart",
+        "data/nba_static/front_office",
+        "contracts.json",
+        "draft_assets.json",
+        "team_positions.json",
     )
     require(
         ".gitignore",
@@ -115,6 +205,7 @@ def test_static_runtime_contract() -> None:
 
 def main() -> int:
     test_season_catalog_has_no_fact_fanout()
+    test_dashboard_payload_is_small_and_deterministic()
     test_static_runtime_contract()
     print("static-nba-website-contract: PASS")
     return 0
