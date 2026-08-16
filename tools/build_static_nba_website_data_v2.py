@@ -35,6 +35,7 @@ from tools.build_static_nba_website_data import (  # noqa: E402
 DEFAULT_DB = ROOT / "data/warehouse/nba_history.sqlite"
 DEFAULT_OUTPUT = ROOT / "web/data/nba_static"
 STATIC_SCHEMA_VERSION = 4
+KNOWN_MISSING_SEASONS = {"1946-47", "1947-48", "1948-49"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -317,12 +318,19 @@ def build() -> int:
 
         expected = {f"{year:04d}-{(year + 1) % 100:02d}" for year in range(1946, 2026)}
         actual = {str(row["season_id"]) for row in seasons}
-        if actual != expected:
-            missing = sorted(expected - actual)
-            extra = sorted(actual - expected)
+        missing = expected - actual
+        extra = actual - expected
+        unexpected_missing = missing - KNOWN_MISSING_SEASONS
+        if unexpected_missing or extra:
             raise SystemExit(
                 "NBA season catalog failed canonical coverage: "
-                f"missing={missing[:10]} extra={extra[:10]}"
+                f"missing={sorted(unexpected_missing)[:10]} extra={sorted(extra)[:10]}"
+            )
+        known_missing = sorted(missing & KNOWN_MISSING_SEASONS)
+        if known_missing:
+            print(
+                "NBA season catalog continuing with known historical coverage gaps: "
+                + ", ".join(known_missing)
             )
 
         staging = output.parent / f".{output.name}.staging"
@@ -411,6 +419,7 @@ def build() -> int:
             "database_fingerprint": fingerprint,
             "latest_season": seasons[0]["season_id"] if seasons else None,
             "season_count": len(seasons),
+            "known_missing_seasons": known_missing,
             "season_file_count": generated_season_files,
             "dashboard_file_count": dashboard_files,
             "player_count": len(players),
