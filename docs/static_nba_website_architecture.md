@@ -41,7 +41,7 @@ The core compiler fingerprints both the warehouse and static schema version. A s
 
 `tools/build_static_nba_game_data.py` materializes historical game detail into one file per canonical game. Each game shard contains canonical game metadata plus sourced team-game and player-game rows.
 
-Play-by-play is separately sharded because the source-backed event corpus can contain millions of rows and is not necessary to render Home, Stats or Advanced Stats. Normal local launch materializes source-backed historical PBP on the first static build so later game-page reads can be direct file reads. `--skip-pbp` is available when a developer wants a faster first UI-only launch. The exporter only writes rows already exposed by the canonical `canon_fact_play_by_play` view, grouped by canonical `game_key` and ordered by period/event number.
+Play-by-play is separately sharded because the source-backed event corpus can contain millions of rows and is not necessary to render Home, Stats or Advanced Stats. Normal local launch materializes source-backed historical PBP on the first static build so later game-page reads can be direct file reads. `--skip-pbp` is available when a developer wants a faster first UI-only launch. The explicit `--materialize-pbp` flag remains supported as a compatibility alias for requesting the normal PBP-inclusive behavior. The exporter only writes rows already exposed by the canonical `canon_fact_play_by_play` view, grouped by canonical `game_key` and ordered by period/event number.
 
 This is intentionally source-bounded. Sports Terminal does not claim possession-level PBP for eras or games where the imported sources do not provide it.
 
