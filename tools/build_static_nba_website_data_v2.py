@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import sqlite3
 import sys
@@ -24,7 +25,7 @@ from tools.build_static_nba_website_data import (  # noqa: E402
     now_iso,
     player_index,
     rows,
-    season_catalog,
+    season_catalog as _base_season_catalog,
     static_player_dossier,
     static_team_dossier,
     team_index,
@@ -47,6 +48,32 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def season_catalog(db: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Return one canonical NBA season per start year with distinct entity counts."""
+    result = _base_season_catalog(db)
+    for season in result:
+        source_id = str(season.get("source_season_id") or season["season_id"])
+        season["players"] = int(
+            db.execute(
+                "SELECT COUNT(DISTINCT player_key) FROM canon_fact_player_season WHERE season_id=? AND league_id='NBA'",
+                (source_id,),
+            ).fetchone()[0]
+        )
+        season["teams"] = int(
+            db.execute(
+                "SELECT COUNT(DISTINCT team_key) FROM canon_fact_team_season WHERE season_id=? AND league_id='NBA'",
+                (source_id,),
+            ).fetchone()[0]
+        )
+        season["games"] = int(
+            db.execute(
+                "SELECT COUNT(DISTINCT game_key) FROM canon_dim_game WHERE season_id=? AND league_id='NBA'",
+                (source_id,),
+            ).fetchone()[0]
+        )
+    return result
+
+
 def _number(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
@@ -66,12 +93,37 @@ def _truthy_database_flag(value: Any) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "y", "winner", "selected"}
 
 
+def _selection_team(award_name: Any, rank_text: Any) -> str | None:
+    """Recognize explicit team selections without promoting ordinary vote ranks."""
+    award = str(award_name or "").lower().replace("_", " ").replace("-", " ")
+    if not any(family in award for family in ("all nba", "all defense", "all rookie")):
+        return None
+    rank = str(rank_text or "").strip().lower()
+    normalized = re.sub(r"[^a-z0-9]+", " ", rank).strip()
+    if re.search(r"\b(first|1st|team 1|1 team)\b", normalized):
+        return "First Team"
+    if re.search(r"\b(second|2nd|team 2|2 team)\b", normalized):
+        return "Second Team"
+    if "all nba" in award and re.search(r"\b(third|3rd|team 3|3 team)\b", normalized):
+        return "Third Team"
+    return None
+
+
+def _normalize_award(award: dict[str, Any]) -> None:
+    if "winner" in award:
+        award["winner"] = _truthy_database_flag(award.get("winner"))
+    selection = _selection_team(award.get("award") or award.get("award_name"), award.get("rank_text"))
+    if selection:
+        award["selected"] = True
+        award["selection_team"] = selection
+
+
 def _normalize_player_dossier(dossier: dict[str, Any]) -> dict[str, Any]:
     awards = dossier.get("awards")
     if isinstance(awards, list):
         for award in awards:
-            if isinstance(award, dict) and "winner" in award:
-                award["winner"] = _truthy_database_flag(award.get("winner"))
+            if isinstance(award, dict):
+                _normalize_award(award)
     return dossier
 
 
@@ -120,13 +172,18 @@ def _leader_rows(records: list[dict[str, Any]], metric: str, *, entity: str, lim
         item = {"rank": index, "value": row.get(metric)}
         if entity == "player":
             item.update({
-                "player_id": row.get("player_id"), "player_name": row.get("player_name"),
-                "team_id": row.get("team_id"), "team": row.get("team"), "position": row.get("position"),
+                "player_id": row.get("player_id"),
+                "player_name": row.get("player_name"),
+                "team_id": row.get("team_id"),
+                "team": row.get("team"),
+                "position": row.get("position"),
             })
         else:
             item.update({
-                "team_key": row.get("team_key"), "team_id": row.get("team_key"),
-                "team_name": row.get("team_name"), "team": row.get("team_name"),
+                "team_key": row.get("team_key"),
+                "team_id": row.get("team_key"),
+                "team_name": row.get("team_name"),
+                "team": row.get("team_name"),
                 "abbreviation": row.get("abbreviation"),
             })
         result.append(item)
@@ -134,20 +191,31 @@ def _leader_rows(records: list[dict[str, Any]], metric: str, *, entity: str, lim
 
 
 def _team_dashboard_rows(db: sqlite3.Connection, source_season_id: str) -> list[dict[str, Any]]:
-    raw = rows(db.execute("""
-        SELECT ts.*,t.canonical_name AS team_name,t.abbreviation
-        FROM canon_fact_team_season ts
-        LEFT JOIN canon_dim_team t ON t.team_key=ts.team_key
-        WHERE ts.season_id=? AND ts.league_id='NBA' AND ts.season_type='regular'
-    """, (source_season_id,)))
+    raw = rows(
+        db.execute(
+            """
+            SELECT ts.*,t.canonical_name AS team_name,t.abbreviation
+            FROM canon_fact_team_season ts
+            LEFT JOIN canon_dim_team t ON t.team_key=ts.team_key
+            WHERE ts.season_id=? AND ts.league_id='NBA' AND ts.season_type='regular'
+            """,
+            (source_season_id,),
+        )
+    )
     result: list[dict[str, Any]] = []
     for row in raw:
         result.append({
-            "team_key": row.get("team_key"), "team_name": row.get("team_name"), "abbreviation": row.get("abbreviation"),
-            "ppg": _per_game(row, "pts", "points"), "rpg": _per_game(row, "reb", "rebounds"),
-            "apg": _per_game(row, "ast", "assists"), "spg": _per_game(row, "stl", "steals"),
-            "bpg": _per_game(row, "blk", "blocks"), "tpg": _per_game(row, "tov", "turnovers"),
-            "pfpg": _per_game(row, "pf", "personal_fouls"), "fgmpg": _per_game(row, "fg", "fgm", "field_goals_made"),
+            "team_key": row.get("team_key"),
+            "team_name": row.get("team_name"),
+            "abbreviation": row.get("abbreviation"),
+            "ppg": _per_game(row, "pts", "points"),
+            "rpg": _per_game(row, "reb", "rebounds"),
+            "apg": _per_game(row, "ast", "assists"),
+            "spg": _per_game(row, "stl", "steals"),
+            "bpg": _per_game(row, "blk", "blocks"),
+            "tpg": _per_game(row, "tov", "turnovers"),
+            "pfpg": _per_game(row, "pf", "personal_fouls"),
+            "fgmpg": _per_game(row, "fg", "fgm", "field_goals_made"),
             "three_pmg": _per_game(row, "fg3", "three_pm", "three_pointers_made"),
             "ftmpg": _per_game(row, "ft", "ftm", "free_throws_made"),
         })
@@ -155,9 +223,16 @@ def _team_dashboard_rows(db: sqlite3.Connection, source_season_id: str) -> list[
 
 
 _LEADER_SPECS = {
-    "points": "ppg", "rebounds": "rpg", "assists": "apg", "steals": "spg", "blocks": "bpg",
-    "turnovers": "tpg", "personal_fouls": "pfpg", "field_goals_made": "fgmpg",
-    "three_pointers_made": "three_pmg", "free_throws_made": "ftmpg",
+    "points": "ppg",
+    "rebounds": "rpg",
+    "assists": "apg",
+    "steals": "spg",
+    "blocks": "bpg",
+    "turnovers": "tpg",
+    "personal_fouls": "pfpg",
+    "field_goals_made": "fgmpg",
+    "three_pointers_made": "three_pmg",
+    "free_throws_made": "ftmpg",
 }
 
 
@@ -170,25 +245,38 @@ def dashboard_payload(db: sqlite3.Connection, season_id: str, source_season_id: 
 
     raw_games = payload.get("games")
     games = [row for row in raw_games if isinstance(row, dict)] if isinstance(raw_games, list) else []
-    completed_games = [row for row in games if _number(row.get("home_score")) is not None and _number(row.get("away_score")) is not None]
-    completed_games.sort(key=lambda row: (str(row.get("game_date") or ""), str(row.get("game_id") or "")), reverse=True)
+    completed_games = [
+        row for row in games
+        if _number(row.get("home_score")) is not None and _number(row.get("away_score")) is not None
+    ]
+    completed_games.sort(
+        key=lambda row: (str(row.get("game_date") or ""), str(row.get("game_id") or "")),
+        reverse=True,
+    )
     teams = payload.get("teams") if isinstance(payload.get("teams"), list) else []
     team_records = payload.get("team_records") if isinstance(payload.get("team_records"), list) else []
 
     return {
-        "contract": "sports-terminal-static-dashboard-v2", "season_id": season_id, "season_type": "regular",
+        "contract": "sports-terminal-static-dashboard-v2",
+        "season_id": season_id,
+        "season_type": "regular",
         "players": players,
         "leaders": {name: _leader_rows(players, metric, entity="player") for name, metric in _LEADER_SPECS.items()},
         "team_leaders": {name: _leader_rows(team_stats, metric, entity="team") for name, metric in _LEADER_SPECS.items()},
-        "teams": teams, "team_records": team_records, "recent_games": completed_games[:12], "runtime_api_required": False,
+        "teams": teams,
+        "team_records": team_records,
+        "recent_games": completed_games[:12],
+        "runtime_api_required": False,
     }
 
 
 def build() -> int:
     args = parse_args()
-    database = Path(args.database).expanduser().resolve(); output = Path(args.output).expanduser().resolve()
+    database = Path(args.database).expanduser().resolve()
+    output = Path(args.output).expanduser().resolve()
     if not database.is_file():
         raise SystemExit(f"NBA history warehouse not found: {database}")
+
     fingerprint = db_fingerprint(database)
     fingerprint["compiler_entrypoint"] = f"v2-static-schema-{STATIC_SCHEMA_VERSION}"
     manifest_path = output / "manifest.json"
@@ -196,12 +284,21 @@ def build() -> int:
         try:
             current = json.loads(manifest_path.read_text(encoding="utf-8"))
             if current.get("database_fingerprint") == fingerprint:
-                required = [output / "seasons.json", output / "players/index.json", output / "teams/index.json", output / "games/index.json"]
+                required = [
+                    output / "seasons.json",
+                    output / "players/index.json",
+                    output / "teams/index.json",
+                    output / "games/index.json",
+                ]
                 latest = str(current.get("latest_season") or "")
                 if latest:
-                    required.extend([output / f"seasons/{latest}/regular.json", output / f"dashboard/{latest}.json"])
+                    required.extend([
+                        output / f"seasons/{latest}/regular.json",
+                        output / f"dashboard/{latest}.json",
+                    ])
                 if all(path.is_file() for path in required):
-                    print(f"Static NBA website data is current: {output}"); return 0
+                    print(f"Static NBA website data is current: {output}")
+                    return 0
         except Exception:
             pass
 
@@ -212,66 +309,133 @@ def build() -> int:
         db.row_factory = sqlite3.Row
         if not canonical_ready(db):
             raise SystemExit("Canonical NBA tables are missing; run build_historical_nba_canonical.py first.")
-        seasons = season_catalog(db); players = player_index(db); teams = team_index(db); games = game_index(db)
+
+        seasons = season_catalog(db)
+        players = player_index(db)
+        teams = team_index(db)
+        games = game_index(db)
+
         expected = {f"{year:04d}-{(year + 1) % 100:02d}" for year in range(1946, 2026)}
         actual = {str(row["season_id"]) for row in seasons}
         if actual != expected:
-            missing = sorted(expected - actual); extra = sorted(actual - expected)
-            raise SystemExit(f"NBA season catalog failed canonical coverage: missing={missing[:10]} extra={extra[:10]}")
+            missing = sorted(expected - actual)
+            extra = sorted(actual - expected)
+            raise SystemExit(
+                "NBA season catalog failed canonical coverage: "
+                f"missing={missing[:10]} extra={extra[:10]}"
+            )
 
         staging = output.parent / f".{output.name}.staging"
-        if staging.exists(): shutil.rmtree(staging)
+        if staging.exists():
+            shutil.rmtree(staging)
         staging.mkdir(parents=True, exist_ok=True)
-        write_json(staging / "seasons.json", seasons); write_json(staging / "players/index.json", players)
-        write_json(staging / "teams/index.json", teams); write_json(staging / "games/index.json", games)
 
-        generated_season_files = 0; dashboard_files = 0
+        write_json(staging / "seasons.json", seasons)
+        write_json(staging / "players/index.json", players)
+        write_json(staging / "teams/index.json", teams)
+        write_json(staging / "games/index.json", games)
+
+        generated_season_files = 0
+        dashboard_files = 0
         for season in seasons:
-            season_id = str(season["season_id"]); source_id = str(season.get("source_season_id") or season_id)
+            season_id = str(season["season_id"])
+            source_id = str(season.get("source_season_id") or season_id)
             for season_type in ("regular", "playoffs"):
-                count = int(db.execute("SELECT COUNT(*) FROM canon_fact_player_season WHERE season_id=? AND league_id='NBA' AND season_type=?", (source_id, season_type)).fetchone()[0])
-                if count == 0: continue
-                payload = historical_seed_snapshot(source_id, league="NBA", season_type=season_type, include_game_logs=False, player_log_limit=0)
-                payload["season_id"] = season_id; payload["static_data"] = True; payload["static_compiler_version"] = COMPILER_VERSION
-                write_json(staging / f"seasons/{season_id}/{season_type}.json", payload); generated_season_files += 1
+                count = int(
+                    db.execute(
+                        "SELECT COUNT(*) FROM canon_fact_player_season WHERE season_id=? AND league_id='NBA' AND season_type=?",
+                        (source_id, season_type),
+                    ).fetchone()[0]
+                )
+                if count == 0:
+                    continue
+                payload = historical_seed_snapshot(
+                    source_id,
+                    league="NBA",
+                    season_type=season_type,
+                    include_game_logs=False,
+                    player_log_limit=0,
+                )
+                payload["season_id"] = season_id
+                payload["static_data"] = True
+                payload["static_compiler_version"] = COMPILER_VERSION
+                write_json(staging / f"seasons/{season_id}/{season_type}.json", payload)
+                generated_season_files += 1
                 if season_type == "regular":
-                    write_json(staging / f"dashboard/{season_id}.json", dashboard_payload(db, season_id, source_id, payload)); dashboard_files += 1
+                    write_json(
+                        staging / f"dashboard/{season_id}.json",
+                        dashboard_payload(db, season_id, source_id, payload),
+                    )
+                    dashboard_files += 1
 
         if not args.skip_entities:
             for index, player in enumerate(players, start=1):
-                dossier = static_player_dossier(db, str(player["player_key"]), recent_games=max(0, args.recent_player_games))
+                dossier = static_player_dossier(
+                    db,
+                    str(player["player_key"]),
+                    recent_games=max(0, args.recent_player_games),
+                )
                 dossier = _normalize_player_dossier(dossier)
                 dossier["static_data"] = True
                 write_json(staging / str(player["file"]), dossier)
-                if index % 500 == 0: print(f"  player dossiers: {index}/{len(players)}")
+                if index % 500 == 0:
+                    print(f"  player dossiers: {index}/{len(players)}")
+
             for index, team in enumerate(teams, start=1):
-                dossier = static_team_dossier(db, str(team["team_key"]), recent_games=max(0, args.recent_team_games)); dossier["static_data"] = True
+                dossier = static_team_dossier(
+                    db,
+                    str(team["team_key"]),
+                    recent_games=max(0, args.recent_team_games),
+                )
+                dossier["static_data"] = True
                 write_json(staging / str(team["file"]), dossier)
-                if index % 50 == 0: print(f"  team dossiers: {index}/{len(teams)}")
+                if index % 50 == 0:
+                    print(f"  team dossiers: {index}/{len(teams)}")
 
         awards = rows(db.execute("SELECT * FROM canon_fact_award ORDER BY season_id,award,player_name"))
         for award in awards:
-            if "winner" in award:
-                award["winner"] = _truthy_database_flag(award.get("winner"))
+            _normalize_award(award)
         all_star = rows(db.execute("SELECT * FROM canon_fact_all_star ORDER BY season_id,player_name"))
         draft = rows(db.execute("SELECT * FROM canon_fact_draft ORDER BY draft_year,pick_number,player_name"))
         coverage = rows(db.execute("SELECT * FROM canon_coverage WHERE league_id='NBA' ORDER BY season_id,domain"))
-        write_json(staging / "history/awards.json", awards); write_json(staging / "history/all_star.json", all_star)
-        write_json(staging / "history/draft.json", draft); write_json(staging / "history/coverage.json", coverage)
+        write_json(staging / "history/awards.json", awards)
+        write_json(staging / "history/all_star.json", all_star)
+        write_json(staging / "history/draft.json", draft)
+        write_json(staging / "history/coverage.json", coverage)
+
         manifest = {
-            "contract": "sports-terminal-static-nba-website-v4", "static_schema_version": STATIC_SCHEMA_VERSION,
-            "compiler_version": COMPILER_VERSION, "generated_at": now_iso(), "database_fingerprint": fingerprint,
-            "latest_season": seasons[0]["season_id"] if seasons else None, "season_count": len(seasons),
-            "season_file_count": generated_season_files, "dashboard_file_count": dashboard_files,
-            "player_count": len(players), "team_count": len(teams), "game_count": len(games),
-            "award_count": len(awards), "all_star_count": len(all_star), "draft_count": len(draft),
+            "contract": "sports-terminal-static-nba-website-v4",
+            "static_schema_version": STATIC_SCHEMA_VERSION,
+            "compiler_version": COMPILER_VERSION,
+            "generated_at": now_iso(),
+            "database_fingerprint": fingerprint,
+            "latest_season": seasons[0]["season_id"] if seasons else None,
+            "season_count": len(seasons),
+            "season_file_count": generated_season_files,
+            "dashboard_file_count": dashboard_files,
+            "player_count": len(players),
+            "team_count": len(teams),
+            "game_count": len(games),
+            "award_count": len(awards),
+            "all_star_count": len(all_star),
+            "draft_count": len(draft),
             "entity_dossiers": not args.skip_entities,
-            "runtime": {"historical_http_api_required": False, "sqlite_required_by_browser": False, "static_browser_cache": True, "live_overlay_supported": True, "dashboard_precomputed": True},
+            "runtime": {
+                "historical_http_api_required": False,
+                "sqlite_required_by_browser": False,
+                "static_browser_cache": True,
+                "live_overlay_supported": True,
+                "dashboard_precomputed": True,
+            },
         }
         write_json(staging / "manifest.json", manifest)
-    if output.exists(): shutil.rmtree(output)
+
+    if output.exists():
+        shutil.rmtree(output)
     staging.replace(output)
-    print(f"Built static NBA website data: {output}"); print(json.dumps(manifest, indent=2)); return 0
+    print(f"Built static NBA website data: {output}")
+    print(json.dumps(manifest, indent=2))
+    return 0
 
 
 if __name__ == "__main__":
