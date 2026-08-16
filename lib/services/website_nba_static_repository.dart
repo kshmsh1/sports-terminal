@@ -36,14 +36,11 @@ class WebsiteNbaStaticSeason {
 }
 
 class WebsiteNbaStaticRepository {
-  WebsiteNbaStaticRepository({
-    http.Client? client,
-    this.basePath = 'data/nba_static',
-  }) : _client = client ?? http.Client();
+  WebsiteNbaStaticRepository({http.Client? client, this.basePath = 'data/nba_static'})
+      : _client = client ?? http.Client();
 
   final http.Client _client;
   final String basePath;
-
   Map<String, dynamic>? _manifest;
   List<WebsiteNbaStaticSeason>? _seasons;
   List<Map<String, dynamic>>? _players;
@@ -56,49 +53,32 @@ class WebsiteNbaStaticRepository {
   final Map<String, Map<String, dynamic>> _gameCache = {};
   final Map<String, List<Map<String, dynamic>>> _pbpCache = {};
 
-  Future<Map<String, dynamic>> manifest() async {
-    return _manifest ??= await _object('manifest.json');
-  }
+  Future<Map<String, dynamic>> manifest() async => _manifest ??= await _object('manifest.json');
 
   Future<List<WebsiteNbaStaticSeason>> seasons() async {
     if (_seasons != null) return _seasons!;
-    final raw = await _list('seasons.json');
-    final result = [
-      for (final row in raw) WebsiteNbaStaticSeason.fromMap(row),
-    ]..sort((a, b) => b.startYear.compareTo(a.startYear));
+    final result = [for (final row in await _list('seasons.json')) WebsiteNbaStaticSeason.fromMap(row)]
+      ..sort((a, b) => b.startYear.compareTo(a.startYear));
     _seasons = result;
     return result;
   }
 
   Future<Map<String, dynamic>> seasonDashboard(String season) async {
-    final normalized = season.trim();
-    final cached = _dashboardCache[normalized];
+    final key = season.trim();
+    final cached = _dashboardCache[key];
     if (cached != null) return cached;
-    final payload = await _object('dashboard/$normalized.json');
-    _dashboardCache[normalized] = payload;
+    final payload = await _object('dashboard/$key.json');
+    _dashboardCache[key] = payload;
     return payload;
   }
 
-  Future<List<Map<String, dynamic>>> playerIndex() async {
-    return _players ??= await _list('players/index.json');
-  }
+  Future<List<Map<String, dynamic>>> playerIndex() async => _players ??= await _list('players/index.json');
+  Future<List<Map<String, dynamic>>> teamIndex() async => _teams ??= await _list('teams/index.json');
+  Future<List<Map<String, dynamic>>> gameIndex() async => _games ??= await _list('games/index.json');
 
-  Future<List<Map<String, dynamic>>> teamIndex() async {
-    return _teams ??= await _list('teams/index.json');
-  }
-
-  Future<List<Map<String, dynamic>>> gameIndex() async {
-    return _games ??= await _list('games/index.json');
-  }
-
-  Future<NbaTerminalSeedSnapshot> seasonSnapshot(
-    String season, {
-    String seasonType = 'regular',
-  }) async {
+  Future<NbaTerminalSeedSnapshot> seasonSnapshot(String season, {String seasonType = 'regular'}) async {
     final normalizedSeason = season.trim();
-    final normalizedType = seasonType.toLowerCase().contains('play')
-        ? 'playoffs'
-        : 'regular';
+    final normalizedType = seasonType.toLowerCase().contains('play') ? 'playoffs' : 'regular';
     final key = '$normalizedSeason/$normalizedType';
     final cached = _seasonCache[key];
     if (cached != null) return cached;
@@ -111,21 +91,16 @@ class WebsiteNbaStaticRepository {
   Future<Map<String, dynamic>> playerDossier(String playerKey) async {
     final cached = _playerCache[playerKey];
     if (cached != null) return cached;
-    final index = await playerIndex();
     Map<String, dynamic>? match;
-    for (final row in index) {
+    for (final row in await playerIndex()) {
       if (row['player_key']?.toString() == playerKey) {
         match = row;
         break;
       }
     }
-    if (match == null) {
-      throw WebsiteNbaStaticException('Historical player not found: $playerKey');
-    }
+    if (match == null) throw WebsiteNbaStaticException('Historical player not found: $playerKey');
     final file = match['file']?.toString() ?? '';
-    if (file.isEmpty) {
-      throw WebsiteNbaStaticException('Static player file is missing for $playerKey');
-    }
+    if (file.isEmpty) throw WebsiteNbaStaticException('Static player file is missing for $playerKey');
     final dossier = await _object(file);
     _playerCache[playerKey] = dossier;
     return dossier;
@@ -133,26 +108,19 @@ class WebsiteNbaStaticRepository {
 
   Future<Map<String, dynamic>> teamDossier(String teamKey) async {
     final resolved = await resolveTeamKey(teamKey);
-    if (resolved == null) {
-      throw WebsiteNbaStaticException('Historical team not found: $teamKey');
-    }
+    if (resolved == null) throw WebsiteNbaStaticException('Historical team not found: $teamKey');
     final cached = _teamCache[resolved];
     if (cached != null) return cached;
-    final index = await teamIndex();
     Map<String, dynamic>? match;
-    for (final row in index) {
+    for (final row in await teamIndex()) {
       if (row['team_key']?.toString() == resolved) {
         match = row;
         break;
       }
     }
-    if (match == null) {
-      throw WebsiteNbaStaticException('Static team index is missing $resolved');
-    }
+    if (match == null) throw WebsiteNbaStaticException('Static team index is missing $resolved');
     final file = match['file']?.toString() ?? '';
-    if (file.isEmpty) {
-      throw WebsiteNbaStaticException('Static team file is missing for $resolved');
-    }
+    if (file.isEmpty) throw WebsiteNbaStaticException('Static team file is missing for $resolved');
     final dossier = await _object(file);
     _teamCache[resolved] = dossier;
     return dossier;
@@ -163,11 +131,7 @@ class WebsiteNbaStaticRepository {
     if (cached != null) return cached;
     final match = await _gameIndexRow(gameKey);
     final file = match?['file']?.toString() ?? '';
-    if (file.isEmpty) {
-      throw WebsiteNbaStaticException(
-        'Static game detail has not been materialized for $gameKey',
-      );
-    }
+    if (file.isEmpty) throw WebsiteNbaStaticException('Static game detail has not been materialized for $gameKey');
     final detail = await _object(file);
     _gameCache[gameKey] = detail;
     return detail;
@@ -187,10 +151,7 @@ class WebsiteNbaStaticRepository {
 
   Future<Map<String, dynamic>?> _gameIndexRow(String gameKey) async {
     for (final row in await gameIndex()) {
-      if (row['game_key']?.toString() == gameKey ||
-          row['nba_game_id']?.toString() == gameKey) {
-        return row;
-      }
+      if (row['game_key']?.toString() == gameKey || row['nba_game_id']?.toString() == gameKey) return row;
     }
     return null;
   }
@@ -198,68 +159,60 @@ class WebsiteNbaStaticRepository {
   Future<String?> resolveTeamKey(String idOrAbbreviation) async {
     final value = idOrAbbreviation.trim();
     if (value.isEmpty) return null;
-    final needle = value.toLowerCase();
+    final needle = _teamToken(value);
     final teams = await teamIndex();
-    Map<String, dynamic>? partial;
+    Map<String, dynamic>? best;
+    var bestScore = -1;
     for (final row in teams) {
       final key = (row['team_key'] ?? '').toString();
       final abbr = (row['abbreviation'] ?? '').toString();
       final name = (row['canonical_name'] ?? '').toString();
-      if (key.toLowerCase() == needle || abbr.toLowerCase() == needle) {
-        return key;
+      final franchise = (row['franchise_key'] ?? '').toString();
+      final keyToken = _teamToken(key);
+      final abbrToken = _teamToken(abbr);
+      final nameToken = _teamToken(name);
+      final franchiseToken = _teamToken(franchise);
+      var score = -1;
+      if (keyToken == needle) score = 100;
+      if (abbrToken == needle) score = score < 95 ? 95 : score;
+      if (nameToken == needle) score = score < 90 ? 90 : score;
+      if (keyToken.endsWith(needle) || keyToken.contains(needle)) score = score < 75 ? 75 : score;
+      if (franchiseToken == needle || franchiseToken.endsWith(needle)) score = score < 70 ? 70 : score;
+      if (nameToken.contains(needle) || needle.contains(nameToken)) score = score < 60 ? 60 : score;
+      if (score < 0) continue;
+      final activeTo = _seasonStart((row['active_to'] ?? '').toString());
+      final tieBreaker = activeTo > 0 ? activeTo : 9999;
+      final currentTie = best == null ? -1 : (_seasonStart((best['active_to'] ?? '').toString()) > 0 ? _seasonStart((best['active_to'] ?? '').toString()) : 9999);
+      if (score > bestScore || (score == bestScore && tieBreaker > currentTie)) {
+        best = row;
+        bestScore = score;
       }
-      if (partial == null && name.toLowerCase().contains(needle)) partial = row;
     }
-    return partial?['team_key']?.toString();
+    return best?['team_key']?.toString();
   }
 
-  Future<Map<String, dynamic>> searchEntities(
-    String query, {
-    String kinds = 'player,team',
-    int limitPerKind = 12,
-  }) async {
+  Future<Map<String, dynamic>> searchEntities(String query, {String kinds = 'player,team', int limitPerKind = 12}) async {
     final needle = query.trim().toLowerCase();
-    if (needle.isEmpty) {
-      return {'query': '', 'league': 'NBA', 'groups': <String, dynamic>{}, 'count': 0};
-    }
-    final requested = kinds
-        .split(',')
-        .map((item) => item.trim().toLowerCase())
-        .where((item) => item.isNotEmpty)
-        .toSet();
+    if (needle.isEmpty) return {'query': '', 'league': 'NBA', 'groups': <String, dynamic>{}, 'count': 0};
+    final requested = kinds.split(',').map((item) => item.trim().toLowerCase()).where((item) => item.isNotEmpty).toSet();
     final groups = <String, dynamic>{};
     if (requested.contains('player')) {
-      final players = await playerIndex();
-      final matches = players.where((row) {
-        final haystack = [
-          row['canonical_name'],
-          row['bref_id'],
-          row['nba_id'],
-          row['primary_position'],
-        ].map((value) => value?.toString().toLowerCase() ?? '').join(' ');
+      final matches = (await playerIndex()).where((row) {
+        final haystack = [row['canonical_name'], row['bref_id'], row['nba_id'], row['primary_position']]
+            .map((value) => value?.toString().toLowerCase() ?? '').join(' ');
         return haystack.contains(needle);
-      }).take(limitPerKind).map((row) => {
-            ...row,
-            'player_key': row['player_key'],
-            'canonical_name': row['canonical_name'],
-          }).toList();
+      }).take(limitPerKind).map((row) => {...row, 'player_key': row['player_key'], 'canonical_name': row['canonical_name']}).toList();
       groups['players'] = matches;
     }
     if (requested.contains('team')) {
-      final teams = await teamIndex();
-      final matches = teams.where((row) {
-        final haystack = [
-          row['canonical_name'],
-          row['abbreviation'],
-          row['franchise_key'],
-        ].map((value) => value?.toString().toLowerCase() ?? '').join(' ');
+      final matches = (await teamIndex()).where((row) {
+        final haystack = [row['canonical_name'], row['abbreviation'], row['franchise_key'], row['team_key']]
+            .map((value) => value?.toString().toLowerCase() ?? '').join(' ');
         return haystack.contains(needle);
       }).take(limitPerKind).toList();
       groups['teams'] = matches;
     }
-    final count = groups.values
-        .whereType<List>()
-        .fold<int>(0, (sum, list) => sum + list.length);
+    final count = groups.values.whereType<List>().fold<int>(0, (sum, list) => sum + list.length);
     return {'query': query.trim(), 'league': 'NBA', 'groups': groups, 'count': count};
   }
 
@@ -270,17 +223,13 @@ class WebsiteNbaStaticRepository {
 
   Future<Map<String, dynamic>> _object(String relative) async {
     final decoded = await _json(relative);
-    if (decoded is! Map) {
-      throw WebsiteNbaStaticException('Static NBA document has an invalid shape: $relative');
-    }
+    if (decoded is! Map) throw WebsiteNbaStaticException('Static NBA document has an invalid shape: $relative');
     return decoded.map((key, value) => MapEntry(key.toString(), value));
   }
 
   Future<List<Map<String, dynamic>>> _list(String relative) async {
     final decoded = await _json(relative);
-    if (decoded is! List) {
-      throw WebsiteNbaStaticException('Static NBA list has an invalid shape: $relative');
-    }
+    if (decoded is! List) throw WebsiteNbaStaticException('Static NBA list has an invalid shape: $relative');
     return _mapList(decoded);
   }
 
@@ -289,9 +238,7 @@ class WebsiteNbaStaticRepository {
     try {
       final response = await _client.get(uri).timeout(const Duration(seconds: 8));
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw WebsiteNbaStaticException(
-          'Static NBA data is unavailable (${response.statusCode}): $relative',
-        );
+        throw WebsiteNbaStaticException('Static NBA data is unavailable (${response.statusCode}): $relative');
       }
       return jsonDecode(response.body);
     } on TimeoutException {
@@ -309,19 +256,16 @@ class WebsiteNbaStaticRepository {
 class WebsiteNbaStaticException implements Exception {
   const WebsiteNbaStaticException(this.message);
   final String message;
-
   @override
   String toString() => message;
 }
 
 List<Map<String, dynamic>> _mapList(Object? value) {
   if (value is! List) return const [];
-  return [
-    for (final item in value)
-      if (item is Map)
-        item.map((key, field) => MapEntry(key.toString(), field)),
-  ];
+  return [for (final item in value) if (item is Map) item.map((key, field) => MapEntry(key.toString(), field))];
 }
+
+String _teamToken(String value) => value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
 
 int? _int(Object? value) {
   if (value is int) return value;
