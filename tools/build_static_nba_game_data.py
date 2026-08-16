@@ -88,9 +88,18 @@ def game_metadata(db: sqlite3.Connection) -> dict[str, dict[str, Any]]:
 
 
 def team_rows(db: sqlite3.Connection) -> dict[str, list[dict[str, Any]]]:
+    # canon_fact_team_game is intentionally game-grain and does not duplicate
+    # league_id. Scope it through canon_dim_game, which is the authoritative
+    # league-bearing game dimension.
     result: dict[str, list[dict[str, Any]]] = {}
     cursor = db.execute(
-        "SELECT * FROM canon_fact_team_game WHERE league_id='NBA' ORDER BY game_key,is_home DESC"
+        """
+        SELECT tg.*
+        FROM canon_fact_team_game tg
+        JOIN canon_dim_game g ON g.game_key=tg.game_key
+        WHERE g.league_id='NBA'
+        ORDER BY tg.game_key,tg.is_home DESC
+        """
     )
     for game_key, items in grouped(cursor, "game_key"):
         result[game_key] = items
