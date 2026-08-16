@@ -19,8 +19,7 @@ migrate_working_dir/
 .idea/
 
 # The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
+# VS Code, so it is intentionally not ignored by default.
 #.vscode/
 
 # Flutter/Dart/Pub related
@@ -45,6 +44,14 @@ __pycache__/
 /raw/basketball_reference/
 /raw/historical/
 !/raw/README.md
+
+# NBA.com Stats endpoint-discovery and authorized local landing data.
+# HAR files can contain browser/session material and must never be committed.
+/raw/nba_com_stats/**
+!/raw/nba_com_stats/README.md
+*.har
+/artifacts/nba_com_stats_endpoint_inventory.json
+/artifacts/nba_com_stats_endpoint_inventory.md
 
 # Generated NBA API schema coverage reports
 /artifacts/nba_api_metric_coverage.json
