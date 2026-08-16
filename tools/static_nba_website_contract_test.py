@@ -109,6 +109,51 @@ def test_dashboard_payload_is_small_and_deterministic() -> None:
     assert "play_by_play" not in payload
 
 
+def test_team_game_materializer_scopes_league_through_game_dimension() -> None:
+    from build_static_nba_game_data import team_rows
+
+    with tempfile.TemporaryDirectory() as temp:
+        path = Path(temp) / "nba.sqlite"
+        with sqlite3.connect(path) as db:
+            db.row_factory = sqlite3.Row
+            db.executescript(
+                """
+                CREATE TABLE canon_dim_game(
+                  game_key TEXT PRIMARY KEY,
+                  league_id TEXT NOT NULL
+                );
+                CREATE TABLE canon_fact_team_game(
+                  game_key TEXT NOT NULL,
+                  team_key TEXT NOT NULL,
+                  opponent_team_key TEXT,
+                  is_home INTEGER NOT NULL,
+                  result TEXT,
+                  points REAL,
+                  opponent_points REAL,
+                  source_key TEXT NOT NULL,
+                  provenance_json TEXT NOT NULL DEFAULT '{}',
+                  PRIMARY KEY(game_key,team_key)
+                );
+                INSERT INTO canon_dim_game VALUES('nba-game','NBA');
+                INSERT INTO canon_dim_game VALUES('aba-game','ABA');
+                INSERT INTO canon_fact_team_game
+                  (game_key,team_key,opponent_team_key,is_home,result,points,opponent_points,source_key)
+                VALUES
+                  ('nba-game','nba-home','nba-away',1,'W',110,100,'fixture'),
+                  ('nba-game','nba-away','nba-home',0,'L',100,110,'fixture'),
+                  ('aba-game','aba-home','aba-away',1,'W',120,118,'fixture');
+                """
+            )
+            grouped = team_rows(db)
+
+        assert set(grouped) == {"nba-game"}, grouped
+        assert [row["team_key"] for row in grouped["nba-game"]] == [
+            "nba-home",
+            "nba-away",
+        ]
+        assert all("league_id" not in row for row in grouped["nba-game"])
+
+
 def test_static_runtime_contract() -> None:
     require(
         "scripts/open_terminal.sh",
@@ -138,6 +183,8 @@ def test_static_runtime_contract() -> None:
         "sports-terminal-static-pbp-v1",
         '"runtime_api_required": False',
         '"coverage_is_source_bounded": True',
+        "JOIN canon_dim_game g ON g.game_key=tg.game_key",
+        "WHERE g.league_id='NBA'",
     )
     require(
         "tools/build_static_front_office_snapshot.py",
@@ -205,6 +252,7 @@ def test_static_runtime_contract() -> None:
 def main() -> int:
     test_season_catalog_has_no_fact_fanout()
     test_dashboard_payload_is_small_and_deterministic()
+    test_team_game_materializer_scopes_league_through_game_dimension()
     test_static_runtime_contract()
     print("static-nba-website-contract: PASS")
     return 0
