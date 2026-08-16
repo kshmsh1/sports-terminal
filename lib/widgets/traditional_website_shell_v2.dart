@@ -38,57 +38,19 @@ class _TraditionalWebsiteShellV2State extends State<TraditionalWebsiteShellV2> {
   bool _dark = true;
 
   List<_WebDestination> get _primary => [
-        _WebDestination(
-          id: 'home',
-          label: 'Home',
-          icon: Icons.home_rounded,
-          builder: () => WebsiteNbaHomeDashboard(session: widget.session),
-        ),
-        _WebDestination(
-          id: 'stats',
-          label: 'Stats',
-          icon: Icons.leaderboard_rounded,
-          builder: () => WebsiteNbaStatsScreen(session: widget.session),
-        ),
-        _WebDestination(
-          id: 'advanced',
-          label: 'Advanced Stats',
-          icon: Icons.analytics_outlined,
-          builder: () => WebsiteNbaAdvancedStatsScreen(session: widget.session),
-        ),
-        _WebDestination(
-          id: 'trade',
-          label: 'Trade Machine',
-          icon: Icons.swap_horiz_rounded,
-          builder: () => WebsiteTradeMachineScreen(session: widget.session),
-        ),
+        _WebDestination(id: 'home', label: 'Home', icon: Icons.home_rounded, builder: () => WebsiteNbaHomeDashboard(session: widget.session)),
+        _WebDestination(id: 'stats', label: 'Stats', icon: Icons.leaderboard_rounded, builder: () => WebsiteNbaStatsScreen(session: widget.session)),
+        _WebDestination(id: 'advanced', label: 'Advanced Stats', icon: Icons.analytics_outlined, builder: () => WebsiteNbaAdvancedStatsScreen(session: widget.session)),
+        _WebDestination(id: 'trade', label: 'Trade Machine', icon: Icons.swap_horiz_rounded, builder: () => WebsiteTradeMachineScreen(session: widget.session)),
       ];
 
   List<_WebDestination> get _secondary => [
-        _WebDestination(
-          id: 'front-office',
-          label: 'Front Office',
-          icon: Icons.account_tree_outlined,
-          builder: () => ProductFrontOfficeRegistryScreen(session: widget.session),
-        ),
-        _WebDestination(
-          id: 'research',
-          label: 'Research',
-          icon: Icons.science_outlined,
-          builder: () => InstitutionalResearchHubScreen(session: widget.session),
-        ),
-        _WebDestination(
-          id: 'community',
-          label: 'Community',
-          icon: Icons.forum_outlined,
-          builder: () => ProductCommunityV2Screen(session: widget.session),
-        ),
-        _WebDestination(
-          id: 'profile',
-          label: 'Profile',
-          icon: Icons.person_outline_rounded,
-          builder: () => ProductProfileV3Screen(session: widget.session),
-        ),
+        _WebDestination(id: 'front-office', label: 'Front Office', icon: Icons.account_tree_outlined, builder: () => ProductFrontOfficeRegistryScreen(session: widget.session)),
+        _WebDestination(id: 'research', label: 'Research', icon: Icons.science_outlined, builder: () => InstitutionalResearchHubScreen(session: widget.session)),
+        _WebDestination(id: 'community', label: 'Community', icon: Icons.forum_outlined, builder: () => ProductCommunityV2Screen(session: widget.session)),
+        const _WebDestination(id: 'python-lab', label: 'Python Lab', icon: Icons.code_rounded, enabled: false),
+        const _WebDestination(id: 'excel-workspace', label: 'Excel Workspace', icon: Icons.table_chart_outlined, enabled: false),
+        _WebDestination(id: 'profile', label: 'Profile', icon: Icons.person_outline_rounded, builder: () => ProductProfileV3Screen(session: widget.session)),
       ];
 
   @override
@@ -110,7 +72,8 @@ class _TraditionalWebsiteShellV2State extends State<TraditionalWebsiteShellV2> {
 
   void _select(String id) {
     final all = [..._primary, ..._secondary];
-    if (all.any((item) => item.id == id)) setState(() => _selected = id);
+    final match = all.where((item) => item.id == id).firstOrNull;
+    if (match != null && match.enabled && match.builder != null) setState(() => _selected = id);
   }
 
   @override
@@ -131,12 +94,8 @@ class _TraditionalWebsiteShellV2State extends State<TraditionalWebsiteShellV2> {
           side: BorderSide(color: _dark ? const Color(0xFF263241) : const Color(0xFFE5E7EB)),
         ),
       ),
-      inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      dataTableTheme: const DataTableThemeData(
-        headingTextStyle: TextStyle(fontWeight: FontWeight.w800),
-      ),
+      inputDecorationTheme: InputDecorationTheme(border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
+      dataTableTheme: const DataTableThemeData(headingTextStyle: TextStyle(fontWeight: FontWeight.w800)),
     );
 
     return Theme(
@@ -161,7 +120,7 @@ class _TraditionalWebsiteShellV2State extends State<TraditionalWebsiteShellV2> {
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1320),
-                      child: selected.builder(),
+                      child: selected.builder!(),
                     ),
                   ),
                 ),
@@ -203,9 +162,7 @@ class _WebsiteHeader extends StatelessWidget {
       child: Container(
         height: 70,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
-        ),
+        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor))),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final desktop = constraints.maxWidth >= 1040;
@@ -214,21 +171,17 @@ class _WebsiteHeader extends StatelessWidget {
                 InkWell(
                   onTap: () => onSelect('home'),
                   borderRadius: BorderRadius.circular(10),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(color: colors.primary, borderRadius: BorderRadius.circular(10)),
-                        child: const Text('ST', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
-                      ),
-                      const SizedBox(width: 10),
-                      if (constraints.maxWidth >= 620)
-                        const Text('Sports Terminal', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: -.3)),
-                    ],
-                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(color: colors.primary, borderRadius: BorderRadius.circular(10)),
+                      child: const Text('ST', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
+                    ),
+                    const SizedBox(width: 10),
+                    if (constraints.maxWidth >= 620) const Text('Sports Terminal', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: -.3)),
+                  ]),
                 ),
                 if (desktop) ...[
                   const SizedBox(width: 26),
@@ -247,11 +200,7 @@ class _WebsiteHeader extends StatelessWidget {
                   _MoreMenu(items: secondary, selected: selected, onSelect: onSelect),
                 ] else ...[
                   const Spacer(),
-                  IconButton(
-                    tooltip: 'Search players and teams',
-                    onPressed: () => _openSearchDialog(context, session),
-                    icon: const Icon(Icons.search_rounded),
-                  ),
+                  IconButton(tooltip: 'Search players and teams', onPressed: () => _openSearchDialog(context, session), icon: const Icon(Icons.search_rounded)),
                   PopupMenuButton<String>(
                     tooltip: 'Navigation',
                     onSelected: onSelect,
@@ -259,10 +208,13 @@ class _WebsiteHeader extends StatelessWidget {
                       for (final item in [...primary, ...secondary])
                         PopupMenuItem(
                           value: item.id,
+                          enabled: item.enabled,
                           child: ListTile(
+                            enabled: item.enabled,
                             contentPadding: EdgeInsets.zero,
                             leading: Icon(item.icon),
                             title: Text(item.label),
+                            subtitle: item.enabled ? null : const Text('Coming later'),
                             trailing: item.id == selected ? const Icon(Icons.check_rounded) : null,
                           ),
                         ),
@@ -270,11 +222,7 @@ class _WebsiteHeader extends StatelessWidget {
                     icon: const Icon(Icons.menu_rounded),
                   ),
                 ],
-                IconButton(
-                  tooltip: dark ? 'Light mode' : 'Dark mode',
-                  onPressed: onTheme,
-                  icon: Icon(dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
-                ),
+                IconButton(tooltip: dark ? 'Light mode' : 'Dark mode', onPressed: onTheme, icon: Icon(dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined)),
                 PopupMenuButton<String>(
                   tooltip: 'Account',
                   onSelected: (value) {
@@ -285,11 +233,7 @@ class _WebsiteHeader extends StatelessWidget {
                     PopupMenuItem(value: 'profile', child: Text('Profile')),
                     PopupMenuItem(value: 'sign-out', child: Text('Sign out')),
                   ],
-                  child: CircleAvatar(
-                    radius: 17,
-                    backgroundColor: colors.primaryContainer,
-                    child: Text(_initials(session.displayName), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
-                  ),
+                  child: CircleAvatar(radius: 17, backgroundColor: colors.primaryContainer, child: Text(_initials(session.displayName), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900))),
                 ),
               ],
             );
@@ -303,7 +247,6 @@ class _WebsiteHeader extends StatelessWidget {
 class _GlobalNbaSearch extends StatelessWidget {
   const _GlobalNbaSearch({required this.session});
   final AppSession session;
-
   @override
   Widget build(BuildContext context) => SizedBox(
         width: 225,
@@ -330,10 +273,13 @@ class _MoreMenu extends StatelessWidget {
           for (final item in items)
             PopupMenuItem(
               value: item.id,
+              enabled: item.enabled,
               child: ListTile(
+                enabled: item.enabled,
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(item.icon),
                 title: Text(item.label),
+                subtitle: item.enabled ? null : const Text('Coming later'),
                 trailing: item.id == selected ? const Icon(Icons.check_rounded) : null,
               ),
             ),
@@ -346,16 +292,12 @@ class _MoreMenu extends StatelessWidget {
 }
 
 Future<void> _openSearchDialog(BuildContext context, AppSession session) {
-  return showDialog<void>(
-    context: context,
-    builder: (_) => _NbaSearchDialog(session: session),
-  );
+  return showDialog<void>(context: context, builder: (_) => _NbaSearchDialog(session: session));
 }
 
 class _NbaSearchDialog extends StatefulWidget {
   const _NbaSearchDialog({required this.session});
   final AppSession session;
-
   @override
   State<_NbaSearchDialog> createState() => _NbaSearchDialogState();
 }
@@ -382,68 +324,49 @@ class _NbaSearchDialogState extends State<_NbaSearchDialog> {
         content: SizedBox(
           width: 620,
           height: 470,
-          child: Column(
-            children: [
-              TextField(
-                controller: _controller,
-                autofocus: true,
-                onChanged: _search,
-                decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'Jayson Tatum, Boston Celtics…'),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: _future == null
-                    ? const Center(child: Text('Type at least two characters.'))
-                    : FutureBuilder<Map<String, dynamic>>(
-                        future: _future,
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
-                          if (snapshot.hasError || snapshot.data == null) return Center(child: Text('Search unavailable: ${snapshot.error}'));
-                          final groups = _map(snapshot.data!['groups']);
-                          final players = _maps(groups['players']);
-                          final teams = _maps(groups['teams']);
-                          if (players.isEmpty && teams.isEmpty) return const Center(child: Text('No matches found.'));
-                          return ListView(
-                            children: [
-                              if (players.isNotEmpty) const _SearchSection('Players'),
-                              for (final player in players)
-                                ListTile(
-                                  leading: const Icon(Icons.person_outline_rounded),
-                                  title: Text(_text(player['canonical_name'], 'Player')),
-                                  subtitle: Text([_text(player['primary_position']), _text(player['last_stat_season'])].where((item) => item.isNotEmpty).join(' · ')),
-                                  onTap: () {
-                                    Navigator.of(context).pop();
-                                    openWebsiteNbaPlayerPage(
-                                      context,
-                                      session: widget.session,
-                                      playerKey: _text(player['player_key']),
-                                      playerName: _text(player['canonical_name'], 'Player'),
-                                    );
-                                  },
-                                ),
-                              if (teams.isNotEmpty) const _SearchSection('Teams'),
-                              for (final team in teams)
-                                ListTile(
-                                  leading: const Icon(Icons.groups_outlined),
-                                  title: Text(_text(team['canonical_name'], 'Team')),
-                                  subtitle: Text(_text(team['abbreviation'])),
-                                  onTap: () {
-                                    Navigator.of(context).pop();
-                                    openWebsiteNbaTeamPage(
-                                      context,
-                                      session: widget.session,
-                                      teamKey: _text(team['team_key']),
-                                      teamName: _text(team['canonical_name'], 'Team'),
-                                    );
-                                  },
-                                ),
-                            ],
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
+          child: Column(children: [
+            TextField(controller: _controller, autofocus: true, onChanged: _search, decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'Jayson Tatum, Boston Celtics…')),
+            const SizedBox(height: 12),
+            Expanded(
+              child: _future == null
+                  ? const Center(child: Text('Type at least two characters.'))
+                  : FutureBuilder<Map<String, dynamic>>(
+                      future: _future,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
+                        if (snapshot.hasError || snapshot.data == null) return Center(child: Text('Search unavailable: ${snapshot.error}'));
+                        final groups = _map(snapshot.data!['groups']);
+                        final players = _maps(groups['players']);
+                        final teams = _maps(groups['teams']);
+                        if (players.isEmpty && teams.isEmpty) return const Center(child: Text('No matches found.'));
+                        return ListView(children: [
+                          if (players.isNotEmpty) const _SearchSection('Players'),
+                          for (final player in players)
+                            ListTile(
+                              leading: const Icon(Icons.person_outline_rounded),
+                              title: Text(_text(player['canonical_name'], 'Player')),
+                              subtitle: Text([_text(player['primary_position']), _text(player['last_season'])].where((item) => item.isNotEmpty).join(' · ')),
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                openWebsiteNbaPlayerPage(context, session: widget.session, playerKey: _text(player['player_key']), playerName: _text(player['canonical_name'], 'Player'));
+                              },
+                            ),
+                          if (teams.isNotEmpty) const _SearchSection('Teams'),
+                          for (final team in teams)
+                            ListTile(
+                              leading: const Icon(Icons.groups_outlined),
+                              title: Text(_text(team['canonical_name'], 'Team')),
+                              subtitle: Text(_text(team['abbreviation'])),
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                openWebsiteNbaTeamPage(context, session: widget.session, teamKey: _text(team['team_key']), teamName: _text(team['canonical_name'], 'Team'));
+                              },
+                            ),
+                        ]);
+                      },
+                    ),
+            ),
+          ]),
         ),
         actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close'))],
       );
@@ -452,7 +375,6 @@ class _NbaSearchDialogState extends State<_NbaSearchDialog> {
 class _SearchSection extends StatelessWidget {
   const _SearchSection(this.label);
   final String label;
-
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
@@ -461,11 +383,12 @@ class _SearchSection extends StatelessWidget {
 }
 
 class _WebDestination {
-  const _WebDestination({required this.id, required this.label, required this.icon, required this.builder});
+  const _WebDestination({required this.id, required this.label, required this.icon, this.builder, this.enabled = true});
   final String id;
   final String label;
   final IconData icon;
-  final Widget Function() builder;
+  final Widget Function()? builder;
+  final bool enabled;
 }
 
 String _initials(String value) {
