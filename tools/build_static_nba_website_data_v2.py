@@ -58,6 +58,23 @@ def _number(value: Any) -> float | None:
         return None
 
 
+def _truthy_database_flag(value: Any) -> bool:
+    if value is True:
+        return True
+    if isinstance(value, (int, float)):
+        return value != 0
+    return str(value or "").strip().lower() in {"1", "true", "yes", "y", "winner", "selected"}
+
+
+def _normalize_player_dossier(dossier: dict[str, Any]) -> dict[str, Any]:
+    awards = dossier.get("awards")
+    if isinstance(awards, list):
+        for award in awards:
+            if isinstance(award, dict) and "winner" in award:
+                award["winner"] = _truthy_database_flag(award.get("winner"))
+    return dossier
+
+
 def _first_number(row: dict[str, Any], *fields: str) -> float | None:
     for field in fields:
         value = _number(row.get(field))
@@ -222,7 +239,9 @@ def build() -> int:
 
         if not args.skip_entities:
             for index, player in enumerate(players, start=1):
-                dossier = static_player_dossier(db, str(player["player_key"]), recent_games=max(0, args.recent_player_games)); dossier["static_data"] = True
+                dossier = static_player_dossier(db, str(player["player_key"]), recent_games=max(0, args.recent_player_games))
+                dossier = _normalize_player_dossier(dossier)
+                dossier["static_data"] = True
                 write_json(staging / str(player["file"]), dossier)
                 if index % 500 == 0: print(f"  player dossiers: {index}/{len(players)}")
             for index, team in enumerate(teams, start=1):
@@ -231,6 +250,9 @@ def build() -> int:
                 if index % 50 == 0: print(f"  team dossiers: {index}/{len(teams)}")
 
         awards = rows(db.execute("SELECT * FROM canon_fact_award ORDER BY season_id,award,player_name"))
+        for award in awards:
+            if "winner" in award:
+                award["winner"] = _truthy_database_flag(award.get("winner"))
         all_star = rows(db.execute("SELECT * FROM canon_fact_all_star ORDER BY season_id,player_name"))
         draft = rows(db.execute("SELECT * FROM canon_fact_draft ORDER BY draft_year,pick_number,player_name"))
         coverage = rows(db.execute("SELECT * FROM canon_coverage WHERE league_id='NBA' ORDER BY season_id,domain"))
