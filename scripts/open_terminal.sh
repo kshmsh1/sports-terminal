@@ -8,7 +8,7 @@ cd "$ROOT"
 USE_POSTGRES=false
 NO_BROWSER=false
 FORCE_STATIC=false
-MATERIALIZE_PBP=true
+MATERIALIZE_PBP=false
 for arg in "$@"; do
   case "$arg" in
     --postgres) USE_POSTGRES=true ;;
@@ -18,26 +18,30 @@ for arg in "$@"; do
     --skip-pbp) MATERIALIZE_PBP=false ;;
     -h|--help)
       cat <<'EOF'
-Usage: bash scripts/open_terminal.sh [--postgres] [--no-browser] [--rebuild-static] [--skip-pbp]
+Usage: bash scripts/open_terminal.sh [--postgres] [--no-browser] [--rebuild-static] [--materialize-pbp]
 
 Starts Sports Terminal locally.
 
 Historical NBA website data is compiled from the canonical warehouse into
 versioned, sharded static JSON under web/data/nba_static before Flutter starts.
 Home, Stats, Advanced Stats, player pages, team pages, awards, drafts,
-contracts/cap snapshots, historical game details and source-backed historical
-play-by-play read those files directly in the browser. FastAPI/SQLite are not
-in the historical page-rendering path.
+contracts/cap snapshots and historical game details read those files directly
+in the browser. FastAPI/SQLite are not in the historical page-rendering path.
+Historical play-by-play is also static when materialized, but its full export is
+optional because the source-backed event corpus can be very large.
 
   --postgres         Use the loopback-only Postgres 17 app database.
   --no-browser       Do not automatically open http://127.0.0.1:8080.
   --rebuild-static   Force rebuilding static NBA files even when fingerprints match.
-  --skip-pbp         Skip first-time historical PBP materialization. Existing PBP shards remain usable.
+  --materialize-pbp  Also build all available source-backed historical PBP shards. This can take significant time.
+  --skip-pbp         Explicit compatibility alias for the default behavior: defer PBP materialization.
 
 Static compilation is fingerprint-aware. The first launch after this migration
-can take longer because player/team/game/PBP shards are published once; later
-launches skip unchanged work. Only rows already exposed by the canonical
-warehouse are materialized. Missing historical PBP coverage remains missing.
+can take longer because player/team/game shards are published once; later
+launches skip unchanged work. Full historical PBP is deliberately deferred from
+normal launch so it cannot block opening the website. Only rows already exposed
+by the canonical warehouse are materialized. Missing historical PBP coverage
+remains missing.
 
 The launcher checks the current checkout and immediately previous repo root for
 nba_history.sqlite. If no canonical warehouse exists but already-downloaded
@@ -198,7 +202,11 @@ if $MATERIALIZE_PBP; then GAME_ARGS+=(--include-pbp); fi
 echo "==> Preparing immutable static NBA website data"
 "$PYTHON" tools/build_static_nba_website_data_v2.py "${STATIC_ARGS[@]}"
 
-echo "==> Preparing static historical game detail${MATERIALIZE_PBP:+ and source-backed PBP}"
+if $MATERIALIZE_PBP; then
+  echo "==> Preparing static historical game detail and source-backed PBP"
+else
+  echo "==> Preparing static historical game detail (PBP deferred)"
+fi
 "$PYTHON" tools/build_static_nba_game_data.py "${GAME_ARGS[@]}"
 
 validate_static_nba_corpus
@@ -320,10 +328,10 @@ Sports Terminal is running locally.
   Website:         http://127.0.0.1:8080
   Dynamic API:     http://127.0.0.1:8000
   NBA warehouse:   $HISTORY_DB
-  Static NBA:       $STATIC_NBA_DIR
-  Front office:     $STATIC_NBA_DIR/front_office
-  Backend log:      .data/logs/backend.log
-  Flutter log:      .data/logs/flutter.log
+  Static NBA:      $STATIC_NBA_DIR
+  Front office:    $STATIC_NBA_DIR/front_office
+  Backend log:     .data/logs/backend.log
+  Flutter log:     .data/logs/flutter.log
 
 Historical NBA pages are served from static files, not the API.
 Press Ctrl-C to stop it.
