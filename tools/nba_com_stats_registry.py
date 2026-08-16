@@ -119,11 +119,12 @@ SURFACES: dict[str, NbaStatsSurface] = {
         "1996-97",
         endpoint_hint="playergamelogs",
         measure_type_hint="Advanced",
-        discovery_status="confirmed_browser_capture",
+        discovery_status="confirmed_browser_capture_schema_confirmed",
         notes=(
             "NBA.com states Advanced Box Score Stats only go back to the 1996-97 season.",
             "Chrome capture on 2026-08-16 confirmed GET stats.nba.com/stats/playergamelogs with MeasureType=Advanced and PerMode=Totals for the player-game table.",
-            "Result-set name remains pending explicit response-schema confirmation.",
+            "Response resource is gamelogs and result set is PlayerGameLogs.",
+            "Confirmed columns include player/team/game identity, estimated and standard offensive/defensive/net ratings, AST%, AST/TO, AST ratio, rebounding percentages, turnover rates, eFG%, TS%, usage, pace, PIE, possessions, and field-goal columns plus rank/availability metadata.",
         ),
     ),
     "teams_advanced_box_scores": _surface(
