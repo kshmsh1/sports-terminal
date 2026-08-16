@@ -20,7 +20,6 @@ from tools.build_static_nba_website_data import (  # noqa: E402
     COMPILER_VERSION,
     canonical_ready,
     db_fingerprint,
-    file_token,
     game_index,
     now_iso,
     player_index,
@@ -33,6 +32,7 @@ from tools.build_static_nba_website_data import (  # noqa: E402
 
 DEFAULT_DB = ROOT / "data/warehouse/nba_history.sqlite"
 DEFAULT_OUTPUT = ROOT / "web/data/nba_static"
+STATIC_SCHEMA_VERSION = 3
 
 
 def parse_args() -> argparse.Namespace:
@@ -75,6 +75,102 @@ def season_catalog(db: sqlite3.Connection) -> list[dict[str, Any]]:
     )
 
 
+def _number(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _per_game(row: dict[str, Any], field: str) -> float | None:
+    games = _number(row.get("games"))
+    total = _number(row.get(field))
+    if games is None or games <= 0 or total is None:
+        return None
+    return round(total / games, 3)
+
+
+def _dashboard_player(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "player_id": row.get("player_id"),
+        "player_name": row.get("player_name") or row.get("player_label"),
+        "team_id": row.get("team_id"),
+        "team": row.get("team_ids") or "",
+        "position": row.get("position") or "",
+        "games": row.get("games"),
+        "ppg": _per_game(row, "points"),
+        "rpg": _per_game(row, "rebounds"),
+        "apg": _per_game(row, "assists"),
+        "spg": _per_game(row, "steals"),
+        "bpg": _per_game(row, "blocks"),
+    }
+
+
+def _leaders(players: list[dict[str, Any]], metric: str, *, limit: int = 5) -> list[dict[str, Any]]:
+    eligible = [row for row in players if _number(row.get(metric)) is not None]
+    eligible.sort(key=lambda row: float(row.get(metric) or 0), reverse=True)
+    return [
+        {
+            "rank": index,
+            "player_id": row.get("player_id"),
+            "player_name": row.get("player_name"),
+            "team_id": row.get("team_id"),
+            "team": row.get("team"),
+            "position": row.get("position"),
+            "value": row.get(metric),
+        }
+        for index, row in enumerate(eligible[:limit], start=1)
+    ]
+
+
+def dashboard_payload(season_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    player_totals = payload.get("player_season_totals")
+    raw_players = player_totals if isinstance(player_totals, list) else []
+    players = [
+        _dashboard_player(row)
+        for row in raw_players
+        if isinstance(row, dict) and row.get("player_id")
+    ]
+    players.sort(key=lambda row: str(row.get("player_name") or ""))
+
+    raw_games = payload.get("games")
+    games = [row for row in raw_games if isinstance(row, dict)] if isinstance(raw_games, list) else []
+    completed_games = [
+        row
+        for row in games
+        if _number(row.get("home_score")) is not None
+        and _number(row.get("away_score")) is not None
+    ]
+    completed_games.sort(
+        key=lambda row: (str(row.get("game_date") or ""), str(row.get("game_id") or "")),
+        reverse=True,
+    )
+
+    teams = payload.get("teams") if isinstance(payload.get("teams"), list) else []
+    team_records = (
+        payload.get("team_records") if isinstance(payload.get("team_records"), list) else []
+    )
+    return {
+        "contract": "sports-terminal-static-dashboard-v1",
+        "season_id": season_id,
+        "season_type": "regular",
+        "players": players,
+        "leaders": {
+            "points": _leaders(players, "ppg"),
+            "rebounds": _leaders(players, "rpg"),
+            "assists": _leaders(players, "apg"),
+        },
+        "teams": teams,
+        "team_records": team_records,
+        "recent_games": completed_games[:12],
+        "runtime_api_required": False,
+    }
+
+
 def build() -> int:
     args = parse_args()
     database = Path(args.database).expanduser().resolve()
@@ -83,14 +179,31 @@ def build() -> int:
         raise SystemExit(f"NBA history warehouse not found: {database}")
 
     fingerprint = db_fingerprint(database)
-    fingerprint["compiler_entrypoint"] = "v2"
+    # This value is part of freshness comparison, so schema changes force a
+    # one-time rebuild even when the source SQLite file itself did not change.
+    fingerprint["compiler_entrypoint"] = f"v2-static-schema-{STATIC_SCHEMA_VERSION}"
     manifest_path = output / "manifest.json"
     if not args.force and manifest_path.exists():
         try:
             current = json.loads(manifest_path.read_text(encoding="utf-8"))
             if current.get("database_fingerprint") == fingerprint:
-                print(f"Static NBA website data is current: {output}")
-                return 0
+                required = [
+                    output / "seasons.json",
+                    output / "players/index.json",
+                    output / "teams/index.json",
+                    output / "games/index.json",
+                ]
+                latest = str(current.get("latest_season") or "")
+                if latest:
+                    required.extend(
+                        [
+                            output / f"seasons/{latest}/regular.json",
+                            output / f"dashboard/{latest}.json",
+                        ]
+                    )
+                if all(path.is_file() for path in required):
+                    print(f"Static NBA website data is current: {output}")
+                    return 0
         except Exception:
             pass
 
@@ -120,6 +233,7 @@ def build() -> int:
         write_json(staging / "games/index.json", games)
 
         generated_season_files = 0
+        dashboard_files = 0
         for season in seasons:
             season_id = str(season["season_id"])
             for season_type in ("regular", "playoffs"):
@@ -148,6 +262,12 @@ def build() -> int:
                     payload,
                 )
                 generated_season_files += 1
+                if season_type == "regular":
+                    write_json(
+                        staging / f"dashboard/{season_id}.json",
+                        dashboard_payload(season_id, payload),
+                    )
+                    dashboard_files += 1
 
         if not args.skip_entities:
             for index, player in enumerate(players, start=1):
@@ -200,13 +320,15 @@ def build() -> int:
         write_json(staging / "history/coverage.json", coverage)
 
         manifest = {
-            "contract": "sports-terminal-static-nba-website-v2",
+            "contract": "sports-terminal-static-nba-website-v3",
+            "static_schema_version": STATIC_SCHEMA_VERSION,
             "compiler_version": COMPILER_VERSION,
             "generated_at": now_iso(),
             "database_fingerprint": fingerprint,
             "latest_season": seasons[0]["season_id"] if seasons else None,
             "season_count": len(seasons),
             "season_file_count": generated_season_files,
+            "dashboard_file_count": dashboard_files,
             "player_count": len(players),
             "team_count": len(teams),
             "game_count": len(games),
@@ -219,6 +341,7 @@ def build() -> int:
                 "sqlite_required_by_browser": False,
                 "static_browser_cache": True,
                 "live_overlay_supported": True,
+                "dashboard_precomputed": True,
             },
         }
         write_json(staging / "manifest.json", manifest)
