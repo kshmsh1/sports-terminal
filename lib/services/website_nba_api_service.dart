@@ -47,6 +47,9 @@ class WebsiteNbaApiService {
     ];
   }
 
+  Future<Map<String, dynamic>> seasonDashboard(String season) =>
+      _static.seasonDashboard(season);
+
   Future<NbaTerminalSeedSnapshot> seasonSnapshot(
     String season, {
     String seasonType = 'regular',
