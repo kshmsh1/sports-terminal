@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
-import tempfile
+import sys
 from pathlib import Path
 
-from tools.import_nba_com_authorized_response import normalize_nba_stats_response
-from tools.inventory_nba_com_stats_har import inventory_har
-from tools.nba_com_stats_registry import SURFACES, registry_payload, surface_for_referer
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from tools.import_nba_com_authorized_response import normalize_nba_stats_response  # noqa: E402
+from tools.inventory_nba_com_stats_har import inventory_har  # noqa: E402
+from tools.nba_com_stats_registry import SURFACES, registry_payload, surface_for_referer  # noqa: E402
 
 
 def check_registry() -> None:
@@ -73,7 +77,7 @@ def check_response_normalization() -> None:
 
 
 def check_importer_has_no_network_dependency() -> None:
-    source = Path("tools/import_nba_com_authorized_response.py").read_text(encoding="utf-8")
+    source = (ROOT / "tools/import_nba_com_authorized_response.py").read_text(encoding="utf-8")
     forbidden = ("requests.get(", "urllib.request", "httpx.", "stats.nba.com/stats/")
     for token in forbidden:
         assert token not in source, f"Authorized importer must not perform network collection: {token}"
