@@ -49,6 +49,7 @@ class WebsiteNbaStaticRepository {
   List<Map<String, dynamic>>? _players;
   List<Map<String, dynamic>>? _teams;
   List<Map<String, dynamic>>? _games;
+  final Map<String, Map<String, dynamic>> _dashboardCache = {};
   final Map<String, NbaTerminalSeedSnapshot> _seasonCache = {};
   final Map<String, Map<String, dynamic>> _playerCache = {};
   final Map<String, Map<String, dynamic>> _teamCache = {};
@@ -67,6 +68,15 @@ class WebsiteNbaStaticRepository {
     ]..sort((a, b) => b.startYear.compareTo(a.startYear));
     _seasons = result;
     return result;
+  }
+
+  Future<Map<String, dynamic>> seasonDashboard(String season) async {
+    final normalized = season.trim();
+    final cached = _dashboardCache[normalized];
+    if (cached != null) return cached;
+    final payload = await _object('dashboard/$normalized.json');
+    _dashboardCache[normalized] = payload;
+    return payload;
   }
 
   Future<List<Map<String, dynamic>>> playerIndex() async {
