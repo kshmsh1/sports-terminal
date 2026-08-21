@@ -41,6 +41,17 @@ def _surface(key: str, label: str, entity: str, family: str, page_path: str, gra
 
 
 SURFACES: dict[str, NbaStatsSurface] = {
+    "players_season_leaders": _surface(
+        "players_season_leaders","Players / Season Leaders","player","traditional_leaders",
+        "/stats/players/traditional","player-season leaderboard aggregate","2003-04",
+        endpoint_hint="leagueLeaders",discovery_status="confirmed_browser_capture_schema_confirmed",
+        notes=(
+            "User-supplied capture confirms GET stats.nba.com/stats/leagueLeaders with PerMode=Totals, Scope=S and StatCategory=PTS.",
+            "Regular Season and Playoffs are both confirmed for every season from 2003-04 through 2025-26.",
+            "Response resource is leagueleaders; the singular resultSet object is named LeagueLeaders.",
+            "Schema includes player/team identity, GP/MIN, shooting totals and percentages, OREB/DREB/REB, AST/STL/BLK/TOV/PF/PTS, EFF, AST_TOV and STL_TOV.",
+        ),
+    ),
     "players_advanced": _surface("players_advanced","Players / General / Advanced","player","advanced","/stats/players/advanced","player-season filtered aggregate","1996-97",endpoint_hint="leaguedashplayerstats",measure_type_hint="Advanced",discovery_status="confirmed_browser_capture",notes=("NBA FAQ says advanced statistics go back to 1996-97.","Chrome capture on 2026-08-16 confirmed GET stats.nba.com/stats/leaguedashplayerstats with MeasureType=Advanced and result set LeagueDashPlayerStats.",)),
     "players_misc": _surface("players_misc","Players / General / Misc","player","misc","/stats/players/misc","player-season filtered aggregate","1996-97",endpoint_hint="leaguedashplayerstats",measure_type_hint="Misc",discovery_status="har_confirmation_required"),
     "players_scoring": _surface("players_scoring","Players / General / Scoring","player","scoring","/stats/players/scoring","player-season filtered aggregate","1996-97",endpoint_hint="leaguedashplayerstats",measure_type_hint="Scoring",discovery_status="har_confirmation_required"),
@@ -82,7 +93,7 @@ def surface_for_referer(referer: str | None) -> NbaStatsSurface | None:
 
 
 def registry_payload() -> dict[str, object]:
-    return {"contract":"sports-terminal-nba-com-stats-surface-registry-v1","official_coverage":{"advanced_stats_start":"1996-97","lineup_data_note":"NBA FAQ says lineup data goes back to 2008.","transport_policy":"Confirm request schemas from normal browser captures; do not assume unconfirmed endpoint hints are supported public APIs."},"surfaces":[SURFACES[key].to_dict() for key in sorted(SURFACES)]}
+    return {"contract":"sports-terminal-nba-com-stats-surface-registry-v1","official_coverage":{"advanced_stats_start":"1996-97","lineup_data_note":"NBA FAQ says lineup data goes back to 2008.","season_leaders_confirmed_range":"2003-04 through 2025-26 for both Regular Season and Playoffs from user-supplied browser captures.","transport_policy":"Confirm request schemas from normal browser captures; do not assume unconfirmed endpoint hints are supported public APIs."},"surfaces":[SURFACES[key].to_dict() for key in sorted(SURFACES)]}
 
 
 def main() -> int:
