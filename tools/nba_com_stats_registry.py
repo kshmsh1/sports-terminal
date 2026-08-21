@@ -43,11 +43,11 @@ def _surface(key: str, label: str, entity: str, family: str, page_path: str, gra
 SURFACES: dict[str, NbaStatsSurface] = {
     "players_season_leaders": _surface(
         "players_season_leaders","Players / Season Leaders","player","traditional_leaders",
-        "/stats/players/traditional","player-season leaderboard aggregate","2003-04",
+        "/stats/players/traditional","player-season leaderboard aggregate","1951-52",
         endpoint_hint="leagueLeaders",discovery_status="confirmed_browser_capture_schema_confirmed",
         notes=(
-            "User-supplied capture confirms GET stats.nba.com/stats/leagueLeaders with PerMode=Totals, Scope=S and StatCategory=PTS.",
-            "Regular Season and Playoffs are both confirmed for every season from 2003-04 through 2025-26.",
+            "User-supplied captures confirm GET stats.nba.com/stats/leagueLeaders with PerMode=Totals, Scope=S and StatCategory=PTS.",
+            "Regular Season and Playoffs are confirmed for every season from 1951-52 through 2025-26 across the supplied historical captures.",
             "Response resource is leagueleaders; the singular resultSet object is named LeagueLeaders.",
             "Schema includes player/team identity, GP/MIN, shooting totals and percentages, OREB/DREB/REB, AST/STL/BLK/TOV/PF/PTS, EFF, AST_TOV and STL_TOV.",
         ),
@@ -93,7 +93,7 @@ def surface_for_referer(referer: str | None) -> NbaStatsSurface | None:
 
 
 def registry_payload() -> dict[str, object]:
-    return {"contract":"sports-terminal-nba-com-stats-surface-registry-v1","official_coverage":{"advanced_stats_start":"1996-97","lineup_data_note":"NBA FAQ says lineup data goes back to 2008.","season_leaders_confirmed_range":"2003-04 through 2025-26 for both Regular Season and Playoffs from user-supplied browser captures.","transport_policy":"Confirm request schemas from normal browser captures; do not assume unconfirmed endpoint hints are supported public APIs."},"surfaces":[SURFACES[key].to_dict() for key in sorted(SURFACES)]}
+    return {"contract":"sports-terminal-nba-com-stats-surface-registry-v1","official_coverage":{"advanced_stats_start":"1996-97","lineup_data_note":"NBA FAQ says lineup data goes back to 2008.","season_leaders_confirmed_range":"1951-52 through 2025-26 for both Regular Season and Playoffs from user-supplied browser captures.","transport_policy":"Confirm request schemas from normal browser captures; do not assume unconfirmed endpoint hints are supported public APIs."},"surfaces":[SURFACES[key].to_dict() for key in sorted(SURFACES)]}
 
 
 def main() -> int:
