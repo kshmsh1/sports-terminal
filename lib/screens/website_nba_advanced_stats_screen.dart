@@ -1,9 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../models/app_session.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
+import '../widgets/website_pagination.dart';
 import 'website_nba_entity_pages.dart';
 
 class WebsiteNbaAdvancedStatsScreen extends StatefulWidget {
@@ -30,6 +33,11 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
   String _sortKey = 'pts';
   bool _descending = true;
   final Set<String> _expandedMetrics = <String>{};
+  int _pageSize = 20;
+  int? _customPageSize;
+  int _page = 1;
+
+  int get _effectivePageSize => _customPageSize ?? _pageSize;
 
   @override
   void initState() {
@@ -61,6 +69,7 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
   void _reload() {
     setState(() {
       _team = 'All';
+      _page = 1;
       _dataFuture = _loadData();
     });
   }
@@ -72,6 +81,7 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
       _sortKey = definition.metrics.first.key;
       _descending = true;
       _expandedMetrics.clear();
+      _page = 1;
     });
   }
 
@@ -143,8 +153,6 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
     }).toList();
 
     final definition = _categories.firstWhere((item) => item.name == _category);
-    // Intentionally never remove a column just because the active release lacks it.
-    // Stable schemas make historical gaps explicit: unavailable cells render as an em dash.
     final metrics = _visibleMetrics(definition);
     visible.sort((a, b) {
       final left = _metricValue(a, _sortKey);
@@ -154,6 +162,30 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
       if (right == null) return -1;
       return _descending ? right.compareTo(left) : left.compareTo(right);
     });
+
+    final pageSize = _effectivePageSize;
+    final pageCount = math.max(1, (visible.length / pageSize).ceil());
+    final safePage = _page.clamp(1, pageCount);
+    if (safePage != _page) _page = safePage;
+    final pageStart = (safePage - 1) * pageSize;
+    final pagedRows = visible.skip(pageStart).take(pageSize).toList();
+
+    Widget pager() => WebsitePagination(
+          totalItems: visible.length,
+          pageSize: pageSize,
+          currentPage: safePage,
+          customPageSize: _customPageSize,
+          onPageChanged: (value) => setState(() => _page = value),
+          onPageSizeChanged: (value) => setState(() {
+            _pageSize = value;
+            _customPageSize = null;
+            _page = 1;
+          }),
+          onCustomPageSizeChanged: (value) => setState(() {
+            _customPageSize = value;
+            _page = 1;
+          }),
+        );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -200,7 +232,7 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
                     initialValue: _basis,
                     decoration: const InputDecoration(labelText: 'Rate', isDense: true),
                     items: [for (final item in NbaStatsBasis.values) DropdownMenuItem(value: item, child: Text(item.label))],
-                    onChanged: (value) { if (value != null) setState(() => _basis = value); },
+                    onChanged: (value) { if (value != null) setState(() { _basis = value; _page = 1; }); },
                   ),
                 ),
                 _StringDropdown(
@@ -212,10 +244,10 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
                 ),
                 SizedBox(
                   width: 240,
-                  child: TextField(controller: _search, onChanged: (_) => setState(() {}), decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'Search players', isDense: true)),
+                  child: TextField(controller: _search, onChanged: (_) => setState(() => _page = 1), decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'Search players', isDense: true)),
                 ),
-                _StringDropdown(label: 'Team', value: _team, values: teams.toList()..sort(), onChanged: (value) => setState(() => _team = value)),
-                _StringDropdown(label: 'Position', value: _position, values: const ['All', 'PG', 'SG', 'SF', 'PF', 'C'], onChanged: (value) => setState(() => _position = value)),
+                _StringDropdown(label: 'Team', value: _team, values: teams.toList()..sort(), onChanged: (value) => setState(() { _team = value; _page = 1; })),
+                _StringDropdown(label: 'Position', value: _position, values: const ['All', 'PG', 'SG', 'SF', 'PF', 'C'], onChanged: (value) => setState(() { _position = value; _page = 1; })),
               ],
             ),
           ),
@@ -244,6 +276,8 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
           Text('Select the triangle beside an expandable column to reveal its component stats. Missing source coverage stays visible as —.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
         ],
         const SizedBox(height: 14),
+        pager(),
+        const SizedBox(height: 10),
         Card(
           clipBehavior: Clip.antiAlias,
           child: SingleChildScrollView(
@@ -261,11 +295,12 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
                     onSort: (_, ascending) => setState(() {
                       _sortKey = metric.key;
                       _descending = !ascending;
+                      _page = 1;
                     }),
                   ),
               ],
               rows: [
-                for (final row in visible.take(750))
+                for (final row in pagedRows)
                   DataRow(cells: [
                     DataCell(
                       Text(row.player, style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700)),
@@ -285,6 +320,8 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
             ),
           ),
         ),
+        const SizedBox(height: 10),
+        pager(),
         const SizedBox(height: 18),
         const _StatGlossary(),
         const SizedBox(height: 14),
@@ -418,15 +455,15 @@ const _categories = <_Category>[
     _Metric('halfcourt_freq', 'Halfcourt Freq', 'Share of offensive attempts or possessions occurring in halfcourt offense.', percent: true),
     _Metric('halfcourt_fg_pct', 'Halfcourt FG%', 'Field-goal percentage in halfcourt possessions.', percent: true),
     _Metric('heaves_pg', 'HPG', 'Heaves attempted per game.'),
-    _Metric('corner_three_freq', 'Corner 3P Freq', 'Share of attempts taken from either corner three location.', percent: true),
-    _Metric('corner_three_pct', 'Corner 3P%', 'Three-point percentage from the corners.', percent: true),
-    _Metric('right_corner_three_freq', 'R Corner Freq', 'Share of attempts taken from the right corner three.', percent: true),
+    _Metric('corner_three_freq', 'Corner 3 Freq', 'Share of attempts taken from either corner three area.', percent: true),
+    _Metric('corner_three_pct', 'Corner 3P%', 'Three-point percentage from either corner.', percent: true),
+    _Metric('right_corner_three_freq', 'R Corner Freq', 'Share of attempts taken from the right corner three area.', percent: true),
     _Metric('right_corner_three_pct', 'R Corner 3P%', 'Three-point percentage from the right corner.', percent: true),
-    _Metric('left_corner_three_freq', 'L Corner Freq', 'Share of attempts taken from the left corner three.', percent: true),
+    _Metric('left_corner_three_freq', 'L Corner Freq', 'Share of attempts taken from the left corner three area.', percent: true),
     _Metric('left_corner_three_pct', 'L Corner 3P%', 'Three-point percentage from the left corner.', percent: true),
-    _Metric('catch_shoot_three_freq', 'C&S 3P Freq', 'Share of attempts that are catch-and-shoot threes.', percent: true),
+    _Metric('catch_shoot_three_freq', 'C&S 3 Freq', 'Share of attempts that are catch-and-shoot threes.', percent: true),
     _Metric('catch_shoot_three_pct', 'C&S 3P%', 'Three-point percentage on catch-and-shoot attempts.', percent: true),
-    _Metric('pullup_three_freq', 'Pull-Up 3P Freq', 'Share of attempts that are pull-up threes.', percent: true),
+    _Metric('pullup_three_freq', 'Pull-Up 3 Freq', 'Share of attempts that are pull-up threes.', percent: true),
     _Metric('pullup_three_pct', 'Pull-Up 3P%', 'Three-point percentage on pull-up attempts.', percent: true),
     _Metric('right_wing_three_freq', 'R Wing Freq', 'Share of attempts taken from the right wing three area.', percent: true),
     _Metric('right_wing_three_pct', 'R Wing 3P%', 'Three-point percentage from the right wing.', percent: true),
@@ -524,155 +561,134 @@ const _categories = <_Category>[
     _Metric('ortg', 'ORtg', 'Offensive Rating estimates points produced or team points per 100 possessions, depending on source.'),
     _Metric('drtg', 'DRtg', 'Defensive Rating estimates points allowed per 100 possessions while the player is on court or by player estimate.'),
     _Metric('net_rating', 'Net Rating', 'Offensive Rating minus Defensive Rating.', signed: true),
-    _Metric('on_off_net', 'On/Off Differential', 'Difference in team net rating with the player on court versus off court.', signed: true),
+    _Metric('on_off_net', 'On/Off Differential', 'Difference between team Net Rating with the player on court and off court.', signed: true),
     _Metric('per', 'PER', 'Player Efficiency Rating is a pace-adjusted per-minute box-score efficiency metric.'),
     _Metric('bpm', 'BPM', 'Box Plus/Minus estimates points per 100 possessions above or below league average.', signed: true, children: [
-      _Metric('obpm', 'OBPM', 'Offensive component of Box Plus/Minus.', signed: true),
-      _Metric('dbpm', 'DBPM', 'Defensive component of Box Plus/Minus.', signed: true),
+      _Metric('obpm', 'OBPM', 'Offensive component of BPM.', signed: true),
+      _Metric('dbpm', 'DBPM', 'Defensive component of BPM.', signed: true),
     ]),
     _Metric('vorp', 'VORP', 'Value Over Replacement Player converts BPM into cumulative value above replacement.'),
-    _Metric('ws', 'WS', 'Win Shares estimates the number of team wins attributable to a player.'),
-    _Metric('ws48', 'WS/48', 'Win Shares normalized to 48 minutes.'),
-    _Metric('epm', 'EPM', 'Estimated Plus-Minus is an all-in-one impact estimate when source-backed.', signed: true),
-    _Metric('lebron', 'LEBRON', 'LEBRON is an all-in-one impact estimate when source-backed.', signed: true),
-    _Metric('darko', 'DARKO', 'DARKO is a forward-looking player impact estimate when source-backed.', signed: true),
-    _Metric('rapm', 'RAPM', 'Regularized Adjusted Plus-Minus estimates impact while controlling for teammates and opponents.', signed: true),
-    _Metric('la_rapm', 'LA-RAPM', 'Luck-adjusted RAPM variant when a source-backed implementation is available.', signed: true),
-    _Metric('warv', 'WARV', 'Wins Above Replacement Value converts impact and playing time into wins above replacement.'),
-    _Metric('pie', 'PIE', 'Player Impact Estimate summarizes a player’s box-score contribution relative to game totals.', percent: true),
+    _Metric('ws', 'WS', 'Win Shares estimates team wins attributable to the player.'),
+    _Metric('epm', 'EPM', 'Estimated Plus-Minus when source-backed.', signed: true),
+    _Metric('lebron', 'LEBRON', 'LEBRON impact metric when source-backed.', signed: true),
+    _Metric('darko', 'DARKO', 'DARKO player impact estimate when source-backed.', signed: true),
+    _Metric('rapm', 'RAPM', 'Regularized Adjusted Plus-Minus when a sourced model is available.', signed: true),
+    _Metric('la_rapm', 'LA-RAPM', 'Luck-adjusted RAPM when a sourced model is available.', signed: true),
+    _Metric('warv', 'WARV', 'Wins above replacement value when a sourced model is available.'),
   ]),
-  _Category('Rate Adjusted', 'Counting production under the selected Per Game, Per 36, Per 48 or other supported rate basis.', [
-    _Metric('min', 'MIN', 'Minutes under the selected rate basis.'),
-    _Metric('pts', 'PTS', 'Points under the selected rate basis.'),
-    _Metric('reb', 'REB', 'Rebounds under the selected rate basis.'),
-    _Metric('ast', 'AST', 'Assists under the selected rate basis.'),
-    _Metric('stl', 'STL', 'Steals under the selected rate basis.'),
-    _Metric('blk', 'BLK', 'Blocks under the selected rate basis.'),
-    _Metric('tov', 'TOV', 'Turnovers under the selected rate basis.'),
+  _Category('Rate Adjusted', 'Production normalized for playing time, possessions and role.', [
+    _Metric('pts', 'Points', 'Points under the selected Per Game, Per 36 or Per 48 rate basis.'),
+    _Metric('reb', 'Rebounds', 'Rebounds under the selected rate basis.'),
+    _Metric('ast', 'Assists', 'Assists under the selected rate basis.'),
+    _Metric('stl', 'Steals', 'Steals under the selected rate basis.'),
+    _Metric('blk', 'Blocks', 'Blocks under the selected rate basis.'),
+    _Metric('tov', 'Turnovers', 'Turnovers under the selected rate basis.'),
     _Metric('pf', 'PF', 'Personal fouls under the selected rate basis.'),
-    _Metric('fgm', 'FGM', 'Field goals made under the selected rate basis.'),
-    _Metric('fga', 'FGA', 'Field-goal attempts under the selected rate basis.'),
-    _Metric('three_made', '3PM', 'Three-pointers made under the selected rate basis.'),
-    _Metric('three_att', '3PA', 'Three-point attempts under the selected rate basis.'),
-    _Metric('ftm', 'FTM', 'Free throws made under the selected rate basis.'),
-    _Metric('fta', 'FTA', 'Free-throw attempts under the selected rate basis.'),
-    _Metric('pace', 'Pace', 'Estimated possessions per 48 minutes while the player is on floor.'),
-    _Metric('possessions', 'Poss', 'Possessions attributed to the player or lineup by the active source.', integer: true),
+    _Metric('pace', 'Pace', 'Estimated possessions per 48 minutes while on court.'),
+    _Metric('possessions', 'Possessions', 'Possessions associated with the player in the selected source definition.'),
   ]),
-  _Category('Clutch', 'Close-game production and efficiency; unavailable historical clutch fields remain visible as —.', [
-    _Metric('clutch_pts_pg', 'CPPG', 'Points per game in the active clutch definition.'),
-    _Metric('clutch_reb_pg', 'CRPG', 'Rebounds per game in the active clutch definition.'),
-    _Metric('clutch_ast_pg', 'CAPG', 'Assists per game in the active clutch definition.'),
-    _Metric('clutch_stl_pg', 'CSPG', 'Steals per game in the active clutch definition.'),
-    _Metric('clutch_blk_pg', 'CBPG', 'Blocks per game in the active clutch definition.'),
-    _Metric('clutch_tov_pg', 'CTPG', 'Turnovers per game in the active clutch definition.'),
-    _Metric('clutch_fg_pct', 'Clutch FG%', 'Field-goal percentage in the active clutch definition.', percent: true),
-    _Metric('clutch_three_pct', 'Clutch 3P%', 'Three-point percentage in the active clutch definition.', percent: true),
-    _Metric('clutch_ft_pct', 'Clutch FT%', 'Free-throw percentage in the active clutch definition.', percent: true),
-    _Metric('clutch_efg_pct', 'Clutch eFG%', 'Effective field-goal percentage in the active clutch definition.', percent: true),
-    _Metric('clutch_ts_pct', 'Clutch TS%', 'True shooting percentage in the active clutch definition.', percent: true),
-    _Metric('clutch_ortg', 'Clutch ORtg', 'Offensive Rating in the active clutch definition.'),
-    _Metric('clutch_drtg', 'Clutch DRtg', 'Defensive Rating in the active clutch definition.'),
-    _Metric('clutch_net', 'Clutch Net', 'Net Rating in the active clutch definition.', signed: true),
-    _Metric('clutch_plus_minus', 'Clutch +/-', 'Plus/minus in the active clutch definition.', signed: true),
+  _Category('Clutch', 'Source-defined late-and-close performance; absent historical coverage remains visible.', [
+    _Metric('clutch_pts_pg', 'CPPG', 'Clutch points per game.'),
+    _Metric('clutch_reb_pg', 'CRPG', 'Clutch rebounds per game.'),
+    _Metric('clutch_ast_pg', 'CAPG', 'Clutch assists per game.'),
+    _Metric('clutch_stl_pg', 'CSPG', 'Clutch steals per game.'),
+    _Metric('clutch_blk_pg', 'CBPG', 'Clutch blocks per game.'),
+    _Metric('clutch_tov_pg', 'CTPG', 'Clutch turnovers per game.'),
+    _Metric('clutch_fg_pct', 'Clutch FG%', 'Field-goal percentage in the selected clutch definition.', percent: true),
+    _Metric('clutch_three_pct', 'Clutch 3P%', 'Three-point percentage in the selected clutch definition.', percent: true),
+    _Metric('clutch_ft_pct', 'Clutch FT%', 'Free-throw percentage in the selected clutch definition.', percent: true),
+    _Metric('clutch_efg_pct', 'Clutch eFG%', 'Effective field-goal percentage in the selected clutch definition.', percent: true),
+    _Metric('clutch_ts_pct', 'Clutch TS%', 'True shooting percentage in the selected clutch definition.', percent: true),
+    _Metric('clutch_ortg', 'Clutch ORtg', 'Offensive Rating in the selected clutch definition.'),
+    _Metric('clutch_drtg', 'Clutch DRtg', 'Defensive Rating in the selected clutch definition.'),
+    _Metric('clutch_net', 'Clutch Net', 'Net Rating in the selected clutch definition.', signed: true),
+    _Metric('clutch_plus_minus', 'Clutch +/-', 'Raw plus-minus in the selected clutch definition.', signed: true),
   ]),
-  _Category('Gravity & Spacing', 'Spacing pressure, defensive attention and advantage creation from tracking or model-based sources.', [
-    _Metric('gravity', 'Player Gravity', 'Overall defensive attention or spacing impact attributed to a player by a source-backed model.'),
-    _Metric('offensive_gravity', 'Off. Gravity', 'Source-backed estimate of a player’s total offensive gravity.'),
-    _Metric('shot_gravity', 'Shot Gravity', 'Defensive attention created by shooting threat.'),
-    _Metric('drive_gravity', 'Drive Gravity', 'Defensive attention created by drives and rim pressure.'),
-    _Metric('spacing_value', 'Spacing Value', 'Estimated value created by floor spacing and defensive displacement.'),
-    _Metric('double_team_rate', 'Double-Team%', 'Share of relevant possessions on which a player is double-teamed.', percent: true),
-    _Metric('triple_team_rate', 'Triple-Team%', 'Share of relevant possessions on which a player is triple-teamed.', percent: true),
-    _Metric('blitz_rate', 'Blitz/Trap%', 'Share of pick-and-roll or relevant possessions defended with a blitz or trap.', percent: true),
-    _Metric('blitz_escape_rate', 'Blitz Escape%', 'Rate at which a player successfully exits a blitz or trap while preserving the possession advantage.', percent: true),
-    _Metric('pass_windows_opened', 'Pass Windows', 'Estimated passing windows or lanes opened by a player’s movement and gravity.'),
-    _Metric('freeze_time', 'Freeze Time', 'Time defenders are held or delayed by the player’s threat under a defined tracking model.'),
-    _Metric('deterrence_rate', 'Deterrence Rate', 'Estimated reduction in opponent attempts or actions due to player presence.', percent: true),
+  _Category('Gravity & Spacing', 'Defensive attention, spacing influence, creation windows and shooting gravity.', [
+    _Metric('gravity', 'Gravity', 'Source-backed estimate of defensive attention attracted by the player.'),
+    _Metric('spacing_value', 'Spacing Value', 'Source-backed estimate of spacing value created by player positioning.'),
+    _Metric('offensive_gravity', 'Offensive Gravity', 'Overall offensive defensive-attention estimate when available.'),
+    _Metric('shot_gravity', 'Shot Gravity', 'Gravity attributable to shooting threat when available.'),
+    _Metric('drive_gravity', 'Drive Gravity', 'Gravity attributable to driving threat when available.'),
+    _Metric('double_team_rate', 'Double-Team Rate', 'Frequency with which the player draws two defenders.', percent: true),
+    _Metric('pass_windows_opened', 'Pass Windows', 'Estimated passing windows created by player gravity and movement.'),
+    _Metric('freeze_time', 'Freeze Time', 'Estimated time defenders are held or frozen by the player’s threat.'),
   ]),
-  _Category('On / Off', 'Team performance with the player on court, off court and the differential between those states.', [
-    _Metric('on_off_net', 'On/Off Net', 'Difference in team net rating with the player on versus off court.', signed: true),
-    _Metric('on_off_ortg', 'On/Off ORtg', 'Difference in team Offensive Rating with the player on versus off court.', signed: true),
-    _Metric('on_off_drtg', 'On/Off DRtg', 'Difference in team Defensive Rating with the player on versus off court.', signed: true),
-    _Metric('on_court_net', 'On Net', 'Team Net Rating while the player is on court.', signed: true),
-    _Metric('off_court_net', 'Off Net', 'Team Net Rating while the player is off court.', signed: true),
-    _Metric('on_court_ortg', 'On ORtg', 'Team Offensive Rating while the player is on court.'),
-    _Metric('off_court_ortg', 'Off ORtg', 'Team Offensive Rating while the player is off court.'),
-    _Metric('on_court_drtg', 'On DRtg', 'Team Defensive Rating while the player is on court.'),
-    _Metric('off_court_drtg', 'Off DRtg', 'Team Defensive Rating while the player is off court.'),
-    _Metric('on_court_pace', 'On Pace', 'Team pace while the player is on court.'),
-    _Metric('off_court_pace', 'Off Pace', 'Team pace while the player is off court.'),
+  _Category('On / Off', 'Team performance with the player on the court versus off the court.', [
+    _Metric('on_court_net', 'On-Court Net', 'Team Net Rating while the player is on the floor.', signed: true),
+    _Metric('off_court_net', 'Off-Court Net', 'Team Net Rating while the player is off the floor.', signed: true),
+    _Metric('on_off_net', 'On/Off Differential', 'On-court Net Rating minus off-court Net Rating.', signed: true),
+    _Metric('ortg', 'On ORtg', 'Team or player offensive rating in the selected on-court context.'),
+    _Metric('drtg', 'On DRtg', 'Team or player defensive rating in the selected on-court context.'),
+    _Metric('pace', 'On Pace', 'Pace in the selected on-court context.'),
   ]),
-  _Category('Lineups & Play Types', 'Lineup combinations, possession archetypes, screens, drives and cutting actions.', [
-    _Metric('lineup_net', 'Lineup Net', 'Net Rating for the relevant lineup or player combination.', signed: true),
-    _Metric('lineup_ortg', 'Lineup ORtg', 'Offensive Rating for the relevant lineup or player combination.'),
-    _Metric('lineup_drtg', 'Lineup DRtg', 'Defensive Rating for the relevant lineup or player combination.'),
-    _Metric('possessions', 'Poss', 'Possessions in the relevant lineup or play-type sample.', integer: true),
-    _Metric('isolation_ppp', 'Isolation PPP', 'Points per possession on isolation plays.'),
-    _Metric('transition_ppp', 'Transition PPP', 'Points per possession on offensive transition plays.'),
-    _Metric('transition_def_ppp', 'Transition Def PPP', 'Points allowed per transition possession.'),
-    _Metric('pnr_ball_handler_ppp', 'PnR Handler PPP', 'Points per possession as pick-and-roll ball handler.'),
-    _Metric('pnr_roll_man_ppp', 'PnR Roll Man PPP', 'Points per possession as pick-and-roll roll man.'),
-    _Metric('post_up_ppp', 'Post-Up PPP', 'Points per possession on post-ups.'),
-    _Metric('spot_up_ppp', 'Spot-Up PPP', 'Points per possession on spot-up plays.'),
-    _Metric('handoff_ppp', 'Handoff PPP', 'Points per possession on handoff plays.'),
-    _Metric('cut_ppp', 'Cut PPP', 'Points per possession on cuts.'),
-    _Metric('off_screen_ppp', 'Off-Screen PPP', 'Points per possession on off-screen actions.'),
-    _Metric('putback_ppp', 'Putback PPP', 'Points per possession on putbacks.'),
-    _Metric('drive_pts_pg', 'Drive PPG', 'Points per game generated directly from drives.'),
-    _Metric('drive_ast_pg', 'Drive APG', 'Assists per game generated from drives.'),
-    _Metric('screens_set_pg', 'Screens Set PG', 'Screens set per game by the screener.'),
-    _Metric('screens_used_pg', 'Screens Used PG', 'Ball-handler possessions using a screen per game.'),
-    _Metric('backdoor_cuts_pg', 'Backdoor Cuts PG', 'Backdoor cuts per game when event classification supports them.'),
-    _Metric('v_cuts_pg', 'V-Cuts PG', 'V-cuts per game when event classification supports them.'),
-    _Metric('l_cuts_pg', 'L-Cuts PG', 'L-cuts per game when event classification supports them.'),
+  _Category('Lineups & Play Types', 'Lineup impact, possession-type efficiency, drives, screens and cutting.', [
+    _Metric('lineup_net', 'Lineup Net', 'Net Rating for the selected lineup context.', signed: true),
+    _Metric('possessions', 'Possessions', 'Possessions represented in the selected lineup or play-type sample.'),
+    _Metric('isolation_ppp', 'Isolation PPP', 'Points scored per isolation possession.'),
+    _Metric('transition_ppp', 'Transition PPP', 'Points scored per transition possession.'),
+    _Metric('transition_off_ppp', 'Transition Off PPP', 'Offensive points per transition possession.'),
+    _Metric('transition_def_ppp', 'Transition Def PPP', 'Points allowed per transition defensive possession.'),
+    _Metric('pnr_ball_handler_ppp', 'PnR BH PPP', 'Points per possession as pick-and-roll ball handler.'),
+    _Metric('pnr_roll_man_ppp', 'PnR Roll PPP', 'Points per possession as pick-and-roll roll man.'),
+    _Metric('post_up_ppp', 'Post-Up PPP', 'Points per post-up possession.'),
+    _Metric('spot_up_ppp', 'Spot-Up PPP', 'Points per spot-up possession.'),
+    _Metric('handoff_ppp', 'Handoff PPP', 'Points per handoff possession.'),
+    _Metric('cut_ppp', 'Cut PPP', 'Points per cutting possession.'),
+    _Metric('off_screen_ppp', 'Off-Screen PPP', 'Points per off-screen possession.'),
+    _Metric('putback_ppp', 'Putback PPP', 'Points per putback possession.'),
+    _Metric('drive_pts_pg', 'Drive PPG', 'Points generated on drives per game.'),
+    _Metric('drive_ast_pg', 'Drive APG', 'Assists generated from drives per game.'),
+    _Metric('screens_set_pg', 'Screens Set PG', 'Screens set per game.'),
+    _Metric('screens_used_pg', 'Screens Used PG', 'Screens used as the ball handler per game.'),
+    _Metric('backdoor_cuts_pg', 'Backdoor Cuts PG', 'Backdoor cuts per game when tracked.'),
+    _Metric('v_cuts_pg', 'V-Cuts PG', 'V-cuts per game when tracked.'),
+    _Metric('l_cuts_pg', 'L-Cuts PG', 'L-cuts per game when tracked.'),
   ]),
-  _Category('Movement & Physical', 'Movement load, touch profile and physical measurements when a source provides them.', [
-    _Metric('usg_pct', 'Usage', 'Usage percentage estimates the share of team possessions a player finishes while on court.', percent: true),
-    _Metric('distance_traveled', 'Distance Traveled', 'Distance traveled per game or selected sample from player tracking.'),
-    _Metric('avg_speed', 'Average Speed', 'Average movement speed while tracked.'),
-    _Metric('time_per_touch', 'Time/Touch', 'Average seconds of possession per touch.'),
-    _Metric('dribbles_per_touch', 'Dribbles/Touch', 'Average dribbles taken per touch.'),
+  _Category('Movement & Physical', 'Usage, movement, touch behavior and physical measurements.', [
+    _Metric('usg_pct', 'Usage', 'Percentage of team possessions used by the player while on the floor.', percent: true),
+    _Metric('distance_traveled', 'Distance', 'Distance traveled in the source tracking definition.'),
+    _Metric('avg_speed', 'Avg Speed', 'Average speed in the source tracking definition.'),
+    _Metric('time_per_touch', 'Time / Touch', 'Average seconds per touch.'),
+    _Metric('dribbles_per_touch', 'Dribbles / Touch', 'Average dribbles per touch.'),
     _Metric('height', 'Height', 'Listed or measured player height.'),
     _Metric('weight', 'Weight', 'Listed or measured player weight.'),
-    _Metric('wingspan', 'Wingspan', 'Measured fingertip-to-fingertip wingspan.'),
+    _Metric('wingspan', 'Wingspan', 'Measured wingspan.'),
     _Metric('standing_reach', 'Standing Reach', 'Measured standing reach.'),
     _Metric('hand_length', 'Hand Length', 'Measured hand length.'),
     _Metric('hand_width', 'Hand Width', 'Measured hand width.'),
     _Metric('standing_jump', 'Standing Jump', 'Measured standing vertical jump.'),
-    _Metric('max_vertical', 'Max Vertical', 'Measured maximum vertical jump.'),
+    _Metric('max_vertical_jump', 'Max Vertical', 'Measured maximum vertical jump.'),
   ]),
-  _Category('Discipline & Events', 'Violations, foul events, sanctions and unusual game-ending events.', [
-    _Metric('technical_fouls', 'Technical Fouls', 'Technical fouls assessed to the player.'),
-    _Metric('ejections', 'Ejections', 'Ejections recorded for the player.'),
-    _Metric('disqualifications', 'Disqualifications', 'Game disqualifications recorded for the player.'),
-    _Metric('suspensions', 'Suspensions', 'Games or incidents of suspension when a reliable source is available.'),
-    _Metric('shooting_fouls', 'Shooting Fouls', 'Shooting fouls committed.'),
-    _Metric('personal_fouls', 'Personal Fouls', 'Personal fouls committed.'),
-    _Metric('offensive_fouls', 'Offensive Fouls', 'Offensive fouls committed.'),
-    _Metric('defensive_fouls', 'Defensive Fouls', 'Defensive fouls committed.'),
-    _Metric('travel', 'Travels', 'Traveling violations.'),
+  _Category('Discipline & Events', 'Violations, foul types, sanctions and discrete end-of-clock events.', [
+    _Metric('travel', 'Travels', 'Traveling violations under the selected rate basis.'),
     _Metric('double_dribble', 'Double Dribble', 'Double-dribble violations.'),
-    _Metric('discontinued_dribble', 'Discontinued Dribble', 'Discontinued-dribble violations.'),
+    _Metric('discontinued_dribble', 'Disc. Dribble', 'Discontinued-dribble violations.'),
     _Metric('off_three_sec', 'Off. 3 Sec', 'Offensive three-second violations.'),
     _Metric('def_three_sec', 'Def. 3 Sec', 'Defensive three-second violations.'),
     _Metric('backcourt', 'Backcourt', 'Backcourt violations.'),
     _Metric('palming', 'Palming', 'Palming/carrying violations.'),
-    _Metric('off_goaltending', 'Off. Goaltend', 'Offensive goaltending violations.'),
-    _Metric('def_goaltending', 'Def. Goaltend', 'Defensive goaltending violations.'),
     _Metric('kicked_ball', 'Kicked Ball', 'Kicked-ball violations.'),
-    _Metric('game_buzzer_beaters', 'Game Buzzer Beaters', 'Made shots that beat the final game buzzer.'),
-    _Metric('quarter_buzzer_beaters', 'Quarter Buzzer Beaters', 'Made shots that beat a quarter-ending buzzer.'),
-    _Metric('shot_clock_beaters', 'Shot-Clock Beaters', 'Made shots released immediately before the shot clock expires.'),
+    _Metric('off_goaltending', 'Off. Goaltending', 'Offensive goaltending violations.'),
+    _Metric('def_goaltending', 'Def. Goaltending', 'Defensive goaltending violations.'),
+    _Metric('technical_fouls', 'Technical Fouls', 'Technical fouls assessed.'),
+    _Metric('shooting_fouls', 'Shooting Fouls', 'Shooting fouls committed.'),
+    _Metric('offensive_fouls', 'Offensive Fouls', 'Offensive fouls committed.'),
+    _Metric('defensive_fouls', 'Defensive Fouls', 'Defensive fouls committed.'),
+    _Metric('other_fouls', 'Other Fouls', 'Other categorized fouls committed.'),
+    _Metric('ejections', 'Ejections', 'Ejections recorded.'),
+    _Metric('disqualifications', 'Disqualifications', 'Game disqualifications recorded.'),
+    _Metric('suspensions', 'Suspensions', 'Suspensions recorded in a source-backed dataset.'),
+    _Metric('game_buzzer_beaters', 'Game Buzzer Beaters', 'Made shots at the final game horn.'),
+    _Metric('quarter_buzzer_beaters', 'Quarter Buzzer Beaters', 'Made shots at a quarter/period horn.'),
+    _Metric('shot_clock_buzzer_beaters', 'Shot-Clock Beaters', 'Made shots at the shot-clock horn.'),
   ]),
 ];
 
 class _StatGlossary extends StatelessWidget {
   const _StatGlossary();
-
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final metrics = <_Metric>[];
     final seen = <String>{};
     for (final category in _categories) {
@@ -680,44 +696,41 @@ class _StatGlossary extends StatelessWidget {
         _collectMetric(metric, metrics, seen);
       }
     }
-    metrics.sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
-    return Card(
-      child: ExpansionTile(
-        initiallyExpanded: false,
-        title: Text('Stat Glossary', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-        subtitle: const Text('Concise definitions for every metric shown on this page.'),
-        childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-        children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final columns = constraints.maxWidth >= 1050 ? 3 : constraints.maxWidth >= 680 ? 2 : 1;
-              final width = (constraints.maxWidth - ((columns - 1) * 12)) / columns;
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  for (final metric in metrics)
-                    SizedBox(
-                      width: width,
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: colors.surfaceContainerHighest.withValues(alpha: 0.35),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(metric.label, style: const TextStyle(fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 4),
-                          Text(metric.glossary, style: TextStyle(color: colors.onSurfaceVariant, height: 1.35)),
-                        ]),
+    final colors = Theme.of(context).colorScheme;
+    return ExpansionTile(
+      tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+      childrenPadding: const EdgeInsets.only(bottom: 8),
+      title: const Text('Stat Glossary', style: TextStyle(fontWeight: FontWeight.w900)),
+      subtitle: Text('${metrics.length} metrics · concise definitions', style: TextStyle(color: colors.onSurfaceVariant)),
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth >= 900 ? (constraints.maxWidth - 24) / 3 : constraints.maxWidth >= 580 ? (constraints.maxWidth - 12) / 2 : constraints.maxWidth;
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                for (final metric in metrics)
+                  SizedBox(
+                    width: width,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceContainerHighest.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(10),
                       ),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(metric.label, style: const TextStyle(fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 4),
+                        Text(metric.glossary, style: TextStyle(color: colors.onSurfaceVariant, height: 1.35)),
+                      ]),
                     ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 }
@@ -758,12 +771,12 @@ double? _metricValue(NbaStatsRow row, String key) {
     'ast_pct': ['ast_pct'], 'tov_pct': ['tm_tov_pct', 'tov_pct', 'e_tov_pct'], 'stl_pct': ['stl_pct'],
     'blk_pct': ['blk_pct'], 'oreb_pct': ['oreb_pct'], 'dreb_pct': ['dreb_pct'], 'reb_pct': ['reb_pct', 'trb_pct'],
     'ast_tov': ['ast_to', 'ast_tov'], 'epm': ['epm'], 'lebron': ['lebron'], 'darko': ['darko'], 'rapm': ['rapm'],
-    'la_rapm': ['la_rapm'], 'warv': ['warv'], 'deflections_pg': ['deflections_pg', 'deflections'],
-    'charges_drawn_pg': ['charges_drawn_pg', 'charges_drawn'], 'contested_shots_pg': ['contested_shots_pg', 'contested_shots'],
-    'loose_balls_recovered_pg': ['loose_balls_recovered_pg', 'loose_balls_recovered'],
+    'la_rapm': ['la_rapm'], 'warv': ['warv'], 'deflections_pg': ['deflections_pg'],
+    'charges_drawn_pg': ['charges_drawn_pg'], 'contested_shots_pg': ['contested_shots_pg'],
+    'loose_balls_recovered_pg': ['loose_balls_recovered_pg'],
     'dfg_pct': ['d_fg_pct', 'dfg_pct'], 'dfgm': ['d_fgm', 'dfgm'], 'dfga': ['d_fga', 'dfga'],
-    'box_out_pct': ['box_out_pct', 'pct_box_outs_reb'], 'box_outs_pg': ['box_outs_pg', 'box_outs'],
-    'screen_ast_pg': ['screen_ast_pg', 'screen_assists'], 'secondary_ast_pg': ['secondary_ast_pg', 'secondary_ast'],
+    'box_out_pct': ['box_out_pct', 'pct_box_outs_reb'], 'box_outs_pg': ['box_outs_pg'],
+    'screen_ast_pg': ['screen_ast_pg'], 'secondary_ast_pg': ['secondary_ast_pg', 'secondary_ast'],
     'potential_ast_pg': ['potential_ast_pg', 'potential_ast'], 'passes_pg': ['passes_pg', 'passes_made'],
     'ft_ast_pg': ['ft_ast_pg', 'ft_ast'], 'ast_points_created': ['ast_points_created'],
     'distance_traveled': ['distance_traveled', 'dist_miles'], 'avg_speed': ['avg_speed'],
@@ -786,7 +799,6 @@ double? _metricValue(NbaStatsRow row, String key) {
   final direct = rawValue(aliases[key] ?? [key]);
   if (direct != null) return direct;
 
-  // Transparent derivations from sourced traditional totals when the needed inputs exist.
   final fga = rawValue(['fga']);
   final fta = rawValue(['fta']);
   final threeA = rawValue(['fg3a', 'three_pa', 'three_att']);
