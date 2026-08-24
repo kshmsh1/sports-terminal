@@ -120,8 +120,13 @@ PER_GAME_DERIVATIONS: dict[str, tuple[str, str]] = {
     "paint_pts_pg": ("players_misc", "paint_points"),
 }
 
-IDENTITY_ID_FIELDS = ("PLAYER_ID", "CLOSE_DEF_PERSON_ID", "VS_PLAYER_ID")
-IDENTITY_NAME_FIELDS = ("PLAYER_NAME", "PLAYER", "CLOSE_DEF_PERSON_NAME", "VS_PLAYER_NAME")
+IDENTITY_ID_FIELDS = {
+    "PLAYER_ID", "CLOSE_DEF_PERSON_ID", "VS_PLAYER_ID", "TEAM_ID", "GROUP_ID",
+}
+IDENTITY_NAME_FIELDS = {
+    "PLAYER_NAME", "PLAYER", "CLOSE_DEF_PERSON_NAME", "VS_PLAYER_NAME",
+    "TEAM_NAME", "TEAM_ABBREVIATION", "GROUP_NAME", "GROUP_SET",
+}
 
 
 def _number(value: Any) -> float | None:
@@ -257,22 +262,35 @@ def _publish(row: dict[str, Any], key: str, value: Any, *, overwrite: bool = Fal
         keys.append(key)
 
 
+def _safe_direct_key(source_key: str) -> str | None:
+    key = source_key.strip().upper()
+    if not key or key in IDENTITY_ID_FIELDS or key in IDENTITY_NAME_FIELDS:
+        return None
+    if key == "RANK" or key.endswith("_RANK"):
+        return None
+    normalized = re.sub(r"[^a-z0-9]+", "_", key.lower()).strip("_")
+    return normalized or None
+
+
 def _merge_surface_fields(target: dict[str, Any], surface: str, source: dict[str, Any]) -> None:
     nba_com = target.setdefault("nba_com", {})
     if isinstance(nba_com, dict):
         nba_com[surface] = dict(source)
+
+    # First publish every safe direct source column under its normalized header.
+    # Stable aliases below then expose canonical Sports Terminal spellings. This
+    # keeps new captures usable without another compiler rewrite while avoiding
+    # identity/rank leakage or cross-surface overwrites.
+    for source_key, value in source.items():
+        direct_key = _safe_direct_key(source_key)
+        if direct_key:
+            _publish(target, direct_key, value)
 
     for source_key, target_key in SURFACE_FIELD_MAP.get(surface, {}).items():
         if source_key in source:
             _publish(target, target_key, source[source_key])
 
     if surface == "players_violations":
-        for source_key, value in source.items():
-            if source_key in IDENTITY_ID_FIELDS or source_key in IDENTITY_NAME_FIELDS:
-                continue
-            key = re.sub(r"[^a-z0-9]+", "_", source_key.strip().lower()).strip("_")
-            if key:
-                _publish(target, key, value)
         violation_aliases = {
             "DISCONTINUE_DRIBBLE": "discontinued_dribble",
             "DISCONTINUED_DRIBBLE": "discontinued_dribble",
