@@ -1,9 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../models/app_session.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
+import '../widgets/website_pagination.dart';
 import 'website_nba_entity_pages.dart';
 
 class WebsiteNbaStatsScreen extends StatefulWidget {
@@ -27,6 +30,11 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
   String _position = 'All';
   String _sortKey = 'pts';
   bool _descending = true;
+  int _pageSize = 20;
+  int? _customPageSize;
+  int _page = 1;
+
+  int get _effectivePageSize => _customPageSize ?? _pageSize;
 
   @override
   void initState() {
@@ -59,9 +67,12 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
     setState(() {
       _team = 'All';
       _position = 'All';
+      _page = 1;
       _dataFuture = _loadData();
     });
   }
+
+  void _resetPage() => setState(() => _page = 1);
 
   @override
   Widget build(BuildContext context) {
@@ -77,14 +88,14 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) return const _Loading();
             if (snapshot.hasError || snapshot.data == null) return _ErrorState(error: snapshot.error, onRetry: _reload);
-            return _page(context, snapshot.data!);
+            return _pageBody(context, snapshot.data!);
           },
         );
       },
     );
   }
 
-  Widget _page(BuildContext context, NbaTerminalSeedSnapshot data) {
+  Widget _pageBody(BuildContext context, NbaTerminalSeedSnapshot data) {
     final colors = Theme.of(context).colorScheme;
     final rows = _engine.buildRows(data, basis: NbaStatsBasis.perGame, seasonType: _seasonType);
     final teams = <String>{'All'};
@@ -101,12 +112,36 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
     }).toList();
     _engine.sortRows(visible, _sortKey, descending: _descending);
 
+    final pageSize = _effectivePageSize;
+    final pageCount = math.max(1, (visible.length / pageSize).ceil());
+    final safePage = _page.clamp(1, pageCount);
+    if (safePage != _page) _page = safePage;
+    final start = (safePage - 1) * pageSize;
+    final pagedRows = visible.skip(start).take(pageSize).toList();
+
+    Widget pager() => WebsitePagination(
+          totalItems: visible.length,
+          pageSize: pageSize,
+          currentPage: safePage,
+          customPageSize: _customPageSize,
+          onPageChanged: (value) => setState(() => _page = value),
+          onPageSizeChanged: (value) => setState(() {
+            _pageSize = value;
+            _customPageSize = null;
+            _page = 1;
+          }),
+          onCustomPageSizeChanged: (value) => setState(() {
+            _customPageSize = value;
+            _page = 1;
+          }),
+        );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('NBA Stats', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -1)),
         const SizedBox(height: 8),
-        Text('Traditional player statistics for every NBA season from 1946-47 through 2025-26.', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: colors.onSurfaceVariant, height: 1.45)),
+        Text('Traditional player statistics with regular season and playoff views across the historical NBA corpus.', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: colors.onSurfaceVariant, height: 1.45)),
         const SizedBox(height: 22),
         Card(
           child: Padding(
@@ -145,12 +180,12 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
                     width: constraints.maxWidth < 620 ? constraints.maxWidth : 260,
                     child: TextField(
                       controller: _search,
-                      onChanged: (_) => setState(() {}),
+                      onChanged: (_) => _resetPage(),
                       decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'Search players', isDense: true),
                     ),
                   ),
-                  _Dropdown(label: 'Team', value: _team, values: teamValues, onChanged: (value) => setState(() => _team = value)),
-                  _Dropdown(label: 'Position', value: _position, values: const ['All', 'PG', 'SG', 'SF', 'PF', 'C'], onChanged: (value) => setState(() => _position = value)),
+                  _Dropdown(label: 'Team', value: _team, values: teamValues, onChanged: (value) => setState(() { _team = value; _page = 1; })),
+                  _Dropdown(label: 'Position', value: _position, values: const ['All', 'PG', 'SG', 'SF', 'PF', 'C'], onChanged: (value) => setState(() { _position = value; _page = 1; })),
                 ],
               ),
             ),
@@ -161,6 +196,8 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
           Expanded(child: Text('${visible.length} players', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
           Text('$_season · ${_seasonType == NbaStatsSeasonType.playoffs ? 'Playoffs' : 'Regular Season'}', style: TextStyle(color: colors.onSurfaceVariant)),
         ]),
+        const SizedBox(height: 10),
+        pager(),
         const SizedBox(height: 10),
         Card(
           clipBehavior: Clip.antiAlias,
@@ -182,11 +219,12 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
                       onSort: (_, ascending) => setState(() {
                         _sortKey = metric.key;
                         _descending = !ascending;
+                        _page = 1;
                       }),
                     )),
               ],
               rows: [
-                for (final row in visible.take(750))
+                for (final row in pagedRows)
                   DataRow(cells: [
                     DataCell(
                       Text(row.player, style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700)),
@@ -206,6 +244,8 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
             ),
           ),
         ),
+        const SizedBox(height: 10),
+        pager(),
       ],
     );
   }
