@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 from pathlib import Path
 
-from tools.nba_com_static_enrichment import enrich_seed_payload, enrichment_fingerprint
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from tools.nba_com_static_enrichment import enrich_seed_payload, enrichment_fingerprint  # noqa: E402
 
 
 def _write_capture(root: Path, surface: str, rows: list[dict], *, season: str = "2025-26", season_type: str = "regular-season") -> None:
@@ -106,6 +111,34 @@ def check_player_season_join() -> None:
         assert payload["nba_com_enrichment"]["unmatched_rows"] == 0
 
 
+def check_surface_specific_game_denominator() -> None:
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        # Historical/base row says 10 GP, but Hustle source says G=8. A Hustle
+        # rate must use 8 rather than silently borrowing the other feed's 10.
+        _write_capture(root, "players_hustle", [{
+            "PLAYER_ID": 12345, "PLAYER_NAME": "Test Player", "G": 8, "DEFLECTIONS": 24,
+        }])
+        payload = _snapshot()
+        enrich_seed_payload(payload, season="2025-26", season_type="regular", raw_roots=[root])
+        assert payload["player_season_totals"][0]["deflections_pg"] == 3.0
+
+
+def check_accent_folded_name_fallback() -> None:
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        payload = _snapshot()
+        payload["players"][0].pop("nba_id")
+        payload["players"][0]["player_name"] = "Nikola Jokić"
+        payload["player_season_totals"][0]["player_name"] = "Nikola Jokić"
+        payload["player_season_totals"][0]["player_label"] = "Nikola Jokić"
+        _write_capture(root, "players_hustle", [{
+            "PLAYER_NAME": "Nikola Jokic", "G": 10, "DEFLECTIONS": 20,
+        }])
+        enrich_seed_payload(payload, season="2025-26", season_type="regular", raw_roots=[root])
+        assert payload["player_season_totals"][0]["deflections_pg"] == 2.0
+
+
 def check_unmatched_is_reported_not_fabricated() -> None:
     with tempfile.TemporaryDirectory() as temp:
         root = Path(temp)
@@ -128,6 +161,8 @@ def check_fingerprint_changes_with_capture() -> None:
 
 def main() -> int:
     check_player_season_join()
+    check_surface_specific_game_denominator()
+    check_accent_folded_name_fallback()
     check_unmatched_is_reported_not_fabricated()
     check_fingerprint_changes_with_capture()
     print("NBA.com static player-season enrichment: PASS")
