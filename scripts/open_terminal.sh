@@ -24,6 +24,10 @@ Starts Sports Terminal locally.
 
 Historical NBA website data is compiled from the canonical warehouse into
 versioned, sharded static JSON under web/data/nba_static before Flutter starts.
+Authorized NBA.com historical response files are also materialized into that
+same static corpus during the build. The browser never calls NBA.com for
+historical statistics at runtime.
+
 Home, Stats, Advanced Stats, player pages, team pages, awards, drafts,
 contracts/cap snapshots and historical game details read those files directly
 in the browser. FastAPI/SQLite are not in the historical page-rendering path.
@@ -36,12 +40,10 @@ optional because the source-backed event corpus can be very large.
   --materialize-pbp  Also build all available source-backed historical PBP shards. This can take significant time.
   --skip-pbp         Explicit compatibility alias for the default behavior: defer PBP materialization.
 
-Static compilation is fingerprint-aware. The first launch after this migration
-can take longer because player/team/game shards are published once; later
-launches skip unchanged work. Full historical PBP is deliberately deferred from
-normal launch so it cannot block opening the website. Only rows already exposed
-by the canonical warehouse are materialized. Missing historical PBP coverage
-remains missing.
+Static compilation is fingerprint-aware. Historical warehouse changes and
+local NBA.com normalized capture changes have independent fingerprints. Once a
+historical NBA.com response has been imported locally and materialized, no
+runtime NBA.com network access is required to display it.
 
 Dynamic services are optional for local browsing. If the local API cannot start,
 the website still launches with immutable historical NBA pages available while
@@ -186,6 +188,22 @@ runtime = manifest.get("runtime") or {}
 if runtime.get("historical_http_api_required") is not False:
     raise SystemExit("Static NBA manifest does not declare API-independent historical runtime")
 print(f"Static NBA corpus validated: {manifest.get('season_count', 0)} seasons; latest={latest or 'unknown'}")
+enrichment = manifest.get("nba_com_enrichment") or {}
+fingerprint = enrichment.get("fingerprint") or {}
+normalized_files = int(fingerprint.get("normalized_file_count") or 0)
+enriched_rows = int(enrichment.get("enriched_player_rows") or 0)
+matched_rows = int(enrichment.get("matched_source_rows") or 0)
+unmatched_rows = int(enrichment.get("unmatched_source_rows") or 0)
+if enrichment:
+    print(
+        "Static NBA.com materialization: "
+        f"{normalized_files} normalized captures; "
+        f"{enriched_rows} player-season rows; "
+        f"{matched_rows} matched source rows; "
+        f"{unmatched_rows} unmatched source rows"
+    )
+else:
+    print("Static NBA.com materialization: none (no normalized local NBA.com captures materialized)")
 PY
 }
 
@@ -368,7 +386,7 @@ Sports Terminal is running locally.
   Migration log:   .data/logs/migrate.log
   Flutter log:     .data/logs/flutter.log
 
-Historical NBA pages are served from static files, not the API.
+Historical NBA pages, including materialized NBA.com statistics, are served from static files, not the API.
 Press Ctrl-C to stop it.
 EOF
 
