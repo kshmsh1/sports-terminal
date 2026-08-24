@@ -40,7 +40,7 @@ def _surface(key: str, label: str, entity: str, family: str, page_path: str, gra
                            endpoint_hint, measure_type_hint, discovery_status, tuple(notes))
 
 
-GENERAL_CAPTURE_NOTE = "User-supplied browser captures confirm Regular Season and Playoffs for 2023-24, 2024-25, and 2025-26."
+GENERAL_CAPTURE_NOTE = "User-supplied browser captures confirm Regular Season and Playoffs for every season from 1996-97 through 2025-26 unless a narrower family-specific range is noted."
 
 SURFACES: dict[str, NbaStatsSurface] = {
     "players_season_leaders": _surface(
@@ -57,11 +57,11 @@ SURFACES: dict[str, NbaStatsSurface] = {
     ),
     "players_base": _surface(
         "players_base","Players / General / Traditional","player","base","/stats/players/traditional",
-        "player-season filtered aggregate",None,endpoint_hint="leaguedashplayerstats",measure_type_hint="Base",
+        "player-season filtered aggregate","1996-97",endpoint_hint="leaguedashplayerstats",measure_type_hint="Base",
         discovery_status="confirmed_browser_capture_schema_confirmed",notes=(
             GENERAL_CAPTURE_NOTE,
             "Confirmed with PerMode=Totals and result set LeagueDashPlayerStats.",
-            "This is the preferred complete-population player-season source over leagueLeaders for captured modern seasons.",
+            "This is the preferred complete-population player-season source over leagueLeaders for captured seasons.",
             "Schema includes PLAYER_ID/PLAYER_NAME/team/age, GP/W/L/W%, MIN, complete traditional shooting/counting totals, PLUS_MINUS, fantasy points, DD2, TD3, ranks, and TEAM_COUNT.",
         ),
     ),
@@ -91,23 +91,23 @@ SURFACES: dict[str, NbaStatsSurface] = {
             "Schema includes USG_PCT and player shares of team FGM/FGA/3PM/3PA/FTM/FTA/rebounds/assists/turnovers/steals/blocks/fouls/fouls drawn/points.")),
     "players_opponent": _surface(
         "players_opponent","Players / General / Opponent","player","opponent","/stats/players/opponent",
-        "player-on-court opponent aggregate",None,endpoint_hint="leagueplayerondetails",measure_type_hint="Opponent",
+        "player-on-court opponent aggregate","1996-97",endpoint_hint="leagueplayerondetails",measure_type_hint="Opponent",
         discovery_status="confirmed_browser_capture_schema_confirmed",notes=(GENERAL_CAPTURE_NOTE,
             "Response resource is leagueplayerondetails and result set is PlayersOnCourtLeaguePlayerDetails.",
             "Schema includes GROUP_SET, team identity, VS_PLAYER identity, COURT_STATUS and opponent traditional production while that player is on court.")),
     "players_defense": _surface(
         "players_defense","Players / General / Defense","player","defense","/stats/players/defense",
-        "player-season filtered aggregate",None,endpoint_hint="leaguedashplayerstats",measure_type_hint="Defense",
+        "player-season filtered aggregate","1996-97",endpoint_hint="leaguedashplayerstats",measure_type_hint="Defense",
         discovery_status="confirmed_browser_capture_schema_confirmed",notes=(GENERAL_CAPTURE_NOTE,
             "Schema includes DEF_RATING, defensive rebound totals/rates, steal/block totals and shares, opponent context scoring, DEF_WS and DEF_WS_RAW.")),
     "players_violations": _surface(
         "players_violations","Players / General / Violations","player","violations","/stats/players/violations",
-        "player-season violation aggregate",None,endpoint_hint="leaguedashplayerstats",measure_type_hint="Violations",
+        "player-season violation aggregate","1996-97",endpoint_hint="leaguedashplayerstats",measure_type_hint="Violations",
         discovery_status="confirmed_browser_capture_schema_confirmed",notes=(GENERAL_CAPTURE_NOTE,
             "Schema includes travel, double/discontinued dribble, three-second, inbound, backcourt, goaltending, palming, offensive foul, charge, lane, jump-ball and kicked-ball violations.")),
     "players_estimated_advanced": _surface(
         "players_estimated_advanced","Players / General / Estimated Advanced","player","estimated_advanced",
-        "/stats/players/estimated-advanced","player-season estimated metric aggregate",None,
+        "/stats/players/estimated-advanced","player-season estimated metric aggregate","1996-97",
         endpoint_hint="playerestimatedmetrics",measure_type_hint="Estimated",discovery_status="confirmed_browser_capture_schema_confirmed",
         notes=(GENERAL_CAPTURE_NOTE,
             "Response resource is playerestimatedmetrics and singular resultSet is PlayerEstimatedMetrics.",
@@ -120,7 +120,12 @@ SURFACES: dict[str, NbaStatsSurface] = {
     "teams_clutch": _surface("teams_clutch","Teams / Clutch","team","clutch","/stats/teams/clutch-traditional","team-season clutch split",None),
     "players_tracking": _surface("players_tracking","Players / Tracking","player","tracking","/stats/players/tracking","player tracking aggregate",None),
     "teams_tracking": _surface("teams_tracking","Teams / Tracking","team","tracking","/stats/teams/tracking","team tracking aggregate",None),
-    "players_defense_dashboard": _surface("players_defense_dashboard","Players / Defense Dashboard","player","defense_dashboard","/stats/players/defense-dash-overall","player defensive matchup/shot aggregate",None),
+    "players_defense_dashboard": _surface(
+        "players_defense_dashboard","Players / Defense Dashboard","player","defense_dashboard","/stats/players/defense-dash-overall","player defensive matchup/shot aggregate","2013-14",
+        endpoint_hint="leaguedashptdefend",discovery_status="confirmed_browser_capture_schema_confirmed",
+        notes=("User-supplied captures confirm Regular Season and Playoffs from 2013-14 through 2025-26 with DefenseCategory=Overall and PerMode=Totals.",
+               "Response resource is leaguedashptdefend and result set is LeagueDashPTDefend.",
+               "Schema includes defender identity/position/age, GP/G/FREQ, defended FGM/FGA/FG%, normal opponent FG% baseline, and percentage-point differential.")),
     "teams_defense_dashboard": _surface("teams_defense_dashboard","Teams / Defense Dashboard","team","defense_dashboard","/stats/teams/defense-dash-overall","team defensive matchup/shot aggregate",None),
     "players_shot_dashboard": _surface("players_shot_dashboard","Players / Shot Dashboard","player","shot_dashboard","/stats/players/shots-general","player shooting split",None),
     "teams_shot_dashboard": _surface("teams_shot_dashboard","Teams / Shot Dashboard","team","shot_dashboard","/stats/teams/shots-general","team shooting split",None),
@@ -130,7 +135,12 @@ SURFACES: dict[str, NbaStatsSurface] = {
     "teams_shooting": _surface("teams_shooting","Teams / Shooting","team","shooting","/stats/teams/shooting","team shooting aggregate",None),
     "players_opponent_shooting": _surface("players_opponent_shooting","Players / Opponent Shooting","player","opponent_shooting","/stats/players/opponent-shooting","player opponent shooting aggregate",None),
     "teams_opponent_shooting": _surface("teams_opponent_shooting","Teams / Opponent Shooting","team","opponent_shooting","/stats/teams/opponent-shooting","team opponent shooting aggregate",None),
-    "players_hustle": _surface("players_hustle","Players / Hustle","player","hustle","/stats/players/hustle","player hustle aggregate",None),
+    "players_hustle": _surface(
+        "players_hustle","Players / Hustle","player","hustle","/stats/players/hustle","player hustle aggregate","2015-16",
+        endpoint_hint="leaguehustlestatsplayer",discovery_status="confirmed_browser_capture_schema_confirmed",
+        notes=("User-supplied captures confirm Regular Season and Playoffs from 2015-16 through 2025-26 with PerMode=Totals.",
+               "Response resource is leaguehustlestatsplayer and result set is HustleStatsPlayer.",
+               "Schema includes contested shots, deflections, charges drawn, screen assists/points, offensive/defensive loose balls recovered, box outs, and box-out rebound outcome percentages.")),
     "teams_hustle": _surface("teams_hustle","Teams / Hustle","team","hustle","/stats/teams/hustle","team hustle aggregate",None),
     "players_boxouts": _surface("players_boxouts","Players / Box Outs","player","boxouts","/stats/players/box-outs","player box-out aggregate",None),
     "teams_boxouts": _surface("teams_boxouts","Teams / Box Outs","team","boxouts","/stats/teams/box-outs","team box-out aggregate",None),
@@ -146,7 +156,7 @@ def surface_for_referer(referer: str | None) -> NbaStatsSurface | None:
 
 
 def registry_payload() -> dict[str, object]:
-    return {"contract":"sports-terminal-nba-com-stats-surface-registry-v1","official_coverage":{"advanced_stats_start":"1996-97","lineup_data_note":"NBA FAQ says lineup data goes back to 2008.","season_leaders_confirmed_range":"1951-52 through 2025-26 for both Regular Season and Playoffs from user-supplied browser captures.","player_general_confirmed_range":"2023-24 through 2025-26 for both Regular Season and Playoffs across Base, Advanced, Misc, Scoring, Usage, Opponent, Defense, Violations and Estimated Metrics captures.","season_leaders_completeness_note":"leagueLeaders is leaderboard-oriented and is not the canonical complete player-season population source.","transport_policy":"Confirm request schemas from normal browser captures; do not assume unconfirmed endpoint hints are supported public APIs."},"surfaces":[SURFACES[key].to_dict() for key in sorted(SURFACES)]}
+    return {"contract":"sports-terminal-nba-com-stats-surface-registry-v1","official_coverage":{"advanced_stats_start":"1996-97","lineup_data_note":"NBA FAQ says lineup data goes back to 2008.","season_leaders_confirmed_range":"1951-52 through 2025-26 for both Regular Season and Playoffs from user-supplied browser captures.","player_general_confirmed_range":"1996-97 through 2025-26 for both Regular Season and Playoffs across Base, Advanced, Misc, Scoring, Usage, Opponent, Defense, Violations and Estimated Metrics captures.","player_defense_dashboard_confirmed_range":"2013-14 through 2025-26 for both Regular Season and Playoffs with DefenseCategory=Overall.","player_hustle_confirmed_range":"2015-16 through 2025-26 for both Regular Season and Playoffs.","season_leaders_completeness_note":"leagueLeaders is leaderboard-oriented and is not the canonical complete player-season population source.","transport_policy":"Confirm request schemas from normal browser captures; do not assume unconfirmed endpoint hints are supported public APIs."},"surfaces":[SURFACES[key].to_dict() for key in sorted(SURFACES)]}
 
 
 def main() -> int:
