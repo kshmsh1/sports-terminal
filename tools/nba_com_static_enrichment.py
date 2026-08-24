@@ -120,12 +120,12 @@ PER_GAME_DERIVATIONS: dict[str, tuple[str, str]] = {
     "paint_pts_pg": ("players_misc", "paint_points"),
 }
 
-IDENTITY_ID_FIELDS = {
-    "PLAYER_ID", "CLOSE_DEF_PERSON_ID", "VS_PLAYER_ID", "TEAM_ID", "GROUP_ID",
-}
-IDENTITY_NAME_FIELDS = {
-    "PLAYER_NAME", "PLAYER", "CLOSE_DEF_PERSON_NAME", "VS_PLAYER_NAME",
-    "TEAM_NAME", "TEAM_ABBREVIATION", "GROUP_NAME", "GROUP_SET",
+PLAYER_MATCH_ID_FIELDS = ("PLAYER_ID", "CLOSE_DEF_PERSON_ID", "VS_PLAYER_ID")
+PLAYER_MATCH_NAME_FIELDS = ("PLAYER_NAME", "PLAYER", "CLOSE_DEF_PERSON_NAME", "VS_PLAYER_NAME")
+SKIP_IDENTITY_FIELDS = {
+    *PLAYER_MATCH_ID_FIELDS,
+    *PLAYER_MATCH_NAME_FIELDS,
+    "TEAM_ID", "TEAM_NAME", "TEAM_ABBREVIATION", "GROUP_ID", "GROUP_NAME", "GROUP_SET",
 }
 
 
@@ -264,7 +264,7 @@ def _publish(row: dict[str, Any], key: str, value: Any, *, overwrite: bool = Fal
 
 def _safe_direct_key(source_key: str) -> str | None:
     key = source_key.strip().upper()
-    if not key or key in IDENTITY_ID_FIELDS or key in IDENTITY_NAME_FIELDS:
+    if not key or key in SKIP_IDENTITY_FIELDS:
         return None
     if key == "RANK" or key.endswith("_RANK"):
         return None
@@ -410,13 +410,13 @@ def enrich_seed_payload(
         unmatched = 0
         for source in source_rows:
             target: dict[str, Any] | None = None
-            nba_id = _first(source, IDENTITY_ID_FIELDS)
+            nba_id = _first(source, PLAYER_MATCH_ID_FIELDS)
             if nba_id not in (None, ""):
                 canonical_id = canonical_by_nba_id.get(str(nba_id))
                 if canonical_id:
                     target = target_by_id.get(canonical_id)
             if target is None:
-                token = _name_token(_first(source, IDENTITY_NAME_FIELDS))
+                token = _name_token(_first(source, PLAYER_MATCH_NAME_FIELDS))
                 matches = target_by_name.get(token, []) if token else []
                 if len(matches) == 1:
                     target = matches[0]
