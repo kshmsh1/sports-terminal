@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
+import unicodedata
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -104,17 +104,20 @@ SURFACE_FIELD_MAP: dict[str, dict[str, str]] = {
     },
 }
 
-PER_GAME_DERIVATIONS: dict[str, tuple[str, ...]] = {
-    "deflections_pg": ("deflections",),
-    "charges_drawn_pg": ("charges_drawn",),
-    "contested_shots_pg": ("contested_shots",),
-    "loose_balls_recovered_pg": ("loose_balls_recovered",),
-    "screen_ast_pg": ("screen_assists",),
-    "box_outs_pg": ("box_outs",),
-    "pts_off_tov_pg": ("pts_off_tov",),
-    "second_chance_pts_pg": ("pts_second_chance",),
-    "fast_break_pts_pg": ("fast_break_points",),
-    "paint_pts_pg": ("paint_points",),
+# target -> (source surface, total field). The source surface's own GP/G is used
+# whenever available so a count from one feed is never divided by another feed's
+# denominator.
+PER_GAME_DERIVATIONS: dict[str, tuple[str, str]] = {
+    "deflections_pg": ("players_hustle", "deflections"),
+    "charges_drawn_pg": ("players_hustle", "charges_drawn"),
+    "contested_shots_pg": ("players_hustle", "contested_shots"),
+    "loose_balls_recovered_pg": ("players_hustle", "loose_balls_recovered"),
+    "screen_ast_pg": ("players_hustle", "screen_assists"),
+    "box_outs_pg": ("players_hustle", "box_outs"),
+    "pts_off_tov_pg": ("players_misc", "pts_off_tov"),
+    "second_chance_pts_pg": ("players_misc", "pts_second_chance"),
+    "fast_break_pts_pg": ("players_misc", "fast_break_points"),
+    "paint_pts_pg": ("players_misc", "paint_points"),
 }
 
 IDENTITY_ID_FIELDS = ("PLAYER_ID", "CLOSE_DEF_PERSON_ID", "VS_PLAYER_ID")
@@ -136,7 +139,9 @@ def _number(value: Any) -> float | None:
 
 
 def _name_token(value: Any) -> str:
-    return re.sub(r"[^a-z0-9]+", "", str(value or "").strip().lower())
+    text = unicodedata.normalize("NFKD", str(value or "").strip().lower())
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    return re.sub(r"[^a-z0-9]+", "", text)
 
 
 def _first(row: dict[str, Any], fields: Iterable[str]) -> Any:
@@ -175,7 +180,6 @@ def _normalized_candidates(raw_roots: Iterable[Path], surface: str, season: str,
             path = root / surface / season / folder / "normalized.json"
             if path.is_file():
                 candidates.append(path)
-    # If the same capture exists in nested and parent workspaces, prefer the newest.
     candidates.sort(key=lambda path: path.stat().st_mtime_ns, reverse=True)
     return candidates
 
@@ -254,19 +258,14 @@ def _publish(row: dict[str, Any], key: str, value: Any, *, overwrite: bool = Fal
 
 
 def _merge_surface_fields(target: dict[str, Any], surface: str, source: dict[str, Any]) -> None:
-    # Preserve the exact captured schema in a namespaced object so new UI aliases
-    # can consume already-imported data without requiring a re-import.
     nba_com = target.setdefault("nba_com", {})
     if isinstance(nba_com, dict):
         nba_com[surface] = dict(source)
 
-    field_map = SURFACE_FIELD_MAP.get(surface, {})
-    for source_key, target_key in field_map.items():
+    for source_key, target_key in SURFACE_FIELD_MAP.get(surface, {}).items():
         if source_key in source:
             _publish(target, target_key, source[source_key])
 
-    # Violations are particularly schema-rich and their header names map cleanly
-    # to lower snake case. Publish them generically in addition to the raw copy.
     if surface == "players_violations":
         for source_key, value in source.items():
             if source_key in IDENTITY_ID_FIELDS or source_key in IDENTITY_NAME_FIELDS:
@@ -291,17 +290,26 @@ def _merge_surface_fields(target: dict[str, Any], surface: str, source: dict[str
                 _publish(target, target_key, source[source_key])
 
 
-def _derive_player_metrics(row: dict[str, Any]) -> None:
+def _source_games(row: dict[str, Any], surface: str) -> float | None:
+    nba_com = row.get("nba_com")
+    source = nba_com.get(surface) if isinstance(nba_com, dict) else None
+    if isinstance(source, dict):
+        games = _number(_first(source, ("GP", "G")))
+        if games is not None and games > 0:
+            return games
     games = _number(row.get("games") or row.get("gp"))
-    if games is not None and games > 0:
-        for target_key, source_keys in PER_GAME_DERIVATIONS.items():
-            total = next((_number(row.get(source_key)) for source_key in source_keys if _number(row.get(source_key)) is not None), None)
-            if total is not None:
-                _publish(row, target_key, round(total / games, 6), overwrite=True)
+    return games if games is not None and games > 0 else None
 
-        # Assisted/unassisted scoring can be derived from NBA.com's scoring make
-        # shares plus sourced 2PM/3PM totals. This is a transparent derivation;
-        # shooting percentages remain unavailable without assisted attempt counts.
+
+def _derive_player_metrics(row: dict[str, Any]) -> None:
+    for target_key, (surface, source_key) in PER_GAME_DERIVATIONS.items():
+        games = _source_games(row, surface)
+        total = _number(row.get(source_key))
+        if games is not None and total is not None:
+            _publish(row, target_key, round(total / games, 6), overwrite=True)
+
+    scoring_games = _source_games(row, "players_scoring")
+    if scoring_games is not None:
         fgm = _number(row.get("field_goals_made"))
         threes = _number(row.get("three_pointers_made"))
         if fgm is not None and threes is not None:
@@ -311,16 +319,14 @@ def _derive_player_metrics(row: dict[str, Any]) -> None:
             uast2 = _number(row.get("pct_uast_2pm"))
             uast3 = _number(row.get("pct_uast_3pm"))
             if ast2 is not None and ast3 is not None:
-                _publish(row, "assisted_pts_pg", (2 * twos * ast2 + 3 * threes * ast3) / games, overwrite=True)
+                _publish(row, "assisted_pts_pg", (2 * twos * ast2 + 3 * threes * ast3) / scoring_games, overwrite=True)
             if uast2 is not None and uast3 is not None:
-                _publish(row, "unassisted_pts_pg", (2 * twos * uast2 + 3 * threes * uast3) / games, overwrite=True)
+                _publish(row, "unassisted_pts_pg", (2 * twos * uast2 + 3 * threes * uast3) / scoring_games, overwrite=True)
 
     dfgm = _number(row.get("d_fgm"))
     dfga = _number(row.get("d_fga"))
     if _number(row.get("d_fg_pct")) is None and dfgm is not None and dfga is not None and dfga > 0:
         _publish(row, "d_fg_pct", dfgm / dfga, overwrite=True)
-
-    # Keep both spellings because the Advanced Stats schema uses DFG* labels.
     if row.get("d_fgm") is not None:
         _publish(row, "dfgm", row.get("d_fgm"), overwrite=True)
     if row.get("d_fga") is not None:
