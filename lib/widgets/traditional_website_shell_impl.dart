@@ -216,10 +216,10 @@ class _TraditionalWebsiteShellState extends State<TraditionalWebsiteShell> {
               ),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 34, 24, 72),
+                  padding: const EdgeInsets.fromLTRB(18, 34, 18, 72),
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1320),
+                      constraints: const BoxConstraints(maxWidth: 1480),
                       child: selected.builder(),
                     ),
                   ),
@@ -427,9 +427,9 @@ class _MoreMenu extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text('More', style: TextStyle(color: active ? colors.primary : colors.onSurface, fontSize: 13, fontWeight: FontWeight.w800)),
+          Text('More', style: TextStyle(color: active ? colors.primary : null, fontSize: 13, fontWeight: FontWeight.w800)),
           const SizedBox(width: 3),
-          const Icon(Icons.expand_more_rounded, size: 17),
+          Icon(Icons.expand_more_rounded, size: 17, color: active ? colors.primary : null),
         ]),
       ),
     );
@@ -444,20 +444,25 @@ class _MobileMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PopupMenuButton<String>(
-        icon: const Icon(Icons.menu_rounded),
+        tooltip: 'Menu',
         onSelected: onSelect,
         itemBuilder: (_) => [
           for (final item in items)
             PopupMenuItem(
               value: item.id,
-              child: Row(children: [
-                Icon(item.icon, size: 18),
-                const SizedBox(width: 10),
-                Expanded(child: Text(item.label)),
-                if (item.id == selectedId) const Icon(Icons.check_rounded, size: 18),
-              ]),
+              child: ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(item.icon, size: 19),
+                title: Text(item.label),
+                trailing: item.id == selectedId ? const Icon(Icons.check_rounded, size: 18) : null,
+              ),
             ),
         ],
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+          child: Icon(Icons.menu_rounded),
+        ),
       );
 }
 
@@ -469,9 +474,9 @@ class _Destination {
   final Widget Function() builder;
 }
 
-String _initials(String name) {
-  final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
-  if (parts.isEmpty) return '?';
+String _initials(String value) {
+  final parts = value.trim().split(RegExp(r'\s+')).where((item) => item.isNotEmpty).toList();
+  if (parts.isEmpty) return 'ST';
   if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-  return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'.toUpperCase();
 }
