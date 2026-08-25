@@ -11,8 +11,6 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_RAW_ROOTS = (ROOT / "raw/nba_com_stats", ROOT.parent / "raw/nba_com_stats")
 ENRICHMENT_CONTRACT = "sports-terminal-nba-com-static-enrichment-v1"
 
-# Only player-season aggregate surfaces belong on player-season rows. Game,
-# lineup, leaderboard and opponent-on-court grains remain separate datasets.
 PLAYER_SEASON_SURFACES = (
     "players_base",
     "players_advanced",
@@ -26,8 +24,6 @@ PLAYER_SEASON_SURFACES = (
     "players_violations",
 )
 
-# Source headers are preserved verbatim in row['nba_com'][surface]. This map
-# additionally publishes stable Sports Terminal aliases consumed by the UI.
 SURFACE_FIELD_MAP: dict[str, dict[str, str]] = {
     "players_base": {
         "GP": "games", "MIN": "minutes", "PTS": "points", "REB": "rebounds",
@@ -104,9 +100,6 @@ SURFACE_FIELD_MAP: dict[str, dict[str, str]] = {
     },
 }
 
-# target -> (source surface, total field). The source surface's own GP/G is used
-# whenever available so a count from one feed is never divided by another feed's
-# denominator.
 PER_GAME_DERIVATIONS: dict[str, tuple[str, str]] = {
     "deflections_pg": ("players_hustle", "deflections"),
     "charges_drawn_pg": ("players_hustle", "charges_drawn"),
@@ -276,20 +269,13 @@ def _merge_surface_fields(target: dict[str, Any], surface: str, source: dict[str
     nba_com = target.setdefault("nba_com", {})
     if isinstance(nba_com, dict):
         nba_com[surface] = dict(source)
-
-    # First publish every safe direct source column under its normalized header.
-    # Stable aliases below then expose canonical Sports Terminal spellings. This
-    # keeps new captures usable without another compiler rewrite while avoiding
-    # identity/rank leakage or cross-surface overwrites.
     for source_key, value in source.items():
         direct_key = _safe_direct_key(source_key)
         if direct_key:
             _publish(target, direct_key, value)
-
     for source_key, target_key in SURFACE_FIELD_MAP.get(surface, {}).items():
         if source_key in source:
             _publish(target, target_key, source[source_key])
-
     if surface == "players_violations":
         violation_aliases = {
             "DISCONTINUE_DRIBBLE": "discontinued_dribble",
@@ -325,7 +311,6 @@ def _derive_player_metrics(row: dict[str, Any]) -> None:
         total = _number(row.get(source_key))
         if games is not None and total is not None:
             _publish(row, target_key, round(total / games, 6), overwrite=True)
-
     scoring_games = _source_games(row, "players_scoring")
     if scoring_games is not None:
         fgm = _number(row.get("field_goals_made"))
@@ -340,7 +325,6 @@ def _derive_player_metrics(row: dict[str, Any]) -> None:
                 _publish(row, "assisted_pts_pg", (2 * twos * ast2 + 3 * threes * ast3) / scoring_games, overwrite=True)
             if uast2 is not None and uast3 is not None:
                 _publish(row, "unassisted_pts_pg", (2 * twos * uast2 + 3 * threes * uast3) / scoring_games, overwrite=True)
-
     dfgm = _number(row.get("d_fgm"))
     dfga = _number(row.get("d_fga"))
     if _number(row.get("d_fg_pct")) is None and dfgm is not None and dfga is not None and dfga > 0:
@@ -355,37 +339,21 @@ def _derive_player_metrics(row: dict[str, Any]) -> None:
         _publish(row, "box_out_pct", row.get("pct_box_outs_reb"), overwrite=True)
 
 
-def enrich_seed_payload(
-    payload: dict[str, Any],
-    *,
-    season: str,
-    season_type: str,
-    raw_roots: Iterable[Path] | None = None,
-) -> dict[str, Any]:
+def enrich_seed_payload(payload: dict[str, Any], *, season: str, season_type: str, raw_roots: Iterable[Path] | None = None) -> dict[str, Any]:
     roots = discover_raw_roots(raw_roots)
     totals = payload.get("player_season_totals")
     if not isinstance(totals, list):
-        payload["nba_com_enrichment"] = {
-            "contract": ENRICHMENT_CONTRACT,
-            "season": season,
-            "season_type": season_type,
-            "surfaces": [],
-            "matched_rows": 0,
-            "unmatched_rows": 0,
-        }
+        payload["nba_com_enrichment"] = {"contract": ENRICHMENT_CONTRACT, "season": season, "season_type": season_type, "surfaces": [], "matched_rows": 0, "unmatched_rows": 0}
         return payload
-
     player_rows = [row for row in totals if isinstance(row, dict)]
     for row in player_rows:
         _clear_previous_enrichment(row)
-
     target_by_id = {str(row.get("player_id")): row for row in player_rows if row.get("player_id") not in (None, "")}
     target_by_name: dict[str, list[dict[str, Any]]] = {}
     for row in player_rows:
         token = _name_token(row.get("player_name") or row.get("player_label"))
         if token:
             target_by_name.setdefault(token, []).append(row)
-
     canonical_by_nba_id: dict[str, str] = {}
     profiles = payload.get("players")
     if isinstance(profiles, list):
@@ -396,7 +364,6 @@ def enrich_seed_payload(
             canonical_id = profile.get("player_id") or profile.get("id")
             if nba_id not in (None, "") and canonical_id not in (None, ""):
                 canonical_by_nba_id[str(nba_id)] = str(canonical_id)
-
     summaries: list[dict[str, Any]] = []
     total_matched = 0
     total_unmatched = 0
@@ -423,34 +390,24 @@ def enrich_seed_payload(
             if target is None:
                 unmatched += 1
                 continue
-
             _merge_surface_fields(target, surface, source)
             sources = target.setdefault("nba_com_sources", [])
             if isinstance(sources, list) and surface not in sources:
                 sources.append(surface)
             matched += 1
-
         metadata = _metadata_for(normalized_path)
-        summary = {
-            "surface": surface,
-            "source_file": str(normalized_path),
-            "source_rows": len(source_rows),
-            "matched_rows": matched,
-            "unmatched_rows": unmatched,
-        }
+        summary = {"surface": surface, "source_file": str(normalized_path), "source_rows": len(source_rows), "matched_rows": matched, "unmatched_rows": unmatched}
         if metadata:
             summary["source_sha256"] = metadata.get("source_sha256")
             summary["rights"] = metadata.get("rights")
         summaries.append(summary)
         total_matched += matched
         total_unmatched += unmatched
-
     enriched_players = 0
     for row in player_rows:
         if row.get("nba_com_sources"):
             _derive_player_metrics(row)
             enriched_players += 1
-
     payload["nba_com_enrichment"] = {
         "contract": ENRICHMENT_CONTRACT,
         "season": season,
@@ -471,27 +428,36 @@ def _write_json(path: Path, payload: Any) -> None:
     temp.replace(path)
 
 
+def _print_no_capture_warning(fingerprint: dict[str, Any]) -> None:
+    roots = fingerprint.get("roots") or [str(path.resolve()) for path in DEFAULT_RAW_ROOTS]
+    print("NBA.com static enrichment has no local normalized captures to materialize.")
+    print("  Expected normalized.json files below one of:")
+    for root in roots:
+        print(f"    {root}/<surface>/<season>/<regular|playoffs>/normalized.json")
+    print("  The historical website remains usable, but NBA.com-only fields such as deflections and hustle metrics will display — until captures are installed.")
+
+
 def enrich_static_corpus(output: Path, *, raw_roots: Iterable[Path] | None = None, force: bool = False) -> dict[str, Any]:
     output = Path(output).expanduser().resolve()
     manifest_path = output / "manifest.json"
     if not manifest_path.is_file():
         raise FileNotFoundError(f"Static NBA manifest is missing: {manifest_path}")
-
     roots = discover_raw_roots(raw_roots)
     fingerprint = enrichment_fingerprint(roots)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     previous = manifest.get("nba_com_enrichment") if isinstance(manifest, dict) else None
     if not force and isinstance(previous, dict) and previous.get("fingerprint") == fingerprint:
-        print(f"NBA.com static enrichment is current: {output}")
+        if int(fingerprint.get("normalized_file_count") or 0) == 0:
+            _print_no_capture_warning(fingerprint)
+        else:
+            print(f"NBA.com static enrichment is current: {output}")
         return previous
-
     season_files = sorted((output / "seasons").glob("*/regular.json")) + sorted((output / "seasons").glob("*/playoffs.json"))
     enriched_files = 0
     enriched_players = 0
     matched_rows = 0
     unmatched_rows = 0
     surface_counts: dict[str, int] = {}
-
     for path in season_files:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
@@ -516,7 +482,6 @@ def enrich_static_corpus(output: Path, *, raw_roots: Iterable[Path] | None = Non
                         key = str(item["surface"])
                         surface_counts[key] = surface_counts.get(key, 0) + 1
         _write_json(path, payload)
-
     summary = {
         "contract": ENRICHMENT_CONTRACT,
         "fingerprint": fingerprint,
@@ -535,17 +500,15 @@ def enrich_static_corpus(output: Path, *, raw_roots: Iterable[Path] | None = Non
         runtime["nba_com_enrichment_static"] = True
         runtime["nba_com_network_required_by_browser"] = False
     _write_json(manifest_path, manifest)
-    print(
-        "NBA.com static enrichment complete: "
-        f"{enriched_files} season files, {enriched_players} player rows, "
-        f"{matched_rows} matched source rows, {unmatched_rows} unmatched"
-    )
+    if int(fingerprint.get("normalized_file_count") or 0) == 0:
+        _print_no_capture_warning(fingerprint)
+    else:
+        print("NBA.com static enrichment complete: " f"{enriched_files} season files, {enriched_players} player rows, " f"{matched_rows} matched source rows, {unmatched_rows} unmatched")
     return summary
 
 
 def main() -> int:
     import argparse
-
     parser = argparse.ArgumentParser(description="Join already-authorized NBA.com normalized player-season captures into the immutable website season corpus. Performs no network requests.")
     parser.add_argument("--output", default=str(ROOT / "web/data/nba_static"))
     parser.add_argument("--raw-root", action="append", default=[])
