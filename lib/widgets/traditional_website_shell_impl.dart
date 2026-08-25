@@ -12,10 +12,10 @@ import '../screens/product_front_office_registry_screen.dart';
 import '../screens/product_nba_awards_v2_screen.dart';
 import '../screens/product_nba_public_pages_screen.dart';
 import '../screens/product_profile_v3_screen.dart';
-import '../screens/product_trade_machine_v2_screen.dart';
 import '../screens/product_transaction_command_center_screen.dart';
 import '../screens/website_nba_advanced_stats_screen.dart';
 import '../screens/website_nba_stats_screen.dart';
+import '../screens/website_trade_machine_screen.dart';
 import '../services/product_local_store.dart';
 import 'website_nba_data_gate.dart';
 
@@ -67,7 +67,7 @@ class _TraditionalWebsiteShellState extends State<TraditionalWebsiteShell> {
           id: 'nba-trade',
           label: 'Trade Machine',
           icon: Icons.swap_horiz_rounded,
-          builder: () => WebsiteNbaDataGate(builder: (_, _) => ProductTradeMachineV2Screen(session: widget.session)),
+          builder: () => WebsiteNbaDataGate(builder: (_, _) => WebsiteTradeMachineScreen(session: widget.session)),
         ),
         _Destination(
           id: 'nba-front-office',
@@ -425,9 +425,9 @@ class _MoreMenu extends StatelessWidget {
           ),
       ],
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text('More', style: TextStyle(color: active ? colors.primary : colors.onSurfaceVariant, fontSize: 13, fontWeight: active ? FontWeight.w800 : FontWeight.w600)),
+          Text('More', style: TextStyle(color: active ? colors.primary : colors.onSurface, fontSize: 13, fontWeight: FontWeight.w800)),
           const SizedBox(width: 3),
           const Icon(Icons.expand_more_rounded, size: 17),
         ]),
@@ -444,22 +444,20 @@ class _MobileMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PopupMenuButton<String>(
-        tooltip: 'Navigation',
+        icon: const Icon(Icons.menu_rounded),
         onSelected: onSelect,
         itemBuilder: (_) => [
           for (final item in items)
             PopupMenuItem(
               value: item.id,
-              child: ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(item.icon),
-                title: Text(item.label),
-                trailing: item.id == selectedId ? const Icon(Icons.check_rounded) : null,
-              ),
+              child: Row(children: [
+                Icon(item.icon, size: 18),
+                const SizedBox(width: 10),
+                Expanded(child: Text(item.label)),
+                if (item.id == selectedId) const Icon(Icons.check_rounded, size: 18),
+              ]),
             ),
         ],
-        icon: const Icon(Icons.menu_rounded),
       );
 }
 
@@ -471,8 +469,9 @@ class _Destination {
   final Widget Function() builder;
 }
 
-String _initials(String value) {
-  final parts = value.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty);
-  final letters = [for (final part in parts.take(2)) part.substring(0, 1).toUpperCase()];
-  return letters.isEmpty ? 'ST' : letters.join();
+String _initials(String name) {
+  final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
+  if (parts.isEmpty) return '?';
+  if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+  return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
 }
