@@ -216,10 +216,10 @@ class _TraditionalWebsiteShellState extends State<TraditionalWebsiteShell> {
               ),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(18, 34, 18, 72),
+                  padding: const EdgeInsets.fromLTRB(12, 34, 12, 72),
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1480),
+                      constraints: const BoxConstraints(maxWidth: 1580),
                       child: selected.builder(),
                     ),
                   ),
@@ -259,210 +259,84 @@ class _SiteHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final dark = Theme.of(context).brightness == Brightness.dark;
+    final primary = nbaItems.take(4).toList();
+    final moreItems = [...nbaItems.skip(4), ...secondary];
     return Material(
-      color: dark ? const Color(0xFF0E1722) : Colors.white,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Container(
-        height: 72,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        height: 68,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor))),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final desktop = constraints.maxWidth >= 980;
-            return Row(
-              children: [
-                InkWell(
-                  onTap: () => onSelect('nba-home'),
-                  borderRadius: BorderRadius.circular(13),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [colors.primary, colors.tertiary]),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text('ST', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text('Sports Terminal', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: -.3)),
-                    ]),
-                  ),
-                ),
-                if (desktop) ...[
-                  const SizedBox(width: 26),
-                  _SportMenu(nbaItems: nbaItems, futureSports: futureSports, selectedId: selectedId, onSelect: onSelect),
-                  const SizedBox(width: 4),
-                  _MoreMenu(items: secondary, selectedId: selectedId, onSelect: onSelect),
-                  const Spacer(),
-                ] else ...[
-                  const Spacer(),
-                  _MobileMenu(items: [...nbaItems, ...secondary], selectedId: selectedId, onSelect: onSelect),
-                ],
-                IconButton(
-                  tooltip: darkMode ? 'Light mode' : 'Dark mode',
-                  onPressed: onToggleTheme,
-                  icon: Icon(darkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
-                ),
-                const SizedBox(width: 4),
-                PopupMenuButton<String>(
-                  tooltip: 'Account',
-                  onSelected: (value) {
-                    if (value == 'profile') onSelect('profile');
-                    if (value == 'sign-out') onSignOut();
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem<String>(
-                      enabled: false,
-                      child: SizedBox(
-                        width: 210,
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(session.displayName, style: const TextStyle(fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 2),
-                          Text(session.email, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant)),
-                        ]),
-                      ),
-                    ),
-                    const PopupMenuDivider(),
-                    const PopupMenuItem(value: 'profile', child: Text('Profile')),
-                    const PopupMenuItem(value: 'sign-out', child: Text('Sign out')),
-                  ],
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: colors.primaryContainer,
-                    foregroundColor: colors.onPrimaryContainer,
-                    child: Text(_initials(session.displayName), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _SportMenu extends StatelessWidget {
-  const _SportMenu({required this.nbaItems, required this.futureSports, required this.selectedId, required this.onSelect});
-  final List<_Destination> nbaItems;
-  final List<String> futureSports;
-  final String selectedId;
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return PopupMenuButton<String>(
-      tooltip: 'Sports',
-      onSelected: onSelect,
-      itemBuilder: (_) => [
-        const PopupMenuItem<String>(enabled: false, child: Text('NBA', style: TextStyle(fontWeight: FontWeight.w900))),
-        for (final item in nbaItems)
-          PopupMenuItem(
-            value: item.id,
-            child: ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(item.icon, size: 19),
-              title: Text(item.label),
-              trailing: item.id == selectedId ? const Icon(Icons.check_rounded, size: 18) : null,
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: colors.primaryContainer, borderRadius: BorderRadius.circular(10)),
+              child: Text('ST', style: TextStyle(color: colors.onPrimaryContainer, fontWeight: FontWeight.w900)),
             ),
-          ),
-        const PopupMenuDivider(),
-        for (final sport in futureSports)
-          PopupMenuItem<String>(
-            enabled: false,
-            child: Row(children: [
-              const Icon(Icons.lock_clock_outlined, size: 18),
-              const SizedBox(width: 10),
-              Expanded(child: Text(sport)),
-              Text('Coming Later', style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant, fontWeight: FontWeight.w700)),
-            ]),
-          ),
-      ],
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.sports_basketball_rounded, size: 19, color: colors.primary),
-          const SizedBox(width: 7),
-          Text('NBA', style: TextStyle(color: colors.primary, fontSize: 13, fontWeight: FontWeight.w900)),
-          const SizedBox(width: 3),
-          const Icon(Icons.expand_more_rounded, size: 17),
-        ]),
-      ),
-    );
-  }
-}
-
-class _MoreMenu extends StatelessWidget {
-  const _MoreMenu({required this.items, required this.selectedId, required this.onSelect});
-  final List<_Destination> items;
-  final String selectedId;
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = items.any((item) => item.id == selectedId);
-    final colors = Theme.of(context).colorScheme;
-    return PopupMenuButton<String>(
-      tooltip: 'More',
-      onSelected: onSelect,
-      itemBuilder: (_) => [
-        for (final item in items)
-          PopupMenuItem(
-            value: item.id,
-            child: ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(item.icon, size: 19),
-              title: Text(item.label),
-              trailing: item.id == selectedId ? const Icon(Icons.check_rounded, size: 18) : null,
-            ),
-          ),
-      ],
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text('More', style: TextStyle(color: active ? colors.primary : null, fontSize: 13, fontWeight: FontWeight.w800)),
-          const SizedBox(width: 3),
-          Icon(Icons.expand_more_rounded, size: 17, color: active ? colors.primary : null),
-        ]),
-      ),
-    );
-  }
-}
-
-class _MobileMenu extends StatelessWidget {
-  const _MobileMenu({required this.items, required this.selectedId, required this.onSelect});
-  final List<_Destination> items;
-  final String selectedId;
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context) => PopupMenuButton<String>(
-        tooltip: 'Menu',
-        onSelected: onSelect,
-        itemBuilder: (_) => [
-          for (final item in items)
-            PopupMenuItem(
-              value: item.id,
-              child: ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(item.icon, size: 19),
-                title: Text(item.label),
-                trailing: item.id == selectedId ? const Icon(Icons.check_rounded, size: 18) : null,
+            const SizedBox(width: 12),
+            const Text('Sports Terminal', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+            const SizedBox(width: 30),
+            for (final item in primary)
+              _HeaderButton(
+                label: item.label,
+                selected: item.id == selectedId,
+                onTap: () => onSelect(item.id),
+              ),
+            const Spacer(),
+            SizedBox(
+              width: 230,
+              child: OutlinedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.search_rounded, size: 18),
+                label: const Align(alignment: Alignment.centerLeft, child: Text('Search players & teams')),
               ),
             ),
-        ],
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-          child: Icon(Icons.menu_rounded),
+            const SizedBox(width: 10),
+            PopupMenuButton<String>(
+              tooltip: 'More',
+              onSelected: (value) {
+                if (value.startsWith('future:')) return;
+                onSelect(value);
+              },
+              itemBuilder: (context) => [
+                for (final item in moreItems)
+                  PopupMenuItem(value: item.id, child: Row(children: [Icon(item.icon, size: 18), const SizedBox(width: 10), Text(item.label)])),
+                const PopupMenuDivider(),
+                for (final sport in futureSports)
+                  PopupMenuItem(value: 'future:$sport', enabled: false, child: Text(sport)),
+              ],
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                child: Row(children: [Text('More'), SizedBox(width: 4), Icon(Icons.keyboard_arrow_down_rounded, size: 18)]),
+              ),
+            ),
+            IconButton(onPressed: onToggleTheme, icon: Icon(darkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined)),
+            const SizedBox(width: 4),
+            CircleAvatar(radius: 18, child: Text(session.initials)),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+class _HeaderButton extends StatelessWidget {
+  const _HeaderButton({required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
+          textStyle: TextStyle(fontWeight: selected ? FontWeight.w900 : FontWeight.w700),
+        ),
+        child: Text(label),
       );
 }
 
@@ -472,11 +346,4 @@ class _Destination {
   final String label;
   final IconData icon;
   final Widget Function() builder;
-}
-
-String _initials(String value) {
-  final parts = value.trim().split(RegExp(r'\s+')).where((item) => item.isNotEmpty).toList();
-  if (parts.isEmpty) return 'ST';
-  if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-  return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'.toUpperCase();
 }
