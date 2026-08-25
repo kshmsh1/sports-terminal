@@ -7,6 +7,7 @@ import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
 import '../widgets/website_pagination.dart';
+import '../widgets/website_sticky_stats_table.dart';
 import 'website_nba_entity_pages.dart';
 
 class WebsiteNbaAdvancedStatsScreen extends StatefulWidget {
@@ -85,11 +86,13 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
     });
   }
 
-  List<_Metric> _visibleMetrics(_Category category) {
-    final result = <_Metric>[];
+  List<_VisibleMetric> _visibleMetrics(_Category category) {
+    final result = <_VisibleMetric>[];
     for (final metric in category.metrics) {
-      result.add(metric);
-      if (_expandedMetrics.contains(metric.key)) result.addAll(metric.children);
+      result.add(_VisibleMetric(metric, false));
+      if (_expandedMetrics.contains(metric.key)) {
+        result.addAll(metric.children.map((child) => _VisibleMetric(child, true)));
+      }
     }
     return result;
   }
@@ -108,8 +111,8 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(expanded ? Icons.arrow_drop_down_rounded : Icons.arrow_right_rounded, size: 19),
-          const SizedBox(width: 2),
+          Icon(expanded ? Icons.arrow_drop_down_rounded : Icons.arrow_right_rounded, size: 24),
+          const SizedBox(width: 3),
           Text(metric.label),
         ],
       ),
@@ -153,7 +156,7 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
     }).toList();
 
     final definition = _categories.firstWhere((item) => item.name == _category);
-    final metrics = _visibleMetrics(definition);
+    final visibleMetrics = _visibleMetrics(definition);
     visible.sort((a, b) {
       final left = _metricValue(a, _sortKey);
       final right = _metricValue(b, _sortKey);
@@ -186,6 +189,51 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
             _page = 1;
           }),
         );
+
+    final childTint = Theme.of(context).brightness == Brightness.dark
+        ? colors.surfaceContainerHighest.withValues(alpha: .72)
+        : colors.surfaceContainerHighest.withValues(alpha: .58);
+
+    final tableColumns = <WebsiteStickyStatsColumn>[
+      const WebsiteStickyStatsColumn(label: Text('Player'), width: 185),
+      const WebsiteStickyStatsColumn(label: Text('Team'), width: 74),
+      const WebsiteStickyStatsColumn(label: Text('Pos'), width: 62),
+      for (final item in visibleMetrics)
+        WebsiteStickyStatsColumn(
+          label: _metricHeader(item.metric),
+          width: item.child ? 96 : 92,
+          numeric: true,
+          backgroundColor: item.child ? childTint : null,
+          onTap: () => setState(() {
+            if (_sortKey == item.metric.key) {
+              _descending = !_descending;
+            } else {
+              _sortKey = item.metric.key;
+              _descending = true;
+            }
+            _page = 1;
+          }),
+        ),
+    ];
+
+    final tableRows = <List<Widget>>[
+      for (final row in pagedRows)
+        [
+          InkWell(
+            onTap: () => openWebsiteNbaPlayerPage(context, session: widget.session, playerKey: row.playerId, playerName: row.player),
+            child: Text(row.player, style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700)),
+          ),
+          InkWell(
+            onTap: () {
+              final team = row.team.split(RegExp(r'[,/ ]+')).firstWhere((item) => item.isNotEmpty && item != '—', orElse: () => '');
+              if (team.isNotEmpty) openWebsiteNbaTeamPage(context, session: widget.session, teamKey: team, teamName: team);
+            },
+            child: Text(row.team, style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700)),
+          ),
+          Text(row.position),
+          for (final item in visibleMetrics) Text(_formatMetric(_metricValue(row, item.metric.key), item.metric)),
+        ],
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,52 +321,18 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
         Text(definition.description, style: TextStyle(color: colors.onSurfaceVariant, height: 1.45)),
         if (definition.metrics.any((metric) => metric.children.isNotEmpty)) ...[
           const SizedBox(height: 6),
-          Text('Select the triangle beside an expandable column to reveal its component stats. Missing source coverage stays visible as —.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+          Text('Select the triangle beside an expandable column to reveal its component stats. Expanded component columns are lightly shaded. Missing source coverage stays visible as —.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
         ],
         const SizedBox(height: 14),
         pager(),
         const SizedBox(height: 10),
-        Card(
-          clipBehavior: Clip.antiAlias,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              headingRowHeight: 48,
-              columns: [
-                const DataColumn(label: Text('Player')),
-                const DataColumn(label: Text('Team')),
-                const DataColumn(label: Text('Pos')),
-                for (final metric in metrics)
-                  DataColumn(
-                    numeric: true,
-                    label: _metricHeader(metric),
-                    onSort: (_, ascending) => setState(() {
-                      _sortKey = metric.key;
-                      _descending = !ascending;
-                      _page = 1;
-                    }),
-                  ),
-              ],
-              rows: [
-                for (final row in pagedRows)
-                  DataRow(cells: [
-                    DataCell(
-                      Text(row.player, style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700)),
-                      onTap: () => openWebsiteNbaPlayerPage(context, session: widget.session, playerKey: row.playerId, playerName: row.player),
-                    ),
-                    DataCell(
-                      Text(row.team, style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700)),
-                      onTap: () {
-                        final team = row.team.split(RegExp(r'[,/ ]+')).firstWhere((item) => item.isNotEmpty && item != '—', orElse: () => '');
-                        if (team.isNotEmpty) openWebsiteNbaTeamPage(context, session: widget.session, teamKey: team, teamName: team);
-                      },
-                    ),
-                    DataCell(Text(row.position)),
-                    for (final metric in metrics) DataCell(Text(_formatMetric(_metricValue(row, metric.key), metric))),
-                  ]),
-              ],
-            ),
-          ),
+        WebsiteStickyStatsTable(
+          columns: tableColumns,
+          rows: tableRows,
+          firstColumnWidth: 185,
+          maxBodyHeight: 560,
+          headerHeight: 46,
+          rowHeight: 46,
         ),
         const SizedBox(height: 10),
         pager(),
@@ -329,6 +343,12 @@ class _WebsiteNbaAdvancedStatsScreenState extends State<WebsiteNbaAdvancedStatsS
       ],
     );
   }
+}
+
+class _VisibleMetric {
+  const _VisibleMetric(this.metric, this.child);
+  final _Metric metric;
+  final bool child;
 }
 
 class _StringDropdown extends StatelessWidget {
@@ -679,84 +699,94 @@ const _categories = <_Category>[
     _Metric('ejections', 'Ejections', 'Ejections recorded.'),
     _Metric('disqualifications', 'Disqualifications', 'Game disqualifications recorded.'),
     _Metric('suspensions', 'Suspensions', 'Suspensions recorded in a source-backed dataset.'),
-    _Metric('game_buzzer_beaters', 'Game Buzzer Beaters', 'Made shots at the final game horn.'),
-    _Metric('quarter_buzzer_beaters', 'Quarter Buzzer Beaters', 'Made shots at a quarter/period horn.'),
-    _Metric('shot_clock_buzzer_beaters', 'Shot-Clock Beaters', 'Made shots at the shot-clock horn.'),
+    _Metric('game_buzzer_beaters', 'Game Buzzer Beaters', 'Made shots that beat the final game buzzer.'),
+    _Metric('quarter_buzzer_beaters', 'Quarter Buzzer Beaters', 'Made shots that beat a quarter-ending buzzer.'),
+    _Metric('shot_clock_buzzer_beaters', 'Shot-Clock Beaters', 'Made shots immediately before the shot clock expires.'),
   ]),
 ];
 
-class _StatGlossary extends StatelessWidget {
+class _StatGlossary extends StatefulWidget {
   const _StatGlossary();
   @override
+  State<_StatGlossary> createState() => _StatGlossaryState();
+}
+
+class _StatGlossaryState extends State<_StatGlossary> {
+  bool _open = true;
+  @override
   Widget build(BuildContext context) {
-    final metrics = <_Metric>[];
-    final seen = <String>{};
+    final metrics = <String, _Metric>{};
     for (final category in _categories) {
       for (final metric in category.metrics) {
-        _collectMetric(metric, metrics, seen);
+        metrics[metric.key] = metric;
+        for (final child in metric.children) metrics[child.key] = child;
       }
     }
-    final colors = Theme.of(context).colorScheme;
-    return ExpansionTile(
-      tilePadding: const EdgeInsets.symmetric(horizontal: 4),
-      childrenPadding: const EdgeInsets.only(bottom: 8),
-      title: const Text('Stat Glossary', style: TextStyle(fontWeight: FontWeight.w900)),
-      subtitle: Text('${metrics.length} metrics · concise definitions', style: TextStyle(color: colors.onSurfaceVariant)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth >= 900 ? (constraints.maxWidth - 24) / 3 : constraints.maxWidth >= 580 ? (constraints.maxWidth - 12) / 2 : constraints.maxWidth;
-            return Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                for (final metric in metrics)
-                  SizedBox(
-                    width: width,
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: colors.surfaceContainerHighest.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(metric.label, style: const TextStyle(fontWeight: FontWeight.w800)),
-                        const SizedBox(height: 4),
-                        Text(metric.glossary, style: TextStyle(color: colors.onSurfaceVariant, height: 1.35)),
-                      ]),
-                    ),
-                  ),
-              ],
-            );
-          },
+        InkWell(
+          onTap: () => setState(() => _open = !_open),
+          child: Row(children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Stat Glossary', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+              Text('${metrics.length} metrics · concise definitions', style: Theme.of(context).textTheme.bodySmall),
+            ])),
+            Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded),
+          ]),
         ),
+        if (_open) ...[
+          const SizedBox(height: 10),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 980 ? 3 : constraints.maxWidth >= 620 ? 2 : 1;
+              final width = (constraints.maxWidth - ((columns - 1) * 10)) / columns;
+              return Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (final metric in metrics.values)
+                    SizedBox(
+                      width: width,
+                      child: Card(
+                        margin: EdgeInsets.zero,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(metric.label, style: const TextStyle(fontWeight: FontWeight.w900)),
+                            const SizedBox(height: 3),
+                            Text(metric.glossary, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.35)),
+                          ]),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
       ],
     );
   }
 }
 
-void _collectMetric(_Metric metric, List<_Metric> output, Set<String> seen) {
-  if (seen.add(metric.key)) output.add(metric);
-  for (final child in metric.children) {
-    _collectMetric(child, output, seen);
-  }
-}
-
 double? _metricValue(NbaStatsRow row, String key) {
-  final normalized = row.value(key);
-  if (normalized != null) return normalized;
-
-  double? rawValue(List<String> names) {
-    for (final name in names) {
-      final value = row.raw[name];
-      if (value is num) return value.toDouble();
-      final parsed = double.tryParse(value?.toString() ?? '');
-      if (parsed != null) return parsed;
+  double? rawValue(List<String> keys) {
+    for (final candidate in keys) {
+      final direct = row.values[candidate];
+      if (direct != null) return direct;
+      for (final entry in row.raw.entries) {
+        if (entry.key.toLowerCase() != candidate.toLowerCase()) continue;
+        final value = entry.value;
+        if (value is num) return value.toDouble();
+        final parsed = double.tryParse(value?.toString().replaceAll(',', '').replaceAll('%', '') ?? '');
+        if (parsed != null) return parsed;
+      }
     }
     return null;
   }
 
-  final aliases = <String, List<String>>{
+  const aliases = <String, List<String>>{
     'min': ['mpg', 'min', 'minutes'], 'pts': ['ppg', 'pts', 'points'], 'reb': ['rpg', 'reb', 'trb'],
     'oreb': ['oreb', 'orb', 'offensive_rebounds'], 'dreb': ['dreb', 'drb', 'defensive_rebounds'],
     'ast': ['apg', 'ast', 'assists'], 'stl': ['spg', 'stl', 'steals'], 'blk': ['bpg', 'blk', 'blocks'],
