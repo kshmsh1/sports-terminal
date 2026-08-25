@@ -7,6 +7,7 @@ import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
 import '../widgets/website_pagination.dart';
+import '../widgets/website_sticky_stats_table.dart';
 import 'website_nba_entity_pages.dart';
 
 class WebsiteNbaStatsScreen extends StatefulWidget {
@@ -136,6 +137,46 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
           }),
         );
 
+    final tableColumns = <WebsiteStickyStatsColumn>[
+      const WebsiteStickyStatsColumn(label: Text('Player'), width: 185),
+      const WebsiteStickyStatsColumn(label: Text('Team'), width: 74),
+      const WebsiteStickyStatsColumn(label: Text('Pos'), width: 62),
+      for (final metric in _metrics)
+        WebsiteStickyStatsColumn(
+          label: Text(metric.label),
+          width: 82,
+          numeric: true,
+          onTap: () => setState(() {
+            if (_sortKey == metric.key) {
+              _descending = !_descending;
+            } else {
+              _sortKey = metric.key;
+              _descending = true;
+            }
+            _page = 1;
+          }),
+        ),
+    ];
+
+    final tableRows = <List<Widget>>[
+      for (final row in pagedRows)
+        [
+          InkWell(
+            onTap: widget.session == null ? null : () => openWebsiteNbaPlayerPage(context, session: widget.session!, playerKey: row.playerId, playerName: row.player),
+            child: Text(row.player, style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700)),
+          ),
+          InkWell(
+            onTap: widget.session == null ? null : () {
+              final team = _primaryTeam(row.team);
+              if (team.isNotEmpty) openWebsiteNbaTeamPage(context, session: widget.session!, teamKey: team, teamName: team);
+            },
+            child: Text(row.team, style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700)),
+          ),
+          Text(row.position),
+          for (final metric in _metrics) Text(_format(row.value(metric.key), metric)),
+        ],
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -199,50 +240,13 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
         const SizedBox(height: 10),
         pager(),
         const SizedBox(height: 10),
-        Card(
-          clipBehavior: Clip.antiAlias,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              headingRowHeight: 48,
-              dataRowMinHeight: 48,
-              dataRowMaxHeight: 52,
-              sortAscending: !_descending,
-              sortColumnIndex: _sortColumnIndex(_sortKey),
-              columns: [
-                const DataColumn(label: Text('Player')),
-                const DataColumn(label: Text('Team')),
-                const DataColumn(label: Text('Pos')),
-                ..._metrics.map((metric) => DataColumn(
-                      numeric: true,
-                      label: Text(metric.label),
-                      onSort: (_, ascending) => setState(() {
-                        _sortKey = metric.key;
-                        _descending = !ascending;
-                        _page = 1;
-                      }),
-                    )),
-              ],
-              rows: [
-                for (final row in pagedRows)
-                  DataRow(cells: [
-                    DataCell(
-                      Text(row.player, style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700)),
-                      onTap: widget.session == null ? null : () => openWebsiteNbaPlayerPage(context, session: widget.session!, playerKey: row.playerId, playerName: row.player),
-                    ),
-                    DataCell(
-                      Text(row.team, style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700)),
-                      onTap: widget.session == null ? null : () {
-                        final team = _primaryTeam(row.team);
-                        if (team.isNotEmpty) openWebsiteNbaTeamPage(context, session: widget.session!, teamKey: team, teamName: team);
-                      },
-                    ),
-                    DataCell(Text(row.position)),
-                    for (final metric in _metrics) DataCell(Text(_format(row.value(metric.key), metric))),
-                  ]),
-              ],
-            ),
-          ),
+        WebsiteStickyStatsTable(
+          columns: tableColumns,
+          rows: tableRows,
+          firstColumnWidth: 185,
+          maxBodyHeight: 560,
+          headerHeight: 46,
+          rowHeight: 46,
         ),
         const SizedBox(height: 10),
         pager(),
@@ -317,11 +321,6 @@ const _metrics = <_Metric>[
   _Metric('three_pct', '3P%', percent: true),
   _Metric('ft_pct', 'FT%', percent: true),
 ];
-
-int? _sortColumnIndex(String key) {
-  final index = _metrics.indexWhere((metric) => metric.key == key);
-  return index < 0 ? null : index + 3;
-}
 
 bool _matchesPosition(String value, String wanted) {
   final positions = RegExp(r'PG|SG|SF|PF|C').allMatches(value.toUpperCase()).map((match) => match.group(0)).whereType<String>().toSet();
