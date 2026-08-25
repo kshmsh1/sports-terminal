@@ -50,366 +50,53 @@ class NbaStatMetric {
 }
 
 const nbaStatMetrics = <NbaStatMetric>[
-  NbaStatMetric(
-    key: 'gp',
-    label: 'Games Played',
-    shortLabel: 'GP',
-    group: 'Profile',
-    format: NbaMetricFormat.integer,
-    description: 'Games played in the selected season segment.',
-  ),
-  NbaStatMetric(
-    key: 'min',
-    label: 'Minutes',
-    shortLabel: 'MIN',
-    group: 'Profile',
-    description: 'Minutes under the selected rate basis.',
-  ),
-  NbaStatMetric(
-    key: 'age',
-    label: 'Age',
-    shortLabel: 'AGE',
-    group: 'Profile',
-    description: 'Player age in the source season.',
-  ),
-  NbaStatMetric(
-    key: 'pts',
-    label: 'Points',
-    shortLabel: 'PTS',
-    group: 'Counting',
-    description: 'Points scored under the selected rate basis.',
-  ),
-  NbaStatMetric(
-    key: 'ast',
-    label: 'Assists',
-    shortLabel: 'AST',
-    group: 'Counting',
-    description: 'Assists under the selected rate basis.',
-  ),
-  NbaStatMetric(
-    key: 'reb',
-    label: 'Rebounds',
-    shortLabel: 'REB',
-    group: 'Counting',
-    description: 'Total rebounds under the selected rate basis.',
-  ),
-  NbaStatMetric(
-    key: 'oreb',
-    label: 'Offensive Rebounds',
-    shortLabel: 'OREB',
-    group: 'Counting',
-    description: 'Offensive rebounds under the selected rate basis.',
-  ),
-  NbaStatMetric(
-    key: 'dreb',
-    label: 'Defensive Rebounds',
-    shortLabel: 'DREB',
-    group: 'Counting',
-    description: 'Defensive rebounds under the selected rate basis.',
-  ),
-  NbaStatMetric(
-    key: 'stl',
-    label: 'Steals',
-    shortLabel: 'STL',
-    group: 'Counting',
-    description: 'Steals under the selected rate basis.',
-  ),
-  NbaStatMetric(
-    key: 'blk',
-    label: 'Blocks',
-    shortLabel: 'BLK',
-    group: 'Counting',
-    description: 'Blocks under the selected rate basis.',
-  ),
-  NbaStatMetric(
-    key: 'tov',
-    label: 'Turnovers',
-    shortLabel: 'TOV',
-    group: 'Counting',
-    higherIsBetter: false,
-    description: 'Turnovers under the selected rate basis.',
-  ),
-  NbaStatMetric(
-    key: 'pf',
-    label: 'Personal Fouls',
-    shortLabel: 'PF',
-    group: 'Counting',
-    higherIsBetter: false,
-    description: 'Personal fouls under the selected rate basis.',
-  ),
-  NbaStatMetric(
-    key: 'fgm',
-    label: 'Field Goals Made',
-    shortLabel: 'FGM',
-    group: 'Shooting',
-  ),
-  NbaStatMetric(
-    key: 'fga',
-    label: 'Field Goal Attempts',
-    shortLabel: 'FGA',
-    group: 'Shooting',
-  ),
-  NbaStatMetric(
-    key: 'fg_pct',
-    label: 'Field Goal Percentage',
-    shortLabel: 'FG%',
-    group: 'Shooting',
-    format: NbaMetricFormat.percent,
-    description: 'Field goals made divided by field goal attempts.',
-  ),
-  NbaStatMetric(
-    key: 'two_pm',
-    label: 'Two-Point Field Goals Made',
-    shortLabel: '2PM',
-    group: 'Shooting',
-  ),
-  NbaStatMetric(
-    key: 'two_pa',
-    label: 'Two-Point Field Goal Attempts',
-    shortLabel: '2PA',
-    group: 'Shooting',
-  ),
-  NbaStatMetric(
-    key: 'two_pct',
-    label: 'Two-Point Percentage',
-    shortLabel: '2P%',
-    group: 'Shooting',
-    format: NbaMetricFormat.percent,
-  ),
-  NbaStatMetric(
-    key: 'three_pm',
-    label: 'Three-Pointers Made',
-    shortLabel: '3PM',
-    group: 'Shooting',
-  ),
-  NbaStatMetric(
-    key: 'three_pa',
-    label: 'Three-Point Attempts',
-    shortLabel: '3PA',
-    group: 'Shooting',
-  ),
-  NbaStatMetric(
-    key: 'three_pct',
-    label: 'Three-Point Percentage',
-    shortLabel: '3P%',
-    group: 'Shooting',
-    format: NbaMetricFormat.percent,
-  ),
-  NbaStatMetric(
-    key: 'ftm',
-    label: 'Free Throws Made',
-    shortLabel: 'FTM',
-    group: 'Shooting',
-  ),
-  NbaStatMetric(
-    key: 'fta',
-    label: 'Free Throw Attempts',
-    shortLabel: 'FTA',
-    group: 'Shooting',
-  ),
-  NbaStatMetric(
-    key: 'ft_pct',
-    label: 'Free Throw Percentage',
-    shortLabel: 'FT%',
-    group: 'Shooting',
-    format: NbaMetricFormat.percent,
-  ),
-  NbaStatMetric(
-    key: 'ts_pct',
-    label: 'True Shooting Percentage',
-    shortLabel: 'TS%',
-    group: 'Efficiency',
-    format: NbaMetricFormat.percent,
-    description: 'PTS / (2 × (FGA + 0.44 × FTA)).',
-    sourceNote: 'Derived from source box-score totals.',
-  ),
-  NbaStatMetric(
-    key: 'efg_pct',
-    label: 'Effective Field Goal Percentage',
-    shortLabel: 'eFG%',
-    group: 'Efficiency',
-    format: NbaMetricFormat.percent,
-    description: '(FGM + 0.5 × 3PM) / FGA.',
-    sourceNote: 'Derived from source box-score totals.',
-  ),
-  NbaStatMetric(
-    key: 'points_per_shot',
-    label: 'Points per Shooting Attempt',
-    shortLabel: 'PTS/SA',
-    group: 'Efficiency',
-    decimals: 2,
-    description: 'Points divided by FGA + 0.44 × FTA.',
-    sourceNote: 'Derived efficiency measure.',
-  ),
-  NbaStatMetric(
-    key: 'ast_tov',
-    label: 'Assist-to-Turnover Ratio',
-    shortLabel: 'AST/TOV',
-    group: 'Efficiency',
-    decimals: 2,
-    description: 'Assists divided by turnovers.',
-  ),
-  NbaStatMetric(
-    key: 'three_rate',
-    label: 'Three-Point Attempt Rate',
-    shortLabel: '3PA RATE',
-    group: 'Efficiency',
-    format: NbaMetricFormat.percent,
-    description: 'Three-point attempts divided by field goal attempts.',
-  ),
-  NbaStatMetric(
-    key: 'ft_rate',
-    label: 'Free Throw Attempt Rate',
-    shortLabel: 'FTA RATE',
-    group: 'Efficiency',
-    format: NbaMetricFormat.percent,
-    description: 'Free throw attempts divided by field goal attempts.',
-  ),
-  NbaStatMetric(
-    key: 'plus_minus',
-    label: 'Plus/Minus',
-    shortLabel: '+/-',
-    group: 'Impact',
-    format: NbaMetricFormat.signed,
-  ),
-  NbaStatMetric(
-    key: 'bpm',
-    label: 'Box Plus/Minus',
-    shortLabel: 'BPM',
-    group: 'Impact',
-    format: NbaMetricFormat.signed,
-    description: 'Source-provided box plus/minus when available.',
-  ),
-  NbaStatMetric(
-    key: 'game_score_proxy',
-    label: 'Production Index',
-    shortLabel: 'PROD',
-    group: 'Impact',
-    description:
-        'Transparent box-production index for comparison, not an official NBA metric.',
-    sourceNote: 'PTS + .7 REB + .7 AST + STL + BLK − .7 TOV.',
-  ),
-  NbaStatMetric(
-    key: 'stocks',
-    label: 'Steals + Blocks',
-    shortLabel: 'STOCKS',
-    group: 'Defense',
-    description: 'Steals plus blocks under the selected rate basis.',
-  ),
-  NbaStatMetric(
-    key: 'defense_events',
-    label: 'Defensive Event Index',
-    shortLabel: 'DEF EVT',
-    group: 'Defense',
-    description: 'Steals + blocks + 0.35 × defensive rebounds.',
-    sourceNote: 'Transparent box-score proxy; not tracking-based defense.',
-  ),
-  NbaStatMetric(
-    key: 'possessions_proxy',
-    label: 'Estimated Individual Possessions',
-    shortLabel: 'POSS*',
-    group: 'Advanced',
-    description:
-        'FGA + 0.44 × FTA − OREB + TOV when source possessions are absent.',
-    sourceNote:
-        'Asterisk denotes an estimate when no direct possession field exists.',
-  ),
-  NbaStatMetric(
-    key: 'scoring_load',
-    label: 'Scoring Load Proxy',
-    shortLabel: 'LOAD*',
-    group: 'Advanced',
-    format: NbaMetricFormat.percent,
-    description:
-        'Estimated shooting possessions divided by estimated individual possessions.',
-    sourceNote: 'Transparent usage proxy, not official usage percentage.',
-  ),
+  NbaStatMetric(key: 'gp', label: 'Games Played', shortLabel: 'GP', group: 'Profile', format: NbaMetricFormat.integer, description: 'Games played in the selected season segment.'),
+  NbaStatMetric(key: 'min', label: 'Minutes', shortLabel: 'MIN', group: 'Profile', description: 'Minutes under the selected rate basis.'),
+  NbaStatMetric(key: 'age', label: 'Age', shortLabel: 'AGE', group: 'Profile', description: 'Player age in the source season.'),
+  NbaStatMetric(key: 'pts', label: 'Points', shortLabel: 'PTS', group: 'Counting', description: 'Points scored under the selected rate basis.'),
+  NbaStatMetric(key: 'ast', label: 'Assists', shortLabel: 'AST', group: 'Counting', description: 'Assists under the selected rate basis.'),
+  NbaStatMetric(key: 'reb', label: 'Rebounds', shortLabel: 'REB', group: 'Counting', description: 'Total rebounds under the selected rate basis.'),
+  NbaStatMetric(key: 'oreb', label: 'Offensive Rebounds', shortLabel: 'OREB', group: 'Counting', description: 'Offensive rebounds under the selected rate basis.'),
+  NbaStatMetric(key: 'dreb', label: 'Defensive Rebounds', shortLabel: 'DREB', group: 'Counting', description: 'Defensive rebounds under the selected rate basis.'),
+  NbaStatMetric(key: 'stl', label: 'Steals', shortLabel: 'STL', group: 'Counting', description: 'Steals under the selected rate basis.'),
+  NbaStatMetric(key: 'blk', label: 'Blocks', shortLabel: 'BLK', group: 'Counting', description: 'Blocks under the selected rate basis.'),
+  NbaStatMetric(key: 'tov', label: 'Turnovers', shortLabel: 'TOV', group: 'Counting', higherIsBetter: false, description: 'Turnovers under the selected rate basis.'),
+  NbaStatMetric(key: 'pf', label: 'Personal Fouls', shortLabel: 'PF', group: 'Counting', higherIsBetter: false, description: 'Personal fouls under the selected rate basis.'),
+  NbaStatMetric(key: 'fgm', label: 'Field Goals Made', shortLabel: 'FGM', group: 'Shooting'),
+  NbaStatMetric(key: 'fga', label: 'Field Goal Attempts', shortLabel: 'FGA', group: 'Shooting'),
+  NbaStatMetric(key: 'fg_pct', label: 'Field Goal Percentage', shortLabel: 'FG%', group: 'Shooting', format: NbaMetricFormat.percent, description: 'Field goals made divided by field goal attempts.'),
+  NbaStatMetric(key: 'two_pm', label: 'Two-Point Field Goals Made', shortLabel: '2PM', group: 'Shooting'),
+  NbaStatMetric(key: 'two_pa', label: 'Two-Point Field Goal Attempts', shortLabel: '2PA', group: 'Shooting'),
+  NbaStatMetric(key: 'two_pct', label: 'Two-Point Percentage', shortLabel: '2P%', group: 'Shooting', format: NbaMetricFormat.percent),
+  NbaStatMetric(key: 'three_pm', label: 'Three-Pointers Made', shortLabel: '3PM', group: 'Shooting'),
+  NbaStatMetric(key: 'three_pa', label: 'Three-Point Attempts', shortLabel: '3PA', group: 'Shooting'),
+  NbaStatMetric(key: 'three_pct', label: 'Three-Point Percentage', shortLabel: '3P%', group: 'Shooting', format: NbaMetricFormat.percent),
+  NbaStatMetric(key: 'ftm', label: 'Free Throws Made', shortLabel: 'FTM', group: 'Shooting'),
+  NbaStatMetric(key: 'fta', label: 'Free Throw Attempts', shortLabel: 'FTA', group: 'Shooting'),
+  NbaStatMetric(key: 'ft_pct', label: 'Free Throw Percentage', shortLabel: 'FT%', group: 'Shooting', format: NbaMetricFormat.percent),
+  NbaStatMetric(key: 'ts_pct', label: 'True Shooting Percentage', shortLabel: 'TS%', group: 'Efficiency', format: NbaMetricFormat.percent, description: 'PTS / (2 × (FGA + 0.44 × FTA)).', sourceNote: 'Derived from source box-score totals.'),
+  NbaStatMetric(key: 'efg_pct', label: 'Effective Field Goal Percentage', shortLabel: 'eFG%', group: 'Efficiency', format: NbaMetricFormat.percent, description: '(FGM + 0.5 × 3PM) / FGA.', sourceNote: 'Derived from source box-score totals.'),
+  NbaStatMetric(key: 'points_per_shot', label: 'Points per Shooting Attempt', shortLabel: 'PTS/SA', group: 'Efficiency', decimals: 2, description: 'Points divided by FGA + 0.44 × FTA.', sourceNote: 'Derived efficiency measure.'),
+  NbaStatMetric(key: 'ast_tov', label: 'Assist-to-Turnover Ratio', shortLabel: 'AST/TOV', group: 'Efficiency', decimals: 2, description: 'Assists divided by turnovers.'),
+  NbaStatMetric(key: 'three_rate', label: 'Three-Point Attempt Rate', shortLabel: '3PA RATE', group: 'Efficiency', format: NbaMetricFormat.percent, description: 'Three-point attempts divided by field goal attempts.'),
+  NbaStatMetric(key: 'ft_rate', label: 'Free Throw Attempt Rate', shortLabel: 'FTA RATE', group: 'Efficiency', format: NbaMetricFormat.percent, description: 'Free throw attempts divided by field goal attempts.'),
+  NbaStatMetric(key: 'plus_minus', label: 'Plus/Minus', shortLabel: '+/-', group: 'Impact', format: NbaMetricFormat.signed),
+  NbaStatMetric(key: 'bpm', label: 'Box Plus/Minus', shortLabel: 'BPM', group: 'Impact', format: NbaMetricFormat.signed, description: 'Source-provided box plus/minus when available.'),
+  NbaStatMetric(key: 'game_score_proxy', label: 'Production Index', shortLabel: 'PROD', group: 'Impact', description: 'Transparent box-production index for comparison, not an official NBA metric.', sourceNote: 'PTS + .7 REB + .7 AST + STL + BLK − .7 TOV.'),
+  NbaStatMetric(key: 'stocks', label: 'Steals + Blocks', shortLabel: 'STOCKS', group: 'Defense', description: 'Steals plus blocks under the selected rate basis.'),
+  NbaStatMetric(key: 'defense_events', label: 'Defensive Event Index', shortLabel: 'DEF EVT', group: 'Defense', description: 'Steals + blocks + 0.35 × defensive rebounds.', sourceNote: 'Transparent box-score proxy; not tracking-based defense.'),
+  NbaStatMetric(key: 'possessions_proxy', label: 'Estimated Individual Possessions', shortLabel: 'POSS*', group: 'Advanced', description: 'FGA + 0.44 × FTA − OREB + TOV when source possessions are absent.', sourceNote: 'Asterisk denotes an estimate when no direct possession field exists.'),
+  NbaStatMetric(key: 'scoring_load', label: 'Scoring Load Proxy', shortLabel: 'LOAD*', group: 'Advanced', format: NbaMetricFormat.percent, description: 'Estimated shooting possessions divided by estimated individual possessions.', sourceNote: 'Transparent usage proxy, not official usage percentage.'),
 ];
 
 const nbaDefaultViews = <String, List<String>>{
-  'Overview': [
-    'gp',
-    'min',
-    'age',
-    'pts',
-    'ast',
-    'reb',
-    'tov',
-    'ts_pct',
-    'plus_minus',
-    'bpm',
-  ],
-  'Counting': [
-    'gp',
-    'min',
-    'pts',
-    'ast',
-    'reb',
-    'oreb',
-    'dreb',
-    'stl',
-    'blk',
-    'tov',
-    'pf',
-  ],
-  'Shooting': [
-    'gp',
-    'min',
-    'fgm',
-    'fga',
-    'fg_pct',
-    'two_pm',
-    'two_pa',
-    'two_pct',
-    'three_pm',
-    'three_pa',
-    'three_pct',
-    'ftm',
-    'fta',
-    'ft_pct',
-  ],
-  'Efficiency': [
-    'gp',
-    'min',
-    'pts',
-    'ts_pct',
-    'efg_pct',
-    'points_per_shot',
-    'ast_tov',
-    'three_rate',
-    'ft_rate',
-  ],
-  'Impact': [
-    'gp',
-    'min',
-    'pts',
-    'ast',
-    'reb',
-    'plus_minus',
-    'bpm',
-    'game_score_proxy',
-  ],
-  'Defense': [
-    'gp',
-    'min',
-    'dreb',
-    'stl',
-    'blk',
-    'stocks',
-    'defense_events',
-    'pf',
-  ],
-  'Advanced': [
-    'gp',
-    'min',
-    'possessions_proxy',
-    'scoring_load',
-    'ts_pct',
-    'efg_pct',
-    'ast_tov',
-    'bpm',
-    'game_score_proxy',
-  ],
+  'Overview': ['gp', 'min', 'age', 'pts', 'ast', 'reb', 'tov', 'ts_pct', 'plus_minus', 'bpm'],
+  'Counting': ['gp', 'min', 'pts', 'ast', 'reb', 'oreb', 'dreb', 'stl', 'blk', 'tov', 'pf'],
+  'Shooting': ['gp', 'min', 'fgm', 'fga', 'fg_pct', 'two_pm', 'two_pa', 'two_pct', 'three_pm', 'three_pa', 'three_pct', 'ftm', 'fta', 'ft_pct'],
+  'Efficiency': ['gp', 'min', 'pts', 'ts_pct', 'efg_pct', 'points_per_shot', 'ast_tov', 'three_rate', 'ft_rate'],
+  'Impact': ['gp', 'min', 'pts', 'ast', 'reb', 'plus_minus', 'bpm', 'game_score_proxy'],
+  'Defense': ['gp', 'min', 'dreb', 'stl', 'blk', 'stocks', 'defense_events', 'pf'],
+  'Advanced': ['gp', 'min', 'possessions_proxy', 'scoring_load', 'ts_pct', 'efg_pct', 'ast_tov', 'bpm', 'game_score_proxy'],
 };
 
 class NbaStatsFilters {
@@ -495,15 +182,15 @@ class NbaStatsRow {
   double? value(String key) => values[key];
 
   NbaStatsRow withPercentiles(Map<String, double> next) => NbaStatsRow(
-    playerId: playerId,
-    player: player,
-    team: team,
-    position: position,
-    values: values,
-    percentiles: next,
-    raw: raw,
-    possessionsEstimated: possessionsEstimated,
-  );
+        playerId: playerId,
+        player: player,
+        team: team,
+        position: position,
+        values: values,
+        percentiles: next,
+        raw: raw,
+        possessionsEstimated: possessionsEstimated,
+      );
 }
 
 class NbaStatsWorkstationEngine {
@@ -515,16 +202,12 @@ class NbaStatsWorkstationEngine {
     NbaStatsSeasonType seasonType = NbaStatsSeasonType.regular,
   }) {
     final profiles = <String, Map<String, dynamic>>{
-      for (final profile in snapshot.players)
-        _text(_first(profile, const ['player_id', 'id'])): profile,
+      for (final profile in snapshot.players) _text(_first(profile, const ['player_id', 'id'])): profile,
     };
     final rows = <NbaStatsRow>[];
     for (final raw in snapshot.playerSeasonTotals) {
-      final rawType = _text(
-        _first(raw, const ['season_type', 'seasonType', 'segment']),
-      ).toLowerCase();
-      final isPlayoff =
-          rawType.contains('playoff') || rawType.contains('postseason');
+      final rawType = _text(_first(raw, const ['season_type', 'seasonType', 'segment'])).toLowerCase();
+      final isPlayoff = rawType.contains('playoff') || rawType.contains('postseason');
       if (seasonType == NbaStatsSeasonType.regular && isPlayoff) continue;
       if (seasonType == NbaStatsSeasonType.playoffs && !isPlayoff) continue;
       final playerId = _text(_first(raw, const ['player_id', 'id', 'slug']));
@@ -541,51 +224,27 @@ class NbaStatsWorkstationEngine {
   }) {
     final query = filters.search.trim().toLowerCase();
     return rows.where((row) {
-      if (query.isNotEmpty &&
-          !'${row.player} ${row.team} ${row.position}'.toLowerCase().contains(
-            query,
-          )) {
-        return false;
-      }
-      if (filters.team != 'All' &&
-          !row.team.split(RegExp(r'[,/ ]+')).contains(filters.team)) {
-        return false;
-      }
-      if (filters.position != 'All' && row.position != filters.position) {
-        return false;
-      }
+      if (query.isNotEmpty && !'${row.player} ${row.team} ${row.position}'.toLowerCase().contains(query)) return false;
+      if (filters.team != 'All' && !row.team.split(RegExp(r'[,/ ]+')).contains(filters.team)) return false;
+      if (filters.position != 'All' && row.position != filters.position) return false;
       if ((row.value('gp') ?? 0) < filters.minGames) return false;
       final minutes = row.value('min') ?? 0;
       if (minutes < filters.minMinutes) return false;
       final age = row.value('age');
-      if (filters.minAge != null && (age == null || age < filters.minAge!)) {
-        return false;
-      }
-      if (filters.maxAge != null && (age == null || age > filters.maxAge!)) {
-        return false;
-      }
-      if (filters.favoriteOnly && !favorites.contains(row.playerId)) {
-        return false;
-      }
+      if (filters.minAge != null && (age == null || age < filters.minAge!)) return false;
+      if (filters.maxAge != null && (age == null || age > filters.maxAge!)) return false;
+      if (filters.favoriteOnly && !favorites.contains(row.playerId)) return false;
       if (filters.metricKey != null) {
         final value = row.value(filters.metricKey!);
         if (value == null) return false;
-        if (filters.metricMinimum != null && value < filters.metricMinimum!) {
-          return false;
-        }
-        if (filters.metricMaximum != null && value > filters.metricMaximum!) {
-          return false;
-        }
+        if (filters.metricMinimum != null && value < filters.metricMinimum!) return false;
+        if (filters.metricMaximum != null && value > filters.metricMaximum!) return false;
       }
       return true;
     }).toList();
   }
 
-  void sortRows(
-    List<NbaStatsRow> rows,
-    String metricKey, {
-    bool descending = true,
-  }) {
+  void sortRows(List<NbaStatsRow> rows, String metricKey, {bool descending = true}) {
     rows.sort((left, right) {
       final l = left.value(metricKey);
       final r = right.value(metricKey);
@@ -600,9 +259,7 @@ class NbaStatsWorkstationEngine {
   Map<String, List<NbaStatsRow>> groupByTeam(List<NbaStatsRow> rows) {
     final output = <String, List<NbaStatsRow>>{};
     for (final row in rows) {
-      final teams = row.team
-          .split(RegExp(r'[,/ ]+'))
-          .where((team) => team.isNotEmpty && team != '—');
+      final teams = row.team.split(RegExp(r'[,/ ]+')).where((team) => team.isNotEmpty && team != '—');
       for (final team in teams) {
         output.putIfAbsent(team, () => []).add(row);
       }
@@ -611,14 +268,9 @@ class NbaStatsWorkstationEngine {
   }
 
   NbaStatMetric metric(String key) => nbaStatMetrics.firstWhere(
-    (metric) => metric.key == key,
-    orElse: () => NbaStatMetric(
-      key: key,
-      label: key,
-      shortLabel: key.toUpperCase(),
-      group: 'Custom',
-    ),
-  );
+        (metric) => metric.key == key,
+        orElse: () => NbaStatMetric(key: key, label: key, shortLabel: key.toUpperCase(), group: 'Custom'),
+      );
 
   String formatValue(String key, double? value) {
     if (value == null || value.isNaN || value.isInfinite) return '—';
@@ -637,122 +289,27 @@ class NbaStatsWorkstationEngine {
     }
   }
 
-  NbaStatsRow _normalize(
-    Map<String, dynamic> raw,
-    Map<String, dynamic> profile,
-    NbaStatsBasis basis,
-  ) {
+  NbaStatsRow _normalize(Map<String, dynamic> raw, Map<String, dynamic> profile, NbaStatsBasis basis) {
     final games = _number(_first(raw, const ['games', 'gp', 'g'])) ?? 0;
-    final minutesTotal = _total(
-      raw,
-      games,
-      const ['minutes', 'mp'],
-      const ['minutes_per_game', 'mpg'],
-    );
-    final points = _total(
-      raw,
-      games,
-      const ['points', 'pts'],
-      const ['points_per_game', 'ppg'],
-    );
-    final rebounds = _total(
-      raw,
-      games,
-      const ['rebounds', 'trb', 'reb'],
-      const ['rebounds_per_game', 'rpg'],
-    );
-    final offensiveRebounds = _total(
-      raw,
-      games,
-      const ['offensive_rebounds', 'orb', 'oreb'],
-      const ['offensive_rebounds_per_game', 'oreb_per_game'],
-    );
-    final defensiveRebounds = _total(
-      raw,
-      games,
-      const ['defensive_rebounds', 'drb', 'dreb'],
-      const ['defensive_rebounds_per_game', 'dreb_per_game'],
-    );
-    final assists = _total(
-      raw,
-      games,
-      const ['assists', 'ast'],
-      const ['assists_per_game', 'apg'],
-    );
-    final steals = _total(
-      raw,
-      games,
-      const ['steals', 'stl'],
-      const ['steals_per_game', 'spg'],
-    );
-    final blocks = _total(
-      raw,
-      games,
-      const ['blocks', 'blk'],
-      const ['blocks_per_game', 'bpg'],
-    );
-    final turnovers = _total(
-      raw,
-      games,
-      const ['turnovers', 'tov'],
-      const ['turnovers_per_game', 'tov_per_game'],
-    );
-    final fouls = _total(
-      raw,
-      games,
-      const ['personal_fouls', 'pf'],
-      const ['personal_fouls_per_game', 'pf_per_game'],
-    );
-    final plusMinus = _total(
-      raw,
-      games,
-      const ['plus_minus'],
-      const ['plus_minus_per_game'],
-    );
-    final fgm = _total(
-      raw,
-      games,
-      const ['field_goals_made', 'fg', 'fgm'],
-      const ['field_goals_made_per_game', 'fgm_per_game'],
-    );
-    final fga = _total(
-      raw,
-      games,
-      const ['field_goal_attempts', 'fga'],
-      const ['field_goal_attempts_per_game', 'fga_per_game'],
-    );
-    final threePm = _total(
-      raw,
-      games,
-      const ['three_pointers_made', 'fg3', 'three_pm'],
-      const ['three_pointers_made_per_game', 'three_pm_per_game'],
-    );
-    final threePa = _total(
-      raw,
-      games,
-      const ['three_point_attempts', 'fg3a', 'three_pa'],
-      const ['three_point_attempts_per_game', 'three_pa_per_game'],
-    );
-    final ftm = _total(
-      raw,
-      games,
-      const ['free_throws_made', 'ft', 'ftm'],
-      const ['free_throws_made_per_game', 'ftm_per_game'],
-    );
-    final fta = _total(
-      raw,
-      games,
-      const ['free_throw_attempts', 'fta'],
-      const ['free_throw_attempts_per_game', 'fta_per_game'],
-    );
-    final directPossessions = _number(
-      _first(raw, const ['possessions', 'poss', 'estimated_possessions']),
-    );
-    var possessions =
-        directPossessions ??
-        math
-            .max(0.0, fga + .44 * fta - offensiveRebounds + turnovers)
-            .toDouble();
+    final minutesTotal = _total(raw, games, const ['minutes', 'mp'], const ['minutes_per_game', 'mpg']);
+    final points = _total(raw, games, const ['points', 'pts'], const ['points_per_game', 'ppg']);
+    final rebounds = _total(raw, games, const ['rebounds', 'trb', 'reb'], const ['rebounds_per_game', 'rpg']);
+    final offensiveRebounds = _total(raw, games, const ['offensive_rebounds', 'orb', 'oreb'], const ['offensive_rebounds_per_game', 'oreb_per_game']);
+    final defensiveRebounds = _total(raw, games, const ['defensive_rebounds', 'drb', 'dreb'], const ['defensive_rebounds_per_game', 'dreb_per_game']);
+    final assists = _total(raw, games, const ['assists', 'ast'], const ['assists_per_game', 'apg']);
+    final steals = _total(raw, games, const ['steals', 'stl'], const ['steals_per_game', 'spg']);
+    final blocks = _total(raw, games, const ['blocks', 'blk'], const ['blocks_per_game', 'bpg']);
+    final turnovers = _total(raw, games, const ['turnovers', 'tov'], const ['turnovers_per_game', 'tov_per_game']);
+    final fouls = _total(raw, games, const ['personal_fouls', 'pf'], const ['personal_fouls_per_game', 'pf_per_game']);
+    final plusMinus = _total(raw, games, const ['plus_minus'], const ['plus_minus_per_game']);
+    final fgm = _total(raw, games, const ['field_goals_made', 'fg', 'fgm'], const ['field_goals_made_per_game', 'fgm_per_game']);
+    final fga = _total(raw, games, const ['field_goal_attempts', 'fga'], const ['field_goal_attempts_per_game', 'fga_per_game']);
+    final threePm = _total(raw, games, const ['three_pointers_made', 'fg3', 'fg3m', 'three_pm'], const ['three_pointers_made_per_game', 'fg3m_per_game', 'three_pm_per_game']);
+    final threePa = _total(raw, games, const ['three_point_attempts', 'fg3a', 'three_pa'], const ['three_point_attempts_per_game', 'fg3a_per_game', 'three_pa_per_game']);
+    final ftm = _total(raw, games, const ['free_throws_made', 'ft', 'ftm'], const ['free_throws_made_per_game', 'ftm_per_game']);
+    final fta = _total(raw, games, const ['free_throw_attempts', 'fta'], const ['free_throw_attempts_per_game', 'fta_per_game']);
+    final directPossessions = _number(_first(raw, const ['possessions', 'poss', 'estimated_possessions']));
+    var possessions = directPossessions ?? math.max(0.0, fga + .44 * fta - offensiveRebounds + turnovers).toDouble();
     var possessionsEstimated = directPossessions == null;
     if (possessions <= 0 && minutesTotal > 0) {
       possessions = minutesTotal * 2.05;
@@ -771,24 +328,10 @@ class NbaStatsWorkstationEngine {
     final twoPm = math.max(0.0, fgm - threePm).toDouble();
     final twoPa = math.max(0.0, fga - threePa).toDouble();
     final shootingPossessions = fga + .44 * fta;
-    final fgPct = _ratioOrSource(raw, fgm, fga, const [
-      'fg_pct',
-      'field_goal_pct',
-      'avg_fg_pct',
-    ]);
-    final threePct = _ratioOrSource(raw, threePm, threePa, const [
-      'three_point_pct',
-      'fg3_pct',
-      'avg_fg3_pct',
-    ]);
-    final ftPct = _ratioOrSource(raw, ftm, fta, const [
-      'free_throw_pct',
-      'ft_pct',
-      'avg_ft_pct',
-    ]);
-    final bpm = _number(
-      _first(raw, const ['avg_bpm', 'bpm', 'box_plus_minus']),
-    );
+    final fgPct = _ratioOrSource(raw, fgm, fga, const ['fg_pct', 'field_goal_pct', 'avg_fg_pct']);
+    final threePct = _ratioOrSource(raw, threePm, threePa, const ['three_point_pct', 'three_pct', 'fg3_pct', 'avg_fg3_pct']);
+    final ftPct = _ratioOrSource(raw, ftm, fta, const ['free_throw_pct', 'ft_pct', 'avg_ft_pct']);
+    final bpm = _number(_first(raw, const ['avg_bpm', 'bpm', 'box_plus_minus']));
 
     double scaled(double value) => value * scale;
 
@@ -800,9 +343,7 @@ class NbaStatsWorkstationEngine {
       values: {
         'gp': games,
         'min': minutesTotal * minuteScale,
-        'age':
-            _number(_first(raw, const ['age'])) ??
-            _number(_first(profile, const ['age'])),
+        'age': _number(_first(raw, const ['age'])) ?? _number(_first(profile, const ['age'])),
         'pts': scaled(points),
         'ast': scaled(assists),
         'reb': scaled(rebounds),
@@ -827,26 +368,15 @@ class NbaStatsWorkstationEngine {
         'ts_pct': _ratio(points, 2 * shootingPossessions),
         'efg_pct': _ratio(fgm + .5 * threePm, fga),
         'points_per_shot': _ratio(points, shootingPossessions),
-        'ast_tov': turnovers > 0
-            ? assists / turnovers
-            : (assists > 0 ? assists : null),
+        'ast_tov': turnovers > 0 ? assists / turnovers : (assists > 0 ? assists : null),
         'three_rate': _ratio(threePa, fga),
         'ft_rate': _ratio(fta, fga),
         'plus_minus': scaled(plusMinus),
         'bpm': bpm,
-        'game_score_proxy': scaled(
-          points +
-              .7 * rebounds +
-              .7 * assists +
-              steals +
-              blocks -
-              .7 * turnovers,
-        ),
+        'game_score_proxy': scaled(points + .7 * rebounds + .7 * assists + steals + blocks - .7 * turnovers),
         'stocks': scaled(steals + blocks),
         'defense_events': scaled(steals + blocks + .35 * defensiveRebounds),
-        'possessions_proxy': basis == NbaStatsBasis.totals
-            ? possessions
-            : possessions * scale,
+        'possessions_proxy': basis == NbaStatsBasis.totals ? possessions : possessions * scale,
         'scoring_load': _ratio(shootingPossessions, possessions),
       },
       percentiles: const {},
@@ -857,32 +387,21 @@ class NbaStatsWorkstationEngine {
 
   List<NbaStatsRow> _attachPercentiles(List<NbaStatsRow> rows) {
     if (rows.isEmpty) return rows;
-    final byPlayer = <String, Map<String, double>>{
-      for (final row in rows) row.playerId: <String, double>{},
-    };
+    final byPlayer = <String, Map<String, double>>{for (final row in rows) row.playerId: <String, double>{}};
     for (final metric in nbaStatMetrics) {
       final entries = <MapEntry<String, double>>[];
       for (final row in rows) {
         final value = row.value(metric.key);
-        if (value != null && value.isFinite) {
-          entries.add(MapEntry(row.playerId, value));
-        }
+        if (value != null && value.isFinite) entries.add(MapEntry(row.playerId, value));
       }
       entries.sort((a, b) => a.value.compareTo(b.value));
       if (entries.isEmpty) continue;
       for (var index = 0; index < entries.length; index++) {
-        final base = entries.length == 1
-            ? 100.0
-            : index / (entries.length - 1) * 100;
-        byPlayer[entries[index].key]![metric.key] = metric.higherIsBetter
-            ? base
-            : 100 - base;
+        final base = entries.length == 1 ? 100.0 : index / (entries.length - 1) * 100;
+        byPlayer[entries[index].key]![metric.key] = metric.higherIsBetter ? base : 100 - base;
       }
     }
-    return [
-      for (final row in rows)
-        row.withPercentiles(byPlayer[row.playerId] ?? const {}),
-    ];
+    return [for (final row in rows) row.withPercentiles(byPlayer[row.playerId] ?? const {})];
   }
 }
 
@@ -894,12 +413,7 @@ Object? _first(Map<String, dynamic> row, List<String> keys) {
   return null;
 }
 
-double _total(
-  Map<String, dynamic> row,
-  double games,
-  List<String> totalKeys,
-  List<String> perGameKeys,
-) {
+double _total(Map<String, dynamic> row, double games, List<String> totalKeys, List<String> perGameKeys) {
   final total = _number(_first(row, totalKeys));
   if (total != null) return total;
   final perGame = _number(_first(row, perGameKeys));
@@ -907,12 +421,7 @@ double _total(
   return 0;
 }
 
-double? _ratioOrSource(
-  Map<String, dynamic> row,
-  double numerator,
-  double denominator,
-  List<String> sourceKeys,
-) {
+double? _ratioOrSource(Map<String, dynamic> row, double numerator, double denominator, List<String> sourceKeys) {
   final source = _number(_first(row, sourceKeys));
   if (source != null) return source > 1 ? source / 100 : source;
   return _ratio(numerator, denominator);
@@ -926,9 +435,7 @@ double? _ratio(double numerator, double denominator) {
 double? _number(Object? value) {
   if (value == null) return null;
   if (value is num) return value.toDouble();
-  return double.tryParse(
-    value.toString().replaceAll(',', '').replaceAll('%', '').trim(),
-  );
+  return double.tryParse(value.toString().replaceAll(',', '').replaceAll('%', '').trim());
 }
 
 String _text(Object? value) => value?.toString().trim() ?? '';
@@ -939,29 +446,22 @@ String _display(Object? value) {
 }
 
 String _position(Map<String, dynamic> raw, Map<String, dynamic> profile) {
-  final source =
-      _text(
-        _first(raw, const ['position', 'pos', 'primary_position']),
-      ).isNotEmpty
-      ? _text(_first(raw, const ['position', 'pos', 'primary_position']))
-      : _text(
-          _first(profile, const [
-            'position',
-            'pos',
-            'primary_position',
-            'position_abbrev',
-          ]),
-        );
-  final normalized = source.toUpperCase().replaceAll(' ', '');
+  final source = _text(_first(raw, const ['positions', 'position', 'pos', 'primary_position'])).isNotEmpty
+      ? _text(_first(raw, const ['positions', 'position', 'pos', 'primary_position']))
+      : _text(_first(profile, const ['positions', 'position', 'pos', 'primary_position', 'position_abbrev']));
+  if (source.isEmpty) return '—';
+  final upper = source.toUpperCase()
+      .replaceAll('POINT GUARD', 'PG')
+      .replaceAll('SHOOTING GUARD', 'SG')
+      .replaceAll('SMALL FORWARD', 'SF')
+      .replaceAll('POWER FORWARD', 'PF')
+      .replaceAll('CENTER', 'C');
+  final positions = <String>[];
   for (final candidate in const ['PG', 'SG', 'SF', 'PF', 'C']) {
-    if (normalized == candidate ||
-        normalized.startsWith('$candidate-') ||
-        normalized.endsWith('-$candidate')) {
-      return candidate;
+    if (RegExp('(^|[^A-Z])$candidate([^A-Z]|\$)').hasMatch(upper) && !positions.contains(candidate)) {
+      positions.add(candidate);
     }
   }
-  if (normalized.contains('GUARD')) return 'G';
-  if (normalized.contains('FORWARD')) return 'F';
-  if (normalized.contains('CENTER')) return 'C';
-  return source.isEmpty ? '—' : source;
+  if (positions.isNotEmpty) return positions.join(', ');
+  return source;
 }
