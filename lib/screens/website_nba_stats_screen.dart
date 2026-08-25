@@ -138,13 +138,13 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
         );
 
     final tableColumns = <WebsiteStickyStatsColumn>[
-      const WebsiteStickyStatsColumn(label: Text('Player'), width: 185),
-      const WebsiteStickyStatsColumn(label: Text('Team'), width: 74),
-      const WebsiteStickyStatsColumn(label: Text('Pos'), width: 62),
+      const WebsiteStickyStatsColumn(label: Text('Player'), width: 170),
+      const WebsiteStickyStatsColumn(label: Text('Team'), width: 66),
+      const WebsiteStickyStatsColumn(label: Text('Pos'), width: 56),
       for (final metric in _metrics)
         WebsiteStickyStatsColumn(
           label: Text(metric.label),
-          width: 82,
+          width: 72,
           numeric: true,
           onTap: () => setState(() {
             if (_sortKey == metric.key) {
@@ -243,10 +243,10 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
         WebsiteStickyStatsTable(
           columns: tableColumns,
           rows: tableRows,
-          firstColumnWidth: 185,
-          maxBodyHeight: 560,
-          headerHeight: 46,
-          rowHeight: 46,
+          firstColumnWidth: 170,
+          maxBodyHeight: 600,
+          headerHeight: 44,
+          rowHeight: 44,
         ),
         const SizedBox(height: 10),
         pager(),
