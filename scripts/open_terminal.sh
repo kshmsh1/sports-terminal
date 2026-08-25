@@ -25,7 +25,7 @@ Starts Sports Terminal locally.
 Historical NBA website data is compiled from the canonical warehouse into
 versioned, sharded static JSON under web/data/nba_static before Flutter starts.
 Authorized NBA.com historical response files are also materialized into that
-same static corpus during the build. The browser never calls NBA.com for
+same static corpus during launch. The browser never calls NBA.com for
 historical statistics at runtime.
 
 Home, Stats, Advanced Stats, player pages, team pages, awards, drafts,
@@ -220,6 +220,14 @@ if $MATERIALIZE_PBP; then GAME_ARGS+=(--include-pbp); fi
 echo "==> Preparing immutable static NBA website data"
 "$PYTHON" tools/build_static_nba_website_data_v2.py "${STATIC_ARGS[@]}"
 
+# Explicitly run the local NBA.com materialization layer even when the historical
+# compiler reports that its SQLite-derived corpus is already current. This step
+# performs no network requests and is independently fingerprint-aware.
+echo "==> Materializing imported NBA.com historical statistics"
+NBA_COM_ARGS=(--output "$STATIC_NBA_DIR")
+if $FORCE_STATIC; then NBA_COM_ARGS+=(--force); fi
+"$PYTHON" tools/nba_com_static_enrichment.py "${NBA_COM_ARGS[@]}"
+
 if $MATERIALIZE_PBP; then
   echo "==> Preparing static historical game detail and source-backed PBP"
 else
@@ -386,7 +394,7 @@ Sports Terminal is running locally.
   Migration log:   .data/logs/migrate.log
   Flutter log:     .data/logs/flutter.log
 
-Historical NBA pages, including materialized NBA.com statistics, are served from static files, not the API.
+Historical NBA pages are served from static files, not the API.
 Press Ctrl-C to stop it.
 EOF
 
