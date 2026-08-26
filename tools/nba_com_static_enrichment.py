@@ -9,7 +9,7 @@ from typing import Any, Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_RAW_ROOTS = (ROOT / "raw/nba_com_stats", ROOT.parent / "raw/nba_com_stats")
-ENRICHMENT_CONTRACT = "sports-terminal-nba-com-static-enrichment-v1"
+ENRICHMENT_CONTRACT = "sports-terminal-nba-com-static-enrichment-v2"
 
 PLAYER_SEASON_SURFACES = (
     "players_base",
@@ -20,6 +20,9 @@ PLAYER_SEASON_SURFACES = (
     "players_defense",
     "players_estimated_advanced",
     "players_defense_dashboard",
+    "players_defense_dashboard_3pt",
+    "players_defense_dashboard_2pt",
+    "players_defense_dashboard_lt6ft",
     "players_hustle",
     "players_violations",
 )
@@ -86,6 +89,18 @@ SURFACE_FIELD_MAP: dict[str, dict[str, str]] = {
     "players_defense_dashboard": {
         "FREQ": "defense_freq", "D_FGM": "d_fgm", "D_FGA": "d_fga",
         "D_FG_PCT": "d_fg_pct", "NORMAL_FG_PCT": "normal_fg_pct", "PCT_PLUSMINUS": "dfg_pct_diff",
+    },
+    "players_defense_dashboard_3pt": {
+        "FREQ": "three_defense_freq", "FG3M": "three_dfgm", "FG3A": "three_dfga",
+        "FG3_PCT": "three_dfg_pct", "NS_FG3_PCT": "normal_three_fg_pct", "PLUSMINUS": "three_dfg_pct_diff",
+    },
+    "players_defense_dashboard_2pt": {
+        "FREQ": "two_defense_freq", "FG2M": "two_dfgm", "FG2A": "two_dfga",
+        "FG2_PCT": "two_dfg_pct", "NS_FG2_PCT": "normal_two_fg_pct", "PLUSMINUS": "two_dfg_pct_diff",
+    },
+    "players_defense_dashboard_lt6ft": {
+        "FREQ": "lt6_defense_freq", "FGM_LT_06": "rim_dfgm", "FGA_LT_06": "rim_dfga",
+        "LT_06_PCT": "rim_dfg_pct", "NS_LT_06_PCT": "normal_rim_fg_pct", "PLUSMINUS": "rim_dfg_pct_diff",
     },
     "players_hustle": {
         "CONTESTED_SHOTS": "contested_shots", "CONTESTED_SHOTS_2PT": "contested_shots_2pt",
