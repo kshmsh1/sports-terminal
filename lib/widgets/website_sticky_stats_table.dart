@@ -66,24 +66,20 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
   void _syncFromBody() {
     if (_syncingVertical || !_frozenVertical.hasClients) return;
     _syncingVertical = true;
-    _frozenVertical.jumpTo(
-      _bodyVertical.offset.clamp(
-        _frozenVertical.position.minScrollExtent,
-        _frozenVertical.position.maxScrollExtent,
-      ),
-    );
+    _frozenVertical.jumpTo(_bodyVertical.offset.clamp(
+      _frozenVertical.position.minScrollExtent,
+      _frozenVertical.position.maxScrollExtent,
+    ));
     _syncingVertical = false;
   }
 
   void _syncFromFrozen() {
     if (_syncingVertical || !_bodyVertical.hasClients) return;
     _syncingVertical = true;
-    _bodyVertical.jumpTo(
-      _frozenVertical.offset.clamp(
-        _bodyVertical.position.minScrollExtent,
-        _bodyVertical.position.maxScrollExtent,
-      ),
-    );
+    _bodyVertical.jumpTo(_frozenVertical.offset.clamp(
+      _bodyVertical.position.minScrollExtent,
+      _bodyVertical.position.maxScrollExtent,
+    ));
     _syncingVertical = false;
   }
 
@@ -111,13 +107,10 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
         width: width,
         height: height,
         alignment: alignment,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 7),
         decoration: BoxDecoration(
           color: backgroundColor ?? (headerCell ? header : card),
-          border: Border(
-            right: BorderSide(color: border),
-            bottom: BorderSide(color: border),
-          ),
+          border: Border(right: BorderSide(color: border), bottom: BorderSide(color: border)),
         ),
         child: DefaultTextStyle.merge(
           style: TextStyle(fontWeight: headerCell ? FontWeight.w800 : FontWeight.w500),
@@ -153,12 +146,7 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
                       child: Column(
                         children: [
                           for (final row in widget.rows)
-                            cell(
-                              child: row.first,
-                              width: widget.firstColumnWidth,
-                              height: widget.rowHeight,
-                              headerCell: false,
-                            ),
+                            cell(child: row.first, width: widget.firstColumnWidth, height: widget.rowHeight, headerCell: false),
                         ],
                       ),
                     ),
