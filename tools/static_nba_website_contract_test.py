@@ -206,11 +206,13 @@ def test_static_runtime_contract() -> None:
     )
     require(
         "lib/screens/website_nba_stats_screen.dart",
-        "Traditional player statistics", "_Metric('pf', 'PF')", "_matchesPosition",
+        "Conventional NBA player statistics", "_StatColumn('pf', 'PF')", "_matchesPosition",
+        "values: const [0, 65, 60, 50, 40, 30]", "values: const [0, 20, 15, 10]",
     )
     require(
         "lib/screens/website_nba_advanced_stats_screen.dart",
         "_matchesPosition", "Gravity & Spacing", "Clutch",
+        "'three_pct': ['fg3_pct', 'three_pct']", "'three_dfg_pct': ['three_dfg_pct']",
     )
     require(
         "lib/screens/website_nba_entity_pages.dart",
@@ -219,6 +221,14 @@ def test_static_runtime_contract() -> None:
     require(
         "lib/widgets/traditional_website_shell_v2.dart",
         "Front Office", "Research", "Community", "Python Lab", "Excel Workspace", "Coming later",
+    )
+    require(
+        "lib/widgets/traditional_website_shell_impl.dart",
+        "Lineup Analysis", "Search Sports Terminal", "Python Lab · detached", "Excel Workspace · detached",
+    )
+    require(
+        "lib/screens/website_nba_lineup_analysis_screen.dart",
+        "LeagueDashLineups", "data/nba_static/lineups/", "WebsiteStickyStatsTable",
     )
     require(".gitignore", "/web/data/nba_static/")
 
