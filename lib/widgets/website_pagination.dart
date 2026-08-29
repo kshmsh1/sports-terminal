@@ -19,6 +19,9 @@ class WebsitePagination extends StatelessWidget {
   final int currentPage;
   final ValueChanged<int> onPageChanged;
   final ValueChanged<int> onPageSizeChanged;
+
+  /// Retained for compatibility with older callers. The website intentionally
+  /// exposes the four predictable row counts requested for stats surfaces.
   final int? customPageSize;
   final ValueChanged<int>? onCustomPageSizeChanged;
 
@@ -38,21 +41,16 @@ class WebsitePagination extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Text(
-          totalItems == 0 ? 'No players' : '$start–$end of $totalItems players',
+          totalItems == 0 ? 'No rows' : '$start–$end of $totalItems',
           style: TextStyle(color: colors.onSurfaceVariant, fontWeight: FontWeight.w600),
         ),
         const SizedBox(width: 2),
         for (final size in const [10, 20, 50, 100])
           ChoiceChip(
             label: Text('$size'),
-            selected: pageSize == size && customPageSize == null,
+            selected: pageSize == size,
             onSelected: (_) => onPageSizeChanged(size),
           ),
-        ChoiceChip(
-          label: Text(customPageSize == null ? 'Custom' : 'Custom $customPageSize'),
-          selected: customPageSize != null,
-          onSelected: (_) => _askCustom(context),
-        ),
         const SizedBox(width: 4),
         IconButton(
           tooltip: 'Previous page',
@@ -82,42 +80,6 @@ class WebsitePagination extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  Future<void> _askCustom(BuildContext context) async {
-    if (onCustomPageSizeChanged == null) return;
-    final controller = TextEditingController(text: '${customPageSize ?? pageSize}');
-    final result = await showDialog<int>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Custom rows per page'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            hintText: 'Example: 35',
-            helperText: 'Choose between 1 and 500 rows.',
-          ),
-          onSubmitted: (_) {
-            final value = int.tryParse(controller.text.trim());
-            if (value != null) Navigator.of(context).pop(value.clamp(1, 500));
-          },
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () {
-              final value = int.tryParse(controller.text.trim());
-              if (value != null) Navigator.of(context).pop(value.clamp(1, 500));
-            },
-            child: const Text('Apply'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (result != null) onCustomPageSizeChanged!(result);
   }
 }
 
