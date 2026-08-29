@@ -20,12 +20,17 @@ class WebsiteStickyStatsColumn {
   final Color? foregroundColor;
 }
 
-/// A conventional website statistics table.
+/// Conventional, borderless website statistics table.
 ///
 /// The page owns all vertical scrolling: choosing 10, 20, 50 or 100 rows makes
 /// the document grow to exactly that many rows. The table owns horizontal
 /// scrolling only. The first column stays frozen horizontally and the header
 /// follows the page while the table remains in view.
+///
+/// There are deliberately no per-cell divider rules. Dense tables use a very
+/// light zebra surface instead, which keeps long leaderboards legible without
+/// the spreadsheet-like white grid that the traditional Sports Terminal UI is
+/// moving away from.
 class WebsiteStickyStatsTable extends StatefulWidget {
   const WebsiteStickyStatsTable({
     super.key,
@@ -35,6 +40,8 @@ class WebsiteStickyStatsTable extends StatefulWidget {
     this.rowHeight = 46,
     this.maxBodyHeight = 560,
     this.firstColumnWidth = 185,
+    this.stripeRows = true,
+    this.borderRadius = 14,
   });
 
   final List<WebsiteStickyStatsColumn> columns;
@@ -46,6 +53,8 @@ class WebsiteStickyStatsTable extends StatefulWidget {
   /// deliberately never capped.
   final double maxBodyHeight;
   final double firstColumnWidth;
+  final bool stripeRows;
+  final double borderRadius;
 
   @override
   State<WebsiteStickyStatsTable> createState() => _WebsiteStickyStatsTableState();
@@ -114,17 +123,29 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
   Widget build(BuildContext context) {
     if (widget.columns.isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(context);
-    final card = theme.cardTheme.color ?? theme.colorScheme.surface;
-    final header = theme.colorScheme.surfaceContainerHighest;
+    final colors = theme.colorScheme;
+    final bodySurface = theme.cardTheme.color ?? colors.surface;
+    final headerSurface = colors.surfaceContainerHighest;
+    final alternateSurface = Color.alphaBlend(
+      colors.onSurface.withValues(alpha: theme.brightness == Brightness.dark ? .025 : .018),
+      bodySurface,
+    );
     final remaining = widget.columns.skip(1).toList();
     final remainingWidth = remaining.fold<double>(0, (sum, item) => sum + item.width);
     final totalHeight = widget.headerHeight + widget.rows.length * widget.rowHeight;
+
+    Color bodyColor(int rowIndex, Color? explicit) {
+      if (explicit != null) return explicit;
+      if (!widget.stripeRows || rowIndex.isEven) return bodySurface;
+      return alternateSurface;
+    }
 
     Widget cell({
       required Widget child,
       required double width,
       required double height,
       required bool headerCell,
+      int rowIndex = 0,
       Color? backgroundColor,
       Color? foregroundColor,
       Alignment alignment = Alignment.centerLeft,
@@ -135,7 +156,9 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
         height: height,
         alignment: alignment,
         padding: const EdgeInsets.symmetric(horizontal: 6),
-        color: backgroundColor ?? (headerCell ? header : card),
+        color: headerCell
+            ? (backgroundColor ?? headerSurface)
+            : bodyColor(rowIndex, backgroundColor),
         child: DefaultTextStyle.merge(
           style: TextStyle(
             color: foregroundColor,
@@ -158,12 +181,13 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (final row in widget.rows)
+                    for (var rowIndex = 0; rowIndex < widget.rows.length; rowIndex++)
                       cell(
-                        child: row.first,
+                        child: widget.rows[rowIndex].first,
                         width: widget.firstColumnWidth,
                         height: widget.rowHeight,
                         headerCell: false,
+                        rowIndex: rowIndex,
                         backgroundColor: widget.columns.first.backgroundColor,
                         foregroundColor: widget.columns.first.foregroundColor,
                       ),
@@ -176,7 +200,8 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
                 right: 0,
                 child: Material(
                   color: Colors.transparent,
-                  elevation: _stickyOffset > 0 ? 2 : 0,
+                  elevation: 0,
+                  surfaceTintColor: Colors.transparent,
                   child: cell(
                     child: widget.columns.first.label,
                     width: widget.firstColumnWidth,
@@ -209,15 +234,16 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        for (final row in widget.rows)
+                        for (var rowIndex = 0; rowIndex < widget.rows.length; rowIndex++)
                           Row(
                             children: [
-                              for (var index = 1; index < row.length; index++)
+                              for (var index = 1; index < widget.rows[rowIndex].length; index++)
                                 cell(
-                                  child: row[index],
+                                  child: widget.rows[rowIndex][index],
                                   width: widget.columns[index].width,
                                   height: widget.rowHeight,
                                   headerCell: false,
+                                  rowIndex: rowIndex,
                                   backgroundColor: widget.columns[index].backgroundColor,
                                   foregroundColor: widget.columns[index].foregroundColor,
                                   alignment: widget.columns[index].numeric
@@ -235,7 +261,8 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
                     right: 0,
                     child: Material(
                       color: Colors.transparent,
-                      elevation: _stickyOffset > 0 ? 2 : 0,
+                      elevation: 0,
+                      surfaceTintColor: Colors.transparent,
                       child: Row(
                         children: [
                           for (final column in remaining)
@@ -259,17 +286,19 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
           ),
         );
 
-    return Card(
-      clipBehavior: Clip.hardEdge,
-      margin: EdgeInsets.zero,
-      child: SizedBox(
-        height: totalHeight,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            frozenColumn(),
-            Expanded(child: scrollingColumns()),
-          ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(widget.borderRadius),
+      child: ColoredBox(
+        color: bodySurface,
+        child: SizedBox(
+          height: totalHeight,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              frozenColumn(),
+              Expanded(child: scrollingColumns()),
+            ],
+          ),
         ),
       ),
     );
