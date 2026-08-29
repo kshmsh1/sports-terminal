@@ -35,6 +35,9 @@ CHECKS: dict[str, list[str]] = {
     ],
     "lib/widgets/traditional_website_shell_impl.dart": [
         "Lineup Analysis",
+        "Player Compare",
+        "Stat Glossary",
+        "Data Coverage",
         "Search Sports Terminal",
         "Python Lab · detached",
         "Excel Workspace · detached",
@@ -49,6 +52,24 @@ CHECKS: dict[str, list[str]] = {
         "Metric group",
         "_openMembers",
         "q$_groupQuantity",
+    ],
+    "lib/screens/website_nba_player_compare_screen.dart": [
+        "Player Compare",
+        "Maximum 4 players selected",
+        "WebsiteStickyStatsTable",
+        "same season, season type and per-game basis",
+        "openWebsiteNbaPlayerPage",
+    ],
+    "lib/screens/website_nba_stat_glossary_screen.dart": [
+        "NBA Stat Glossary",
+        "3P DFG%",
+        "This is not the defender’s own 3P%",
+    ],
+    "lib/screens/website_nba_data_coverage_screen.dart": [
+        "NBA Data Coverage",
+        "Static historical delivery",
+        "Offensive 3P% and 3P DFG% are distinct measures",
+        "lineups/manifest.json",
     ],
     "tools/nba_com_lineup_static_enrichment.py": [
         "lineups_advanced",
@@ -119,7 +140,7 @@ def audit() -> dict[str, object]:
                 failures.append(f"lineup pipeline missing {quantity}-player unit support")
 
     return {
-        "contract": "sports-terminal-traditional-stats-ux-v3",
+        "contract": "sports-terminal-traditional-stats-ux-v4",
         "files_checked": len(CHECKS),
         "failures": failures,
         "status": "pass" if not failures else "fail",
