@@ -20,13 +20,12 @@ class WebsiteStickyStatsColumn {
   final Color? foregroundColor;
 }
 
-/// A stats table that keeps horizontal scrolling local to the table while
-/// allowing vertical scrolling to remain owned by the website page.
+/// A conventional website statistics table.
 ///
-/// The first column is frozen horizontally. The header row follows the page
-/// viewport while the table itself remains in view, so choosing 10, 50 or 100
-/// rows produces exactly that many page rows instead of a second vertical
-/// scroll area inside the table.
+/// The page owns all vertical scrolling: choosing 10, 20, 50 or 100 rows makes
+/// the document grow to exactly that many rows. The table owns horizontal
+/// scrolling only. The first column stays frozen horizontally and the header
+/// follows the page while the table remains in view.
 class WebsiteStickyStatsTable extends StatefulWidget {
   const WebsiteStickyStatsTable({
     super.key,
@@ -43,8 +42,8 @@ class WebsiteStickyStatsTable extends StatefulWidget {
   final double headerHeight;
   final double rowHeight;
 
-  /// Retained for API compatibility. Vertical height is intentionally no
-  /// longer capped; the parent website owns vertical scrolling.
+  /// Retained for source compatibility with older callers. Vertical height is
+  /// deliberately never capped.
   final double maxBodyHeight;
   final double firstColumnWidth;
 
@@ -117,7 +116,6 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
     final theme = Theme.of(context);
     final card = theme.cardTheme.color ?? theme.colorScheme.surface;
     final header = theme.colorScheme.surfaceContainerHighest;
-    final divider = theme.dividerColor.withValues(alpha: .45);
     final remaining = widget.columns.skip(1).toList();
     final remainingWidth = remaining.fold<double>(0, (sum, item) => sum + item.width);
     final totalHeight = widget.headerHeight + widget.rows.length * widget.rowHeight;
@@ -128,6 +126,7 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
       required double height,
       required bool headerCell,
       Color? backgroundColor,
+      Color? foregroundColor,
       Alignment alignment = Alignment.centerLeft,
       VoidCallback? onTap,
     }) {
@@ -136,14 +135,12 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
         height: height,
         alignment: alignment,
         padding: const EdgeInsets.symmetric(horizontal: 6),
-        decoration: BoxDecoration(
-          color: backgroundColor ?? (headerCell ? header : card),
-          border: headerCell ? Border(bottom: BorderSide(color: divider)) : null,
-        ),
+        color: backgroundColor ?? (headerCell ? header : card),
         child: DefaultTextStyle.merge(
           style: TextStyle(
+            color: foregroundColor,
             fontWeight: headerCell ? FontWeight.w800 : FontWeight.w500,
-            fontSize: headerCell ? 13 : 13,
+            fontSize: 13,
           ),
           child: child,
         ),
@@ -167,6 +164,8 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
                         width: widget.firstColumnWidth,
                         height: widget.rowHeight,
                         headerCell: false,
+                        backgroundColor: widget.columns.first.backgroundColor,
+                        foregroundColor: widget.columns.first.foregroundColor,
                       ),
                   ],
                 ),
@@ -184,6 +183,7 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
                     height: widget.headerHeight,
                     headerCell: true,
                     backgroundColor: widget.columns.first.backgroundColor,
+                    foregroundColor: widget.columns.first.foregroundColor,
                     onTap: widget.columns.first.onTap,
                   ),
                 ),
@@ -219,6 +219,7 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
                                   height: widget.rowHeight,
                                   headerCell: false,
                                   backgroundColor: widget.columns[index].backgroundColor,
+                                  foregroundColor: widget.columns[index].foregroundColor,
                                   alignment: widget.columns[index].numeric
                                       ? Alignment.centerRight
                                       : Alignment.centerLeft,
@@ -244,6 +245,7 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
                               height: widget.headerHeight,
                               headerCell: true,
                               backgroundColor: column.backgroundColor,
+                              foregroundColor: column.foregroundColor,
                               alignment: column.numeric ? Alignment.centerRight : Alignment.centerLeft,
                               onTap: column.onTap,
                             ),
