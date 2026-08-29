@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_RAW_ROOTS = (ROOT / "raw/nba_com_stats", ROOT.parent / "raw/nba_com_stats")
 DEFAULT_OUTPUT = ROOT / "web/data/nba_static"
 SURFACES = ("lineups_base", "lineups_advanced")
+GROUP_QUANTITIES = (2, 3, 4, 5)
 
 
 def _number(value: Any) -> float | None:
@@ -37,6 +38,10 @@ def _season_type(folder: str) -> str:
     return "playoffs" if "play" in folder.lower() or "post" in folder.lower() else "regular"
 
 
+def _surface_folder(surface: str, group_quantity: int) -> str:
+    return surface if group_quantity == 5 else f"{surface}_q{group_quantity}"
+
+
 def _rows(path: Path) -> list[dict[str, Any]]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -52,7 +57,7 @@ def _rows(path: Path) -> list[dict[str, Any]]:
     return result
 
 
-def _normalized(row: dict[str, Any]) -> dict[str, Any]:
+def _normalized(row: dict[str, Any], group_quantity: int) -> dict[str, Any]:
     def pick(*keys: str) -> Any:
         for key in keys:
             if key in row and row[key] not in (None, ""):
@@ -62,6 +67,7 @@ def _normalized(row: dict[str, Any]) -> dict[str, Any]:
     result = dict(row)
     result.update(
         {
+            "group_quantity": group_quantity,
             "group_id": str(pick("GROUP_ID", "group_id") or ""),
             "group_name": str(pick("GROUP_NAME", "group_name") or ""),
             "team_id": str(pick("TEAM_ID", "team_id") or ""),
@@ -91,45 +97,54 @@ def _normalized(row: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _destination(output: Path, group_quantity: int, season: str, season_type: str) -> Path:
+    if group_quantity == 5:
+        # Backward-compatible path used by the first Lineup Analysis release.
+        return output / "lineups" / season / f"{season_type}.json"
+    return output / "lineups" / f"q{group_quantity}" / season / f"{season_type}.json"
+
+
 def materialize_lineups(
     output: Path = DEFAULT_OUTPUT,
     raw_roots: Iterable[Path] | None = None,
 ) -> dict[str, int]:
     output = Path(output).expanduser().resolve()
     roots = _raw_roots(raw_roots)
-    buckets: dict[tuple[str, str], dict[str, dict[str, Any]]] = {}
+    buckets: dict[tuple[int, str, str], dict[str, dict[str, Any]]] = {}
     capture_count = 0
 
     for root in roots:
-        for surface in SURFACES:
-            base = root / surface
-            if not base.is_dir():
-                continue
-            for path in base.glob("*/*/normalized.json"):
-                parts = path.relative_to(base).parts
-                if len(parts) < 3:
+        for group_quantity in GROUP_QUANTITIES:
+            for surface in SURFACES:
+                base = root / _surface_folder(surface, group_quantity)
+                if not base.is_dir():
                     continue
-                season, folder = parts[0], parts[1]
-                season_type = _season_type(folder)
-                rows = _rows(path)
-                if not rows:
-                    continue
-                capture_count += 1
-                bucket = buckets.setdefault((season, season_type), {})
-                for source_row in rows:
-                    row = _normalized(source_row)
-                    identity = row.get("group_id") or f"{row.get('team')}:{row.get('group_name')}"
-                    if not identity:
+                for path in base.glob("*/*/normalized.json"):
+                    parts = path.relative_to(base).parts
+                    if len(parts) < 3:
                         continue
-                    current = bucket.setdefault(str(identity), {})
-                    # Base and Advanced captures complement each other; later
-                    # non-null fields merge rather than replacing the object.
-                    for key, value in row.items():
-                        if value not in (None, ""):
-                            current[key] = value
+                    season, folder = parts[0], parts[1]
+                    season_type = _season_type(folder)
+                    rows = _rows(path)
+                    if not rows:
+                        continue
+                    capture_count += 1
+                    bucket = buckets.setdefault((group_quantity, season, season_type), {})
+                    for source_row in rows:
+                        row = _normalized(source_row, group_quantity)
+                        identity = row.get("group_id") or f"{row.get('team')}:{row.get('group_name')}"
+                        if not identity:
+                            continue
+                        current = bucket.setdefault(str(identity), {})
+                        # Base and Advanced captures complement each other; later
+                        # non-null fields merge rather than replacing the object.
+                        for key, value in row.items():
+                            if value not in (None, ""):
+                                current[key] = value
 
     row_count = 0
-    for (season, season_type), by_id in buckets.items():
+    dataset_summaries: list[dict[str, Any]] = []
+    for (group_quantity, season, season_type), by_id in buckets.items():
         rows = list(by_id.values())
         rows.sort(
             key=lambda row: (
@@ -138,26 +153,41 @@ def materialize_lineups(
                 str(row.get("group_name") or ""),
             )
         )
-        destination = output / "lineups" / season / f"{season_type}.json"
+        destination = _destination(output, group_quantity, season, season_type)
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(
             json.dumps(rows, ensure_ascii=False, separators=(",", ":")),
             encoding="utf-8",
         )
         row_count += len(rows)
+        dataset_summaries.append(
+            {
+                "group_quantity": group_quantity,
+                "season": season,
+                "season_type": season_type,
+                "rows": len(rows),
+                "path": str(destination.relative_to(output)),
+            }
+        )
 
     manifest_path = output / "lineups" / "manifest.json"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
         json.dumps(
             {
-                "contract": "sports-terminal-static-lineups-v1",
+                "contract": "sports-terminal-static-lineups-v2",
+                "source": "NBA.com LeagueDashLineups",
                 "capture_count": capture_count,
                 "row_count": row_count,
-                "datasets": [
-                    {"season": season, "season_type": season_type, "rows": len(rows)}
-                    for (season, season_type), rows in sorted(buckets.items())
-                ],
+                "group_quantities": list(GROUP_QUANTITIES),
+                "datasets": sorted(
+                    dataset_summaries,
+                    key=lambda item: (
+                        -int(item["group_quantity"]),
+                        str(item["season"]),
+                        str(item["season_type"]),
+                    ),
+                ),
             },
             ensure_ascii=False,
             indent=2,
