@@ -59,6 +59,7 @@ CHECKS: dict[str, list[str]] = {
         "WebsiteStickyStatsTable",
         "same season, season type and per-game basis",
         "openWebsiteNbaPlayerPage",
+        "_CompareMetric('three_pct', '3P%'",
     ],
     "lib/screens/website_nba_stat_glossary_screen.dart": [
         "NBA Stat Glossary",
