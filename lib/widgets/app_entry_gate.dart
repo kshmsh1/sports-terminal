@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/internal_workspace_controller.dart';
 import '../screens/login_screen.dart';
-import 'traditional_website_shell_v2.dart';
+import 'traditional_website_shell.dart';
 
 class AppEntryGate extends StatelessWidget {
   const AppEntryGate({
@@ -28,7 +28,7 @@ class AppEntryGate extends StatelessWidget {
           return LoginScreen(controller: authController);
         }
 
-        return TraditionalWebsiteShellV2(
+        return TraditionalWebsiteShell(
           session: session,
           workspaceController: workspaceController,
           onSignOut: authController.signOut,
