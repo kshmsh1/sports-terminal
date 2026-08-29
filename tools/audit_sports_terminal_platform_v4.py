@@ -141,7 +141,7 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
         "Gravity & Spacing",
         "On / Off",
         "explicit source boundaries",
-        "Missing source coverage stays visible as —",
+        "unavailable source coverage remains visible as —",
         "3P DFG% is the opponent",
         "WebsiteStickyStatsTable",
     ),
