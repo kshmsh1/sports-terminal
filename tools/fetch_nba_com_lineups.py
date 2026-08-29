@@ -24,6 +24,7 @@ SURFACES = {
     "lineups_advanced": "Advanced",
     "lineups_base": "Base",
 }
+GROUP_QUANTITIES = (2, 3, 4, 5)
 
 
 def _season(start_year: int) -> str:
@@ -37,14 +38,19 @@ def _season_start(value: str) -> int:
         raise argparse.ArgumentTypeError(f"Invalid season: {value}") from exc
 
 
-def _params(season: str, season_type: str, measure_type: str) -> dict[str, str | int]:
+def _params(
+    season: str,
+    season_type: str,
+    measure_type: str,
+    group_quantity: int,
+) -> dict[str, str | int]:
     return {
         "Conference": "",
         "DateFrom": "",
         "DateTo": "",
         "Division": "",
         "GameSegment": "",
-        "GroupQuantity": 5,
+        "GroupQuantity": group_quantity,
         "ISTRound": "",
         "LastNGames": 0,
         "LeagueID": "00",
@@ -69,7 +75,7 @@ def _params(season: str, season_type: str, measure_type: str) -> dict[str, str |
     }
 
 
-def _normalize(payload: dict[str, Any]) -> dict[str, Any]:
+def _normalize(payload: dict[str, Any], group_quantity: int) -> dict[str, Any]:
     tables: list[dict[str, Any]] = []
     result_sets = payload.get("resultSets")
     if isinstance(result_sets, dict):
@@ -103,6 +109,7 @@ def _normalize(payload: dict[str, Any]) -> dict[str, Any]:
         "contract": "sports-terminal-nba-com-normalized-capture-v1",
         "resource": payload.get("resource"),
         "parameters": payload.get("parameters"),
+        "group_quantity": group_quantity,
         "tables": tables,
     }
 
@@ -117,6 +124,12 @@ def _row_count(normalized: dict[str, Any]) -> int:
 
 def _folder(season_type: str) -> str:
     return "playoffs" if "play" in season_type.lower() else "regular-season"
+
+
+def _surface_folder(surface: str, group_quantity: int) -> str:
+    # Preserve the existing five-man capture path so every already-downloaded
+    # lineup dataset remains valid. Smaller unit sizes live in parallel roots.
+    return surface if group_quantity == 5 else f"{surface}_q{group_quantity}"
 
 
 def _session() -> requests.Session:
@@ -164,11 +177,19 @@ def _fetch(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Capture NBA.com five-player lineup tables into Sports Terminal raw storage.")
+    parser = argparse.ArgumentParser(
+        description="Capture NBA.com 2-, 3-, 4- and 5-player lineup tables into Sports Terminal raw storage."
+    )
     parser.add_argument("--start", default="1996-97", help="Oldest season to attempt, e.g. 1996-97")
     parser.add_argument("--end", default="2025-26", help="Newest season to attempt, e.g. 2025-26")
     parser.add_argument("--season-type", choices=("regular", "playoffs", "both"), default="both")
     parser.add_argument("--surface", choices=(*SURFACES.keys(), "all"), default="all")
+    parser.add_argument(
+        "--group-quantity",
+        choices=("2", "3", "4", "5", "all"),
+        default="5",
+        help="Number of players in each unit. Five-man remains the default for backward compatibility.",
+    )
     parser.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_ROOT)
     parser.add_argument("--timeout", type=float, default=25.0)
     parser.add_argument("--retries", type=int, default=2)
@@ -188,6 +209,7 @@ def main() -> int:
         if args.season_type == "both"
         else ["Playoffs" if args.season_type == "playoffs" else "Regular Season"]
     )
+    group_quantities = list(GROUP_QUANTITIES) if args.group_quantity == "all" else [int(args.group_quantity)]
     seasons = [_season(year) for year in range(end, start - 1, -1)]
     raw_root = args.raw_root.expanduser().resolve()
     raw_root.mkdir(parents=True, exist_ok=True)
@@ -207,73 +229,87 @@ def main() -> int:
 
     for season in seasons:
         for season_type in season_types:
-            for surface in surfaces:
-                destination = raw_root / surface / season / _folder(season_type)
-                normalized_path = destination / "normalized.json"
-                if normalized_path.is_file() and not args.force:
+            for group_quantity in group_quantities:
+                for surface in surfaces:
+                    destination = (
+                        raw_root
+                        / _surface_folder(surface, group_quantity)
+                        / season
+                        / _folder(season_type)
+                    )
+                    normalized_path = destination / "normalized.json"
+                    if normalized_path.is_file() and not args.force:
+                        try:
+                            existing = json.loads(normalized_path.read_text(encoding="utf-8"))
+                            count = _row_count(existing) if isinstance(existing, dict) else 0
+                        except Exception:
+                            count = 0
+                        if count:
+                            print(
+                                f"Skipping {surface} q{group_quantity} {season} {season_type}: "
+                                f"{count} rows already captured"
+                            )
+                            if args.probe_only:
+                                return 0
+                            continue
+
+                    print(f"Fetching {surface} q{group_quantity} {season} {season_type}")
+                    requests_attempted += 1
                     try:
-                        existing = json.loads(normalized_path.read_text(encoding="utf-8"))
-                        count = _row_count(existing) if isinstance(existing, dict) else 0
-                    except Exception:
-                        count = 0
-                    if count:
-                        print(f"Skipping {surface} {season} {season_type}: {count} rows already captured")
-                        if args.probe_only:
-                            return 0
-                        continue
+                        payload = _fetch(
+                            session,
+                            params=_params(
+                                season,
+                                season_type,
+                                SURFACES[surface],
+                                group_quantity,
+                            ),
+                            timeout=args.timeout,
+                            retries=args.retries,
+                        )
+                        normalized = _normalize(payload, group_quantity)
+                        count = _row_count(normalized)
+                        destination.mkdir(parents=True, exist_ok=True)
+                        (destination / "response.json").write_text(
+                            json.dumps(payload, ensure_ascii=False),
+                            encoding="utf-8",
+                        )
+                        normalized_path.write_text(
+                            json.dumps(normalized, ensure_ascii=False, indent=2),
+                            encoding="utf-8",
+                        )
+                        (destination / "metadata.json").write_text(
+                            json.dumps(
+                                {
+                                    "source": "NBA.com",
+                                    "endpoint": "leaguedashlineups",
+                                    "surface": surface,
+                                    "season": season,
+                                    "season_type": season_type,
+                                    "measure_type": SURFACES[surface],
+                                    "group_quantity": group_quantity,
+                                    "rows": count,
+                                    "transport": "curl_cffi chrome impersonation",
+                                },
+                                indent=2,
+                            ),
+                            encoding="utf-8",
+                        )
+                        captures += 1
+                        rows_total += count
+                        print(f"  {count} rows")
+                    except Exception as exc:  # noqa: BLE001
+                        failures += 1
+                        print(f"  FAILED: {exc}", file=sys.stderr)
+                        # If the very first probe cannot reach NBA.com, stop quickly
+                        # instead of wasting minutes on every historical sample.
+                        if requests_attempted == 1 and captures == 0:
+                            print("First lineup request failed; aborting this run early.", file=sys.stderr)
+                            return 3
 
-                print(f"Fetching {surface} {season} {season_type}")
-                requests_attempted += 1
-                try:
-                    payload = _fetch(
-                        session,
-                        params=_params(season, season_type, SURFACES[surface]),
-                        timeout=args.timeout,
-                        retries=args.retries,
-                    )
-                    normalized = _normalize(payload)
-                    count = _row_count(normalized)
-                    destination.mkdir(parents=True, exist_ok=True)
-                    (destination / "response.json").write_text(
-                        json.dumps(payload, ensure_ascii=False),
-                        encoding="utf-8",
-                    )
-                    normalized_path.write_text(
-                        json.dumps(normalized, ensure_ascii=False, indent=2),
-                        encoding="utf-8",
-                    )
-                    (destination / "metadata.json").write_text(
-                        json.dumps(
-                            {
-                                "source": "NBA.com",
-                                "endpoint": "leaguedashlineups",
-                                "surface": surface,
-                                "season": season,
-                                "season_type": season_type,
-                                "measure_type": SURFACES[surface],
-                                "group_quantity": 5,
-                                "rows": count,
-                                "transport": "curl_cffi chrome impersonation",
-                            },
-                            indent=2,
-                        ),
-                        encoding="utf-8",
-                    )
-                    captures += 1
-                    rows_total += count
-                    print(f"  {count} rows")
-                except Exception as exc:  # noqa: BLE001
-                    failures += 1
-                    print(f"  FAILED: {exc}", file=sys.stderr)
-                    # If the very first probe cannot reach NBA.com, stop quickly
-                    # instead of wasting minutes on every historical season.
-                    if requests_attempted == 1 and captures == 0:
-                        print("First lineup request failed; aborting this run early.", file=sys.stderr)
-                        return 3
-
-                if args.probe_only:
-                    return 0 if captures else 3
-                time.sleep(max(0.0, args.delay) + random.random() * 0.25)
+                    if args.probe_only:
+                        return 0 if captures else 3
+                    time.sleep(max(0.0, args.delay) + random.random() * 0.25)
 
     print(
         f"NBA.com lineup fetch summary: requests={requests_attempted}, "
