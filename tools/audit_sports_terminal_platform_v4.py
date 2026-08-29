@@ -8,28 +8,41 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# This audit intentionally validates the current traditional website architecture,
+# not implementation details from the earlier terminal-style/V2 prototype.
 CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
     "lib/widgets/app_entry_gate.dart": (
-        "TraditionalWebsiteShellV2",
+        "TraditionalWebsiteShell(",
+        "traditional_website_shell.dart",
     ),
-    "lib/widgets/traditional_website_shell_v2.dart": (
+    "lib/widgets/traditional_website_shell.dart": (
+        "traditional_website_shell_impl.dart",
+    ),
+    "lib/widgets/traditional_website_shell_impl.dart": (
         "Home",
         "Stats",
         "Advanced Stats",
+        "Lineup Analysis",
         "Trade Machine",
+        "Front Office",
+        "Research",
+        "Community",
+        "Player Compare",
+        "Stat Glossary",
+        "Data Coverage",
         "Search players & teams",
-        "WebsiteNbaHomeDashboard",
-        "WebsiteNbaStatsScreen",
-        "WebsiteNbaAdvancedStatsScreen",
-        "WebsiteTradeMachineScreen",
+        "Python Lab · detached",
+        "Excel Workspace · detached",
+        "maxWidth: 1840",
     ),
     "lib/services/website_nba_api_service.dart": (
         "WebsiteNbaStaticRepository",
         "Historical basketball data is now a static website concern",
-        "FastAPI request",
-        "runtime SQLite query",
-        "current-season overlays",
         "seasonDashboard",
+        "seasonSnapshot",
+        "playerDossier",
+        "teamDossier",
+        "searchEntities",
     ),
     "lib/services/website_nba_static_repository.dart": (
         "data/nba_static",
@@ -46,20 +59,27 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
         "history/coverage.json",
     ),
     "tools/build_static_nba_website_data_v2.py": (
-        "sports-terminal-static-nba-website-v3",
-        "sports-terminal-static-dashboard-v1",
-        "dashboard_file_count",
+        "sports-terminal-static-nba-website-v4",
+        "sports-terminal-static-dashboard-v2",
+        "historical_http_api_required",
+        "sqlite_required_by_browser",
+        "live_overlay_supported",
         "dashboard_precomputed",
+        "enrich_static_corpus",
+        "materialize_lineups",
+    ),
+    "tools/build_static_nba_website_data_v2_core.py": (
         "players/index.json",
         "teams/index.json",
         "games/index.json",
         "history/awards.json",
         "history/all_star.json",
         "history/draft.json",
-        "historical_http_api_required",
-        "sqlite_required_by_browser",
-        "live_overlay_supported",
-        "correlated aggregates",
+        "history/coverage.json",
+        "dashboard_file_count",
+        "sports-terminal-static-nba-website-v4",
+        "sports-terminal-static-dashboard-v2",
+        "KNOWN_MISSING_SEASONS",
     ),
     "tools/build_static_nba_game_data.py": (
         "sports-terminal-static-game-v1",
@@ -76,15 +96,16 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
     "lib/screens/website_nba_home_dashboard.dart": (
         "NBA Dashboard",
         "seasonDashboard",
-        "League leaders",
+        "Player leaders · Top 10",
+        "Team leaders · Top 10",
         "Teams",
         "Recent results",
-        "No runtime NBA API is required",
+        "static NBA historical release",
         "openWebsiteNbaPlayerPage",
         "openWebsiteNbaTeamPage",
     ),
     "lib/screens/website_nba_stats_screen.dart": (
-        "NBA Stats",
+        "Stats",
         "Regular Season",
         "Playoffs",
         "Search players",
@@ -97,11 +118,14 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
         "APG",
         "SPG",
         "BPG",
-        "TOV",
+        "TPG",
+        "PF",
         "FG%",
         "3P%",
         "FT%",
-        "DataTable",
+        "values: const [0, 65, 60, 50, 40, 30]",
+        "values: const [0, 20, 15, 10]",
+        "WebsiteStickyStatsTable",
         "openWebsiteNbaPlayerPage",
         "openWebsiteNbaTeamPage",
     ),
@@ -116,8 +140,43 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
         "Clutch",
         "Gravity & Spacing",
         "On / Off",
-        "Lineups & Play Types",
-        "will not manufacture values",
+        "explicit source boundaries",
+        "Missing source coverage stays visible as —",
+        "3P DFG% is the opponent",
+        "WebsiteStickyStatsTable",
+    ),
+    "lib/screens/website_nba_lineup_analysis_screen.dart": (
+        "Lineup Analysis",
+        "LeagueDashLineups",
+        "Unit size",
+        "Search players in lineups",
+        "Metric group",
+        "WebsiteStickyStatsTable",
+        "Copy CSV",
+    ),
+    "lib/screens/website_nba_player_compare_screen.dart": (
+        "Player Compare",
+        "Maximum 4 players selected",
+        "same season, season type and per-game basis",
+        "_CompareMetric('three_pct', '3P%'",
+        "WebsiteStickyStatsTable",
+    ),
+    "lib/screens/website_nba_stat_glossary_screen.dart": (
+        "NBA Stat Glossary",
+        "3P DFG%",
+        "This is not the defender’s own 3P%",
+    ),
+    "lib/screens/website_nba_data_coverage_screen.dart": (
+        "NBA Data Coverage",
+        "Static historical delivery",
+        "Offensive 3P% and 3P DFG% are distinct measures",
+        "lineups/manifest.json",
+    ),
+    "lib/widgets/website_sticky_stats_table.dart": (
+        "Conventional, borderless website statistics table",
+        "The page owns all vertical scrolling",
+        "scrollDirection: Axis.horizontal",
+        "first column stays frozen horizontally",
     ),
     "lib/screens/website_nba_entity_pages.dart": (
         "WebsiteNbaPlayerPage",
@@ -147,6 +206,11 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
         "draft_assets.json",
         "team_positions.json",
     ),
+    "tools/nba_com_lineup_static_enrichment.py": (
+        "sports-terminal-static-lineups-v2",
+        "GROUP_QUANTITIES = (2, 3, 4, 5)",
+        "group_quantity",
+    ),
     "scripts/open_terminal.sh": (
         "data/warehouse/nba_history.sqlite",
         "SPORTS_TERMINAL_NBA_HISTORY_DB",
@@ -155,7 +219,6 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
         "build_static_nba_game_data.py",
         "build_static_front_office_snapshot.py",
         "validate_static_nba_corpus",
-        "dashboard/{latest}.json",
         "--materialize-pbp",
         "--skip-pbp",
         "web/data/nba_static",
@@ -191,6 +254,7 @@ CONVERGENCE_ASSERTIONS: dict[str, tuple[str, ...]] = {
     ".github/workflows/flutter_quality.yml": (
         "workflow_dispatch",
         "static_nba_website_contract_test.py",
+        "audit_traditional_website_stats_v2.py --check",
         "audit_sports_terminal_platform_v4.py --check",
     ),
 }
@@ -236,7 +300,7 @@ def main() -> int:
         "RoleResearchAugmentedShell(",
         "LaunchRoleProductShell(",
         "AdminNbaTerminalOverlay(",
-        "TraditionalWebsiteShell(",
+        "TraditionalWebsiteShellV2(",
     ):
         assertions += 1
         if forbidden not in entry_text:
@@ -247,7 +311,7 @@ def main() -> int:
                 "missing": f"default customer entry must not mount {forbidden}",
             })
 
-    website_text = (ROOT / "lib/widgets/traditional_website_shell_v2.dart").read_text(encoding="utf-8")
+    website_text = (ROOT / "lib/widgets/traditional_website_shell_impl.dart").read_text(encoding="utf-8")
     for forbidden in (
         "label: 'Workspace'",
         "label: 'Python Lab'",
@@ -262,8 +326,23 @@ def main() -> int:
             passed += 1
         else:
             failures.append({
-                "path": "lib/widgets/traditional_website_shell_v2.dart",
+                "path": "lib/widgets/traditional_website_shell_impl.dart",
                 "missing": f"primary website must not expose {forbidden}",
+            })
+
+    table_text = (ROOT / "lib/widgets/website_sticky_stats_table.dart").read_text(encoding="utf-8")
+    for forbidden in (
+        "scrollDirection: Axis.vertical",
+        "Border(bottom:",
+        "return Card(",
+    ):
+        assertions += 1
+        if forbidden not in table_text:
+            passed += 1
+        else:
+            failures.append({
+                "path": "lib/widgets/website_sticky_stats_table.dart",
+                "missing": f"traditional stats tables must not use {forbidden}",
             })
 
     historical_facade = (ROOT / "lib/services/website_nba_api_service.dart").read_text(encoding="utf-8")
