@@ -26,6 +26,9 @@ CHECKS: dict[str, list[str]] = {
         "The page owns all vertical scrolling",
         "scrollDirection: Axis.horizontal",
         "first column stays frozen horizontally",
+        "Conventional, borderless website statistics table",
+        "ClipRRect",
+        "stripeRows",
     ],
     "lib/widgets/website_pagination.dart": [
         "const [10, 20, 50, 100]",
@@ -40,16 +43,26 @@ CHECKS: dict[str, list[str]] = {
         "LeagueDashLineups",
         "data/nba_static/lineups/",
         "WebsiteStickyStatsTable",
+        "Unit size",
+        "Search players in lineups",
+        "Lineup GP",
+        "Metric group",
+        "_openMembers",
+        "q$_groupQuantity",
     ],
     "tools/nba_com_lineup_static_enrichment.py": [
         "lineups_advanced",
         "lineups_base",
-        "sports-terminal-static-lineups-v1",
+        "sports-terminal-static-lineups-v2",
+        "GROUP_QUANTITIES = (2, 3, 4, 5)",
+        "group_quantity",
     ],
     "tools/fetch_nba_com_lineups.py": [
         "leaguedashlineups",
         "impersonate=\"chrome\"",
         "GroupQuantity",
+        "--group-quantity",
+        "GROUP_QUANTITIES = (2, 3, 4, 5)",
     ],
 }
 
@@ -73,6 +86,10 @@ def audit() -> dict[str, object]:
             failures.append("stats table reintroduced cell/header separator lines")
         if "scrollDirection: Axis.vertical" in text:
             failures.append("stats table reintroduced internal vertical scrolling")
+        if "return Card(" in text:
+            failures.append("stats table reintroduced global Card border styling")
+        if "elevation: _stickyOffset > 0 ? 2 : 0" in text:
+            failures.append("stats table reintroduced sticky-header shadow rule")
 
     pagination = ROOT / "lib/widgets/website_pagination.dart"
     if pagination.is_file() and "Custom rows per page" in pagination.read_text(encoding="utf-8"):
@@ -92,8 +109,17 @@ def audit() -> dict[str, object]:
         if offensive == defended:
             failures.append("offensive and defended 3P percentage keys collided")
 
+    lineup_fetcher = ROOT / "tools/fetch_nba_com_lineups.py"
+    lineup_materializer = ROOT / "tools/nba_com_lineup_static_enrichment.py"
+    if lineup_fetcher.is_file() and lineup_materializer.is_file():
+        fetcher_text = lineup_fetcher.read_text(encoding="utf-8")
+        materializer_text = lineup_materializer.read_text(encoding="utf-8")
+        for quantity in (2, 3, 4, 5):
+            if str(quantity) not in fetcher_text or str(quantity) not in materializer_text:
+                failures.append(f"lineup pipeline missing {quantity}-player unit support")
+
     return {
-        "contract": "sports-terminal-traditional-stats-ux-v2",
+        "contract": "sports-terminal-traditional-stats-ux-v3",
         "files_checked": len(CHECKS),
         "failures": failures,
         "status": "pass" if not failures else "fail",
