@@ -14,8 +14,10 @@ import '../screens/product_nba_public_pages_screen.dart';
 import '../screens/product_profile_v3_screen.dart';
 import '../screens/product_transaction_command_center_screen.dart';
 import '../screens/website_nba_advanced_stats_screen.dart';
+import '../screens/website_nba_data_coverage_screen.dart';
 import '../screens/website_nba_entity_pages.dart';
 import '../screens/website_nba_lineup_analysis_screen.dart';
+import '../screens/website_nba_stat_glossary_screen.dart';
 import '../screens/website_nba_stats_screen.dart';
 import '../screens/website_trade_machine_screen.dart';
 import '../services/product_local_store.dart';
@@ -109,6 +111,18 @@ class _TraditionalWebsiteShellState extends State<TraditionalWebsiteShell> {
           builder: () => WebsiteNbaDataGate(
             builder: (_, _) => const ProductAdvancedNbaToolsScreen(),
           ),
+        ),
+        _Destination(
+          id: 'nba-glossary',
+          label: 'Stat Glossary',
+          icon: Icons.menu_book_outlined,
+          builder: () => const WebsiteNbaStatGlossaryScreen(),
+        ),
+        _Destination(
+          id: 'nba-data-coverage',
+          label: 'Data Coverage',
+          icon: Icons.dataset_outlined,
+          builder: () => const WebsiteNbaDataCoverageScreen(),
         ),
       ];
 
