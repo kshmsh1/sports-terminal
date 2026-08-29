@@ -8,6 +8,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from tools.build_static_nba_website_data_v2_core import build as build_core  # noqa: E402
+from tools.nba_com_lineup_static_enrichment import materialize_lineups  # noqa: E402
 from tools.nba_com_static_enrichment import enrich_static_corpus  # noqa: E402
 
 DEFAULT_OUTPUT = ROOT / "web/data/nba_static"
@@ -26,15 +27,23 @@ def _output_from_argv() -> Path:
 def build() -> int:
     """Build the canonical static corpus, then join authorized NBA.com captures.
 
-    The core compiler remains unchanged and may skip its expensive warehouse pass
-    when the SQLite fingerprint is current. The enrichment layer has its own raw
-    capture fingerprint, so newly imported NBA.com JSON still reaches the website
-    on the very next normal launch without requiring --rebuild-static.
+    Player/team historical materialization and lineup materialization are both
+    local-only build steps. A normal website launch never needs a runtime NBA.com
+    request for already-captured historical data.
     """
     result = build_core()
     if result != 0:
         return result
-    enrich_static_corpus(_output_from_argv())
+    output = _output_from_argv()
+    enrich_static_corpus(output)
+    lineup_result = materialize_lineups(output)
+    if lineup_result["captures"]:
+        print(
+            "Static NBA.com lineups: "
+            f"{lineup_result['captures']} captures; "
+            f"{lineup_result['rows']} rows; "
+            f"{lineup_result['datasets']} datasets"
+        )
     return 0
 
 
