@@ -41,7 +41,7 @@ def check_registry() -> None:
 
 def check_confirmed_request_contracts() -> None:
     contract = request_contracts()
-    assert contract["contract"] == "sports-terminal-nba-com-confirmed-requests-v5"
+    assert contract["contract"] == "sports-terminal-nba-com-confirmed-requests-v6"
     assert contract["sensitive_headers_persisted"] is False
 
     aggregate = contract["requests"]["players_advanced"]
