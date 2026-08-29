@@ -424,7 +424,7 @@ const _metrics = <_CompareMetric>[
   _CompareMetric('tov', 'TPG', 'Traditional'),
   _CompareMetric('pf', 'PF', 'Traditional'),
   _CompareMetric('fg_pct', 'FG%', 'Shooting', percent: true),
-  _CompareMetric('fg3_pct', '3P%', 'Shooting', percent: true),
+  _CompareMetric('three_pct', '3P%', 'Shooting', percent: true),
   _CompareMetric('ft_pct', 'FT%', 'Shooting', percent: true),
   _CompareMetric('efg_pct', 'eFG%', 'Efficiency', percent: true),
   _CompareMetric('ts_pct', 'TS%', 'Efficiency', percent: true),
