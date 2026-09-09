@@ -1,6 +1,6 @@
 {
   "contract": "sports-terminal-master-blueprint-v1",
-  "asOf": "2026-08-15",
+  "asOf": "2026-09-08",
   "principles": [
     "platform-not-website",
     "canonical-identities-and-events",
@@ -41,7 +41,17 @@
     "deterministic_watch_engine": "implemented",
     "portable_research_bundles": "implemented",
     "rights_gated_research_export": "implemented",
-    "institutional_research_os": "implemented"
+    "institutional_research_os": "implemented",
+    "traditional_nba_home_dashboard": "implemented",
+    "traditional_stats_qualification_filters": "implemented",
+    "borderless_page_scroll_stats_tables": "implemented",
+    "source_distinct_defended_shooting": "implemented",
+    "traditional_lineup_analysis": "implemented",
+    "traditional_game_finder_and_game_object": "implemented",
+    "traditional_team_compare": "implemented",
+    "traditional_watchlist": "implemented",
+    "static_historical_game_delivery": "implemented",
+    "traditional_player_and_team_deep_links": "implemented"
   },
   "rightsOrExternalDependency": {
     "official_live_nba_feed": "rights-blocked",
