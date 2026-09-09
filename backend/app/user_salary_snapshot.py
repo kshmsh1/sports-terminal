@@ -21,11 +21,7 @@ LUXURY_TAX = 200_428_000
 FIRST_APRON = 209_015_000
 SECOND_APRON = 221_686_000
 SEASONS = ("2026-27", "2027-28", "2028-29", "2029-30", "2030-31", "2031-32")
-TEAM_ALIASES = {
-    "BRK": "BKN",
-    "CHO": "CHA",
-    "PHO": "PHX",
-}
+TEAM_ALIASES = {"BRK": "BKN", "CHO": "CHA", "PHO": "PHX"}
 ACTIVE_TEAM_OVERRIDES = {
     "Damian Lillard": {
         "team": "POR",
@@ -56,9 +52,7 @@ ACTIVE_TEAM_OVERRIDES = {
 
 def _money(value: str | None) -> int:
     raw = (value or "").strip().replace("$", "").replace(",", "")
-    if not raw:
-        return 0
-    return int(raw)
+    return int(raw) if raw else 0
 
 
 def _canonical_team(value: str | None) -> str:
@@ -74,10 +68,7 @@ def _slug(value: str) -> str:
 
 def load_player_rows() -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    files = sorted(DATA_DIR.glob(PLAYER_GLOB))
-    if not files:
-        return rows
-    for path in files:
+    for path in sorted(DATA_DIR.glob(PLAYER_GLOB)):
         with path.open(newline="", encoding="utf-8") as handle:
             for raw in csv.DictReader(handle):
                 row = dict(raw)
@@ -106,6 +97,53 @@ def load_team_rows() -> list[dict[str, Any]]:
     return rows
 
 
+def _unique_player_rows() -> tuple[list[dict[str, Any]], set[str]]:
+    rows = load_player_rows()
+    teams_by_name: dict[str, set[str]] = defaultdict(set)
+    for row in rows:
+        teams_by_name[str(row["player"])].add(str(row["team"]))
+    multi_team_names = {name for name, teams in teams_by_name.items() if len(teams) > 1}
+    seen: set[tuple[Any, ...]] = set()
+    unique: list[dict[str, Any]] = []
+    for row in rows:
+        key = (
+            row["player"],
+            row["team"],
+            *(row[season] for season in SEASONS),
+            row["guaranteed"],
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(row)
+    return unique, multi_team_names
+
+
+def _retained_payroll_obligations() -> list[dict[str, Any]]:
+    rows, multi_team_names = _unique_player_rows()
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        name = str(row["player"])
+        override = ACTIVE_TEAM_OVERRIDES.get(name)
+        if name not in multi_team_names or not override:
+            continue
+        team = str(row["team"])
+        active_team = str(override["team"])
+        if team == active_team:
+            continue
+        out.append({
+            "player_name": name,
+            "team_id": team,
+            "official_current_team": active_team,
+            "salary": int(row[SEASON]),
+            "remaining_guaranteed_total": int(row["guaranteed"]),
+            "future_salary": {season: int(row[season]) for season in SEASONS},
+            "source_team_abbreviation": row.get("source_team", team),
+            "current_team_source_url": str(override["source_url"]),
+        })
+    return out
+
+
 def snapshot_diagnostics() -> dict[str, Any]:
     players = load_player_rows()
     teams = load_team_rows()
@@ -122,64 +160,37 @@ def snapshot_diagnostics() -> dict[str, Any]:
         )
         exact_keys[key] += 1
         team_player_sum[str(row["team"])] += int(row[SEASON])
-    multi_team = sorted(name for name, values in name_teams.items() if len(values) > 1)
-    exact_duplicate_rows = sum(count - 1 for count in exact_keys.values() if count > 1)
-    team_variance = {
-        str(row["team_id"]): int(row[SEASON]) - team_player_sum[str(row["team_id"])]
-        for row in teams
-    }
     return {
         "player_rows": len(players),
         "team_rows": len(teams),
-        "multi_team_player_names": multi_team,
-        "exact_duplicate_rows": exact_duplicate_rows,
+        "multi_team_player_names": sorted(name for name, values in name_teams.items() if len(values) > 1),
+        "exact_duplicate_rows": sum(count - 1 for count in exact_keys.values() if count > 1),
         "team_player_sum": dict(team_player_sum),
-        "team_aggregate_variance": team_variance,
-        "team_aliases": dict(TEAM_ALIASES),
-        "active_team_overrides": {
-            name: value["team"] for name, value in ACTIVE_TEAM_OVERRIDES.items()
+        "team_aggregate_variance": {
+            str(row["team_id"]): int(row[SEASON]) - team_player_sum[str(row["team_id"])]
+            for row in teams
         },
+        "team_aliases": dict(TEAM_ALIASES),
+        "active_team_overrides": {name: value["team"] for name, value in ACTIVE_TEAM_OVERRIDES.items()},
+        "retained_payroll_obligations": _retained_payroll_obligations(),
     }
 
 
-def _unique_player_rows() -> tuple[list[dict[str, Any]], set[str]]:
-    rows = load_player_rows()
-    teams_by_name: dict[str, set[str]] = defaultdict(set)
-    for row in rows:
-        teams_by_name[str(row["player"])].add(str(row["team"]))
-    ambiguous_names = {name for name, teams in teams_by_name.items() if len(teams) > 1}
-
-    seen_exact: set[tuple[Any, ...]] = set()
-    unique: list[dict[str, Any]] = []
-    for row in rows:
-        key = (
-            row["player"],
-            row["team"],
-            *(row[season] for season in SEASONS),
-            row["guaranteed"],
-        )
-        if key in seen_exact:
-            continue
-        seen_exact.add(key)
-        unique.append(row)
-    return unique, ambiguous_names
-
-
 def contract_seed_records() -> list[dict[str, Any]]:
-    rows, ambiguous_names = _unique_player_rows()
+    rows, multi_team_names = _unique_player_rows()
     out: list[dict[str, Any]] = []
     for row in rows:
         player_name = str(row["player"])
         team = str(row["team"])
+        override = ACTIVE_TEAM_OVERRIDES.get(player_name)
+        active_team = str(override["team"]) if override else ""
+        multi_team = player_name in multi_team_names
+        if multi_team and active_team and team != active_team:
+            # Keep retained/buyout dollars in the raw source and team aggregate
+            # reconciliation layer, not in the active roster/tradeable contract catalog.
+            continue
+        unresolved_multi_team = multi_team and not active_team
         player_slug = _slug(player_name)
-        ambiguous = player_name in ambiguous_names
-        active_override = ACTIVE_TEAM_OVERRIDES.get(player_name)
-        active_team = str(active_override["team"]) if active_override else ""
-        active_reconciled = bool(active_team)
-        is_active_contract = not ambiguous or team == active_team
-        retained_obligation = ambiguous and active_reconciled and team != active_team
-        unresolved_ambiguous = ambiguous and not active_reconciled
-        tradeable = is_active_contract and not unresolved_ambiguous
         years = [
             {
                 "season": season,
@@ -197,55 +208,47 @@ def contract_seed_records() -> list[dict[str, Any]]:
             if int(row[season]) > 0
         ]
         record_id = f"user-salary-2026-27:{team}:{player_slug}:{row['rank']}"
-        if retained_obligation:
-            contract_type = "retained_payroll_obligation"
-            notes = (
-                "The supplied salary table contains this player on multiple teams. NBA.com identifies a different current team, so this row is retained as a non-transferable payroll obligation rather than an active contract."
-            )
-            restriction_reason = f"retained payroll obligation; current NBA team is {active_team}"
-        elif unresolved_ambiguous:
-            contract_type = "payroll_obligation"
-            notes = (
-                "Multi-team payroll obligation in the supplied table; active contract team is unresolved and the row must not be treated as tradeable."
-            )
-            restriction_reason = "multi-team payroll obligation requires active-team reconciliation"
-        else:
-            contract_type = "standard"
-            notes = (
-                "Salary schedule transcribed from the user-supplied 2026-27 salary table. Contract clauses not shown in the table remain unknown."
-            )
-            restriction_reason = ""
         record = {
             "id": record_id,
             "player_id": player_slug,
             "player_name": player_name,
             "team_id": team,
             "season": SEASON,
-            "contract_type": contract_type,
+            "contract_type": "payroll_obligation" if unresolved_multi_team else "standard",
             "years": years,
+            # These fields are schema-compatible defaults only. The supplied table
+            # does not verify trade clauses; metadata below forces review semantics.
             "no_trade_clause": False,
             "trade_bonus_percent": 0,
             "bird_rights": "unknown",
             "two_way": False,
             "source_status": "uploaded",
             "source_label": SOURCE_LABEL,
-            "source_url": str(active_override["source_url"]) if active_override else "",
+            "source_url": str(override["source_url"]) if override else "",
             "source_document_id": SOURCE_DOCUMENT_ID,
             "as_of_date": AS_OF_DATE,
-            "notes": notes,
+            "notes": (
+                "Multi-team payroll obligation remains unresolved; active-team verification is required."
+                if unresolved_multi_team
+                else "Salary schedule transcribed from the user-supplied 2026-27 salary table. Contract clauses not shown in the table remain unknown."
+            ),
             "metadata": {
                 "rank": int(row["rank"]),
                 "remaining_guaranteed_total": int(row["guaranteed"]),
                 "snapshot_kind": "user_supplied_salary_table",
                 "source_team_abbreviation": row.get("source_team", team),
                 "canonical_team_abbreviation": team,
-                "multi_team_obligation": ambiguous,
-                "active_team_reconciled": active_reconciled,
+                "multi_team_obligation": multi_team,
+                "active_team_reconciled": bool(active_team),
                 "official_current_team": active_team or None,
-                "retained_payroll_obligation": retained_obligation,
-                "tradeable": tradeable,
-                "trade_restricted": not tradeable,
-                "restriction_reason": restriction_reason,
+                "tradeable": not unresolved_multi_team,
+                "trade_restricted": unresolved_multi_team,
+                "restriction_reason": (
+                    "multi-team payroll obligation requires active-team reconciliation"
+                    if unresolved_multi_team else ""
+                ),
+                "contract_terms_verified": False,
+                "option_terms_verified": False,
                 "guarantee_total_is_not_year_allocation": True,
             },
         }
@@ -256,6 +259,9 @@ def contract_seed_records() -> list[dict[str, Any]]:
 def team_position_seed_records() -> list[dict[str, Any]]:
     diagnostics = snapshot_diagnostics()
     row_sum = diagnostics["team_player_sum"]
+    retained_by_team: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for obligation in diagnostics["retained_payroll_obligations"]:
+        retained_by_team[str(obligation["team_id"])].append(obligation)
     out: list[dict[str, Any]] = []
     for row in load_team_rows():
         team = str(row["team_id"])
@@ -293,6 +299,7 @@ def team_position_seed_records() -> list[dict[str, Any]]:
                 "player_row_sum_variance": reported - summed,
                 "payroll_total_not_cba_team_salary": True,
                 "future_payroll": {season: int(row[season]) for season in SEASONS},
+                "retained_payroll_obligations": retained_by_team.get(team, []),
             },
         }
         out.append(_wrapper("team_position", record_id, team, "", record))
@@ -339,8 +346,7 @@ def merge_seed_records(
         return live_rows
     canonical_team_id = _canonical_team(team_id)
     filtered = [
-        row
-        for row in seed_rows
+        row for row in seed_rows
         if (not canonical_team_id or row["team_id"] == canonical_team_id)
         and (not player_id or row["player_id"] == player_id)
         and (not source_status or row["source_status"] == source_status)
