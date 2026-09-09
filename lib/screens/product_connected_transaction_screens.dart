@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/app_session.dart';
 import '../services/transaction_case_convergence_service.dart';
 import 'product_front_office_scenario_screen.dart';
-import 'product_trade_machine_v2_screen.dart';
+import 'product_trade_machine_workbench_screen.dart';
 
 const _navy = Color(0xFF071A33);
 const _blue = Color(0xFF2563EB);
@@ -27,10 +27,10 @@ class ProductConnectedTradeMachineScreen extends StatelessWidget {
       session: session,
       organizationMode: organizationMode,
       source: 'Trade Machine',
-      title: 'Turn the current trade scenario into a governed case.',
+      title: 'Build a complete multi-team transaction, then govern it as a case.',
       body:
-          'Save the scenario in the Trade Machine, then create a persistent case with its teams, routed assets, operating year and source identity.',
-      child: ProductTradeMachineV2Screen(session: session),
+          'Use the live 2–5 team workbench to inspect contracts, draft capital, rights, holds, exceptions and cash, route assets, and resolve CBA findings before creating a persistent transaction case.',
+      child: ProductTradeMachineWorkbenchScreen(session: session),
     );
   }
 }
