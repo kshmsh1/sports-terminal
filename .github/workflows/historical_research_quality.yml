@@ -41,6 +41,9 @@ jobs:
       - name: User-supplied 2026-27 salary snapshot contract
         run: python backend/scripts/user_salary_snapshot_contract_test.py
 
+      - name: Snapshot-backed trade machine teams API contract
+        run: python backend/scripts/trade_machine_snapshot_api_contract_test.py
+
       - name: 2026-27 CBA cap accounting contract
         run: python backend/scripts/cap_accounting_contract_test.py
 
