@@ -33,7 +33,10 @@ jobs:
         run: python -m pip install -r backend/requirements.txt
 
       - name: Compile historical backend
-        run: python -m compileall -q backend/app tools
+        run: python -m compileall -q backend/app tools backend/scripts/nba_contracts_pipeline.py
+
+      - name: NBA salary and contract ingestion parser contract
+        run: python backend/scripts/test_nba_contracts_pipeline.py
 
       - name: Raw historical import contract
         run: python backend/scripts/historical_import_contract_test.py
