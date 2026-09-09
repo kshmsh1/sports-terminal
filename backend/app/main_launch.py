@@ -30,6 +30,7 @@ from .operations import launch_operations_middleware
 from .pre_capital_readiness_api import router as pre_capital_readiness_router
 from .profile_api import router as profile_router
 from .python_runtime_api import router as python_runtime_router
+from .trade_machine_api import router as trade_machine_router
 from .trust_safety_api import router as trust_safety_router
 from .workspace_api import router as workspace_router
 
@@ -45,14 +46,14 @@ front_office_module.front_office_reconciliation = hardened_reconciliation(
 )
 
 app.title = "Sports Terminal Launch API"
-app.version = "1.10.0"
+app.version = "1.11.0"
 app.description = (
     "Launch-oriented Sports Terminal API for authentication, certified and historical NBA data, "
     "source-aware modern NBA tracking/stat overlays, canonical awards and voting, canonical "
-    "contracts and draft assets, transaction ledgers, ranked community discovery, threaded "
-    "discussion, moderation and messaging, isolated Python analysis, customer operations, launch "
-    "automation, organization governance, versioned workspaces, saved sports objects, platform "
-    "operations, pre-capital readiness, and the unified NBA terminal."
+    "contracts and draft assets, a CBA-aware NBA trade machine, transaction ledgers, ranked "
+    "community discovery, threaded discussion, moderation and messaging, isolated Python analysis, "
+    "customer operations, launch automation, organization governance, versioned workspaces, saved "
+    "sports objects, platform operations, pre-capital readiness, and the unified NBA terminal."
 )
 
 app.middleware("http")(enforce_launch_auth)
@@ -90,13 +91,14 @@ def _attach_router_routes(router) -> None:
 app.include_router(auth_router)
 app.include_router(launch_router)
 app.include_router(workspace_router)
-# Historical, awards, modern-metric and terminal routes must be registered before
-# /v2/nba/{season}/{dataset}; otherwise the dynamic certified-release route can
-# interpret their path prefix as a season.
+# Historical, awards, modern-metric, trade-machine and terminal routes must be
+# registered before /v2/nba/{season}/{dataset}; otherwise the dynamic certified-
+# release route can interpret their path prefix as a season.
 _attach_router_routes(historical_nba_router)
 _attach_router_routes(historical_nba_compat_router)
 _attach_router_routes(nba_awards_router)
 _attach_router_routes(nba_modern_metrics_router)
+_attach_router_routes(trade_machine_router)
 # Terminal routes receive the same explicit ordering guarantee. This also avoids
 # FastAPI route-snapshot behavior when the shared app object has been imported by a
 # contract harness before launch composition finishes.
