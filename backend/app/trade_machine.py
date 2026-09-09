@@ -154,10 +154,15 @@ def annual_cash_limit(cap: CapLevels, rules: dict[str, Any]) -> int:
     return round(cap.salary_cap * pct)
 
 
-def expanded_tpe_limit(outgoing_salary: int, cap: CapLevels, rules: dict[str, Any]) -> int:
+def expanded_tpe_limit(
+    outgoing_salary: int,
+    cap: CapLevels,
+    rules: dict[str, Any],
+    allowance: int = 250_000,
+) -> int:
     scaled_additive = scaled_expanded_additive(cap, rules)
-    branch_y = min(2 * outgoing_salary + 250_000, outgoing_salary + scaled_additive)
-    branch_z = round(1.25 * outgoing_salary) + 250_000
+    branch_y = min(2 * outgoing_salary + allowance, outgoing_salary + scaled_additive)
+    branch_z = round(1.25 * outgoing_salary) + allowance
     return max(branch_y, branch_z)
 
 
@@ -216,37 +221,38 @@ def _matching_paths(
     outgoing = sum(p.outgoing_match_salary for p in leg.outgoing)
     incoming = sum(p.incoming_match_salary for p in leg.incoming)
     paths: list[MatchingPath] = []
+    allowance = 0 if post_apron > cap.first_apron else 250_000
 
     if len(leg.outgoing) == 1:
         applicable = "first_apron" if leg.using_prior_standard_tpe_after_regular_season else None
         row = "F" if applicable else None
         paths.append(_path(
-            "standard_tpe", outgoing + 250_000, incoming, outgoing, state, post_apron, cap,
+            "standard_tpe", outgoing + allowance, incoming, outgoing, state, post_apron, cap,
             applicable, row,
-            "Article VII 6(j)(1)(i): one outgoing player may bring back up to 100% of pre-trade salary plus $250,000.",
+            "Article VII 6(j)(1)(i) and 6(j)(3): one outgoing player may bring back 100% of pre-trade salary plus the applicable allowance; the $250,000 allowance becomes $0 if post-assignment Apron Team Salary exceeds the First Apron.",
         ))
 
     if len(leg.outgoing) >= 2:
         paths.append(_path(
-            "aggregated_standard_tpe", outgoing + 250_000, incoming, outgoing, state, post_apron, cap,
+            "aggregated_standard_tpe", outgoing + allowance, incoming, outgoing, state, post_apron, cap,
             "second_apron", "H",
-            "Article VII 6(j)(1)(ii): aggregated outgoing salaries may bring back up to 100% plus $250,000; row H imposes the Second Apron.",
+            "Article VII 6(j)(1)(ii) and 6(j)(3): aggregated outgoing salaries may bring back 100% plus the applicable allowance; row H imposes the Second Apron.",
         ))
 
     if leg.outgoing:
         paths.append(_path(
-            "expanded_tpe", expanded_tpe_limit(outgoing, cap, rules), incoming, outgoing, state, post_apron, cap,
+            "expanded_tpe", expanded_tpe_limit(outgoing, cap, rules, allowance), incoming, outgoing, state, post_apron, cap,
             "first_apron", "E",
-            "Article VII 6(j)(1)(iv): expanded matching uses the greater of the CBA's 200%/scaled-additive branch and 125% branch; row E imposes the First Apron.",
+            "Article VII 6(j)(1)(iv) and 6(j)(3): expanded matching uses the greater of the CBA's 200%/scaled-additive branch and 125% branch, with the $250,000 allowance reduced to $0 above the First Apron; row E imposes the First Apron.",
         ))
 
     if state.team_salary is not None:
         room_before = max(cap.salary_cap - state.team_salary, 0)
         if room_before > 0:
             paths.append(_path(
-                "room_plus_250k", outgoing + room_before + 250_000, incoming, outgoing, state, post_apron, cap,
+                "room_plus_250k", room_before + allowance, incoming, outgoing, state, post_apron, cap,
                 None, None,
-                "Article VII 6(j)(1)(v): available Room can be combined with outgoing salary and the $250,000 allowance.",
+                "Article VII 6(j)(1)(v) and 6(j)(3): an under-cap team may acquire aggregate salary up to its available Room plus the applicable allowance; the allowance becomes $0 above the First Apron.",
             ))
 
     return paths
