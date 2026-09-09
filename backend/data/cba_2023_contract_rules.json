@@ -1,0 +1,117 @@
+{
+  "document": {
+    "title": "2023 NBA Collective Bargaining Agreement",
+    "entered_into": "2023-06-28",
+    "effective_date": "2023-07-01",
+    "source": "user-provided CBA PDF"
+  },
+  "data_model_principles": {
+    "reported_compensation_is_not_cap_hit": "Store reported salary/compensation separately from Team Salary/cap treatment; CBA Article I defines Compensation, Salary, and Team Salary separately.",
+    "guarantee_means_compensation_protection": "Track protection by category and season rather than a single guaranteed boolean when evidence is available.",
+    "cba_derived_values_are_derived": "Never overwrite a sourced figure with a CBA calculation; record the rule/reference and derived value separately."
+  },
+  "contract_types": {
+    "standard": {"reference": "Article I 1(qqq); Article II"},
+    "rookie_scale": {"reference": "Article I 1(jjj); Article VIII"},
+    "two_way": {
+      "reference": "Article I 1(yyy)-(bbbb); Article II 11",
+      "max_term_seasons": 2,
+      "option_year_allowed": false,
+      "eto_allowed": false,
+      "salary_formula": "50% of zero-YOS Minimum Annual Salary, prorated for days remaining if signed after season start"
+    },
+    "10_day": {
+      "reference": "Article II 9",
+      "earliest_standard_start": "January 5",
+      "salary": "Minimum Player Salary",
+      "max_with_same_team_per_season": 2
+    },
+    "rest_of_season": {"reference": "Article II 10", "salary_floor": "Minimum Player Salary"},
+    "exhibit_10": {
+      "reference": "Article II 3(s), 11(h)",
+      "note": "An allowable amendment to a one-season minimum contract; may include Exhibit 10 Bonus and Two-Way Player Conversion Option."
+    }
+  },
+  "compensation_protection": {
+    "reference": "Article II 3(i), Article II 4",
+    "categories": ["lack_of_skill", "death", "basketball_related_injury", "injury_or_illness", "mental_disability"],
+    "conditional_protection_supported": true
+  },
+  "option_clauses": {
+    "reference": "Article XII Sections 1-2",
+    "types": ["team_option", "player_option", "early_termination_option"],
+    "team_or_player_option_max_added_years": 1,
+    "team_or_player_option_exercisable_once": true,
+    "minimum_option_salary_ratio_to_prior_year": 1.0,
+    "eto_earliest_after_season_number": 4
+  },
+  "maximum_salary": {
+    "reference": "Article II 7",
+    "service_tiers": [
+      {"years": "0-6", "cap_pct": 25},
+      {"years": "7-9", "cap_pct": 30},
+      {"years": "10+", "cap_pct": 35}
+    ],
+    "prior_contract_alternative_pct": 105,
+    "higher_max_criteria_note": "Certain eligible players may reach 30% or 35% based on All-NBA, DPOY, or MVP criteria and other eligibility conditions."
+  },
+  "bonuses": {
+    "reference": "Article II 12",
+    "max_incentive_compensation_pct_of_regular_salary": 20,
+    "max_signing_bonus_pct_of_non_incentive_compensation": 15,
+    "max_offer_sheet_signing_bonus_pct_of_non_incentive_compensation": 10
+  },
+  "rookie_scale": {
+    "reference": "Article I 1(hhh)-(iii); Exhibit B",
+    "baseline_note": "Baseline values are adjusted with Salary Cap changes as specified by the CBA.",
+    "rows": [
+      {"pick":1,"year1":9212600,"year2":9673400,"year3_option":10134000,"year4_option_pct_increase_over_year3":26.1,"qualifying_offer_pct_increase_over_year4":40.0},
+      {"pick":2,"year1":8242700,"year2":8655000,"year3_option":9067200,"year4_option_pct_increase_over_year3":26.2,"qualifying_offer_pct_increase_over_year4":40.5},
+      {"pick":3,"year1":7402200,"year2":7772100,"year3_option":8142400,"year4_option_pct_increase_over_year3":26.4,"qualifying_offer_pct_increase_over_year4":41.2},
+      {"pick":4,"year1":6673700,"year2":7007500,"year3_option":7341300,"year4_option_pct_increase_over_year3":26.5,"qualifying_offer_pct_increase_over_year4":41.9},
+      {"pick":5,"year1":6043500,"year2":6345400,"year3_option":6647700,"year4_option_pct_increase_over_year3":26.7,"qualifying_offer_pct_increase_over_year4":42.6},
+      {"pick":6,"year1":5489000,"year2":5763400,"year3_option":6038100,"year4_option_pct_increase_over_year3":26.8,"qualifying_offer_pct_increase_over_year4":43.4},
+      {"pick":7,"year1":5010800,"year2":5261500,"year3_option":5511800,"year4_option_pct_increase_over_year3":27.0,"qualifying_offer_pct_increase_over_year4":44.1},
+      {"pick":8,"year1":4590500,"year2":4820100,"year3_option":5049600,"year4_option_pct_increase_over_year3":27.2,"qualifying_offer_pct_increase_over_year4":44.8},
+      {"pick":9,"year1":4219600,"year2":4430800,"year3_option":4641700,"year4_option_pct_increase_over_year3":27.4,"qualifying_offer_pct_increase_over_year4":45.5},
+      {"pick":10,"year1":4008600,"year2":4209000,"year3_option":4409300,"year4_option_pct_increase_over_year3":27.5,"qualifying_offer_pct_increase_over_year4":46.2},
+      {"pick":11,"year1":3808200,"year2":3998700,"year3_option":4189200,"year4_option_pct_increase_over_year3":32.7,"qualifying_offer_pct_increase_over_year4":46.9},
+      {"pick":12,"year1":3617900,"year2":3798900,"year3_option":3979800,"year4_option_pct_increase_over_year3":37.8,"qualifying_offer_pct_increase_over_year4":47.6},
+      {"pick":13,"year1":3436900,"year2":3608900,"year3_option":3780700,"year4_option_pct_increase_over_year3":42.9,"qualifying_offer_pct_increase_over_year4":48.3},
+      {"pick":14,"year1":3265300,"year2":3428500,"year3_option":3591900,"year4_option_pct_increase_over_year3":48.1,"qualifying_offer_pct_increase_over_year4":49.1},
+      {"pick":15,"year1":3101700,"year2":3256800,"year3_option":3411900,"year4_option_pct_increase_over_year3":53.3,"qualifying_offer_pct_increase_over_year4":49.8},
+      {"pick":16,"year1":2946800,"year2":3094100,"year3_option":3241600,"year4_option_pct_increase_over_year3":53.4,"qualifying_offer_pct_increase_over_year4":50.5},
+      {"pick":17,"year1":2799300,"year2":2939300,"year3_option":3079300,"year4_option_pct_increase_over_year3":53.6,"qualifying_offer_pct_increase_over_year4":51.2},
+      {"pick":18,"year1":2659500,"year2":2792300,"year3_option":2925400,"year4_option_pct_increase_over_year3":53.8,"qualifying_offer_pct_increase_over_year4":51.9},
+      {"pick":19,"year1":2539700,"year2":2666600,"year3_option":2793900,"year4_option_pct_increase_over_year3":54.0,"qualifying_offer_pct_increase_over_year4":52.6},
+      {"pick":20,"year1":2438000,"year2":2559900,"year3_option":2681600,"year4_option_pct_increase_over_year3":54.2,"qualifying_offer_pct_increase_over_year4":53.3},
+      {"pick":21,"year1":2340500,"year2":2457600,"year3_option":2574700,"year4_option_pct_increase_over_year3":59.3,"qualifying_offer_pct_increase_over_year4":54.1},
+      {"pick":22,"year1":2247000,"year2":2359300,"year3_option":2471600,"year4_option_pct_increase_over_year3":64.5,"qualifying_offer_pct_increase_over_year4":54.8},
+      {"pick":23,"year1":2157200,"year2":2265200,"year3_option":2372700,"year4_option_pct_increase_over_year3":69.7,"qualifying_offer_pct_increase_over_year4":55.5},
+      {"pick":24,"year1":2071000,"year2":2174500,"year3_option":2278100,"year4_option_pct_increase_over_year3":74.9,"qualifying_offer_pct_increase_over_year4":56.2},
+      {"pick":25,"year1":1987900,"year2":2087200,"year3_option":2186900,"year4_option_pct_increase_over_year3":80.1,"qualifying_offer_pct_increase_over_year4":56.9},
+      {"pick":26,"year1":1922100,"year2":2018100,"year3_option":2114200,"year4_option_pct_increase_over_year3":80.3,"qualifying_offer_pct_increase_over_year4":57.6},
+      {"pick":27,"year1":1866600,"year2":1960000,"year3_option":2053500,"year4_option_pct_increase_over_year3":80.4,"qualifying_offer_pct_increase_over_year4":58.3},
+      {"pick":28,"year1":1855000,"year2":1948100,"year3_option":2040700,"year4_option_pct_increase_over_year3":80.5,"qualifying_offer_pct_increase_over_year4":59.0},
+      {"pick":29,"year1":1841700,"year2":1933700,"year3_option":2025900,"year4_option_pct_increase_over_year3":80.5,"qualifying_offer_pct_increase_over_year4":60.0},
+      {"pick":30,"year1":1828300,"year2":1919600,"year3_option":2011300,"year4_option_pct_increase_over_year3":80.5,"qualifying_offer_pct_increase_over_year4":60.0}
+    ]
+  },
+  "minimum_annual_salary_scale": {
+    "reference": "Article I 1(jj); Article II 6; Exhibit C",
+    "baseline_note": "Baseline table. Applicable scales are adjusted with Salary Cap changes as specified by the CBA.",
+    "rows": [
+      {"years_of_service":"0","year1":1017781,"year2":null,"year3":null,"year4":null,"year5":null},
+      {"years_of_service":"1","year1":1637966,"year2":1719864,"year3":null,"year4":null,"year5":null},
+      {"years_of_service":"2","year1":1836090,"year2":1927896,"year3":2019699,"year4":null,"year5":null},
+      {"years_of_service":"3","year1":1902133,"year2":1997238,"year3":2092344,"year4":2187451,"year5":null},
+      {"years_of_service":"4","year1":1968175,"year2":2066585,"year3":2164993,"year4":2263403,"year5":2361812},
+      {"years_of_service":"5","year1":2133278,"year2":2239943,"year3":2346606,"year4":2453270,"year5":2559934},
+      {"years_of_service":"6","year1":2298385,"year2":2413304,"year3":2528221,"year4":2643140,"year5":2758060},
+      {"years_of_service":"7","year1":2463490,"year2":2586665,"year3":2709839,"year4":2833013,"year5":2956189},
+      {"years_of_service":"8","year1":2628597,"year2":2760026,"year3":2891458,"year4":3022889,"year5":3154319},
+      {"years_of_service":"9","year1":2641682,"year2":2773765,"year3":2905850,"year4":3037934,"year5":3170018},
+      {"years_of_service":"10+","year1":2905851,"year2":3051144,"year3":3196438,"year4":3341730,"year5":3487023}
+    ]
+  }
+}
