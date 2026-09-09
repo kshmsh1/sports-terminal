@@ -10,18 +10,19 @@ import '../screens/product_content_ops_screens.dart';
 import '../screens/product_fantasy_community_screens.dart';
 import '../screens/product_front_office_registry_screen.dart';
 import '../screens/product_nba_awards_v2_screen.dart';
-import '../screens/product_nba_public_pages_screen.dart';
 import '../screens/product_profile_v3_screen.dart';
 import '../screens/product_transaction_command_center_screen.dart';
 import '../screens/website_nba_advanced_stats_screen.dart';
 import '../screens/website_nba_data_coverage_screen.dart';
 import '../screens/website_nba_entity_pages.dart';
 import '../screens/website_nba_game_finder_screen.dart';
+import '../screens/website_nba_home_dashboard.dart';
 import '../screens/website_nba_lineup_analysis_screen.dart';
 import '../screens/website_nba_player_compare_screen.dart';
 import '../screens/website_nba_stat_glossary_screen.dart';
 import '../screens/website_nba_stats_screen.dart';
 import '../screens/website_nba_team_compare_screen.dart';
+import '../screens/website_nba_watchlist_screen.dart';
 import '../screens/website_trade_machine_screen.dart';
 import '../services/product_local_store.dart';
 import '../services/website_nba_api_service.dart';
@@ -58,7 +59,7 @@ class _TraditionalWebsiteShellState extends State<TraditionalWebsiteShell> {
           label: 'Home',
           icon: Icons.home_rounded,
           builder: () => WebsiteNbaDataGate(
-            builder: (_, _) => const ProductNbaHubV2Screen(),
+            builder: (_, _) => WebsiteNbaHomeDashboard(session: widget.session),
           ),
         ),
         _Destination(
@@ -138,6 +139,12 @@ class _TraditionalWebsiteShellState extends State<TraditionalWebsiteShell> {
           builder: () => WebsiteNbaDataGate(
             builder: (_, _) => WebsiteNbaTeamCompareScreen(session: widget.session),
           ),
+        ),
+        _Destination(
+          id: 'nba-watchlist',
+          label: 'Watchlist',
+          icon: Icons.bookmark_outline_rounded,
+          builder: () => WebsiteNbaWatchlistScreen(session: widget.session),
         ),
         _Destination(
           id: 'nba-glossary',
