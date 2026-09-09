@@ -27,7 +27,7 @@ assert len({row['team_id'] for row in teams}) == 30
 assert diagnostics['player_rows'] == 478
 assert diagnostics['team_rows'] == 30
 assert diagnostics['exact_duplicate_rows'] == 2, diagnostics['exact_duplicate_rows']
-assert len(contracts) == 476, len(contracts)
+assert len(contracts) == 470, len(contracts)
 assert len(positions) == 30, len(positions)
 
 canonical_team_ids = {row['team_id'] for row in teams}
@@ -49,6 +49,7 @@ expected_active_teams = {
 assert set(expected_active_teams).issubset(set(diagnostics['multi_team_player_names']))
 assert diagnostics['active_team_overrides'] == expected_active_teams
 assert {name: value['team'] for name, value in ACTIVE_TEAM_OVERRIDES.items()} == expected_active_teams
+assert len(diagnostics['retained_payroll_obligations']) == 6
 
 curry = next(row for row in players if row['player'] == 'Stephen Curry')
 assert curry['2026-27'] == 62_587_158
@@ -64,24 +65,29 @@ assert houston['2031-32'] == 47_337_931
 
 for name, active_team in expected_active_teams.items():
     matches = [item for item in contracts if item['record']['player_name'] == name]
-    assert len(matches) >= 2
-    assert all(item['record']['metadata']['multi_team_obligation'] for item in matches)
-    active = [item for item in matches if item['record']['team_id'] == active_team]
-    retained = [item for item in matches if item['record']['team_id'] != active_team]
-    assert len(active) == 1
-    assert active[0]['record']['metadata']['tradeable'] is True
-    assert active[0]['record']['metadata']['trade_restricted'] is False
-    assert active[0]['record']['metadata']['active_team_reconciled'] is True
-    assert active[0]['record']['metadata']['official_current_team'] == active_team
-    assert active[0]['record']['source_url'].startswith('https://www.nba.com/')
-    assert retained
-    assert all(item['record']['metadata']['tradeable'] is False for item in retained)
-    assert all(item['record']['metadata']['trade_restricted'] is True for item in retained)
-    assert all(item['record']['metadata']['retained_payroll_obligation'] is True for item in retained)
+    assert len(matches) == 1
+    active = matches[0]
+    assert active['record']['team_id'] == active_team
+    assert active['record']['metadata']['multi_team_obligation'] is True
+    assert active['record']['metadata']['tradeable'] is True
+    assert active['record']['metadata']['trade_restricted'] is False
+    assert active['record']['metadata']['active_team_reconciled'] is True
+    assert active['record']['metadata']['official_current_team'] == active_team
+    assert active['record']['metadata']['contract_terms_verified'] is False
+    assert active['record']['source_url'].startswith('https://www.nba.com/')
+
+for obligation in diagnostics['retained_payroll_obligations']:
+    name = obligation['player_name']
+    assert name in expected_active_teams
+    assert obligation['team_id'] != expected_active_teams[name]
+    assert obligation['official_current_team'] == expected_active_teams[name]
+    assert obligation['salary'] > 0
+    assert obligation['current_team_source_url'].startswith('https://www.nba.com/')
 
 assert sum(1 for item in contracts if item['record']['player_name'] == 'Jonathan Isaac') == 1
 assert sum(1 for item in contracts if item['record']['player_name'] == 'Haywood Highsmith') == 1
 
+position_by_team = {item['record']['team_id']: item['record'] for item in positions}
 for position in positions:
     record = position['record']
     assert record['source_status'] == 'uploaded'
@@ -89,5 +95,8 @@ for position in positions:
     assert record['salary_cap'] == 164_961_000
     assert record['first_apron'] == 209_015_000
     assert record['second_apron'] == 221_686_000
+
+assert any(item['player_name'] == 'Damian Lillard' for item in position_by_team['MIL']['metadata']['retained_payroll_obligations'])
+assert any(item['player_name'] == 'Klay Thompson' for item in position_by_team['DAL']['metadata']['retained_payroll_obligations'])
 
 print('User-supplied 2026-27 salary snapshot contract passed')
