@@ -26,6 +26,32 @@ TEAM_ALIASES = {
     "CHO": "CHA",
     "PHO": "PHX",
 }
+ACTIVE_TEAM_OVERRIDES = {
+    "Damian Lillard": {
+        "team": "POR",
+        "source_url": "https://www.nba.com/stats/player/203081/passes-dash",
+    },
+    "Bradley Beal": {
+        "team": "LAC",
+        "source_url": "https://www.nba.com/news/bradley-beal-clippers-free-agency",
+    },
+    "Klay Thompson": {
+        "team": "MIA",
+        "source_url": "https://www.nba.com/news/klay-thompson-heat-2026-free-agency",
+    },
+    "Jonathan Kuminga": {
+        "team": "MIN",
+        "source_url": "https://www.nba.com/timberwolves/news/timberwolves-sign-jonathan-kuminga",
+    },
+    "Kentavious Caldwell-Pope": {
+        "team": "PHI",
+        "source_url": "https://www.nba.com/player/203484/kentavious-caldwell-pope",
+    },
+    "Olivier-Maxence Prosper": {
+        "team": "MEM",
+        "source_url": "https://www.nba.com/team/1610612763",
+    },
+}
 
 
 def _money(value: str | None) -> int:
@@ -110,6 +136,9 @@ def snapshot_diagnostics() -> dict[str, Any]:
         "team_player_sum": dict(team_player_sum),
         "team_aggregate_variance": team_variance,
         "team_aliases": dict(TEAM_ALIASES),
+        "active_team_overrides": {
+            name: value["team"] for name, value in ACTIVE_TEAM_OVERRIDES.items()
+        },
     }
 
 
@@ -144,6 +173,13 @@ def contract_seed_records() -> list[dict[str, Any]]:
         team = str(row["team"])
         player_slug = _slug(player_name)
         ambiguous = player_name in ambiguous_names
+        active_override = ACTIVE_TEAM_OVERRIDES.get(player_name)
+        active_team = str(active_override["team"]) if active_override else ""
+        active_reconciled = bool(active_team)
+        is_active_contract = not ambiguous or team == active_team
+        retained_obligation = ambiguous and active_reconciled and team != active_team
+        unresolved_ambiguous = ambiguous and not active_reconciled
+        tradeable = is_active_contract and not unresolved_ambiguous
         years = [
             {
                 "season": season,
@@ -161,13 +197,31 @@ def contract_seed_records() -> list[dict[str, Any]]:
             if int(row[season]) > 0
         ]
         record_id = f"user-salary-2026-27:{team}:{player_slug}:{row['rank']}"
+        if retained_obligation:
+            contract_type = "retained_payroll_obligation"
+            notes = (
+                "The supplied salary table contains this player on multiple teams. NBA.com identifies a different current team, so this row is retained as a non-transferable payroll obligation rather than an active contract."
+            )
+            restriction_reason = f"retained payroll obligation; current NBA team is {active_team}"
+        elif unresolved_ambiguous:
+            contract_type = "payroll_obligation"
+            notes = (
+                "Multi-team payroll obligation in the supplied table; active contract team is unresolved and the row must not be treated as tradeable."
+            )
+            restriction_reason = "multi-team payroll obligation requires active-team reconciliation"
+        else:
+            contract_type = "standard"
+            notes = (
+                "Salary schedule transcribed from the user-supplied 2026-27 salary table. Contract clauses not shown in the table remain unknown."
+            )
+            restriction_reason = ""
         record = {
             "id": record_id,
             "player_id": player_slug,
             "player_name": player_name,
             "team_id": team,
             "season": SEASON,
-            "contract_type": "payroll_obligation" if ambiguous else "standard",
+            "contract_type": contract_type,
             "years": years,
             "no_trade_clause": False,
             "trade_bonus_percent": 0,
@@ -175,14 +229,10 @@ def contract_seed_records() -> list[dict[str, Any]]:
             "two_way": False,
             "source_status": "uploaded",
             "source_label": SOURCE_LABEL,
-            "source_url": "",
+            "source_url": str(active_override["source_url"]) if active_override else "",
             "source_document_id": SOURCE_DOCUMENT_ID,
             "as_of_date": AS_OF_DATE,
-            "notes": (
-                "Multi-team payroll obligation in the supplied table; active contract team is unresolved and the row must not be treated as tradeable."
-                if ambiguous
-                else "Salary schedule transcribed from the user-supplied 2026-27 salary table. Contract clauses not shown in the table remain unknown."
-            ),
+            "notes": notes,
             "metadata": {
                 "rank": int(row["rank"]),
                 "remaining_guaranteed_total": int(row["guaranteed"]),
@@ -190,9 +240,12 @@ def contract_seed_records() -> list[dict[str, Any]]:
                 "source_team_abbreviation": row.get("source_team", team),
                 "canonical_team_abbreviation": team,
                 "multi_team_obligation": ambiguous,
-                "tradeable": not ambiguous,
-                "trade_restricted": ambiguous,
-                "restriction_reason": "multi-team payroll obligation requires active-team reconciliation" if ambiguous else "",
+                "active_team_reconciled": active_reconciled,
+                "official_current_team": active_team or None,
+                "retained_payroll_obligation": retained_obligation,
+                "tradeable": tradeable,
+                "trade_restricted": not tradeable,
+                "restriction_reason": restriction_reason,
                 "guarantee_total_is_not_year_allocation": True,
             },
         }
