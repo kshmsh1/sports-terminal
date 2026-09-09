@@ -894,7 +894,7 @@ class TradeMachineEngine {
       final room = (context.salaryCap - context.teamSalary)
           .clamp(0, double.infinity)
           .toDouble();
-      return outgoing + room + 250000;
+      return room + 250000;
     }
     if (postTradeSalary > context.firstApron) return outgoing;
     if (outgoing <= 0) return 0;
