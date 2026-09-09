@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Multi-source NBA salary/contract ingestion for Sports Terminal.
 
-Sources currently supported:
-- Basketball-Reference league-wide current player contracts
-- Basketball-Reference current team payrolls (including partial-guarantee markers)
+Sources:
+- Basketball-Reference current player contracts
+- Basketball-Reference current team payrolls / partial-guarantee markers
 - Basketball-Reference historical team-season salary tables
 - Basketball-Reference historical transaction logs
-- NBA.com transaction pages
-- local 2023 CBA rule configuration + official cap-level seed data
+- NBA official player-movement JSON
+- 2023 CBA rule configuration + official cap-level seed data
 
-The pipeline preserves source evidence and produces a conservative canonical view.
-It deliberately separates reported cash salary, reported guarantee information,
-and any future CBA-derived cap/team-salary calculations.
+Source evidence is retained separately from the conservative canonical view.
+Reported salary, guarantee information, and future CBA-derived cap treatment are
+intentionally different fields.
 """
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ BREF_CONTRACTS_URL = f"{BREF_BASE}/contracts/players.html"
 BREF_CONTRACTS_SUMMARY_URL = f"{BREF_BASE}/contracts/"
 BREF_LEAGUE_URL = f"{BREF_BASE}/leagues/NBA_{{end_year}}.html"
 BREF_TX_URL = f"{BREF_BASE}/leagues/NBA_{{end_year}}_transactions.html"
-NBA_TX_URL = "https://www.nba.com/players/transactions"
+NBA_TX_JSON_URL = "https://stats.nba.com/js/data/playermovement/NBA_Player_Movement.json"
 USER_AGENT = "SportsTerminalResearchBot/0.2 (+https://github.com/kshmsh1/sports-terminal)"
 MONEY_RE = re.compile(r"-?\$?([0-9][0-9,]*)")
 SEASON_RE = re.compile(r"^(20\d{2}|19\d{2})[-/]([0-9]{2}|20\d{2})$")
@@ -49,6 +49,10 @@ DATE_RE = re.compile(
 PLAYER_HREF_RE = re.compile(r"/players/[a-z]/([^/]+)\.html$")
 TEAM_CONTRACT_HREF_RE = re.compile(r"^/contracts/([A-Z0-9]+)\.html$")
 TEAM_SEASON_HREF_RE_TEMPLATE = r"^/teams/([A-Z0-9]+)/{end_year}\.html$"
+TEAM_EVENT_RE = re.compile(
+    r"^(?:The )?(.+?) (signed|re-signed|waived|converted|traded|released|claimed|received) (.+?)(?:\.|$)",
+    re.I,
+)
 POSITION_PREFIX_RE = re.compile(
     r"^(?:(?:point|shooting|small|power)\s+)?(?:guard|forward|center)(?:[-/]?(?:guard|forward|center))?\s+",
     re.I,
@@ -102,9 +106,15 @@ class CanonicalContractSeason:
 class TransactionRecord:
     event_date: str | None
     player_name: str | None
+    player_external_id: str | None
+    player_slug: str | None
     team_name: str | None
+    team_external_id: str | None
+    team_slug: str | None
     event_type: str
     contract_type: str | None
+    raw_transaction_type: str | None
+    group_sort: str | None
     raw_text: str
     source_name: str
     source_url: str
@@ -147,8 +157,8 @@ def player_id_from_cell(cell) -> str | None:
     link = cell.find("a", href=True)
     if not link:
         return None
-    m = PLAYER_HREF_RE.search(link["href"])
-    return m.group(1) if m else None
+    match = PLAYER_HREF_RE.search(link["href"])
+    return match.group(1) if match else None
 
 
 def option_marker(cell) -> str | None:
@@ -191,16 +201,14 @@ def expand_commented_tables(html: str) -> BeautifulSoup:
     for comment in list(soup.find_all(string=lambda s: isinstance(s, Comment))):
         text = str(comment)
         if "<table" in text.lower():
-            fragment = BeautifulSoup(text, "html.parser")
-            comment.replace_with(fragment)
+            comment.replace_with(BeautifulSoup(text, "html.parser"))
     return soup
 
 
 def _header_cells(table):
     thead = table.find("thead")
     if thead:
-        rows = thead.find_all("tr")
-        for row in reversed(rows):
+        for row in reversed(thead.find_all("tr")):
             cells = row.find_all(["th", "td"], recursive=False)
             if any(c.get_text(" ", strip=True).lower() == "player" for c in cells):
                 return cells
@@ -213,8 +221,8 @@ def _header_cells(table):
 
 def _header_index(headers: list[str], *labels: str) -> int | None:
     wanted = {label.lower() for label in labels}
-    for i, h in enumerate(headers):
-        if h.strip().lower() in wanted:
+    for i, header in enumerate(headers):
+        if header.strip().lower() in wanted:
             return i
     return None
 
@@ -226,8 +234,7 @@ def _find_table(soup: BeautifulSoup, required_headers: set[str], require_season:
             headers = [c.get_text(" ", strip=True) for c in _header_cells(table)]
         except ValueError:
             continue
-        lowered = {h.lower() for h in headers}
-        if not required.issubset(lowered):
+        if not required.issubset({h.lower() for h in headers}):
             continue
         if require_season and not any(normalize_season(h) for h in headers):
             continue
@@ -238,8 +245,7 @@ def _find_table(soup: BeautifulSoup, required_headers: set[str], require_season:
 def parse_bref_contracts(html: str, source_url: str = BREF_CONTRACTS_URL) -> list[ContractSeasonRecord]:
     soup = expand_commented_tables(html)
     table, headers = _find_table(soup, {"Player", "Guaranteed"}, require_season=True)
-    season_cols = {i: normalize_season(h) for i, h in enumerate(headers)}
-    season_cols = {i: s for i, s in season_cols.items() if s}
+    season_cols = {i: s for i, h in enumerate(headers) if (s := normalize_season(h))}
     player_idx = _header_index(headers, "Player")
     team_idx = _header_index(headers, "Tm", "Team")
     guaranteed_idx = _header_index(headers, "Guaranteed")
@@ -247,12 +253,10 @@ def parse_bref_contracts(html: str, source_url: str = BREF_CONTRACTS_URL) -> lis
     signed_using_idx = _header_index(headers, "Signed Using")
     if player_idx is None:
         raise ValueError("Player column missing")
-
+    first_season_col = min(season_cols)
     retrieved = utc_now()
     out: list[ContractSeasonRecord] = []
-    body = table.find("tbody") or table
-    first_season_col = min(season_cols)
-    for tr in body.find_all("tr"):
+    for tr in (table.find("tbody") or table).find_all("tr"):
         cells = tr.find_all(["th", "td"], recursive=False)
         if not cells or player_idx >= len(cells):
             continue
@@ -276,22 +280,11 @@ def parse_bref_contracts(html: str, source_url: str = BREF_CONTRACTS_URL) -> lis
             option = option_marker(cell)
             out.append(
                 ContractSeasonRecord(
-                    player_name=player,
-                    player_external_id=player_id,
-                    team_abbr=team or None,
-                    season=season,
-                    reported_salary=salary,
-                    reported_cap_hit=cap_hit if idx == first_season_col else None,
-                    reported_contract_guaranteed_total=guaranteed,
-                    reported_salary_fully_guaranteed=False if option else None,
-                    option_type=option,
-                    signed_using=signed_using or None,
-                    source_name="basketball_reference_contracts",
-                    source_url=source_url,
-                    source_authority="secondary_reported",
-                    source_retrieved_at=retrieved,
-                    source_quality_note=None,
-                    raw_cell_text=raw or None,
+                    player, player_id, team or None, season, salary,
+                    cap_hit if idx == first_season_col else None, guaranteed,
+                    False if option else None, option, signed_using or None,
+                    "basketball_reference_contracts", source_url, "secondary_reported",
+                    retrieved, None, raw or None,
                 )
             )
     if not out:
@@ -303,30 +296,25 @@ def discover_bref_team_payroll_links(html: str, base_url: str = BREF_BASE) -> li
     soup = expand_commented_tables(html)
     found: dict[str, str] = {}
     for link in soup.find_all("a", href=True):
-        m = TEAM_CONTRACT_HREF_RE.match(link["href"])
-        if m:
-            team = m.group(1)
-            found[team] = urljoin(base_url, link["href"])
+        if match := TEAM_CONTRACT_HREF_RE.match(link["href"]):
+            found[match.group(1)] = urljoin(base_url, link["href"])
     return sorted(found.items())
 
 
 def parse_bref_team_payroll(html: str, team_abbr: str, source_url: str) -> list[ContractSeasonRecord]:
     soup = expand_commented_tables(html)
     table, headers = _find_table(soup, {"Player", "Guaranteed"}, require_season=True)
-    season_cols = {i: normalize_season(h) for i, h in enumerate(headers)}
-    season_cols = {i: s for i, s in season_cols.items() if s}
+    season_cols = {i: s for i, h in enumerate(headers) if (s := normalize_season(h))}
     player_idx = _header_index(headers, "Player")
     guaranteed_idx = _header_index(headers, "Guaranteed")
     cap_hit_idx = _header_index(headers, "Cap Hit")
     signed_using_idx = _header_index(headers, "Signed Using")
     if player_idx is None:
         raise ValueError("Player column missing")
-
+    first_season_col = min(season_cols)
     retrieved = utc_now()
     out: list[ContractSeasonRecord] = []
-    body = table.find("tbody") or table
-    first_season_col = min(season_cols)
-    for tr in body.find_all("tr"):
+    for tr in (table.find("tbody") or table).find_all("tr"):
         cells = tr.find_all(["th", "td"], recursive=False)
         if not cells or player_idx >= len(cells):
             continue
@@ -351,22 +339,11 @@ def parse_bref_team_payroll(html: str, team_abbr: str, source_url: str) -> list[
             guarantee_flag = False if not_fully or option else (True if salary is not None else None)
             out.append(
                 ContractSeasonRecord(
-                    player_name=player,
-                    player_external_id=player_id,
-                    team_abbr=team_abbr,
-                    season=season,
-                    reported_salary=salary,
-                    reported_cap_hit=cap_hit if idx == first_season_col else None,
-                    reported_contract_guaranteed_total=guaranteed,
-                    reported_salary_fully_guaranteed=guarantee_flag,
-                    option_type=option,
-                    signed_using=signed_using or None,
-                    source_name="basketball_reference_team_payroll",
-                    source_url=source_url,
-                    source_authority="secondary_reported",
-                    source_retrieved_at=retrieved,
-                    source_quality_note=None,
-                    raw_cell_text=raw or None,
+                    player, player_id, team_abbr, season, salary,
+                    cap_hit if idx == first_season_col else None, guaranteed,
+                    guarantee_flag, option, signed_using or None,
+                    "basketball_reference_team_payroll", source_url, "secondary_reported",
+                    retrieved, None, raw or None,
                 )
             )
     if not out:
@@ -379,31 +356,22 @@ def discover_bref_team_season_links(html: str, end_year: int, base_url: str = BR
     pattern = re.compile(TEAM_SEASON_HREF_RE_TEMPLATE.format(end_year=end_year))
     found: dict[str, str] = {}
     for link in soup.find_all("a", href=True):
-        m = pattern.match(link["href"])
-        if m:
-            team = m.group(1)
-            found[team] = urljoin(base_url, link["href"])
+        if match := pattern.match(link["href"]):
+            found[match.group(1)] = urljoin(base_url, link["href"])
     return sorted(found.items())
 
 
-def parse_bref_historical_team_salary(
-    html: str,
-    team_abbr: str,
-    end_year: int,
-    source_url: str,
-) -> list[ContractSeasonRecord]:
+def parse_bref_historical_team_salary(html: str, team_abbr: str, end_year: int, source_url: str) -> list[ContractSeasonRecord]:
     soup = expand_commented_tables(html)
-    table, headers = _find_table(soup, {"Player", "Salary"}, require_season=False)
+    table, headers = _find_table(soup, {"Player", "Salary"})
     player_idx = _header_index(headers, "Player")
     salary_idx = _header_index(headers, "Salary")
     if player_idx is None or salary_idx is None:
         raise ValueError("Historical salary table missing Player or Salary")
-
     retrieved = utc_now()
     season = season_from_end_year(end_year)
     out: list[ContractSeasonRecord] = []
-    body = table.find("tbody") or table
-    for tr in body.find_all("tr"):
+    for tr in (table.find("tbody") or table).find_all("tr"):
         cells = tr.find_all(["th", "td"], recursive=False)
         if not cells or max(player_idx, salary_idx) >= len(cells):
             continue
@@ -411,40 +379,21 @@ def parse_bref_historical_team_salary(
         player = player_cell.get_text(" ", strip=True)
         if not player or player.lower() in {"player", "team totals", "team total"}:
             continue
-        salary_cell = cells[salary_idx]
-        raw = salary_cell.get_text(" ", strip=True)
+        raw = cells[salary_idx].get_text(" ", strip=True)
         salary = parse_money(raw)
         if salary is None:
             continue
         out.append(
             ContractSeasonRecord(
-                player_name=player,
-                player_external_id=player_id_from_cell(player_cell),
-                team_abbr=team_abbr,
-                season=season,
-                reported_salary=salary,
-                reported_cap_hit=None,
-                reported_contract_guaranteed_total=None,
-                reported_salary_fully_guaranteed=None,
-                option_type=None,
-                signed_using=None,
-                source_name="basketball_reference_historical_team_salary",
-                source_url=source_url,
-                source_authority="secondary_reported",
-                source_retrieved_at=retrieved,
-                source_quality_note=BREF_HISTORICAL_QUALITY_NOTE,
-                raw_cell_text=raw,
+                player, player_id_from_cell(player_cell), team_abbr, season, salary,
+                None, None, None, None, None,
+                "basketball_reference_historical_team_salary", source_url,
+                "secondary_reported", retrieved, BREF_HISTORICAL_QUALITY_NOTE, raw,
             )
         )
     if not out:
         raise ValueError(f"No historical salary rows parsed for {team_abbr} {season}")
     return out
-
-
-TEAM_EVENT_RE = re.compile(
-    r"^The (.+?) (signed|re-signed|waived|converted|traded|released|claimed) (.+?)(?:\.|$)",
-    re.I,
-)
 
 
 def classify_transaction(text: str) -> tuple[str, str | None]:
@@ -479,10 +428,10 @@ def classify_transaction(text: str) -> tuple[str, str | None]:
 
 
 def _extract_team_player(text: str) -> tuple[str | None, str | None]:
-    m = TEAM_EVENT_RE.match(text)
-    if not m:
+    match = TEAM_EVENT_RE.match(text)
+    if not match:
         return None, None
-    team, _verb, rest = m.groups()
+    team, _verb, rest = match.groups()
     rest = POSITION_PREFIX_RE.sub("", rest.strip())
     player = re.split(
         r"\s+(?:to|as|from|for)\s+(?:(?:a|an|the)\s+)?",
@@ -490,21 +439,10 @@ def _extract_team_player(text: str) -> tuple[str | None, str | None]:
         maxsplit=1,
         flags=re.I,
     )[0]
-    player = re.sub(
-        r"\s+to\s+(?:a\s+)?(?:Two-Way|Rookie Scale|Rest-of-Season|10-Day|Veteran Extension|Contract).*",
-        "",
-        player,
-        flags=re.I,
-    )
     return team.strip(), player.strip(" .") or None
 
 
-def parse_transaction_page(
-    html: str,
-    source_url: str,
-    source_name: str,
-    authority: str,
-) -> list[TransactionRecord]:
+def parse_transaction_page(html: str, source_url: str, source_name: str, authority: str) -> list[TransactionRecord]:
     soup = expand_commented_tables(html)
     lines = [x.strip() for x in soup.stripped_strings if x.strip()]
     current_date: str | None = None
@@ -512,54 +450,87 @@ def parse_transaction_page(
     out: list[TransactionRecord] = []
     seen: set[tuple[str | None, str]] = set()
     for line in lines:
-        dm = DATE_RE.match(line)
-        if dm:
-            month, day, year = dm.groups()
+        if match := DATE_RE.match(line):
+            month, day, year = match.groups()
             current_date = None if day == "?" else datetime.strptime(f"{month} {day}, {year}", "%B %d, %Y").date().isoformat()
             continue
         low = f" {line.lower()} "
         if not any(token in low for token in (" signed ", " re-signed ", " waived ", " converted ", " traded ", " released ", " received ")):
             continue
         event_type, contract_type = classify_transaction(line)
-        if event_type == "other":
+        if event_type == "other" or (current_date, line) in seen:
             continue
-        key = (current_date, line)
-        if key in seen:
-            continue
-        seen.add(key)
+        seen.add((current_date, line))
         team, player = _extract_team_player(line)
         out.append(
             TransactionRecord(
-                event_date=current_date,
-                player_name=player,
-                team_name=team,
-                event_type=event_type,
-                contract_type=contract_type,
-                raw_text=line,
-                source_name=source_name,
-                source_url=source_url,
-                source_authority=authority,
-                source_retrieved_at=retrieved,
+                current_date, player, None, None, team, None, None,
+                event_type, contract_type, None, None, line,
+                source_name, source_url, authority, retrieved,
             )
         )
     return out
 
 
+def _numeric_id(value) -> str | None:
+    if value in (None, "", 0, 0.0, "0"):
+        return None
+    try:
+        return str(int(float(value)))
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def parse_nba_transaction_json(payload: str, source_url: str = NBA_TX_JSON_URL) -> list[TransactionRecord]:
+    data = json.loads(payload)
+    rows = data.get("NBA_Player_Movement", {}).get("rows", [])
+    if not isinstance(rows, list):
+        raise ValueError("NBA player movement JSON did not contain a rows list")
+    retrieved = utc_now()
+    out: list[TransactionRecord] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        description = str(row.get("TRANSACTION_DESCRIPTION") or "").strip()
+        if not description:
+            continue
+        event_type, contract_type = classify_transaction(description)
+        raw_type = str(row.get("Transaction_Type") or "").strip() or None
+        if event_type == "other" and raw_type:
+            event_type = raw_type.lower().replace(" ", "_")
+        team_name, player_name = _extract_team_player(description)
+        date_text = str(row.get("TRANSACTION_DATE") or "").strip()
+        event_date = date_text[:10] if re.match(r"^\d{4}-\d{2}-\d{2}", date_text) else None
+        out.append(
+            TransactionRecord(
+                event_date, player_name, _numeric_id(row.get("PLAYER_ID")),
+                str(row.get("PLAYER_SLUG") or "").strip() or None,
+                team_name, _numeric_id(row.get("TEAM_ID")),
+                str(row.get("TEAM_SLUG") or "").strip() or None,
+                event_type, contract_type, raw_type,
+                str(row.get("GroupSort") or "").strip() or None,
+                description, "nba_official_player_movement", source_url,
+                "official", retrieved,
+            )
+        )
+    if not out:
+        raise ValueError("No NBA transaction rows parsed from player movement JSON")
+    return out
+
+
 def canonicalize_contract_evidence(records: list[ContractSeasonRecord]) -> list[CanonicalContractSeason]:
-    """Create one conservative row per player/team/season while retaining evidence separately."""
-    source_priority = {
+    priorities = {
         "basketball_reference_team_payroll": 30,
         "basketball_reference_contracts": 20,
         "basketball_reference_historical_team_salary": 10,
     }
     groups: dict[tuple[str, str | None, str], list[ContractSeasonRecord]] = {}
-    for r in records:
-        identity = r.player_external_id or re.sub(r"[^a-z0-9]+", "", r.player_name.lower())
-        groups.setdefault((identity, r.team_abbr, r.season), []).append(r)
-
+    for record in records:
+        identity = record.player_external_id or re.sub(r"[^a-z0-9]+", "", record.player_name.lower())
+        groups.setdefault((identity, record.team_abbr, record.season), []).append(record)
     out: list[CanonicalContractSeason] = []
     for (_identity, team, season), rows in groups.items():
-        rows.sort(key=lambda r: source_priority.get(r.source_name, 0), reverse=True)
+        rows.sort(key=lambda r: priorities.get(r.source_name, 0), reverse=True)
 
         def first_with(attr: str):
             for row in rows:
@@ -569,33 +540,20 @@ def canonicalize_contract_evidence(records: list[ContractSeasonRecord]) -> list[
             return None, None
 
         salary, salary_source = first_with("reported_salary")
-        cap_hit, _cap_source = first_with("reported_cap_hit")
+        cap_hit, _ = first_with("reported_cap_hit")
         guaranteed, guarantee_source = first_with("reported_contract_guaranteed_total")
         guarantee_flag, guarantee_flag_source = first_with("reported_salary_fully_guaranteed")
         option, option_source = first_with("option_type")
-        signed_using, _signed_source = first_with("signed_using")
+        signed_using, _ = first_with("signed_using")
         player_id, _ = first_with("player_external_id")
-        player_name = rows[0].player_name
         if guarantee_source is None:
             guarantee_source = guarantee_flag_source
-        urls = ";".join(dict.fromkeys(r.source_url for r in rows))
         out.append(
             CanonicalContractSeason(
-                player_name=player_name,
-                player_external_id=player_id,
-                team_abbr=team,
-                season=season,
-                reported_salary=salary,
-                reported_cap_hit=cap_hit,
-                reported_contract_guaranteed_total=guaranteed,
-                reported_salary_fully_guaranteed=guarantee_flag,
-                option_type=option,
-                signed_using=signed_using,
-                salary_source_name=salary_source,
-                guarantee_source_name=guarantee_source,
-                option_source_name=option_source,
-                evidence_count=len(rows),
-                source_urls=urls,
+                rows[0].player_name, player_id, team, season, salary, cap_hit,
+                guaranteed, guarantee_flag, option, signed_using,
+                salary_source, guarantee_source, option_source, len(rows),
+                ";".join(dict.fromkeys(r.source_url for r in rows)),
             )
         )
     return sorted(out, key=lambda r: (r.season, r.team_abbr or "", r.player_name))
@@ -604,13 +562,8 @@ def canonicalize_contract_evidence(records: list[ContractSeasonRecord]) -> list[
 def build_session() -> requests.Session:
     session = requests.Session()
     retry = Retry(
-        total=4,
-        connect=4,
-        read=4,
-        status=4,
-        backoff_factor=1.0,
-        status_forcelist=(429, 500, 502, 503, 504),
-        allowed_methods=("GET",),
+        total=4, connect=4, read=4, status=4, backoff_factor=1.0,
+        status_forcelist=(429, 500, 502, 503, 504), allowed_methods=("GET",),
     )
     session.mount("https://", HTTPAdapter(max_retries=retry))
     session.headers.update({"User-Agent": USER_AGENT, "Accept-Language": "en-US,en;q=0.9"})
@@ -632,17 +585,17 @@ class RobotsGate:
             try:
                 response = self.session.get(robots_url, timeout=self.timeout)
                 response.raise_for_status()
-                rp = RobotFileParser()
-                rp.set_url(robots_url)
-                rp.parse(response.text.splitlines())
-                self._parsers[origin] = rp
+                parser = RobotFileParser()
+                parser.set_url(robots_url)
+                parser.parse(response.text.splitlines())
+                self._parsers[origin] = parser
             except Exception as exc:
                 self._parsers[origin] = None
                 self._errors[origin] = str(exc)
-        rp = self._parsers[origin]
-        if rp is None:
+        parser = self._parsers[origin]
+        if parser is None:
             return False, f"robots.txt unavailable: {self._errors.get(origin, 'unknown error')}"
-        allowed = rp.can_fetch(USER_AGENT, url)
+        allowed = parser.can_fetch(USER_AGENT, url)
         return allowed, "allowed" if allowed else f"disallowed by {robots_url}"
 
 
@@ -653,14 +606,7 @@ def cache_path_for_url(cache_dir: Path, url: str) -> Path:
     return cache_dir / parsed.netloc / f"{digest}{suffix}"
 
 
-def fetch_html(
-    session: requests.Session,
-    gate: RobotsGate,
-    url: str,
-    timeout: float,
-    cache_dir: Path | None,
-    refresh: bool,
-) -> str:
+def fetch_html(session: requests.Session, gate: RobotsGate, url: str, timeout: float, cache_dir: Path | None, refresh: bool) -> str:
     cache_path = cache_path_for_url(cache_dir, url) if cache_dir else None
     if cache_path and cache_path.exists() and not refresh:
         return cache_path.read_text(encoding="utf-8")
@@ -694,56 +640,40 @@ def write_csv(path: Path, rows: Iterable[dict]) -> None:
         writer.writerows(rows)
 
 
-def load_cba_rules(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
 def validate_against_cba(records: list[CanonicalContractSeason], rules: dict) -> list[dict]:
-    """Best-effort anomaly flags. Diagnostics only; not legal determinations."""
     issues: list[dict] = []
     options = rules["option_clauses"]
     by_player: dict[tuple[str, str | None], list[CanonicalContractSeason]] = {}
-    for r in records:
-        identity = r.player_external_id or r.player_name.lower()
-        by_player.setdefault((identity, r.team_abbr), []).append(r)
+    for record in records:
+        identity = record.player_external_id or record.player_name.lower()
+        by_player.setdefault((identity, record.team_abbr), []).append(record)
     for (_identity, team), rows in by_player.items():
         rows.sort(key=lambda r: r.season)
         for prev, cur in zip(rows, rows[1:]):
             if cur.option_type in {"player_option", "team_option"} and prev.reported_salary and cur.reported_salary:
                 if cur.reported_salary < prev.reported_salary * options["minimum_option_salary_ratio_to_prior_year"]:
-                    issues.append(
-                        {
-                            "player_name": cur.player_name,
-                            "team_abbr": team,
-                            "season": cur.season,
-                            "rule": "option_salary_floor",
-                            "severity": "warning",
-                            "detail": f"Reported option salary {cur.reported_salary} is below prior reported salary {prev.reported_salary}",
-                            "cba_reference": options["reference"],
-                        }
-                    )
+                    issues.append({
+                        "player_name": cur.player_name,
+                        "team_abbr": team,
+                        "season": cur.season,
+                        "rule": "option_salary_floor",
+                        "severity": "warning",
+                        "detail": f"Reported option salary {cur.reported_salary} is below prior reported salary {prev.reported_salary}",
+                        "cba_reference": options["reference"],
+                    })
     return issues
 
 
-def _fetch(
-    session: requests.Session,
-    gate: RobotsGate,
-    args,
-    url: str,
-) -> str:
+def _fetch(session: requests.Session, gate: RobotsGate, args, url: str) -> str:
     return fetch_html(
-        session,
-        gate,
-        url,
-        args.timeout,
-        Path(args.cache_dir) if args.cache_dir else None,
-        args.refresh,
+        session, gate, url, args.timeout,
+        Path(args.cache_dir) if args.cache_dir else None, args.refresh,
     )
 
 
 def run_pipeline(args) -> int:
     output = Path(args.output_dir)
-    rules = load_cba_rules(Path(args.cba_rules))
+    rules = json.loads(Path(args.cba_rules).read_text(encoding="utf-8"))
     session = build_session()
     gate = RobotsGate(session)
     manifest: list[dict] = []
@@ -752,8 +682,7 @@ def run_pipeline(args) -> int:
 
     if not args.skip_contracts:
         try:
-            html = _fetch(session, gate, args, BREF_CONTRACTS_URL)
-            batch = parse_bref_contracts(html)
+            batch = parse_bref_contracts(_fetch(session, gate, args, BREF_CONTRACTS_URL))
             evidence.extend(batch)
             manifest.append({"source": "basketball_reference_contracts", "status": "ok", "records": len(batch)})
         except Exception as exc:
@@ -761,8 +690,7 @@ def run_pipeline(args) -> int:
 
     if not args.skip_team_payrolls:
         try:
-            summary_html = _fetch(session, gate, args, BREF_CONTRACTS_SUMMARY_URL)
-            team_links = discover_bref_team_payroll_links(summary_html)
+            team_links = discover_bref_team_payroll_links(_fetch(session, gate, args, BREF_CONTRACTS_SUMMARY_URL))
             manifest.append({"source": "basketball_reference_team_payroll_index", "status": "ok", "teams": len(team_links)})
             for team, url in team_links:
                 try:
@@ -778,10 +706,10 @@ def run_pipeline(args) -> int:
     if not args.skip_historical_salaries:
         for end_year in range(args.historical_start_year + 1, args.historical_end_year + 2):
             season = season_from_end_year(end_year)
-            league_url = BREF_LEAGUE_URL.format(end_year=end_year)
             try:
-                league_html = _fetch(session, gate, args, league_url)
-                team_links = discover_bref_team_season_links(league_html, end_year)
+                team_links = discover_bref_team_season_links(
+                    _fetch(session, gate, args, BREF_LEAGUE_URL.format(end_year=end_year)), end_year
+                )
                 manifest.append({"source": "basketball_reference_team_season_index", "season": season, "status": "ok", "teams": len(team_links)})
             except Exception as exc:
                 manifest.append({"source": "basketball_reference_team_season_index", "season": season, "status": "failed", "error": str(exc)})
@@ -797,20 +725,18 @@ def run_pipeline(args) -> int:
 
     if not args.skip_nba_transactions:
         try:
-            html = _fetch(session, gate, args, NBA_TX_URL)
-            batch = parse_transaction_page(html, NBA_TX_URL, "nba_official_transactions", "official")
+            batch = parse_nba_transaction_json(_fetch(session, gate, args, NBA_TX_JSON_URL))
             transactions.extend(batch)
-            manifest.append({"source": "nba_official_transactions", "status": "ok", "records": len(batch)})
+            manifest.append({"source": "nba_official_player_movement", "status": "ok", "records": len(batch)})
         except Exception as exc:
-            manifest.append({"source": "nba_official_transactions", "status": "failed", "error": str(exc)})
+            manifest.append({"source": "nba_official_player_movement", "status": "failed", "error": str(exc)})
 
     if not args.skip_historical_transactions:
         for end_year in range(args.transaction_start_year + 1, args.transaction_end_year + 2):
-            url = BREF_TX_URL.format(end_year=end_year)
             season = season_from_end_year(end_year)
+            url = BREF_TX_URL.format(end_year=end_year)
             try:
-                html = _fetch(session, gate, args, url)
-                batch = parse_transaction_page(html, url, "basketball_reference_transactions", "secondary_reported")
+                batch = parse_transaction_page(_fetch(session, gate, args, url), url, "basketball_reference_transactions", "secondary_reported")
                 transactions.extend(batch)
                 manifest.append({"source": "basketball_reference_transactions", "season": season, "status": "ok", "records": len(batch)})
             except Exception as exc:
@@ -837,20 +763,20 @@ def run_pipeline(args) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", default="raw/nba_contracts")
-    parser.add_argument("--cache-dir", default="raw/nba_contracts/cache", help="HTML cache for resumable/polite runs")
+    parser.add_argument("--cache-dir", default="raw/nba_contracts/cache", help="HTML/JSON cache for resumable runs")
     parser.add_argument("--cba-rules", default="backend/data/cba_2023_contract_rules.json")
-    parser.add_argument("--historical-start-year", type=int, default=1984, help="First historical salary season start year")
-    parser.add_argument("--historical-end-year", type=int, default=2025, help="Last historical salary season start year; current payroll handles later seasons")
-    parser.add_argument("--transaction-start-year", type=int, default=1983, help="First transaction season start year")
-    parser.add_argument("--transaction-end-year", type=int, default=2026, help="Last transaction season start year")
+    parser.add_argument("--historical-start-year", type=int, default=1984)
+    parser.add_argument("--historical-end-year", type=int, default=2025)
+    parser.add_argument("--transaction-start-year", type=int, default=1983)
+    parser.add_argument("--transaction-end-year", type=int, default=2026)
     parser.add_argument("--skip-contracts", action="store_true")
     parser.add_argument("--skip-team-payrolls", action="store_true")
     parser.add_argument("--skip-historical-salaries", action="store_true")
     parser.add_argument("--skip-nba-transactions", action="store_true")
     parser.add_argument("--skip-historical-transactions", action="store_true")
-    parser.add_argument("--delay", type=float, default=2.0, help="Delay between page requests")
+    parser.add_argument("--delay", type=float, default=2.0)
     parser.add_argument("--timeout", type=float, default=30.0)
-    parser.add_argument("--refresh", action="store_true", help="Ignore cached HTML and re-fetch")
+    parser.add_argument("--refresh", action="store_true")
     args = parser.parse_args()
     if args.historical_start_year > args.historical_end_year:
         parser.error("historical start year must not exceed historical end year")
