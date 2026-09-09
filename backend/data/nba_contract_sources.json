@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": "nba_official_player_movement",
+      "authority": "official",
+      "url": "https://stats.nba.com/js/data/playermovement/NBA_Player_Movement.json",
+      "coverage": "July 2015-present as observed in September 2026",
+      "fields": [
+        "transaction_date",
+        "transaction_description",
+        "transaction_type",
+        "team_id",
+        "team_slug",
+        "player_id",
+        "player_slug",
+        "group_sort"
+      ],
+      "purpose": "Primary transaction/contract-type evidence and NBA identity linkage",
+      "notes": "Structured NBA-owned player movement feed. Contract subtype is also parsed from the official transaction description."
+    },
+    {
+      "id": "basketball_reference_contracts",
+      "authority": "secondary_reported",
+      "url": "https://www.basketball-reference.com/contracts/players.html",
+      "coverage": "Current contract schedules and future seasons",
+      "fields": [
+        "player",
+        "team",
+        "season_salary",
+        "aggregate_guaranteed",
+        "player_option",
+        "team_option",
+        "signed_using_when_exposed",
+        "cap_hit_when_exposed"
+      ],
+      "purpose": "League-wide current salary/contract evidence",
+      "notes": "Reported contract data, not an official NBA cap ledger."
+    },
+    {
+      "id": "basketball_reference_team_payroll",
+      "authority": "secondary_reported",
+      "url_template": "https://www.basketball-reference.com/contracts/{team}.html",
+      "coverage": "Current team payrolls and future contract seasons",
+      "fields": [
+        "player",
+        "season_salary",
+        "aggregate_guaranteed",
+        "not_fully_guaranteed_marker",
+        "player_option",
+        "team_option"
+      ],
+      "purpose": "Second current-contract evidence source and guarantee presentation",
+      "notes": "Team payroll pages explicitly state that italic salary amounts are not fully guaranteed."
+    },
+    {
+      "id": "basketball_reference_historical_team_salary",
+      "authority": "secondary_reported",
+      "url_template": "https://www.basketball-reference.com/teams/{team}/{season_end_year}.html",
+      "coverage": "Historical team-season salary tables; pipeline default begins 1984-85",
+      "fields": [
+        "player",
+        "team",
+        "season",
+        "salary",
+        "basketball_reference_player_id"
+      ],
+      "purpose": "Historical salary evidence",
+      "quality_warning": "Basketball-Reference states salary collection is inexact. Minimum salaries were assigned to players missing salary data in 1988-89 and 1990-91 through 2004-05; in other seasons some missing values were extrapolated from known surrounding seasons."
+    },
+    {
+      "id": "basketball_reference_transactions",
+      "authority": "secondary_reported",
+      "url_template": "https://www.basketball-reference.com/leagues/NBA_{season_end_year}_transactions.html",
+      "coverage": "Historical NBA transaction seasons; pipeline default begins 1983-84",
+      "fields": [
+        "event_date",
+        "transaction_description",
+        "team",
+        "player",
+        "derived_contract_subtype"
+      ],
+      "purpose": "Long-history transaction backfill, especially before the official NBA structured feed"
+    },
+    {
+      "id": "nba_official_cap_releases",
+      "authority": "official",
+      "local_file": "backend/data/nba_cap_levels.csv",
+      "coverage": "2023-24 through 2026-27",
+      "fields": [
+        "salary_cap",
+        "minimum_team_salary",
+        "tax_level",
+        "first_apron",
+        "second_apron",
+        "non_taxpayer_mle",
+        "taxpayer_mle",
+        "room_mle"
+      ],
+      "purpose": "Official system-level inputs for future CBA calculations"
+    },
+    {
+      "id": "nba_2023_cba",
+      "authority": "governing_agreement",
+      "local_file": "backend/data/cba_2023_contract_rules.json",
+      "coverage": "2023 CBA contract/cap rules encoded for machine use",
+      "fields": [
+        "contract_types",
+        "compensation_protection",
+        "options",
+        "maximum_salary_tiers",
+        "bonus_limits",
+        "rookie_scale_baseline",
+        "minimum_salary_scale_baseline"
+      ],
+      "purpose": "Rule engine inputs and validation references",
+      "notes": "Derived/transcribed from the user-provided final 2023 NBA Collective Bargaining Agreement."
+    }
+  ],
+  "excluded_sources": [
+    {
+      "id": "hoopshype",
+      "reason": "Not enabled as an automated adapter because the site's published access/automation restrictions conflict with the intended crawler use."
+    },
+    {
+      "id": "nba_player_hud_github_dataset",
+      "reason": "Repository license is CC BY-NC-SA 4.0; not suitable as a default data dependency for a potentially commercial Sports Terminal product."
+    }
+  ]
+}
