@@ -47,7 +47,8 @@ assert cap.room_mle == 9_366_000
 assert scaled_expanded_additive(cap, rules) == 9_095_709
 assert annual_cash_limit(cap, rules) == 8_495_492
 
-# Standard TPE: one outgoing salary can bring back 100% + $250k.
+# Standard TPE: one outgoing salary can bring back 100% + $250k when the post-trade
+# Apron Team Salary does not exceed the First Apron.
 a = TeamTradeState("A", "Team A", apron_team_salary=180_000_000, team_salary=180_000_000)
 b = TeamTradeState("B", "Team B", apron_team_salary=180_000_000, team_salary=180_000_000)
 trade = two_team_trade(a, b, [player("p1", "A Player", 10_000_000)], [player("p2", "B Player", 10_200_000)])
@@ -55,6 +56,33 @@ assert trade.legal
 team_a = next(t for t in trade.teams if t.team_id == "A")
 assert team_a.selected_mechanism == "standard_tpe"
 assert team_a.post_trade_apron_salary == 180_200_000
+
+# Article VII 6(j)(1)(v) is Room + $250k, not outgoing salary + Room + $250k.
+room_trade = two_team_trade(
+    TeamTradeState("A", "Team A", apron_team_salary=150_000_000, team_salary=150_000_000),
+    TeamTradeState("B", "Team B", apron_team_salary=180_000_000, team_salary=180_000_000),
+    [player("r1", "A Small", 1_000_000)],
+    [player("r2", "B Room", 15_000_000)],
+)
+assert room_trade.legal
+room_a = next(t for t in room_trade.teams if t.team_id == "A")
+assert room_a.selected_mechanism == "room_plus_250k"
+room_path = next(p for p in room_a.matching_paths if p.mechanism == "room_plus_250k")
+assert room_path.salary_limit == (cap.salary_cap - 150_000_000) + 250_000
+
+# Article VII 6(j)(3) removes the $250k allowance if post-assignment Apron Team
+# Salary would exceed the First Apron.
+allowance_fail = two_team_trade(
+    TeamTradeState("A", "Team A", apron_team_salary=209_000_000),
+    TeamTradeState("B", "Team B", apron_team_salary=170_000_000),
+    [player("al1", "A Allowance", 10_000_000)],
+    [player("al2", "B Allowance", 10_200_000)],
+)
+assert not allowance_fail.legal
+allowance_a = next(t for t in allowance_fail.teams if t.team_id == "A")
+standard_path = next(p for p in allowance_a.matching_paths if p.mechanism == "standard_tpe")
+assert standard_path.salary_limit == 10_000_000
+assert not standard_path.salary_match_passes
 
 # Expanded TPE should use the CBA's scaled 7.5m branch for a $20m outgoing salary.
 assert expanded_tpe_limit(20_000_000, cap, rules) == 29_095_709
@@ -81,10 +109,10 @@ assert any(f["rule"] == "salary_matching" for f in next(t for t in first_apron_f
 
 # Aggregating two outgoing players is a row H transaction and cannot leave the team above the second apron.
 aggregate_fail = two_team_trade(
-    TeamTradeState("A", "Team A", apron_team_salary=221_500_000),
+    TeamTradeState("A", "Team A", apron_team_salary=221_700_000),
     TeamTradeState("B", "Team B", apron_team_salary=150_000_000),
     [player("p7", "A One", 8_000_000), player("p8", "A Two", 7_000_000)],
-    [player("p9", "B One", 15_200_000)],
+    [player("p9", "B One", 15_000_000)],
 )
 assert not aggregate_fail.legal
 aggregate_a = next(t for t in aggregate_fail.teams if t.team_id == "A")
