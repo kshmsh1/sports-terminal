@@ -38,6 +38,9 @@ jobs:
       - name: NBA salary and contract ingestion parser contract
         run: python backend/scripts/test_nba_contracts_pipeline.py
 
+      - name: User-supplied 2026-27 salary snapshot contract
+        run: python backend/scripts/user_salary_snapshot_contract_test.py
+
       - name: 2026-27 CBA cap accounting contract
         run: python backend/scripts/cap_accounting_contract_test.py
 
