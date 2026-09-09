@@ -56,15 +56,21 @@ class FrontOfficeRegistryService {
     required AppSession session,
     String season = '2025-26',
   }) async {
+    final useSalarySnapshot = season == '2026-27';
     final contractsFuture = _loadCollection(
       '/v2/front-office/contracts',
       _contractsKey,
-      query: {'season': season},
+      query: {'season': season, 'limit': '1000'},
+      snapshotPath:
+          useSalarySnapshot ? '/v2/front-office-snapshot/contracts' : null,
     );
     final positionsFuture = _loadCollection(
       '/v2/front-office/team-positions',
       _positionsKey,
       query: {'season': season},
+      snapshotPath: useSalarySnapshot
+          ? '/v2/front-office-snapshot/team-positions'
+          : null,
     );
     final assetsFuture = _loadCollection(
       '/v2/front-office/draft-assets',
@@ -193,13 +199,27 @@ class FrontOfficeRegistryService {
     String path,
     String cacheKey, {
     Map<String, String> query = const {},
+    String? snapshotPath,
   }) async {
     final response = await _transport.getJson(path, query: query);
-    if (response.available && response.data is List) {
-      final rows = _list(response.data);
+    final liveRows = response.available && response.data is List
+        ? _list(response.data)
+        : <Map<String, dynamic>>[];
+
+    var snapshotRows = <Map<String, dynamic>>[];
+    var snapshotAvailable = false;
+    if (snapshotPath != null) {
+      final snapshot = await _transport.getJson(snapshotPath, query: query);
+      snapshotAvailable = snapshot.available && snapshot.data is List;
+      if (snapshotAvailable) snapshotRows = _list(snapshot.data);
+    }
+
+    if (response.available || snapshotAvailable) {
+      final rows = _mergeRows(liveRows, snapshotRows);
       await _store.saveString(cacheKey, jsonEncode(rows));
       return _CollectionResult(rows, true);
     }
+
     final cached = await _store.loadString(cacheKey);
     if (cached.isEmpty) return const _CollectionResult([], false);
     try {
@@ -240,6 +260,34 @@ class FrontOfficeRegistryService {
     await _store.saveString(cacheKey, jsonEncode(rows));
     return item;
   }
+
+  static List<Map<String, dynamic>> _mergeRows(
+    List<Map<String, dynamic>> liveRows,
+    List<Map<String, dynamic>> snapshotRows,
+  ) {
+    if (snapshotRows.isEmpty) return liveRows;
+    final occupied = <String>{for (final row in liveRows) _identity(row)};
+    final merged = <Map<String, dynamic>>[...liveRows];
+    for (final row in snapshotRows) {
+      final identity = _identity(row);
+      if (occupied.add(identity)) merged.add(row);
+    }
+    return merged;
+  }
+
+  static String _identity(Map<String, dynamic> wrapper) {
+    final raw = wrapper['record'];
+    final record = raw is Map ? _map(raw) : wrapper;
+    final type = '${wrapper['record_type'] ?? ''}';
+    final team = '${record['team_id'] ?? record['current_team_id'] ?? wrapper['team_id'] ?? ''}';
+    final player = '${record['player_id'] ?? wrapper['player_id'] ?? ''}';
+    if (player.isNotEmpty) return '$type:$team:$player';
+    if (type == 'team_position') return '$type:$team:${record['season'] ?? wrapper['season'] ?? ''}';
+    return '${wrapper['id'] ?? '$type:$team:${mergedIdentityFallback(record)}'}';
+  }
+
+  static String mergedIdentityFallback(Map<String, dynamic> record) =>
+      '${record['id'] ?? record['description'] ?? record['summary'] ?? record.hashCode}';
 
   static List<Map<String, dynamic>> _list(Object? value) {
     if (value is! List) return const [];
