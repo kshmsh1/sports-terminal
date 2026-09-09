@@ -6,6 +6,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from backend.app.user_salary_snapshot import (
+    ACTIVE_TEAM_OVERRIDES,
     contract_seed_records,
     load_player_rows,
     load_team_rows,
@@ -37,15 +38,17 @@ assert next(row for row in players if row['player'] == 'Michael Porter Jr.')['te
 assert next(row for row in players if row['player'] == 'Naz Reid')['team'] == 'CHA'
 assert next(row for row in players if row['player'] == 'Devin Booker')['team'] == 'PHX'
 
-expected_multi_team = {
-    'Damian Lillard',
-    'Bradley Beal',
-    'Klay Thompson',
-    'Jonathan Kuminga',
-    'Kentavious Caldwell-Pope',
-    'Olivier-Maxence Prosper',
+expected_active_teams = {
+    'Damian Lillard': 'POR',
+    'Bradley Beal': 'LAC',
+    'Klay Thompson': 'MIA',
+    'Jonathan Kuminga': 'MIN',
+    'Kentavious Caldwell-Pope': 'PHI',
+    'Olivier-Maxence Prosper': 'MEM',
 }
-assert expected_multi_team.issubset(set(diagnostics['multi_team_player_names']))
+assert set(expected_active_teams).issubset(set(diagnostics['multi_team_player_names']))
+assert diagnostics['active_team_overrides'] == expected_active_teams
+assert {name: value['team'] for name, value in ACTIVE_TEAM_OVERRIDES.items()} == expected_active_teams
 
 curry = next(row for row in players if row['player'] == 'Stephen Curry')
 assert curry['2026-27'] == 62_587_158
@@ -59,12 +62,22 @@ houston = next(row for row in teams if row['team_id'] == 'HOU')
 assert houston['2026-27'] == 205_487_343
 assert houston['2031-32'] == 47_337_931
 
-for name in expected_multi_team:
+for name, active_team in expected_active_teams.items():
     matches = [item for item in contracts if item['record']['player_name'] == name]
     assert len(matches) >= 2
     assert all(item['record']['metadata']['multi_team_obligation'] for item in matches)
-    assert all(item['record']['metadata']['tradeable'] is False for item in matches)
-    assert all(item['record']['metadata']['trade_restricted'] is True for item in matches)
+    active = [item for item in matches if item['record']['team_id'] == active_team]
+    retained = [item for item in matches if item['record']['team_id'] != active_team]
+    assert len(active) == 1
+    assert active[0]['record']['metadata']['tradeable'] is True
+    assert active[0]['record']['metadata']['trade_restricted'] is False
+    assert active[0]['record']['metadata']['active_team_reconciled'] is True
+    assert active[0]['record']['metadata']['official_current_team'] == active_team
+    assert active[0]['record']['source_url'].startswith('https://www.nba.com/')
+    assert retained
+    assert all(item['record']['metadata']['tradeable'] is False for item in retained)
+    assert all(item['record']['metadata']['trade_restricted'] is True for item in retained)
+    assert all(item['record']['metadata']['retained_payroll_obligation'] is True for item in retained)
 
 assert sum(1 for item in contracts if item['record']['player_name'] == 'Jonathan Isaac') == 1
 assert sum(1 for item in contracts if item['record']['player_name'] == 'Haywood Highsmith') == 1
