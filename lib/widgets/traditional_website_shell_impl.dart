@@ -16,6 +16,7 @@ import '../screens/product_transaction_command_center_screen.dart';
 import '../screens/website_nba_advanced_stats_screen.dart';
 import '../screens/website_nba_data_coverage_screen.dart';
 import '../screens/website_nba_entity_pages.dart';
+import '../screens/website_nba_game_finder_screen.dart';
 import '../screens/website_nba_lineup_analysis_screen.dart';
 import '../screens/website_nba_player_compare_screen.dart';
 import '../screens/website_nba_stat_glossary_screen.dart';
@@ -89,6 +90,14 @@ class _TraditionalWebsiteShellState extends State<TraditionalWebsiteShell> {
           icon: Icons.swap_horiz_rounded,
           builder: () => WebsiteNbaDataGate(
             builder: (_, _) => WebsiteTradeMachineScreen(session: widget.session),
+          ),
+        ),
+        _Destination(
+          id: 'nba-games',
+          label: 'Games',
+          icon: Icons.sports_basketball_outlined,
+          builder: () => WebsiteNbaDataGate(
+            builder: (_, _) => WebsiteNbaGameFinderScreen(session: widget.session),
           ),
         ),
         _Destination(
