@@ -21,6 +21,7 @@ import '../screens/website_nba_lineup_analysis_screen.dart';
 import '../screens/website_nba_player_compare_screen.dart';
 import '../screens/website_nba_stat_glossary_screen.dart';
 import '../screens/website_nba_stats_screen.dart';
+import '../screens/website_nba_team_compare_screen.dart';
 import '../screens/website_trade_machine_screen.dart';
 import '../services/product_local_store.dart';
 import '../services/website_nba_api_service.dart';
@@ -128,6 +129,14 @@ class _TraditionalWebsiteShellState extends State<TraditionalWebsiteShell> {
           icon: Icons.compare_arrows_rounded,
           builder: () => WebsiteNbaDataGate(
             builder: (_, _) => WebsiteNbaPlayerCompareScreen(session: widget.session),
+          ),
+        ),
+        _Destination(
+          id: 'nba-team-compare',
+          label: 'Team Compare',
+          icon: Icons.compare_rounded,
+          builder: () => WebsiteNbaDataGate(
+            builder: (_, _) => WebsiteNbaTeamCompareScreen(session: widget.session),
           ),
         ),
         _Destination(
