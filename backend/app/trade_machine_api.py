@@ -110,6 +110,18 @@ def trade_machine_config(season: str = Query(DEFAULT_SEASON)) -> dict[str, Any]:
 
 @router.post("/evaluate")
 def evaluate_trade_request(payload: TradeRequest) -> dict[str, Any]:
+    team_ids = [team.team_id for team in payload.teams]
+    leg_ids = [leg.team_id for leg in payload.legs]
+    if len(payload.teams) < 2:
+        raise HTTPException(status_code=422, detail="A trade requires at least two teams")
+    if len(payload.teams) > 5:
+        raise HTTPException(status_code=422, detail="A trade may include at most five teams")
+    if len(set(team_ids)) != len(team_ids):
+        raise HTTPException(status_code=422, detail="Participating team IDs must be unique")
+    if len(set(leg_ids)) != len(leg_ids):
+        raise HTTPException(status_code=422, detail="Each participating team may have only one trade leg")
+    if set(team_ids) != set(leg_ids):
+        raise HTTPException(status_code=422, detail="Every participating team must have exactly one trade leg")
     try:
         result = evaluate_trade(
             states=[_state(team) for team in payload.teams],
