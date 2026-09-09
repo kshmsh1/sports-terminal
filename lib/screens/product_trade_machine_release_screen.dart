@@ -375,78 +375,139 @@ class _ReleaseCatalog {
     }
 
     final contracts = <String, Map<String, dynamic>>{};
+    final registryContractsByTeam = <String, List<Map<String, dynamic>>>{};
     for (final wrapper in registry.contracts) {
       final record = _record(wrapper);
       final team = _team(record['team_id'] ?? wrapper['team_id']);
       final playerId = '${record['player_id'] ?? wrapper['player_id'] ?? ''}';
-      if (teams.contains(team) && playerId.isNotEmpty) {
-        contracts['$team:$playerId'] = {
-          ...record,
-          '_source_status': wrapper['source_status'] ??
-              record['source_status'] ??
-              'modeled',
-        };
+      final playerName = '${record['player_name'] ?? ''}'.trim();
+      if (!teams.contains(team) || playerId.isEmpty) continue;
+      final materialized = <String, dynamic>{
+        ...record,
+        '_source_status': wrapper['source_status'] ??
+            record['source_status'] ??
+            'modeled',
+      };
+      contracts['$team:$playerId'] = materialized;
+      if (playerName.isNotEmpty) {
+        contracts['$team:name:${_nameKey(playerName)}'] = materialized;
       }
+      registryContractsByTeam.putIfAbsent(team, () => []).add(materialized);
+    }
+
+    _ReleaseAsset playerAsset({
+      required String team,
+      required String playerId,
+      required String label,
+      required Map<String, dynamic>? contract,
+      required double fallbackSalary,
+    }) {
+      final year = _contractYear(contract, season);
+      final salary = year.salary ?? fallbackSalary;
+      final restriction = _tradeRestriction(contract);
+      final noTrade = contract?['no_trade_clause'] == true;
+      final twoWay = contract?['two_way'] == true || year.twoWay;
+      final bird = '${contract?['bird_rights'] ?? 'unknown'}';
+      final sourceStatus = '${contract?['_source_status'] ?? 'modeled'}';
+      final contractMetadata = contract == null
+          ? <String, dynamic>{}
+          : _metadata(contract);
+      final remainingGuaranteed =
+          _positive(contractMetadata['remaining_guaranteed_total']);
+      final metadata = <String, dynamic>{
+        ...contractMetadata,
+        'source_status': sourceStatus,
+        'source_label': contract?['source_label'] ?? '',
+        'contract_type': contract?['contract_type'] ?? 'standard',
+        'contract_years': contract?['years'] ?? const [],
+        'no_trade': noTrade,
+        'trade_restricted': restriction.isNotEmpty,
+        'trade_restricted_until': contract?['trade_restricted_until'] ??
+            contract?['recently_signed_until'] ??
+            '',
+        'trade_bonus': _number(contract?['trade_bonus_percent']),
+        'two_way': twoWay,
+        'bird_rights': bird,
+        if (year.guaranteed != null) 'guaranteed_amount': year.guaranteed,
+        if (remainingGuaranteed != null)
+          'remaining_guaranteed_total': remainingGuaranteed,
+        'option_type': year.option,
+      };
+      return _ReleaseAsset(
+        category: 'Players',
+        playerId: playerId,
+        routeable: restriction.isEmpty,
+        status: restriction.isNotEmpty
+            ? 'RESTRICTED'
+            : noTrade
+                ? 'CONSENT'
+                : 'TRADEABLE',
+        sourceStatus: sourceStatus,
+        asset: TradeAsset(
+          id: '$team:player:$playerId',
+          type: TradeAssetType.player,
+          label: label,
+          originTeam: team,
+          salary: salary,
+          metadata: metadata,
+        ),
+        detail: [
+          _money(salary),
+          twoWay ? 'two-way' : '${contract?['contract_type'] ?? 'standard'}',
+          _option(year.option),
+          if (year.guaranteed != null) '${_money(year.guaranteed!)} guaranteed this year',
+          if (remainingGuaranteed != null)
+            '${_money(remainingGuaranteed)} remaining guaranteed total',
+          if (bird != 'unknown' && bird.isNotEmpty) '$bird Bird rights',
+          if (noTrade) 'player consent required',
+          if (restriction.isNotEmpty) restriction,
+        ].join(' · '),
+      );
     }
 
     for (final team in teams) {
-      final seen = <String>{};
+      final seenIds = <String>{};
+      final seenNames = <String>{};
       for (final row in seed.playerSeasonTotals) {
         if (!_textValue(row['team_ids']).contains(team)) continue;
         final playerId = _textValue(row['player_id']);
-        if (playerId == '—' || !seen.add(playerId)) continue;
-        final contract = contracts['$team:$playerId'];
-        final year = _contractYear(contract, season);
-        final salary = year.salary ?? _proxySalary(row);
-        final restriction = _tradeRestriction(contract);
-        final noTrade = contract?['no_trade_clause'] == true;
-        final twoWay = contract?['two_way'] == true || year.twoWay;
-        final bird = '${contract?['bird_rights'] ?? 'unknown'}';
-        final sourceStatus = '${contract?['_source_status'] ?? 'modeled'}';
-        final metadata = <String, dynamic>{
-          if (contract != null) ..._metadata(contract),
-          'source_status': sourceStatus,
-          'source_label': contract?['source_label'] ?? '',
-          'no_trade': noTrade,
-          'trade_restricted': restriction.isNotEmpty,
-          'trade_restricted_until': contract?['trade_restricted_until'] ??
-              contract?['recently_signed_until'] ??
-              '',
-          'trade_bonus': _number(contract?['trade_bonus_percent']),
-          'two_way': twoWay,
-          'bird_rights': bird,
-          if (year.guaranteed != null) 'guaranteed_amount': year.guaranteed,
-          'option_type': year.option,
-        };
+        if (playerId == '—' || !seenIds.add(playerId)) continue;
+        final label = _textValue(row['player_label']);
+        final nameKey = _nameKey(label);
+        final contract = contracts['$team:$playerId'] ??
+            contracts['$team:name:$nameKey'];
+        seenNames.add(nameKey);
         add(
           team,
-          _ReleaseAsset(
-            category: 'Players',
+          playerAsset(
+            team: team,
             playerId: playerId,
-            routeable: restriction.isEmpty,
-            status: restriction.isNotEmpty
-                ? 'RESTRICTED'
-                : noTrade
-                    ? 'CONSENT'
-                    : 'TRADEABLE',
-            sourceStatus: sourceStatus,
-            asset: TradeAsset(
-              id: '$team:player:$playerId',
-              type: TradeAssetType.player,
-              label: _textValue(row['player_label']),
-              originTeam: team,
-              salary: salary,
-              metadata: metadata,
-            ),
-            detail: [
-              _money(salary),
-              twoWay ? 'two-way' : 'standard',
-              _option(year.option),
-              if (year.guaranteed != null) '${_money(year.guaranteed!)} guaranteed',
-              if (bird != 'unknown' && bird.isNotEmpty) '$bird Bird rights',
-              if (noTrade) 'player consent required',
-              if (restriction.isNotEmpty) restriction,
-            ].join(' · '),
+            label: label,
+            contract: contract,
+            fallbackSalary: _proxySalary(row),
+          ),
+        );
+      }
+
+      for (final contract
+          in registryContractsByTeam[team] ?? const <Map<String, dynamic>>[]) {
+        final label = '${contract['player_name'] ?? ''}'.trim();
+        final playerId = '${contract['player_id'] ?? ''}'.trim();
+        final nameKey = _nameKey(label);
+        if (playerId.isEmpty || label.isEmpty || seenNames.contains(nameKey)) {
+          continue;
+        }
+        final year = _contractYear(contract, season);
+        if (year.salary == null) continue;
+        seenNames.add(nameKey);
+        add(
+          team,
+          playerAsset(
+            team: team,
+            playerId: playerId,
+            label: label,
+            contract: contract,
+            fallbackSalary: year.salary!,
           ),
         );
       }
@@ -1093,7 +1154,7 @@ class _ReleaseDataBoundary extends StatelessWidget {
             const SizedBox(height: 7),
             Text(
               frontOffice.remoteAvailable
-                  ? 'Connected registry values retain verified / uploaded / modeled source status. A structurally valid result is execution-grade only when the relevant contracts, Apron Team Salary, draft ownership/protections, cash ledger and exception balances are authoritative.'
+                  ? 'Connected registry values retain verified / uploaded / modeled source status. The user-supplied 2026-27 salary snapshot is treated as uploaded evidence. A structurally valid result is execution-grade only when the relevant contract clauses, Apron Team Salary, draft ownership/protections, cash ledger and exception balances are authoritative.'
                   : 'The registry is offline or incomplete. The interface remains usable for modeling, but modeled salary proxies and placeholder records are not represented as league-confirmed facts.',
               style: const TextStyle(color: _rtMuted, height: 1.45),
             ),
@@ -1225,13 +1286,14 @@ class _Metric extends StatelessWidget {
 
 String _tradeRestriction(Map<String, dynamic>? contract) {
   if (contract == null) return '';
-  if (contract['trade_eligible'] == false) {
-    return '${contract['restriction_reason'] ?? contract['trade_restriction'] ?? 'not currently trade eligible'}';
+  final metadata = _metadata(contract);
+  if (contract['trade_eligible'] == false || metadata['tradeable'] == false) {
+    return '${contract['restriction_reason'] ?? metadata['restriction_reason'] ?? contract['trade_restriction'] ?? 'not currently trade eligible'}';
   }
-  if (contract['trade_restricted'] == true) {
-    return '${contract['restriction_reason'] ?? contract['trade_restriction'] ?? 'trade restricted'}';
+  if (contract['trade_restricted'] == true || metadata['trade_restricted'] == true) {
+    return '${contract['restriction_reason'] ?? metadata['restriction_reason'] ?? contract['trade_restriction'] ?? 'trade restricted'}';
   }
-  final value = '${contract['trade_restriction'] ?? contract['restriction_reason'] ?? ''}'.trim();
+  final value = '${contract['trade_restriction'] ?? contract['restriction_reason'] ?? metadata['restriction_reason'] ?? ''}'.trim();
   return value;
 }
 
@@ -1287,6 +1349,12 @@ String _option(String value) {
   final normalized = value.replaceAll('_', ' ').trim();
   return normalized == 'none' || normalized.isEmpty ? 'standard year' : '$normalized year';
 }
+
+String _nameKey(String value) => value
+    .toLowerCase()
+    .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+    .trim()
+    .replaceAll(RegExp(r'\s+'), ' ');
 
 String _team(Object? value) => '${value ?? ''}'.trim().toUpperCase();
 String _textValue(Object? value) {
