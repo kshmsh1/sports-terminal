@@ -242,11 +242,12 @@ def _matching_paths(
 
     if state.team_salary is not None:
         room_before = max(cap.salary_cap - state.team_salary, 0)
-        paths.append(_path(
-            "room_plus_250k", outgoing + room_before + 250_000, incoming, outgoing, state, post_apron, cap,
-            None, None,
-            "Article VII 6(j)(1)(v): available Room can be combined with outgoing salary and the $250,000 allowance.",
-        ))
+        if room_before > 0:
+            paths.append(_path(
+                "room_plus_250k", outgoing + room_before + 250_000, incoming, outgoing, state, post_apron, cap,
+                None, None,
+                "Article VII 6(j)(1)(v): available Room can be combined with outgoing salary and the $250,000 allowance.",
+            ))
 
     return paths
 
