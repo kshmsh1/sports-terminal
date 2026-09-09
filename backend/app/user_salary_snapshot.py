@@ -21,6 +21,11 @@ LUXURY_TAX = 200_428_000
 FIRST_APRON = 209_015_000
 SECOND_APRON = 221_686_000
 SEASONS = ("2026-27", "2027-28", "2028-29", "2029-30", "2030-31", "2031-32")
+TEAM_ALIASES = {
+    "BRK": "BKN",
+    "CHO": "CHA",
+    "PHO": "PHX",
+}
 
 
 def _money(value: str | None) -> int:
@@ -28,6 +33,11 @@ def _money(value: str | None) -> int:
     if not raw:
         return 0
     return int(raw)
+
+
+def _canonical_team(value: str | None) -> str:
+    raw = (value or "").strip().upper()
+    return TEAM_ALIASES.get(raw, raw)
 
 
 def _slug(value: str) -> str:
@@ -45,6 +55,8 @@ def load_player_rows() -> list[dict[str, Any]]:
         with path.open(newline="", encoding="utf-8") as handle:
             for raw in csv.DictReader(handle):
                 row = dict(raw)
+                row["source_team"] = row.get("team", "")
+                row["team"] = _canonical_team(row.get("team"))
                 row["rank"] = int(row["rank"])
                 for season in SEASONS:
                     row[season] = _money(row.get(season))
@@ -60,6 +72,8 @@ def load_team_rows() -> list[dict[str, Any]]:
     with TEAM_FILE.open(newline="", encoding="utf-8") as handle:
         for raw in csv.DictReader(handle):
             row = dict(raw)
+            row["source_team_id"] = row.get("team_id", "")
+            row["team_id"] = _canonical_team(row.get("team_id"))
             for season in SEASONS:
                 row[season] = _money(row.get(season))
             rows.append(row)
@@ -95,6 +109,7 @@ def snapshot_diagnostics() -> dict[str, Any]:
         "exact_duplicate_rows": exact_duplicate_rows,
         "team_player_sum": dict(team_player_sum),
         "team_aggregate_variance": team_variance,
+        "team_aliases": dict(TEAM_ALIASES),
     }
 
 
@@ -172,6 +187,8 @@ def contract_seed_records() -> list[dict[str, Any]]:
                 "rank": int(row["rank"]),
                 "remaining_guaranteed_total": int(row["guaranteed"]),
                 "snapshot_kind": "user_supplied_salary_table",
+                "source_team_abbreviation": row.get("source_team", team),
+                "canonical_team_abbreviation": team,
                 "multi_team_obligation": ambiguous,
                 "tradeable": not ambiguous,
                 "trade_restricted": ambiguous,
@@ -216,6 +233,8 @@ def team_position_seed_records() -> list[dict[str, Any]]:
             "notes": "Aggregate payroll salary from the user-supplied table. This is an uploaded payroll control total, not an official CBA Team Salary or Apron Team Salary statement.",
             "metadata": {
                 "team_name": row["team"],
+                "source_team_abbreviation": row.get("source_team_id", team),
+                "canonical_team_abbreviation": team,
                 "reported_payroll_total": reported,
                 "player_row_sum": summed,
                 "player_row_sum_variance": reported - summed,
@@ -265,15 +284,14 @@ def merge_seed_records(
 ) -> list[dict[str, Any]]:
     if record_status and record_status != "active":
         return live_rows
+    canonical_team_id = _canonical_team(team_id)
     filtered = [
         row
         for row in seed_rows
-        if (not team_id or row["team_id"] == team_id)
+        if (not canonical_team_id or row["team_id"] == canonical_team_id)
         and (not player_id or row["player_id"] == player_id)
         and (not source_status or row["source_status"] == source_status)
     ]
-    # Database records are authoritative over static uploaded seeds with the same
-    # team/player identity. This lets later verified records replace the chat snapshot.
     occupied = {(row.get("team_id", ""), row.get("player_id", "")) for row in live_rows}
     merged = list(live_rows)
     for row in filtered:
