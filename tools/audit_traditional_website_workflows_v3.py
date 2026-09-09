@@ -15,6 +15,7 @@ ASSERTIONS: dict[str, tuple[str, ...]] = {
         "Lineup Analysis",
         "Trade Machine",
         "Games",
+        "History",
         "Team Compare",
         "Watchlist",
         "Front Office",
@@ -68,6 +69,15 @@ ASSERTIONS: dict[str, tuple[str, ...]] = {
         "Sports Terminal does not invent missing events",
         "Player box score",
         "Play-by-play",
+    ),
+    "lib/screens/website_nba_history_screen.dart": (
+        "NBA History",
+        "Canonical season overview",
+        "Regular Season",
+        "Playoffs",
+        "Known source gaps remain explicit rather than synthesized",
+        "WebsiteStickyStatsTable",
+        "Historical delivery",
     ),
     "lib/screens/website_nba_team_compare_screen.dart": (
         "Team Compare",
