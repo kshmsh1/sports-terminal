@@ -10,6 +10,7 @@ from backend.app.trade_machine_api import trade_machine_teams
 teams = trade_machine_teams('2026-27')
 assert len(teams) == 30, len(teams)
 assert len({team['team_id'] for team in teams}) == 30
+assert {'BKN', 'CHA', 'PHX'}.issubset({team['team_id'] for team in teams})
 
 houston = next(team for team in teams if team['team_id'] == 'HOU')
 assert houston['reported_payroll_total'] == 205_487_343
@@ -26,8 +27,22 @@ assert curry['trade_eligible'] is True
 portland = next(team for team in teams if team['team_id'] == 'POR')
 lillard = next(player for player in portland['players'] if player['player_name'] == 'Damian Lillard')
 assert lillard['multi_team_obligation'] is True
-assert lillard['trade_eligible'] is False
-assert 'active-team reconciliation' in lillard['restriction_reason']
+assert lillard['trade_eligible'] is True
+assert lillard['restriction_reason'] is None
+
+milwaukee = next(team for team in teams if team['team_id'] == 'MIL')
+lillard_retained = next(player for player in milwaukee['players'] if player['player_name'] == 'Damian Lillard')
+assert lillard_retained['multi_team_obligation'] is True
+assert lillard_retained['trade_eligible'] is False
+assert 'current NBA team is POR' in lillard_retained['restriction_reason']
+
+miami = next(team for team in teams if team['team_id'] == 'MIA')
+klay = next(player for player in miami['players'] if player['player_name'] == 'Klay Thompson')
+assert klay['trade_eligible'] is True
+
+dallas = next(team for team in teams if team['team_id'] == 'DAL')
+klay_retained = next(player for player in dallas['players'] if player['player_name'] == 'Klay Thompson')
+assert klay_retained['trade_eligible'] is False
 
 orlando = next(team for team in teams if team['team_id'] == 'ORL')
 assert sum(1 for player in orlando['players'] if player['player_name'] == 'Jonathan Isaac') == 1
