@@ -16,6 +16,7 @@ import '../screens/website_nba_advanced_stats_screen.dart';
 import '../screens/website_nba_data_coverage_screen.dart';
 import '../screens/website_nba_entity_pages.dart';
 import '../screens/website_nba_game_finder_screen.dart';
+import '../screens/website_nba_history_screen.dart';
 import '../screens/website_nba_home_dashboard.dart';
 import '../screens/website_nba_lineup_analysis_screen.dart';
 import '../screens/website_nba_player_compare_screen.dart';
@@ -100,6 +101,14 @@ class _TraditionalWebsiteShellState extends State<TraditionalWebsiteShell> {
           icon: Icons.sports_basketball_outlined,
           builder: () => WebsiteNbaDataGate(
             builder: (_, _) => WebsiteNbaGameFinderScreen(session: widget.session),
+          ),
+        ),
+        _Destination(
+          id: 'nba-history',
+          label: 'History',
+          icon: Icons.history_rounded,
+          builder: () => WebsiteNbaDataGate(
+            builder: (_, _) => WebsiteNbaHistoryScreen(session: widget.session),
           ),
         ),
         _Destination(
