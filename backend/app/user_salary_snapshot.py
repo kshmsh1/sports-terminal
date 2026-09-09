@@ -198,7 +198,7 @@ def team_position_seed_records() -> list[dict[str, Any]]:
             "season": SEASON,
             "salary_cap": SALARY_CAP,
             "luxury_tax": LUXURY_TAX,
-            "first_apron": FIRST_APON if False else FIRST_APRON,
+            "first_apron": FIRST_APRON,
             "second_apron": SECOND_APRON,
             "active_salary": reported,
             "cap_holds": 0,
