@@ -551,8 +551,9 @@ class TradeMachineEngine {
             ),
           );
         }
-        if (asset.metadata['trade_bonus'] is num ||
-            asset.metadata['trade_kicker'] is num) {
+        final tradeBonus = _number(asset.metadata['trade_bonus']) ??
+            _number(asset.metadata['trade_kicker']);
+        if (tradeBonus != null && tradeBonus > 0) {
           findings.add(
             TradeValidationFinding(
               code: 'TRADE_BONUS',
@@ -894,7 +895,7 @@ class TradeMachineEngine {
       final room = (context.salaryCap - context.teamSalary)
           .clamp(0, double.infinity)
           .toDouble();
-      return outgoing + room + 250000;
+      return room + 250000;
     }
     if (postTradeSalary > context.firstApron) return outgoing;
     if (outgoing <= 0) return 0;

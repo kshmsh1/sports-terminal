@@ -1,0 +1,82 @@
+{
+  "document": {
+    "title": "2023 NBA Collective Bargaining Agreement",
+    "source": "user-provided final 2023 NBA CBA",
+    "scope": "trade machine rules and apron restrictions"
+  },
+  "references": {
+    "apron_team_salary": "Article VII, Section 2(e)(1)",
+    "transaction_restrictions": "Article VII, Section 2(e)(2)-(4)",
+    "traded_player_exception": "Article VII, Section 6(j)",
+    "trade_cash": "Article VII, Section 8(a)"
+  },
+  "traded_player_exceptions": {
+    "standard": {
+      "outgoing_players_min": 1,
+      "outgoing_players_max": 1,
+      "incoming_formula": "100% of pre-trade salary + applicable allowance",
+      "multiplier": 1.0,
+      "base_allowance": 250000,
+      "non_simultaneous_expiry_days": 365,
+      "reference": "Article VII, Section 6(j)(1)(i)"
+    },
+    "aggregated_standard": {
+      "outgoing_players_min": 2,
+      "incoming_formula": "100% of aggregated pre-trade salaries + applicable allowance",
+      "multiplier": 1.0,
+      "base_allowance": 250000,
+      "applicable_apron": "second_apron",
+      "restriction_table_row": "H",
+      "reference": "Article VII, Section 6(j)(1)(ii); Section 2(e)(4) row H"
+    },
+    "expanded": {
+      "outgoing_players_min": 1,
+      "incoming_formula": "max(min(200% outgoing + applicable allowance, outgoing + scaled $7.5m), 125% outgoing + applicable allowance)",
+      "base_scaled_additive_2023_24": 7500000,
+      "scale_base_salary_cap": 136021000,
+      "applicable_apron": "first_apron",
+      "restriction_table_row": "E",
+      "reference": "Article VII, Section 6(j)(1)(iv); Section 2(e)(4) row E"
+    },
+    "room_plus_250k": {
+      "incoming_formula": "available Room + applicable allowance",
+      "reference": "Article VII, Section 6(j)(1)(v)"
+    },
+    "allowance_reduction": {
+      "base_allowance": 250000,
+      "post_trade_first_apron_rule": "If post-assignment Apron Team Salary would exceed the First Apron, the $250,000 allowance in Sections 6(j)(1)(i)-(v) is reduced to $0.",
+      "reference": "Article VII, Section 6(j)(3)"
+    }
+  },
+  "transaction_restrictions": {
+    "E": {"transaction": "expanded_tpe", "applicable_apron": "first_apron"},
+    "F": {"transaction": "aged_standard_tpe", "applicable_apron": "first_apron"},
+    "H": {"transaction": "aggregated_standard_tpe", "applicable_apron": "second_apron"},
+    "I": {"transaction": "cash_paid_in_trade", "applicable_apron": "second_apron"},
+    "J": {"transaction": "tpe_from_sign_and_trade_contract", "applicable_apron": "second_apron"},
+    "C": {"transaction": "acquire_sign_and_trade_player", "applicable_apron": "first_apron"}
+  },
+  "hard_cap_behavior": {
+    "current_year": "A team may not execute a listed transaction if immediately afterward its Apron Team Salary exceeds the applicable apron, and after executing it may not exceed that apron for the rest of the Salary Cap Year.",
+    "late_year_future_year": "For rows E-J after the regular season through June 30, the CBA also tests and hard-caps the subsequent Salary Cap Year under the assumptions in Section 2(e)(3).",
+    "reference": "Article VII, Section 2(e)(2)-(3)"
+  },
+  "cash": {
+    "annual_send_or_receive_limit_pct_of_salary_cap": 5.15,
+    "paying_cash_applicable_apron": "second_apron",
+    "reference": "Article VII, Section 8(a); Section 2(e)(4) row I"
+  },
+  "apron_team_salary_adjustments": {
+    "reference": "Article VII, Section 2(e)(1)",
+    "notes": [
+      "Apron Team Salary is not identical to ordinary Team Salary.",
+      "It adds excluded performance bonuses and specified young-player salary amounts, applies RFA/qualifying-offer treatment, and removes specified free-agent, exception and incomplete-roster amounts.",
+      "The trade machine therefore accepts an authoritative Apron Team Salary when available and labels contract-sum estimates as estimates."
+    ]
+  },
+  "engine_guardrails": {
+    "matching_salary_overrides": "Each player asset can provide an outgoing_salary_for_matching and incoming_salary_for_matching override for special CBA cases such as trade bonuses or other salary-treatment rules.",
+    "trade_eligibility": "Each asset carries trade_eligible and consent flags. The engine fails closed when a selected player is ineligible or required consent is absent.",
+    "unknown_rules": "If inputs required for a special CBA rule are not known, the result is qualified instead of silently assuming legality."
+  }
+}

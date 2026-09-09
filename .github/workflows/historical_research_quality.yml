@@ -33,7 +33,22 @@ jobs:
         run: python -m pip install -r backend/requirements.txt
 
       - name: Compile historical backend
-        run: python -m compileall -q backend/app tools
+        run: python -m compileall -q backend/app tools backend/scripts/nba_contracts_pipeline.py
+
+      - name: NBA salary and contract ingestion parser contract
+        run: python backend/scripts/test_nba_contracts_pipeline.py
+
+      - name: User-supplied 2026-27 salary snapshot contract
+        run: python backend/scripts/user_salary_snapshot_contract_test.py
+
+      - name: Snapshot-backed trade machine teams API contract
+        run: python backend/scripts/trade_machine_snapshot_api_contract_test.py
+
+      - name: 2026-27 CBA cap accounting contract
+        run: python backend/scripts/cap_accounting_contract_test.py
+
+      - name: 2026-27 CBA trade machine contract
+        run: python backend/scripts/trade_machine_contract_test.py
 
       - name: Raw historical import contract
         run: python backend/scripts/historical_import_contract_test.py
