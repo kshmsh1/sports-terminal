@@ -31,18 +31,14 @@ assert lillard['trade_eligible'] is True
 assert lillard['restriction_reason'] is None
 
 milwaukee = next(team for team in teams if team['team_id'] == 'MIL')
-lillard_retained = next(player for player in milwaukee['players'] if player['player_name'] == 'Damian Lillard')
-assert lillard_retained['multi_team_obligation'] is True
-assert lillard_retained['trade_eligible'] is False
-assert 'current NBA team is POR' in lillard_retained['restriction_reason']
+assert not any(player['player_name'] == 'Damian Lillard' for player in milwaukee['players'])
 
 miami = next(team for team in teams if team['team_id'] == 'MIA')
 klay = next(player for player in miami['players'] if player['player_name'] == 'Klay Thompson')
 assert klay['trade_eligible'] is True
 
 dallas = next(team for team in teams if team['team_id'] == 'DAL')
-klay_retained = next(player for player in dallas['players'] if player['player_name'] == 'Klay Thompson')
-assert klay_retained['trade_eligible'] is False
+assert not any(player['player_name'] == 'Klay Thompson' for player in dallas['players'])
 
 orlando = next(team for team in teams if team['team_id'] == 'ORL')
 assert sum(1 for player in orlando['players'] if player['player_name'] == 'Jonathan Isaac') == 1
