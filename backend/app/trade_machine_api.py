@@ -21,6 +21,7 @@ from .trade_machine import (
     scaled_expanded_additive,
     trade_evaluation_to_dict,
 )
+from .user_salary_snapshot import contract_seed_records, team_position_seed_records
 
 router = APIRouter(prefix="/v2/nba/trade-machine", tags=["nba-trade-machine"])
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -104,7 +105,7 @@ def trade_machine_config(season: str = Query(DEFAULT_SEASON)) -> dict[str, Any]:
             "20m_outgoing": expanded_tpe_limit(20_000_000, cap, rules),
         },
         "references": rules["references"],
-        "data_note": "Salary, Team Salary and Apron Team Salary are distinct CBA concepts. Use an authoritative Apron Team Salary when available; contract-sum estimates produce qualified results.",
+        "data_note": "Salary, Team Salary and Apron Team Salary are distinct CBA concepts. Use an authoritative Apron Team Salary when available; uploaded payroll totals produce qualified results.",
     }
 
 
@@ -141,22 +142,78 @@ def _contracts_path() -> Path:
 def _read_contract_rows(season: str) -> list[dict[str, str]]:
     path = _contracts_path()
     if not path.exists():
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "message": "Canonical contract data has not been generated yet.",
-                "expected_path": str(path),
-                "command": "python backend/scripts/nba_contracts_pipeline.py --output-dir raw/nba/contracts",
-            },
-        )
+        return []
     with path.open(newline="", encoding="utf-8") as handle:
         return [row for row in csv.DictReader(handle) if row.get("season") == season]
 
 
+def _snapshot_teams() -> list[dict[str, Any]]:
+    positions = {item["team_id"]: item["record"] for item in team_position_seed_records()}
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for wrapper in contract_seed_records():
+        record = wrapper["record"]
+        team = str(record["team_id"])
+        year = next((item for item in record.get("years", []) if item.get("season") == DEFAULT_SEASON), None)
+        if not year:
+            continue
+        metadata = record.get("metadata", {})
+        grouped.setdefault(team, []).append({
+            "player_id": record["player_id"],
+            "player_name": record["player_name"],
+            "salary": int(year.get("salary", 0)),
+            "option_type": None,
+            "fully_guaranteed": None,
+            "remaining_guaranteed_total": int(metadata.get("remaining_guaranteed_total", 0)),
+            "salary_source": record.get("source_label"),
+            "source_status": "uploaded",
+            "trade_eligible": metadata.get("tradeable", True),
+            "restriction_reason": metadata.get("restriction_reason") or None,
+            "multi_team_obligation": metadata.get("multi_team_obligation", False),
+        })
+    out: list[dict[str, Any]] = []
+    cap = load_cap_levels(DEFAULT_SEASON)
+    for team, players in sorted(grouped.items()):
+        position = positions.get(team, {})
+        payroll = int(position.get("active_salary", 0))
+        out.append({
+            "team_id": team,
+            "team_name": position.get("metadata", {}).get("team_name", team),
+            "season": DEFAULT_SEASON,
+            "players": sorted(players, key=lambda p: (-p["salary"], p["player_name"])),
+            "reported_contract_salary_sum": sum(p["salary"] for p in players),
+            "reported_payroll_total": payroll,
+            "estimated_apron_status": (
+                "above_second_apron" if payroll > cap.second_apron else
+                "above_first_apron" if payroll > cap.first_apron else
+                "taxpayer" if payroll > cap.tax_level else
+                "over_cap" if payroll > cap.salary_cap else
+                "under_cap"
+            ),
+            "apron_team_salary": payroll,
+            "apron_salary_is_estimate": True,
+            "source_status": "uploaded",
+            "source_document_id": position.get("source_document_id", ""),
+            "warning": "Uploaded aggregate payroll total, not the CBA-defined Apron Team Salary. Multi-team payroll obligations are non-tradeable until active-team reconciliation.",
+        })
+    return out
+
+
 @router.get("/teams")
 def trade_machine_teams(season: str = Query(DEFAULT_SEASON)) -> list[dict[str, Any]]:
+    if season == DEFAULT_SEASON:
+        return _snapshot_teams()
+
     cap = load_cap_levels(season)
     rows = _read_contract_rows(season)
+    if not rows:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "message": "Canonical contract data has not been generated for this season.",
+                "expected_path": str(_contracts_path()),
+                "command": "python backend/scripts/nba_contracts_pipeline.py --output-dir raw/nba/contracts",
+            },
+        )
     grouped: dict[str, list[dict[str, str]]] = {}
     for row in rows:
         team = (row.get("team_abbr") or "").strip()
