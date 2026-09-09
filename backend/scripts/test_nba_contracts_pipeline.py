@@ -8,6 +8,7 @@ from nba_contracts_pipeline import (
     parse_bref_historical_team_salary,
     parse_bref_team_payroll,
     parse_money,
+    parse_nba_transaction_json,
     parse_transaction_page,
     validate_against_cba,
 )
@@ -30,10 +31,11 @@ assert rows[0].signed_using == "Bird Rights"
 assert rows[0].reported_contract_guaranteed_total == 10_000_000
 assert parse_money("$1,234,567") == 1_234_567
 
-# Regression: generic words containing "to" or "po" must not be mistaken for options.
-NO_OPTION_HTML = CONTRACT_HTML.replace('class="popt" title="Player Option"', 'class="contract total" title="future salary"')
-no_options = parse_bref_contracts(NO_OPTION_HTML, "https://example.test/no-options")
-assert no_options[1].option_type is None
+NO_OPTION_HTML = CONTRACT_HTML.replace(
+    'class="popt" title="Player Option"',
+    'class="contract total" title="future salary"',
+)
+assert parse_bref_contracts(NO_OPTION_HTML, "https://example.test/no-options")[1].option_type is None
 
 INDEX_HTML = """
 <a href="/contracts/CHI.html">Chicago Bulls</a><a href="/contracts/NYK.html">Knicks</a>
@@ -96,6 +98,17 @@ assert tx[2].player_name == "Mason Plumlee"
 assert tx[2].contract_type == "10_day"
 assert classify_transaction("The Miami Heat signed X to an Exhibit 10 contract.")[1] == "exhibit_10"
 
+NBA_JSON = r'''{"NBA_Player_Movement":{"rows":[{"Transaction_Type":"Signing","TRANSACTION_DATE":"2026-09-04T00:00:00","TRANSACTION_DESCRIPTION":"Brooklyn Nets signed forward Grant Nelson to a Two-Way Contract.","TEAM_ID":1610612751.0,"TEAM_SLUG":"nets","PLAYER_ID":1641761.0,"PLAYER_SLUG":"grant-nelson","GroupSort":"Signing 1153604"}]}}'''
+nba_tx = parse_nba_transaction_json(NBA_JSON)
+assert len(nba_tx) == 1
+assert nba_tx[0].event_date == "2026-09-04"
+assert nba_tx[0].player_name == "Grant Nelson"
+assert nba_tx[0].player_external_id == "1641761"
+assert nba_tx[0].team_external_id == "1610612751"
+assert nba_tx[0].contract_type == "two_way"
+assert nba_tx[0].raw_transaction_type == "Signing"
+assert nba_tx[0].group_sort == "Signing 1153604"
+
 canonical = canonicalize_contract_evidence(rows + team_rows + hist_rows)
 example_2026 = next(x for x in canonical if x.player_name == "Example Player" and x.season == "2026-27")
 assert example_2026.evidence_count == 2
@@ -103,6 +116,5 @@ assert example_2026.reported_salary_fully_guaranteed is True
 assert example_2026.salary_source_name == "basketball_reference_team_payroll"
 
 RULES = {"option_clauses": {"minimum_option_salary_ratio_to_prior_year": 1.0, "reference": "Article XII Sections 1-2"}}
-issues = validate_against_cba(canonical, RULES)
-assert issues == []
+assert validate_against_cba(canonical, RULES) == []
 print("NBA multi-source contract parser tests passed")
