@@ -364,141 +364,193 @@ class _SiteHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final primary = nbaItems.take(5).toList();
-    final moreItems = [...nbaItems.skip(5), ...secondary];
-
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
-      child: Container(
-        height: 68,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: colors.primaryContainer,
-                borderRadius: BorderRadius.circular(10),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final primaryCount = width >= 1250
+              ? 5
+              : width >= 980
+                  ? 3
+                  : width >= 760
+                      ? 1
+                      : 0;
+          final primary = nbaItems.take(primaryCount).toList();
+          final moreNba = nbaItems.skip(primaryCount).toList();
+          final showBrandText = width >= 620;
+          final showWideSearch = width >= 940;
+          final searchWidth = width >= 1250 ? 225.0 : 190.0;
+
+          return Container(
+            height: 68,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Theme.of(context).dividerColor),
               ),
-              child: Text(
-                'ST',
-                style: TextStyle(
-                  color: colors.onPrimaryContainer,
-                  fontWeight: FontWeight.w900,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: colors.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    'ST',
+                    style: TextStyle(
+                      color: colors.onPrimaryContainer,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'Sports Terminal',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17),
-            ),
-            const SizedBox(width: 24),
-            for (final item in primary)
-              _HeaderButton(
-                label: item.label,
-                selected: item.id == selectedId,
-                onTap: () => onSelect(item.id),
-              ),
-            const Spacer(),
-            SizedBox(
-              width: 225,
-              child: OutlinedButton.icon(
-                onPressed: () => _openSearch(context),
-                icon: const Icon(Icons.search_rounded, size: 18),
-                label: const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Search players & teams'),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            PopupMenuButton<String>(
-              tooltip: 'More',
-              onSelected: (value) {
-                if (!value.startsWith('future:') && !value.startsWith('detached:')) {
-                  onSelect(value);
-                }
-              },
-              itemBuilder: (context) => [
-                for (final item in moreItems)
-                  PopupMenuItem(
-                    value: item.id,
+                if (showBrandText) ...[
+                  const SizedBox(width: 10),
+                  const Text(
+                    'Sports Terminal',
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17),
+                  ),
+                ],
+                if (primary.isNotEmpty) ...[
+                  const SizedBox(width: 20),
+                  for (final item in primary)
+                    _HeaderButton(
+                      label: item.label,
+                      selected: item.id == selectedId,
+                      onTap: () => onSelect(item.id),
+                    ),
+                ],
+                const Spacer(),
+                if (showWideSearch)
+                  SizedBox(
+                    width: searchWidth,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openSearch(context),
+                      icon: const Icon(Icons.search_rounded, size: 18),
+                      label: const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('Search players & teams'),
+                      ),
+                    ),
+                  )
+                else
+                  IconButton(
+                    onPressed: () => _openSearch(context),
+                    tooltip: 'Search players & teams',
+                    icon: const Icon(Icons.search_rounded),
+                  ),
+                const SizedBox(width: 4),
+                PopupMenuButton<String>(
+                  tooltip: 'More',
+                  onSelected: (value) {
+                    if (!value.startsWith('future:') &&
+                        !value.startsWith('detached:') &&
+                        !value.startsWith('header:')) {
+                      onSelect(value);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'header:nba',
+                      enabled: false,
+                      child: _MenuHeading('NBA'),
+                    ),
+                    for (final item in moreNba)
+                      PopupMenuItem(
+                        value: item.id,
+                        child: _MenuDestination(item: item),
+                      ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'header:workspace',
+                      enabled: false,
+                      child: _MenuHeading('WORKSPACE & NETWORK'),
+                    ),
+                    for (final item in secondary)
+                      PopupMenuItem(
+                        value: item.id,
+                        child: _MenuDestination(item: item),
+                      ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'header:detached',
+                      enabled: false,
+                      child: _MenuHeading('DETACHED TOOLS'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'detached:python',
+                      enabled: false,
+                      child: Row(
+                        children: [
+                          Icon(Icons.code_rounded, size: 18),
+                          SizedBox(width: 10),
+                          Text('Python Lab · detached'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'detached:excel',
+                      enabled: false,
+                      child: Row(
+                        children: [
+                          Icon(Icons.grid_on_outlined, size: 18),
+                          SizedBox(width: 10),
+                          Text('Excel Workspace · detached'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'header:future',
+                      enabled: false,
+                      child: _MenuHeading('FUTURE SPORTS'),
+                    ),
+                    for (final sport in futureSports)
+                      PopupMenuItem(
+                        value: 'future:$sport',
+                        enabled: false,
+                        child: Text(sport),
+                      ),
+                  ],
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                     child: Row(
                       children: [
-                        Icon(item.icon, size: 18),
-                        const SizedBox(width: 10),
-                        Text(item.label),
+                        Text('More'),
+                        SizedBox(width: 4),
+                        Icon(Icons.keyboard_arrow_down_rounded, size: 18),
                       ],
                     ),
                   ),
-                const PopupMenuDivider(),
-                const PopupMenuItem(
-                  value: 'detached:python',
-                  enabled: false,
-                  child: Row(
-                    children: [
-                      Icon(Icons.code_rounded, size: 18),
-                      SizedBox(width: 10),
-                      Text('Python Lab · detached'),
-                    ],
+                ),
+                IconButton(
+                  onPressed: onToggleTheme,
+                  tooltip: darkMode ? 'Use light mode' : 'Use dark mode',
+                  icon: Icon(
+                    darkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                   ),
                 ),
-                const PopupMenuItem(
-                  value: 'detached:excel',
-                  enabled: false,
-                  child: Row(
-                    children: [
-                      Icon(Icons.grid_on_outlined, size: 18),
-                      SizedBox(width: 10),
-                      Text('Excel Workspace · detached'),
-                    ],
-                  ),
-                ),
-                const PopupMenuDivider(),
-                for (final sport in futureSports)
-                  PopupMenuItem(
-                    value: 'future:$sport',
-                    enabled: false,
-                    child: Text(sport),
-                  ),
-              ],
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                child: Row(
-                  children: [
-                    Text('More'),
-                    SizedBox(width: 4),
-                    Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                const SizedBox(width: 2),
+                PopupMenuButton<String>(
+                  tooltip: 'Account',
+                  onSelected: (value) {
+                    if (value == 'profile') onSelect('profile');
+                    if (value == 'signout') onSignOut();
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'profile', child: Text('Profile')),
+                    PopupMenuItem(value: 'signout', child: Text('Sign out')),
                   ],
+                  child: CircleAvatar(radius: 18, child: Text(session.initials)),
                 ),
-              ),
-            ),
-            IconButton(
-              onPressed: onToggleTheme,
-              tooltip: darkMode ? 'Use light mode' : 'Use dark mode',
-              icon: Icon(darkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
-            ),
-            const SizedBox(width: 2),
-            PopupMenuButton<String>(
-              tooltip: 'Account',
-              onSelected: (value) {
-                if (value == 'profile') onSelect('profile');
-                if (value == 'signout') onSignOut();
-              },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'profile', child: Text('Profile')),
-                PopupMenuItem(value: 'signout', child: Text('Sign out')),
               ],
-              child: CircleAvatar(radius: 18, child: Text(session.initials)),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -525,6 +577,35 @@ class _SiteHeader extends StatelessWidget {
       );
     }
   }
+}
+
+class _MenuHeading extends StatelessWidget {
+  const _MenuHeading(this.label);
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w900,
+              letterSpacing: .7,
+            ),
+      );
+}
+
+class _MenuDestination extends StatelessWidget {
+  const _MenuDestination({required this.item});
+  final _Destination item;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Icon(item.icon, size: 18),
+          const SizedBox(width: 10),
+          Text(item.label),
+        ],
+      );
 }
 
 class _EntitySearchDialog extends StatefulWidget {
@@ -593,7 +674,9 @@ class _EntitySearchDialogState extends State<_EntitySearchDialog> {
             children: [
               Text(
                 'Search Sports Terminal',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -612,7 +695,9 @@ class _EntitySearchDialogState extends State<_EntitySearchDialog> {
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Text(
                     'Search the canonical local NBA player and team index.',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               if (!_loading && _results != null && !hasResults)
@@ -689,7 +774,11 @@ class _SearchHeading extends StatelessWidget {
 }
 
 class _EntitySelection {
-  const _EntitySelection({required this.kind, required this.key, required this.name});
+  const _EntitySelection({
+    required this.kind,
+    required this.key,
+    required this.name,
+  });
 
   final String kind;
   final String key;
@@ -723,7 +812,9 @@ class _HeaderButton extends StatelessWidget {
           foregroundColor: selected
               ? Theme.of(context).colorScheme.primary
               : Theme.of(context).colorScheme.onSurface,
-          textStyle: TextStyle(fontWeight: selected ? FontWeight.w900 : FontWeight.w700),
+          textStyle: TextStyle(
+            fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+          ),
         ),
         child: Text(label),
       );
