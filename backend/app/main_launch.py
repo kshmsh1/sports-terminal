@@ -6,6 +6,7 @@ from .auth_api import router as auth_router
 from .auth_guard import enforce_launch_auth
 from .authorization_guard import enforce_launch_authorization
 from .automation_governance_api import router as automation_governance_router
+from .cap_accounting_api import router as cap_accounting_router
 from .community_api import router as community_router
 from .completion_status_api import router as completion_status_router
 from .customer_operations_api import router as customer_operations_router
@@ -46,14 +47,15 @@ front_office_module.front_office_reconciliation = hardened_reconciliation(
 )
 
 app.title = "Sports Terminal Launch API"
-app.version = "1.11.0"
+app.version = "1.12.0"
 app.description = (
     "Launch-oriented Sports Terminal API for authentication, certified and historical NBA data, "
     "source-aware modern NBA tracking/stat overlays, canonical awards and voting, canonical "
-    "contracts and draft assets, a CBA-aware NBA trade machine, transaction ledgers, ranked "
-    "community discovery, threaded discussion, moderation and messaging, isolated Python analysis, "
-    "customer operations, launch automation, organization governance, versioned workspaces, saved "
-    "sports objects, platform operations, pre-capital readiness, and the unified NBA terminal."
+    "contracts and draft assets, CBA-aware cap accounting and an NBA trade machine, transaction "
+    "ledgers, ranked community discovery, threaded discussion, moderation and messaging, isolated "
+    "Python analysis, customer operations, launch automation, organization governance, versioned "
+    "workspaces, saved sports objects, platform operations, pre-capital readiness, and the unified "
+    "NBA terminal."
 )
 
 app.middleware("http")(enforce_launch_auth)
@@ -62,14 +64,7 @@ app.middleware("http")(enforce_launch_authorization)
 
 
 def _attach_router_routes(router) -> None:
-    """Attach already-prefixed routes without route-snapshot loss.
-
-    Several Sports Terminal routers are assembled through modules that also depend on
-    shared launch services. In those cases FastAPI ``include_router`` can snapshot a
-    router before a circular import has finished populating it. Attaching the final
-    APIRoute objects directly preserves the completed route graph and deduplicates by
-    path/method signature.
-    """
+    """Attach already-prefixed routes without route-snapshot loss."""
     existing = {
         (
             getattr(route, "path", ""),
@@ -91,26 +86,19 @@ def _attach_router_routes(router) -> None:
 app.include_router(auth_router)
 app.include_router(launch_router)
 app.include_router(workspace_router)
-# Historical, awards, modern-metric, trade-machine and terminal routes must be
-# registered before /v2/nba/{season}/{dataset}; otherwise the dynamic certified-
-# release route can interpret their path prefix as a season.
+# NBA specialty routes must be registered before /v2/nba/{season}/{dataset}; otherwise
+# the dynamic certified-release route can interpret their path prefix as a season.
 _attach_router_routes(historical_nba_router)
 _attach_router_routes(historical_nba_compat_router)
 _attach_router_routes(nba_awards_router)
 _attach_router_routes(nba_modern_metrics_router)
+_attach_router_routes(cap_accounting_router)
 _attach_router_routes(trade_machine_router)
-# Terminal routes receive the same explicit ordering guarantee. This also avoids
-# FastAPI route-snapshot behavior when the shared app object has been imported by a
-# contract harness before launch composition finishes.
 _attach_router_routes(nba_terminal_router)
 app.include_router(nba_data_router)
 app.include_router(front_office_hardened_router)
 app.include_router(front_office_router)
 app.include_router(trust_safety_router)
-# Community, profile and readiness reuse launch/trust/completion services and can
-# participate in circular imports when contract harnesses import their modules before
-# main_launch. Attach their final route objects explicitly so the composed launch app
-# cannot lose them through FastAPI's router snapshot behavior.
 _attach_router_routes(community_router)
 _attach_router_routes(profile_router)
 app.include_router(python_runtime_router)
