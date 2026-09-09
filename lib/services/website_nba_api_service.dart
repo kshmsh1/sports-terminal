@@ -98,6 +98,48 @@ class WebsiteNbaApiService {
   Future<String?> resolveTeamKey(String idOrAbbreviation) =>
       _static.resolveTeamKey(idOrAbbreviation);
 
+  /// Read the immutable historical game catalog and optionally narrow it to a
+  /// season, season type, or team. Filtering happens locally after the static
+  /// catalog is cached, so opening historical games never requires a runtime
+  /// NBA.com request or the local FastAPI process.
+  Future<List<Map<String, dynamic>>> games({
+    String? season,
+    String? seasonType,
+    String? team,
+  }) async {
+    final rows = await _static.gameIndex();
+    final normalizedType = seasonType == null || seasonType.isEmpty
+        ? null
+        : (seasonType.toLowerCase().contains('play') ? 'playoffs' : 'regular');
+    final teamNeedle = (team ?? '').trim().toLowerCase();
+    return rows.where((row) {
+      if (season != null && season.isNotEmpty && row['season_id']?.toString() != season) {
+        return false;
+      }
+      if (normalizedType != null && row['season_type']?.toString() != normalizedType) {
+        return false;
+      }
+      if (teamNeedle.isNotEmpty) {
+        final haystack = [
+          row['home_team_key'],
+          row['away_team_key'],
+          row['home_team_name'],
+          row['away_team_name'],
+          row['home_team_abbreviation'],
+          row['away_team_abbreviation'],
+        ].map((value) => value?.toString().toLowerCase() ?? '').join(' ');
+        if (!haystack.contains(teamNeedle)) return false;
+      }
+      return true;
+    }).toList(growable: false);
+  }
+
+  Future<Map<String, dynamic>> gameDetail(String gameKey) =>
+      _static.gameDetail(gameKey);
+
+  Future<List<Map<String, dynamic>>> gamePlayByPlay(String gameKey) =>
+      _static.gamePlayByPlay(gameKey);
+
   Future<List<Map<String, dynamic>>> awards() => _static.awards();
   Future<List<Map<String, dynamic>>> allStar() => _static.allStar();
   Future<List<Map<String, dynamic>>> draft() => _static.draft();
