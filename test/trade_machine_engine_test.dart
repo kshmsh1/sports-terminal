@@ -123,6 +123,38 @@ void main() {
     );
   });
 
+  test('zero trade bonus metadata does not create a false warning', () {
+    final outgoing = player(
+      'plain-a',
+      'AAA',
+      10000000,
+      metadata: const {'trade_bonus': 0},
+    );
+    final incoming = player('plain-b', 'BBB', 10000000);
+    final report = engine.validate(
+      TradeScenario(
+        id: 'zero-kicker',
+        name: 'Zero kicker',
+        operatingSeason: '2026-27',
+        asOfDateIso: '2026-09-09',
+        teams: const ['AAA', 'BBB'],
+        assignments: [
+          TradeAssignment(asset: outgoing, destinationTeam: 'BBB'),
+          TradeAssignment(asset: incoming, destinationTeam: 'AAA'),
+        ],
+        capContexts: {
+          'AAA': context('AAA', 180000000),
+          'BBB': context('BBB', 180000000),
+        },
+      ),
+    );
+
+    expect(
+      report.findings.any((finding) => finding.code == 'TRADE_BONUS'),
+      isFalse,
+    );
+  });
+
   test('more than five teams is rejected', () {
     final report = engine.validate(
       TradeScenario(
