@@ -33,6 +33,7 @@ from .profile_api import router as profile_router
 from .python_runtime_api import router as python_runtime_router
 from .trade_machine_api import router as trade_machine_router
 from .trust_safety_api import router as trust_safety_router
+from .user_salary_snapshot_api import router as user_salary_snapshot_router
 from .workspace_api import router as workspace_router
 
 launch_module._ensure_organization = ensure_organization
@@ -96,6 +97,7 @@ _attach_router_routes(cap_accounting_router)
 _attach_router_routes(trade_machine_router)
 _attach_router_routes(nba_terminal_router)
 app.include_router(nba_data_router)
+app.include_router(user_salary_snapshot_router)
 app.include_router(front_office_hardened_router)
 app.include_router(front_office_router)
 app.include_router(trust_safety_router)
