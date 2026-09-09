@@ -29,6 +29,14 @@ assert diagnostics['exact_duplicate_rows'] == 2, diagnostics['exact_duplicate_ro
 assert len(contracts) == 476, len(contracts)
 assert len(positions) == 30, len(positions)
 
+canonical_team_ids = {row['team_id'] for row in teams}
+assert {'BKN', 'CHA', 'PHX'}.issubset(canonical_team_ids)
+assert not {'BRK', 'CHO', 'PHO'}.intersection(canonical_team_ids)
+assert diagnostics['team_aliases'] == {'BRK': 'BKN', 'CHO': 'CHA', 'PHO': 'PHX'}
+assert next(row for row in players if row['player'] == 'Michael Porter Jr.')['team'] == 'BKN'
+assert next(row for row in players if row['player'] == 'Naz Reid')['team'] == 'CHA'
+assert next(row for row in players if row['player'] == 'Devin Booker')['team'] == 'PHX'
+
 expected_multi_team = {
     'Damian Lillard',
     'Bradley Beal',
