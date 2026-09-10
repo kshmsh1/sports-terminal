@@ -3,18 +3,19 @@ import 'package:flutter/material.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
 
-/// Protects NBA pages from genuinely missing local data without tying the
-/// website to the legacy bundled terminal-seed transport.
+/// Compatibility wrapper for website surfaces that historically expected a
+/// terminal-seed snapshot before they were allowed to render.
 ///
-/// Historical/current website pages now read the immutable static corpus under
-/// `web/data/nba_static`. The old bundled seed remains a compatibility fallback
-/// for development surfaces that still consume [NbaTerminalSeedSnapshot]
-/// directly.
+/// The traditional website now owns its data loading at the individual-screen
+/// level. A missing legacy seed, a temporarily unavailable static index, or a
+/// failed preflight request must never replace the entire website page with a
+/// global "NBA data unavailable" screen.
 ///
-/// This distinction matters because the local launcher materializes the static
-/// website corpus before Flutter starts. Checking only the old asset bundle can
-/// therefore report "NBA data is not installed" even when the website data was
-/// successfully built and is available over the local web server.
+/// We still try to resolve the canonical static snapshot in the background so
+/// any older builder that happens to consume the snapshot receives real data
+/// when available. While that check is running, or if it fails, the page is
+/// rendered with an empty compatibility snapshot. Current website builders do
+/// not depend on this value; they read their own immutable static datasets.
 class WebsiteNbaDataGate extends StatefulWidget {
   const WebsiteNbaDataGate({
     super.key,
@@ -33,6 +34,29 @@ class WebsiteNbaDataGate extends StatefulWidget {
 }
 
 class _WebsiteNbaDataGateState extends State<WebsiteNbaDataGate> {
+  static const NbaTerminalSeedSnapshot _emptySnapshot =
+      NbaTerminalSeedSnapshot(
+    manifest: <String, dynamic>{},
+    teams: <Map<String, dynamic>>[],
+    players: <Map<String, dynamic>>[],
+    games: <Map<String, dynamic>>[],
+    teamRecords: <Map<String, dynamic>>[],
+    teamGameLogs: <Map<String, dynamic>>[],
+    playerSeasonTotals: <Map<String, dynamic>>[],
+    playerLeaders: <String, dynamic>{},
+    playerGameHighs: <String, dynamic>{},
+    playerGameLogsTop: <Map<String, dynamic>>[],
+    searchIndex: <Map<String, dynamic>>[],
+    dataDictionary: <String, dynamic>{},
+    validationReport: null,
+    assetManifest: null,
+    launchConfig: <String, dynamic>{
+      'datasetStatus': 'website-screen-owned',
+      'supportedSeason': '2025-26',
+    },
+    assetPath: 'website://screen-owned',
+  );
+
   late Future<NbaTerminalSeedSnapshot> _future;
 
   @override
@@ -44,9 +68,6 @@ class _WebsiteNbaDataGateState extends State<WebsiteNbaDataGate> {
   Future<NbaTerminalSeedSnapshot> _loadAvailableData() async {
     Object? staticError;
 
-    // The website static corpus is the canonical transport for the current
-    // browser experience. Check it first so a valid local build is never
-    // rejected merely because the deprecated terminal-seed assets are absent.
     try {
       final seasons = await widget.websiteApi.seasons();
       if (seasons.isNotEmpty) {
@@ -66,51 +87,45 @@ class _WebsiteNbaDataGateState extends State<WebsiteNbaDataGate> {
       staticError = error;
     }
 
-    // Compatibility path for older tests/checkouts and any remaining surfaces
-    // that still ship the bundled terminal seed.
     try {
       return await widget.repository.load();
     } catch (legacyError) {
       throw NbaTerminalSeedException(
-        'NBA website data is unavailable. Static corpus error: '
+        'NBA website data preflight failed. Static corpus error: '
         '${staticError ?? 'unknown'}; legacy seed error: $legacyError',
       );
     }
-  }
-
-  void _retry() {
-    setState(() => _future = _loadAvailableData());
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<NbaTerminalSeedSnapshot>(
       future: _future,
+      initialData: _emptySnapshot,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const _WebsiteLoadingCard();
-        }
-        if (snapshot.hasError || snapshot.data == null) {
-          return WebsiteNbaDataUnavailable(
-            onRetry: _retry,
-            error: snapshot.error,
-          );
-        }
-        return widget.builder(context, snapshot.data!);
+        // Never block an entire website destination because a shared preflight
+        // check is slow or unavailable. Individual screens are responsible for
+        // their own source-specific loading/error states.
+        return widget.builder(context, snapshot.data ?? _emptySnapshot);
       },
     );
   }
 }
 
+/// Local, opt-in error state for a screen that genuinely cannot render its own
+/// required dataset. This is intentionally no longer used as the global NBA
+/// navigation gate.
 class WebsiteNbaDataUnavailable extends StatelessWidget {
   const WebsiteNbaDataUnavailable({
     super.key,
     this.onRetry,
     this.error,
+    this.title = 'NBA data unavailable for this view',
   });
 
   final VoidCallback? onRetry;
   final Object? error;
+  final String title;
 
   @override
   Widget build(BuildContext context) {
@@ -137,23 +152,16 @@ class WebsiteNbaDataUnavailable extends StatelessWidget {
               ),
               const SizedBox(height: 18),
               Text(
-                'NBA data is unavailable',
+                title,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
               ),
               const SizedBox(height: 9),
               Text(
-                'Sports Terminal could not read either the precompiled NBA website corpus or the legacy bundled seed. Player statistics will not be invented to fill the page.',
+                'This specific view could not read the local dataset it needs. '
+                'Other Sports Terminal pages remain available.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: colors.onSurfaceVariant,
-                      height: 1.5,
-                    ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Restart with scripts/open_terminal.sh so the launcher can prepare and validate web/data/nba_static before Flutter starts.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: colors.onSurfaceVariant,
                       height: 1.5,
                     ),
@@ -182,16 +190,4 @@ class WebsiteNbaDataUnavailable extends StatelessWidget {
       ),
     );
   }
-}
-
-class _WebsiteLoadingCard extends StatelessWidget {
-  const _WebsiteLoadingCard();
-
-  @override
-  Widget build(BuildContext context) => const Card(
-        child: SizedBox(
-          height: 180,
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      );
 }
