@@ -103,10 +103,10 @@ class _WebsiteNbaDataGateState extends State<WebsiteNbaDataGate> {
       future: _future,
       initialData: _emptySnapshot,
       builder: (context, snapshot) {
-        // Never block an entire website destination because a shared preflight
-        // check is slow or unavailable. Individual screens are responsible for
-        // their own source-specific loading/error states.
-        return widget.builder(context, snapshot.data ?? _emptySnapshot);
+        // initialData guarantees a non-null compatibility snapshot while the
+        // background preflight runs. Never block an entire destination because
+        // this shared check is slow or unavailable.
+        return widget.builder(context, snapshot.data!);
       },
     );
   }
