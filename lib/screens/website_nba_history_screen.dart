@@ -215,8 +215,8 @@ class _WebsiteNbaHistoryScreenState extends State<WebsiteNbaHistoryScreen> {
                       labelText: 'Era',
                       isDense: true,
                     ),
-                    items: const [
-                      for (final era in [
+                    items: [
+                      for (final era in const [
                         'All',
                         '2020s',
                         '2010s',
