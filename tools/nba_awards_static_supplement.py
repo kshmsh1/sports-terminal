@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import re
 import unicodedata
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from tools.build_static_nba_website_data import write_json
-from tools.nba_awards_user_supplement_full import rows as full_user_award_rows
 
 SOURCE_KEY = "user_supplied_awards_2026_09_10"
 
@@ -60,6 +60,26 @@ def _row(
     return result
 
 
+def _load_full_user_rows() -> list[dict[str, Any]]:
+    """Load the large user-supplied history after this module is initialized.
+
+    The companion file reuses _row from this module, so importing it at module
+    import time would create a circular import. Loading it lazily here keeps the
+    data file compact without coupling static-corpus startup to import order.
+    """
+    path = Path(__file__).with_name("nba_awards_user_supplement_full.py")
+    spec = importlib.util.spec_from_file_location("nba_awards_user_supplement_full_runtime", path)
+    if spec is None or spec.loader is None:
+        return []
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    factory = getattr(module, "rows", None)
+    if not callable(factory):
+        return []
+    raw = factory()
+    return [dict(item) for item in raw if isinstance(item, dict)]
+
+
 def _asg_mvp_rows() -> list[dict[str, Any]]:
     winners: dict[int, list[str]] = {
         1951:["Ed Macauley"],1952:["Paul Arizin"],1953:["George Mikan"],1954:["Bob Cousy"],1955:["Bill Sharman"],1956:["Bob Pettit"],1957:["Bob Cousy"],1958:["Bob Pettit"],1959:["Elgin Baylor","Bob Pettit"],1960:["Wilt Chamberlain"],1961:["Oscar Robertson"],1962:["Bob Pettit"],1963:["Bill Russell"],1964:["Oscar Robertson"],1965:["Jerry Lucas"],1966:["Adrian Smith"],1967:["Rick Barry"],1968:["Hal Greer"],1969:["Oscar Robertson"],1970:["Willis Reed"],1971:["Lenny Wilkens"],1972:["Jerry West"],1973:["Dave Cowens"],1974:["Bob Lanier"],1975:["Walt Frazier"],1976:["Dave Bing"],1977:["Julius Erving"],1978:["Randy Smith"],1979:["David Thompson"],1980:["George Gervin"],1981:["Nate Archibald"],1982:["Larry Bird"],1983:["Julius Erving"],1984:["Isiah Thomas"],1985:["Ralph Sampson"],1986:["Isiah Thomas"],1987:["Tom Chambers"],1988:["Michael Jordan"],1989:["Karl Malone"],1990:["Magic Johnson"],1991:["Charles Barkley"],1992:["Magic Johnson"],1993:["John Stockton","Karl Malone"],1994:["Scottie Pippen"],1995:["Mitch Richmond"],1996:["Michael Jordan"],1997:["Glen Rice"],1998:["Michael Jordan"],2000:["Shaquille O'Neal","Tim Duncan"],2001:["Allen Iverson"],2002:["Kobe Bryant"],2003:["Kevin Garnett"],2004:["Shaquille O'Neal"],2005:["Allen Iverson"],2006:["LeBron James"],2007:["Kobe Bryant"],2008:["LeBron James"],2009:["Kobe Bryant","Shaquille O'Neal"],2010:["Dwyane Wade"],2011:["Kobe Bryant"],2012:["Kevin Durant"],2013:["Chris Paul"],2014:["Kyrie Irving"],2015:["Russell Westbrook"],2016:["Russell Westbrook"],2017:["Anthony Davis"],2018:["LeBron James"],2019:["Kevin Durant"],2020:["Kawhi Leonard"],2021:["Giannis Antetokounmpo"],2022:["Stephen Curry"],2023:["Jayson Tatum"],2024:["Damian Lillard"],2025:["Stephen Curry"],2026:["Anthony Edwards"],
@@ -68,6 +88,8 @@ def _asg_mvp_rows() -> list[dict[str, Any]]:
 
 
 def _recent_award_rows() -> list[dict[str, Any]]:
+    # Recent rows remain explicit here for backwards compatibility; the full
+    # user-history file is deduplicated against them when materialized.
     rows: list[dict[str, Any]] = []
     annual = [
         ("2023-24","mvp","Most Valuable Player","Nikola Jokić","Denver Nuggets",True),("2024-25","mvp","Most Valuable Player","Shai Gilgeous-Alexander","Oklahoma City Thunder",True),("2025-26","mvp","Most Valuable Player","Shai Gilgeous-Alexander","Oklahoma City Thunder",True),
@@ -76,17 +98,13 @@ def _recent_award_rows() -> list[dict[str, Any]]:
         ("2023-24","sixth_man","Sixth Man of the Year","Naz Reid","Minnesota Timberwolves",True),("2024-25","sixth_man","Sixth Man of the Year","Payton Pritchard","Boston Celtics",True),("2025-26","sixth_man","Sixth Man of the Year","Keldon Johnson","San Antonio Spurs",True),
         ("2023-24","most_improved","Most Improved Player","Tyrese Maxey","Philadelphia 76ers",True),("2024-25","most_improved","Most Improved Player","Dyson Daniels","Atlanta Hawks",True),("2025-26","most_improved","Most Improved Player","Nickeil Alexander-Walker","Atlanta Hawks",True),
         ("2022-23","clutch_player","Clutch Player of the Year","De'Aaron Fox","Sacramento Kings",True),("2023-24","clutch_player","Clutch Player of the Year","Stephen Curry","Golden State Warriors",True),("2024-25","clutch_player","Clutch Player of the Year","Jalen Brunson","New York Knicks",True),("2025-26","clutch_player","Clutch Player of the Year","Shai Gilgeous-Alexander","Oklahoma City Thunder",True),
-        ("2023-24","sportsmanship","Sportsmanship Award","Tyrese Maxey","Philadelphia 76ers",False),("2024-25","sportsmanship","Sportsmanship Award","Jrue Holiday","Boston Celtics",False),("2025-26","sportsmanship","Sportsmanship Award","Derrick White","Boston Celtics",False),
-        ("2023-24","teammate_of_year","Teammate of the Year","Mike Conley","Minnesota Timberwolves",False),("2024-25","teammate_of_year","Teammate of the Year","Stephen Curry","Golden State Warriors",False),("2025-26","teammate_of_year","Teammate of the Year","DeAndre Jordan","New Orleans Pelicans",False),
-        ("2023-24","social_justice","Social Justice Champion","Karl-Anthony Towns","Minnesota Timberwolves",False),("2024-25","social_justice","Social Justice Champion","Jrue Holiday","Boston Celtics",False),("2025-26","social_justice","Social Justice Champion","Bam Adebayo","Miami Heat",False),
-        ("2023-24","hustle_award","Hustle Award","Alex Caruso","Chicago Bulls",False),("2024-25","hustle_award","Hustle Award","Draymond Green","Golden State Warriors",False),("2025-26","hustle_award","Hustle Award","Moussa Diabaté","Charlotte Hornets",False),
     ]
     rows.extend(_row(season_id,key,label,player,team=team,player_honor=player_honor) for season_id,key,label,player,team,player_honor in annual)
     return rows
 
 
 def supplemental_awards() -> list[dict[str, Any]]:
-    return [*_asg_mvp_rows(), *_recent_award_rows(), *full_user_award_rows()]
+    return [*_asg_mvp_rows(), *_recent_award_rows(), *_load_full_user_rows()]
 
 
 def _existing_key(row: dict[str, Any]) -> tuple[str, str, str, str]:
