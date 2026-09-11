@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../controllers/internal_workspace_controller.dart';
 import '../models/app_session.dart';
 import '../screens/product_advanced_nba_tools_screen.dart';
 import '../screens/product_analytics_suite_screen.dart';
@@ -21,37 +20,36 @@ import '../screens/product_role_home_screen.dart';
 import '../screens/product_shell_screens.dart';
 import '../screens/product_strategy_map_screen.dart';
 import '../screens/product_team_blogs_screen.dart';
+import '../screens/product_trade_machine_screen.dart';
 import '../screens/product_transaction_command_center_screen.dart';
 import '../services/product_local_store.dart';
 
-const _navBackground = Color(0xFF0A101A);
-const _darkBackground = Color(0xFF080F18);
-const _lightBackground = Color(0xFFF5F7FB);
+const _darkBg = Color(0xFF080F18);
+const _lightBg = Color(0xFFF5F7FB);
+const _darkNav = Color(0xFF0A101A);
 const _darkPanel = Color(0xFF111A27);
-const _lightPanel = Colors.white;
 const _darkLine = Color(0xFF283243);
 const _lightLine = Color(0xFFDDE3EC);
 const _darkText = Color(0xFFF2F4FA);
 const _lightText = Color(0xFF172033);
 const _darkMuted = Color(0xFFAAB2C1);
 const _lightMuted = Color(0xFF657084);
-const _accent = Color(0xFFAFB8FF);
+const _active = Color(0xFFB8C0FF);
 const _logo = Color(0xFF424B83);
 
-/// Canonical Sports Terminal product chrome.
+/// The canonical Sports Terminal product shell.
 ///
-/// Keep the primary product navigation intentionally small. New product surfaces
-/// belong under More unless they replace one of the five canonical destinations.
+/// The five primary destinations intentionally match the approved product UI:
+/// Home, Stats, Advanced Stats, Lineup Analysis, and Trade Machine. Everything
+/// else remains available through More rather than expanding the top bar.
 class CanonicalProductShell extends StatefulWidget {
   const CanonicalProductShell({
     super.key,
     required this.session,
-    required this.workspaceController,
     required this.onSignOut,
   });
 
   final AppSession session;
-  final InternalWorkspaceController workspaceController;
   final VoidCallback onSignOut;
 
   @override
@@ -65,158 +63,135 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
 
   bool get _organizationMode => widget.session.role.canManageOrganization;
 
-  List<_Destination> get _destinations => [
+  List<_Destination> get _items => [
         _Destination(
-          label: 'Home',
-          icon: Icons.home_rounded,
-          screen: ProductRoleHomeScreen(
+          'Home',
+          Icons.home_rounded,
+          ProductRoleHomeScreen(
             session: widget.session,
             organizationMode: _organizationMode,
           ),
           primary: true,
         ),
         const _Destination(
-          label: 'Stats',
-          icon: Icons.leaderboard_rounded,
-          screen: ProductNbaBasicStatsScreen(),
+          'Stats',
+          Icons.leaderboard_rounded,
+          ProductNbaBasicStatsScreen(),
           primary: true,
         ),
         const _Destination(
-          label: 'Advanced Stats',
-          icon: Icons.analytics_rounded,
-          screen: ProductAdvancedNbaToolsScreen(),
+          'Advanced Stats',
+          Icons.analytics_rounded,
+          ProductAdvancedNbaToolsScreen(),
           primary: true,
         ),
         const _Destination(
-          label: 'Lineup Analysis',
-          icon: Icons.groups_rounded,
-          screen: ProductAnalyticsSuiteScreen(initialTool: 'Lineup Builder'),
+          'Lineup Analysis',
+          Icons.groups_rounded,
+          ProductAnalyticsSuiteScreen(),
           primary: true,
+        ),
+        const _Destination(
+          'Trade Machine',
+          Icons.swap_horiz_rounded,
+          ProductTradeMachineScreen(),
+          primary: true,
+        ),
+        const _Destination(
+          'NBA Hub',
+          Icons.sports_basketball_rounded,
+          ProductNbaHubV2Screen(),
+        ),
+        const _Destination(
+          'Awards',
+          Icons.emoji_events_rounded,
+          ProductNbaAwardsVotingScreen(),
         ),
         _Destination(
-          label: 'Trade Machine',
-          icon: Icons.swap_horiz_rounded,
-          screen: ProductConnectedTradeMachineScreen(
-            session: widget.session,
-            organizationMode: _organizationMode,
-          ),
-          primary: true,
-        ),
-        const _Destination(
-          label: 'NBA Hub',
-          icon: Icons.sports_basketball_rounded,
-          screen: ProductNbaHubV2Screen(),
-        ),
-        const _Destination(
-          label: 'Awards',
-          icon: Icons.emoji_events_rounded,
-          screen: ProductNbaAwardsVotingScreen(),
-        ),
-        _Destination(
-          label: _organizationMode ? 'Organization' : 'My Work',
-          icon: _organizationMode
+          _organizationMode ? 'Organization' : 'My Work',
+          _organizationMode
               ? Icons.corporate_fare_rounded
               : Icons.space_dashboard_rounded,
-          screen: ProductTransactionCommandCenterScreen(
+          ProductTransactionCommandCenterScreen(
             session: widget.session,
             organizationMode: _organizationMode,
           ),
         ),
         _Destination(
-          label: 'Front Office',
-          icon: Icons.account_tree_rounded,
-          screen: ProductConnectedFrontOfficeScreen(
+          'Front Office',
+          Icons.account_tree_rounded,
+          ProductConnectedFrontOfficeScreen(
             session: widget.session,
             organizationMode: _organizationMode,
           ),
         ),
         _Destination(
-          label: 'Contracts & Assets',
-          icon: Icons.inventory_2_rounded,
-          screen: ProductFrontOfficeRegistryScreen(session: widget.session),
+          'Contracts & Assets',
+          Icons.inventory_2_rounded,
+          ProductFrontOfficeRegistryScreen(session: widget.session),
         ),
         _Destination(
-          label: 'Workspace',
-          icon: Icons.grid_on_rounded,
-          screen: ProductConnectedWorkspaceScreen(session: widget.session),
+          'Workspace',
+          Icons.grid_on_rounded,
+          ProductConnectedWorkspaceScreen(session: widget.session),
         ),
         _Destination(
-          label: 'Python Lab',
-          icon: Icons.code_rounded,
-          screen: ProductConnectedDataStudioScreen(session: widget.session),
+          'Python Lab',
+          Icons.code_rounded,
+          ProductConnectedDataStudioScreen(session: widget.session),
         ),
-        const _Destination(
-          label: 'Strategy',
-          icon: Icons.radar_rounded,
-          screen: ProductStrategyMapScreen(),
+        const _Destination('Strategy', Icons.radar_rounded, ProductStrategyMapScreen()),
+        const _Destination('Fantasy', Icons.bolt_rounded, ProductFantasyWarRoomScreen()),
+        const _Destination('Team Blogs', Icons.newspaper_rounded, ProductTeamBlogsScreen()),
+        _Destination(
+          'Community',
+          Icons.forum_rounded,
+          ProductCommunityV2Screen(session: widget.session),
         ),
-        const _Destination(
-          label: 'Fantasy',
-          icon: Icons.bolt_rounded,
-          screen: ProductFantasyWarRoomScreen(),
-        ),
-        const _Destination(
-          label: 'Team Blogs',
-          icon: Icons.newspaper_rounded,
-          screen: ProductTeamBlogsScreen(),
+        const _Destination('Articles', Icons.article_rounded, ProductEditorialHomeScreen()),
+        _Destination(
+          'Messages',
+          Icons.chat_bubble_rounded,
+          ProductConnectedMessagesScreen(session: widget.session),
         ),
         _Destination(
-          label: 'Community',
-          icon: Icons.forum_rounded,
-          screen: ProductCommunityV2Screen(session: widget.session),
-        ),
-        const _Destination(
-          label: 'Articles',
-          icon: Icons.article_rounded,
-          screen: ProductEditorialHomeScreen(),
-        ),
-        _Destination(
-          label: 'Messages',
-          icon: Icons.chat_bubble_rounded,
-          screen: ProductConnectedMessagesScreen(session: widget.session),
-        ),
-        _Destination(
-          label: 'Profile',
-          icon: Icons.person_rounded,
-          screen: ProductProfileV3Screen(session: widget.session),
+          'Profile',
+          Icons.person_rounded,
+          ProductProfileV3Screen(session: widget.session),
         ),
         if (_organizationMode || widget.session.role.canAccessPlatformAdmin)
           _Destination(
-            label: 'Admin',
-            icon: Icons.admin_panel_settings_rounded,
-            screen: ProductAdminOpsCenterScreen(session: widget.session),
+            'Admin',
+            Icons.admin_panel_settings_rounded,
+            ProductAdminOpsCenterScreen(session: widget.session),
           ),
         if (_organizationMode || widget.session.role.canAccessPlatformAdmin)
           _Destination(
-            label: 'Backend',
-            icon: Icons.cloud_sync_rounded,
-            screen: ProductBackendSyncScreen(session: widget.session),
+            'Backend',
+            Icons.cloud_sync_rounded,
+            ProductBackendSyncScreen(session: widget.session),
           ),
         if (_organizationMode || widget.session.role.canAccessPlatformAdmin)
-          const _Destination(
-            label: 'Internal Lab',
-            icon: Icons.science_rounded,
-            screen: ProductInternalLabScreen(),
-          ),
+          const _Destination('Internal Lab', Icons.science_rounded, ProductInternalLabScreen()),
         const _Destination(
-          label: 'About Us',
-          icon: Icons.info_outline_rounded,
-          screen: ProductPlatformLegalScreen(kind: 'about'),
+          'About Us',
+          Icons.info_outline_rounded,
+          ProductPlatformLegalScreen(kind: 'about'),
         ),
         const _Destination(
-          label: 'Contact',
-          icon: Icons.mail_outline_rounded,
-          screen: ProductPlatformLegalScreen(kind: 'contact'),
+          'Contact',
+          Icons.mail_outline_rounded,
+          ProductPlatformLegalScreen(kind: 'contact'),
         ),
         const _Destination(
-          label: 'Privacy Policy',
-          icon: Icons.privacy_tip_outlined,
-          screen: ProductPlatformLegalScreen(kind: 'privacy'),
+          'Privacy Policy',
+          Icons.privacy_tip_outlined,
+          ProductPlatformLegalScreen(kind: 'privacy'),
         ),
         const _Destination(
-          label: 'Terms & Conditions',
-          icon: Icons.description_outlined,
-          screen: ProductPlatformLegalScreen(kind: 'terms'),
+          'Terms & Conditions',
+          Icons.description_outlined,
+          ProductPlatformLegalScreen(kind: 'terms'),
         ),
       ];
 
@@ -227,47 +202,44 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
   }
 
   Future<void> _loadTheme() async {
-    final saved = await _store.loadBool(
+    final value = await _store.loadBool(
       ProductLocalStore.darkModeKey,
       fallback: true,
     );
-    if (!mounted) return;
-    setState(() => _darkMode = saved);
+    if (mounted) setState(() => _darkMode = value);
   }
 
   Future<void> _toggleTheme() async {
-    final next = !_darkMode;
-    setState(() => _darkMode = next);
-    await _store.saveBool(ProductLocalStore.darkModeKey, next);
+    final value = !_darkMode;
+    setState(() => _darkMode = value);
+    await _store.saveBool(ProductLocalStore.darkModeKey, value);
   }
 
   void _select(int index) {
-    final items = _destinations;
-    if (index < 0 || index >= items.length) return;
+    if (index < 0 || index >= _items.length) return;
     setState(() => _selectedIndex = index);
   }
 
-  void _selectByLabel(String label) {
-    final index = _destinations.indexWhere((item) => item.label == label);
+  void _selectLabel(String label) {
+    final index = _items.indexWhere((item) => item.label == label);
     if (index >= 0) _select(index);
   }
 
   @override
   Widget build(BuildContext context) {
-    final items = _destinations;
+    final items = _items;
     if (_selectedIndex >= items.length) _selectedIndex = 0;
-    final selected = items[_selectedIndex];
     final palette = _Palette(_darkMode);
+    final selected = items[_selectedIndex];
 
     return Theme(
       data: ThemeData(
         useMaterial3: true,
         brightness: _darkMode ? Brightness.dark : Brightness.light,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: _accent,
+          seedColor: _active,
           brightness: _darkMode ? Brightness.dark : Brightness.light,
         ),
-        scaffoldBackgroundColor: palette.background,
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -278,8 +250,6 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
                 ? AppBar(
                     backgroundColor: palette.nav,
                     foregroundColor: palette.text,
-                    elevation: 0,
-                    titleSpacing: 14,
                     title: const _Brand(compact: true),
                     actions: [
                       IconButton(
@@ -298,15 +268,38 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
                 ? Drawer(
                     backgroundColor: palette.panel,
                     child: SafeArea(
-                      child: _MobileMenu(
-                        items: items,
-                        selectedIndex: _selectedIndex,
-                        palette: palette,
-                        onSelected: (index) {
-                          _select(index);
-                          Navigator.of(context).pop();
-                        },
-                        onSignOut: widget.onSignOut,
+                      child: Column(
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: _Brand(compact: true),
+                            ),
+                          ),
+                          Divider(color: palette.line, height: 1),
+                          Expanded(
+                            child: ListView.builder(
+                              padding: const EdgeInsets.all(8),
+                              itemCount: items.length,
+                              itemBuilder: (context, index) => ListTile(
+                                selected: index == _selectedIndex,
+                                selectedColor: _active,
+                                leading: Icon(items[index].icon),
+                                title: Text(items[index].label),
+                                onTap: () {
+                                  _select(index);
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                            ),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.logout_rounded),
+                            title: const Text('Sign out'),
+                            onTap: widget.onSignOut,
+                          ),
+                        ],
                       ),
                     ),
                   )
@@ -314,16 +307,16 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
             body: Column(
               children: [
                 if (!compact)
-                  _DesktopNav(
+                  _TopNav(
                     items: items,
                     selectedIndex: _selectedIndex,
                     session: widget.session,
                     palette: palette,
                     darkMode: _darkMode,
                     onSelected: _select,
-                    onSearch: () => _selectByLabel('NBA Hub'),
+                    onSearch: () => _selectLabel('NBA Hub'),
                     onToggleTheme: _toggleTheme,
-                    onProfile: () => _selectByLabel('Profile'),
+                    onProfile: () => _selectLabel('Profile'),
                     onSignOut: widget.onSignOut,
                   ),
                 Expanded(
@@ -354,12 +347,7 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
 }
 
 class _Destination {
-  const _Destination({
-    required this.label,
-    required this.icon,
-    required this.screen,
-    this.primary = false,
-  });
+  const _Destination(this.label, this.icon, this.screen, {this.primary = false});
 
   final String label;
   final IconData icon;
@@ -367,8 +355,8 @@ class _Destination {
   final bool primary;
 }
 
-class _DesktopNav extends StatelessWidget {
-  const _DesktopNav({
+class _TopNav extends StatelessWidget {
+  const _TopNav({
     required this.items,
     required this.selectedIndex,
     required this.session,
@@ -395,12 +383,12 @@ class _DesktopNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = <MapEntry<int, _Destination>>[
-      for (var index = 0; index < items.length; index++)
-        if (items[index].primary) MapEntry(index, items[index]),
+      for (var i = 0; i < items.length; i++)
+        if (items[i].primary) MapEntry(i, items[i]),
     ];
     final more = <MapEntry<int, _Destination>>[
-      for (var index = 0; index < items.length; index++)
-        if (!items[index].primary) MapEntry(index, items[index]),
+      for (var i = 0; i < items.length; i++)
+        if (!items[i].primary) MapEntry(i, items[i]),
     ];
 
     return Material(
@@ -418,13 +406,25 @@ class _DesktopNav extends StatelessWidget {
               onTap: () => onSelected(primary.first.key),
               child: const _Brand(),
             ),
-            const SizedBox(width: 26),
+            const SizedBox(width: 24),
             for (final entry in primary)
-              _PrimaryNavButton(
-                label: entry.value.label,
-                selected: entry.key == selectedIndex,
-                palette: palette,
-                onTap: () => onSelected(entry.key),
+              TextButton(
+                onPressed: () => onSelected(entry.key),
+                style: TextButton.styleFrom(
+                  foregroundColor:
+                      entry.key == selectedIndex ? _active : palette.text,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 22,
+                  ),
+                  textStyle: TextStyle(
+                    fontWeight: entry.key == selectedIndex
+                        ? FontWeight.w800
+                        : FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                child: Text(entry.value.label),
               ),
             const Spacer(),
             OutlinedButton.icon(
@@ -434,10 +434,8 @@ class _DesktopNav extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 foregroundColor: palette.text,
                 side: BorderSide(color: palette.searchLine),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 18,
-                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                 shape: const StadiumBorder(),
               ),
             ),
@@ -470,13 +468,12 @@ class _DesktopNav extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 3),
                     Icon(Icons.keyboard_arrow_down_rounded, color: palette.text),
                   ],
                 ),
               ),
             ),
-            const SizedBox(width: 4),
             IconButton(
               tooltip: darkMode ? 'Light mode' : 'Dark mode',
               onPressed: onToggleTheme,
@@ -485,16 +482,12 @@ class _DesktopNav extends StatelessWidget {
                 color: palette.text,
               ),
             ),
-            const SizedBox(width: 4),
             PopupMenuButton<String>(
               tooltip: session.displayName,
               color: palette.panel,
               onSelected: (value) {
-                if (value == 'profile') {
-                  onProfile();
-                } else if (value == 'signout') {
-                  onSignOut();
-                }
+                if (value == 'profile') onProfile();
+                if (value == 'signout') onSignOut();
               },
               itemBuilder: (context) => const [
                 PopupMenuItem(value: 'profile', child: Text('Profile')),
@@ -519,34 +512,6 @@ class _DesktopNav extends StatelessWidget {
       ),
     );
   }
-}
-
-class _PrimaryNavButton extends StatelessWidget {
-  const _PrimaryNavButton({
-    required this.label,
-    required this.selected,
-    required this.palette,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final _Palette palette;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => TextButton(
-        onPressed: onTap,
-        style: TextButton.styleFrom(
-          foregroundColor: selected ? _accent : palette.text,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 22),
-          textStyle: TextStyle(
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
-            fontSize: 14,
-          ),
-        ),
-        child: Text(label),
-      );
 }
 
 class _Brand extends StatelessWidget {
@@ -588,69 +553,17 @@ class _Brand extends StatelessWidget {
       );
 }
 
-class _MobileMenu extends StatelessWidget {
-  const _MobileMenu({
-    required this.items,
-    required this.selectedIndex,
-    required this.palette,
-    required this.onSelected,
-    required this.onSignOut,
-  });
-
-  final List<_Destination> items;
-  final int selectedIndex;
-  final _Palette palette;
-  final ValueChanged<int> onSelected;
-  final VoidCallback onSignOut;
-
-  @override
-  Widget build(BuildContext context) => Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _Brand(compact: true),
-            ),
-          ),
-          Divider(color: palette.line, height: 1),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(10),
-              itemCount: items.length,
-              itemBuilder: (context, index) {
-                final item = items[index];
-                return ListTile(
-                  selected: index == selectedIndex,
-                  selectedColor: _accent,
-                  leading: Icon(item.icon),
-                  title: Text(item.label),
-                  onTap: () => onSelected(index),
-                );
-              },
-            ),
-          ),
-          Divider(color: palette.line, height: 1),
-          ListTile(
-            leading: const Icon(Icons.logout_rounded),
-            title: const Text('Sign out'),
-            onTap: onSignOut,
-          ),
-          const SizedBox(height: 8),
-        ],
-      );
-}
-
 class _Palette {
   const _Palette(this.dark);
 
   final bool dark;
 
-  Color get nav => dark ? _navBackground : Colors.white;
-  Color get background => dark ? _darkBackground : _lightBackground;
-  Color get panel => dark ? _darkPanel : _lightPanel;
+  Color get nav => dark ? _darkNav : Colors.white;
+  Color get background => dark ? _darkBg : _lightBg;
+  Color get panel => dark ? _darkPanel : Colors.white;
   Color get line => dark ? _darkLine : _lightLine;
   Color get text => dark ? _darkText : _lightText;
   Color get muted => dark ? _darkMuted : _lightMuted;
-  Color get searchLine => dark ? const Color(0xFF747E92) : const Color(0xFF9BA6B8);
+  Color get searchLine =>
+      dark ? const Color(0xFF747E92) : const Color(0xFF9BA6B8);
 }
