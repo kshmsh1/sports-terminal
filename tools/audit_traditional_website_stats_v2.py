@@ -35,7 +35,7 @@ CHECKS: dict[str, list[str]] = {
         "website_sticky_stats_table_v2.dart",
     ],
     "lib/widgets/website_sticky_stats_table_v2.dart": [
-        "page owns vertical scrolling",
+        "surrounding page scrolls",
         "scrollDirection: Axis.horizontal",
         "frozen first column",
         "ClipRect",
