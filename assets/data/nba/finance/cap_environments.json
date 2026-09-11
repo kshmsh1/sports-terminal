@@ -33,16 +33,17 @@
     {
       "season": "2026-27",
       "effectiveDate": "2026-07-01",
-      "salaryCap": 164961000,
-      "taxLevel": 200428000,
-      "minimumTeamSalary": 148465000,
-      "firstApron": 209015000,
-      "secondApron": 221686000,
-      "nonTaxpayerMle": 15044000,
-      "taxpayerMle": 6064000,
-      "roomMle": 9366000,
-      "sourceLabel": "NBA Communications — Salary Cap for 2026-27",
-      "sourceUrl": "https://www.nba.com/news/nba-salary-cap-2026-27-season"
+      "salaryCap": 166000000,
+      "taxLevel": 201690000,
+      "minimumTeamSalary": 149400000,
+      "firstApron": 210690000,
+      "secondApron": 223690000,
+      "nonTaxpayerMle": 15139000,
+      "taxpayerMle": 6102000,
+      "roomMle": 9425000,
+      "biAnnualException": 5511000,
+      "sourceLabel": "User-provided 2026-27 operating cap figures",
+      "sourceUrl": ""
     }
   ]
 }
