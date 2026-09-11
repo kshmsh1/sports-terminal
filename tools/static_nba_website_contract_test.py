@@ -168,6 +168,22 @@ def test_static_runtime_contract() -> None:
         "team_leaders",
         "personal_fouls",
         "three_pointers_made",
+        "repair_playoff_shards",
+        "apply_award_supplement",
+    )
+    require(
+        "tools/repair_static_nba_playoffs.py",
+        "playoffs.json",
+        "historical_seed_snapshot",
+        "static_playoff_repair",
+    )
+    require(
+        "tools/nba_awards_static_supplement.py",
+        "user_supplied_awards_2026_09_10",
+        "All-Star Game MVP",
+        "All-NBA",
+        "All-Defense",
+        "All-Rookie",
     )
     require(
         "tools/build_static_nba_website_data.py",
@@ -201,18 +217,33 @@ def test_static_runtime_contract() -> None:
         "http://127.0.0.1:8000", "/v2/nba/history/seed/", "LaunchBackendTransport", "loadHistoricalSeason(", "package:http/http.dart",
     )
     require(
+        "lib/services/nba_awards_repository.dart",
+        "WebsiteNbaStaticRepository",
+        "history/awards.json",
+        "runtime_api_required",
+    )
+    require(
         "lib/screens/website_nba_home_dashboard.dart",
         "seasonDashboard", "Player leaders · Top 10", "Team leaders · Top 10", "No runtime NBA API is required",
     )
     require(
         "lib/screens/website_nba_stats_screen.dart",
+        "website_nba_stats_v2_screen.dart",
+    )
+    require(
+        "lib/screens/website_nba_stats_v2_screen.dart",
         "Conventional NBA player statistics", "_StatColumn('pf', 'PF')", "_matchesPosition",
-        "values: const [0, 65, 60, 50, 40, 30]", "values: const [0, 20, 15, 10]",
+        "int _minGp = 50", "values: const [50, 65, 60, 40, 30, 20, 10, 0]", "Playoff statistics use the same immutable static season files",
     )
     require(
         "lib/screens/website_nba_advanced_stats_screen.dart",
-        "_matchesPosition", "Gravity & Spacing", "Clutch",
-        "'three_pct': ['fg3_pct', 'three_pct']", "'three_dfg_pct': ['three_dfg_pct']",
+        "website_nba_advanced_stats_v4_screen.dart",
+    )
+    require(
+        "lib/screens/website_nba_advanced_stats_v4_screen.dart",
+        "_matchesPosition", "Gravity & Spacing", "Clutch", "Hustle & Box Outs",
+        "int _minGp = 50", "_possessionsPerGame", "Per 75", "Totals shows full-sample counting totals",
+        "'three_pct': ['three_pct', 'three_point_pct', 'fg3_pct']", "'three_dfg_pct': ['three_dfg_pct', 'three_pt_dfg_pct']",
     )
     require(
         "lib/screens/website_nba_entity_pages.dart",
@@ -225,6 +256,14 @@ def test_static_runtime_contract() -> None:
     require(
         "lib/widgets/traditional_website_shell_impl.dart",
         "Lineup Analysis", "Search Sports Terminal", "Python Lab · detached", "Excel Workspace · detached",
+    )
+    require(
+        "lib/widgets/website_sticky_stats_table.dart",
+        "website_sticky_stats_table_v2.dart",
+    )
+    require(
+        "lib/widgets/website_sticky_stats_table_v2.dart",
+        "ClipRect", "firstColumnWidth", "thumbVisibility: true",
     )
     require(
         "lib/screens/website_nba_lineup_analysis_screen.dart",
