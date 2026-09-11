@@ -17,6 +17,7 @@ from tools.nba_awards_static_supplement import apply_award_supplement
 from tools.nba_com_lineup_static_enrichment import materialize_lineups
 from tools.nba_com_static_enrichment import enrich_static_corpus
 from tools.nba_data_foundation import build_data_foundation
+from tools.nba_research_catalog import build_research_catalog
 from tools.repair_static_nba_playoffs import repair_playoff_shards
 
 DEFAULT_OUTPUT = ROOT / "web/data/nba_static"
@@ -100,6 +101,17 @@ def build() -> int:
         "NBA data foundation: "
         f"{foundation['available_provider_count']}/{foundation['provider_count']} "
         f"providers available; fingerprint={foundation['fingerprint'][:12]}"
+    )
+
+    catalog = build_research_catalog(output)
+    summary = catalog["summary"]
+    print(
+        "NBA research catalog: "
+        f"{summary['dataset_families']} families; "
+        f"{summary['available']} available; "
+        f"{summary['partial']} partial; "
+        f"{summary['missing']} missing; "
+        f"fingerprint={catalog['fingerprint'][:12]}"
     )
     return 0
 
