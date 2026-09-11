@@ -8,25 +8,21 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.build_static_nba_website_data_v2_core import (  # noqa: E402
+from tools.build_static_nba_website_data_v2_core import (
     build as build_core,
     dashboard_payload,
     season_catalog,
 )
-from tools.nba_awards_static_supplement import apply_award_supplement  # noqa: E402
-from tools.nba_com_lineup_static_enrichment import materialize_lineups  # noqa: E402
-from tools.nba_com_static_enrichment import enrich_static_corpus  # noqa: E402
-from tools.repair_static_nba_playoffs import repair_playoff_shards  # noqa: E402
+from tools.nba_awards_static_supplement import apply_award_supplement
+from tools.nba_com_lineup_static_enrichment import materialize_lineups
+from tools.nba_com_static_enrichment import enrich_static_corpus
+from tools.repair_static_nba_playoffs import repair_playoff_shards
 
 DEFAULT_OUTPUT = ROOT / "web/data/nba_static"
 DEFAULT_DATABASE = ROOT / "data/warehouse/nba_history.sqlite"
 
-# Public compatibility markers. Existing contract tests and local tooling import
-# the v2 entrypoint rather than its implementation module, so keep the static
-# compiler's public schema declaration available here even as implementation is
-# split into focused modules.
-STATIC_SCHEMA_VERSION = 4
-STATIC_WEBSITE_CONTRACT = "sports-terminal-static-nba-website-v4"
+STATIC_SCHEMA_VERSION = 5
+STATIC_WEBSITE_CONTRACT = "sports-terminal-static-nba-website-v5"
 STATIC_DASHBOARD_CONTRACT = "sports-terminal-static-dashboard-v2"
 STATIC_RUNTIME_CONTRACT = {
     "historical_http_api_required": False,
@@ -62,13 +58,7 @@ def _database_from_argv() -> Path:
 
 
 def build() -> int:
-    """Build the immutable corpus and apply local-only enrichment layers.
-
-    Historical website rendering never depends on a runtime NBA.com request.
-    The playoff repair pass is intentionally independent of the core compiler's
-    fingerprint: old local corpora that skipped a playoff alias are repaired on
-    the next launch without forcing a full rebuild.
-    """
+    """Build the immutable corpus and apply local-only enrichment layers."""
     result = build_core()
     if result != 0:
         return result
@@ -85,8 +75,6 @@ def build() -> int:
             f"{playoff_result['empty']} empty fallbacks"
         )
 
-    # Join previously captured NBA.com statistics into both regular-season and
-    # repaired playoff shards before Flutter serves them.
     enrich_static_corpus(output)
 
     lineup_result = materialize_lineups(output)
