@@ -8,25 +8,37 @@ ROOT = Path(__file__).resolve().parents[1]
 
 CHECKS: dict[str, list[str]] = {
     "lib/screens/website_nba_stats_screen.dart": [
-        "values: const [0, 65, 60, 50, 40, 30]",
-        "values: const [0, 20, 15, 10]",
+        "website_nba_stats_v2_screen.dart",
+    ],
+    "lib/screens/website_nba_stats_v2_screen.dart": [
+        "values: const [50, 65, 60, 40, 30, 20, 10, 0]",
+        "values: const [0, 30, 25, 20, 15, 10]",
         "Use the triangle beside RPG, FG%, 3P% or FT%",
         "Copy CSV",
         "WebsiteStickyStatsTable",
+        "int _minGp = 50",
     ],
     "lib/screens/website_nba_advanced_stats_screen.dart": [
-        "values: const [0, 65, 60, 50, 40, 30]",
-        "values: const [0, 20, 15, 10]",
-        "'three_pct': ['fg3_pct', 'three_pct']",
-        "'three_dfg_pct': ['three_dfg_pct']",
-        "3P DFG% is the opponent",
+        "website_nba_advanced_stats_v4_screen.dart",
+    ],
+    "lib/screens/website_nba_advanced_stats_v4_screen.dart": [
+        "values: const [50, 65, 60, 40, 30, 20, 10, 0]",
+        "values: const [0, 30, 25, 20, 15, 10]",
+        "'three_pct': ['three_pct', 'three_point_pct', 'fg3_pct']",
+        "'three_dfg_pct': ['three_dfg_pct', 'three_pt_dfg_pct']",
+        "Opponent 3P% when defended by the player",
         "Copy CSV",
+        "_possessionsPerGame",
+        "Totals shows full-sample counting totals",
     ],
     "lib/widgets/website_sticky_stats_table.dart": [
-        "The page owns all vertical scrolling",
+        "website_sticky_stats_table_v2.dart",
+    ],
+    "lib/widgets/website_sticky_stats_table_v2.dart": [
+        "page owns vertical scrolling",
         "scrollDirection: Axis.horizontal",
-        "first column stays frozen horizontally",
-        "Conventional, borderless website statistics table",
+        "frozen first column",
+        "ClipRect",
         "ClipRRect",
         "stripeRows",
     ],
@@ -101,7 +113,7 @@ def audit() -> dict[str, object]:
             if token not in text:
                 failures.append(f"{relative} missing token: {token}")
 
-    table = ROOT / "lib/widgets/website_sticky_stats_table.dart"
+    table = ROOT / "lib/widgets/website_sticky_stats_table_v2.dart"
     if table.is_file():
         text = table.read_text(encoding="utf-8")
         if "Border(bottom:" in text or "BorderSide(color: divider)" in text:
@@ -141,7 +153,7 @@ def audit() -> dict[str, object]:
                 failures.append(f"lineup pipeline missing {quantity}-player unit support")
 
     return {
-        "contract": "sports-terminal-traditional-stats-ux-v4",
+        "contract": "sports-terminal-traditional-stats-ux-v5",
         "files_checked": len(CHECKS),
         "failures": failures,
         "status": "pass" if not failures else "fail",
