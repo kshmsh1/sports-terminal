@@ -42,6 +42,8 @@ class WebsiteNbaStaticRepository {
   final http.Client _client;
   final String basePath;
   Map<String, dynamic>? _manifest;
+  Map<String, dynamic>? _dataFoundation;
+  Map<String, dynamic>? _researchCatalog;
   List<WebsiteNbaStaticSeason>? _seasons;
   List<Map<String, dynamic>>? _players;
   List<Map<String, dynamic>>? _teams;
@@ -54,6 +56,12 @@ class WebsiteNbaStaticRepository {
   final Map<String, List<Map<String, dynamic>>> _pbpCache = {};
 
   Future<Map<String, dynamic>> manifest() async => _manifest ??= await _object('manifest.json');
+
+  Future<Map<String, dynamic>> dataFoundation() async =>
+      _dataFoundation ??= await _object('data_foundation.json');
+
+  Future<Map<String, dynamic>> researchCatalog() async =>
+      _researchCatalog ??= await _object('research_catalog.json');
 
   Future<List<WebsiteNbaStaticSeason>> seasons() async {
     if (_seasons != null) return _seasons!;
