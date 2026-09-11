@@ -179,8 +179,9 @@ List<NbaTradeExceptionRecord> _parseTpeSeed() {
     if (line.isEmpty) continue;
     final fields = line.split('|');
     if (fields.length != 8) continue;
+    final expiryYear = fields[2].length >= 4 ? fields[2].substring(0, 4) : fields[2];
     rows.add(NbaTradeExceptionRecord(
-      id: '${fields[0]}-${fields[1]}-${fields[2]}',
+      id: '${fields[0]}-${fields[1]}-$expiryYear',
       team: fields[0],
       expires: fields[2],
       sourceTransaction: fields[3],
