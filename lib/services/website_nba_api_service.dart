@@ -34,6 +34,12 @@ class WebsiteNbaApiService {
 
   Future<Map<String, dynamic>> manifest() => _static.manifest();
 
+  /// Provider inventory, source precedence and local-first runtime policy.
+  Future<Map<String, dynamic>> dataFoundation() => _static.dataFoundation();
+
+  /// Dataset-family capability catalog used by research and coverage surfaces.
+  Future<Map<String, dynamic>> researchCatalog() => _static.researchCatalog();
+
   Future<List<WebsiteNbaSeason>> seasons() async {
     final seasons = await _static.seasons();
     return [
