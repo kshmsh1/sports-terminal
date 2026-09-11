@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../services/nba_future_draft_asset_repository.dart';
+import '../services/nba_team_cap_reference_2026.dart';
 import '../services/nba_trade_contract_repository.dart';
+import '../services/nba_trade_exception_reference_2026.dart';
 import '../services/product_local_store.dart';
 import '../services/trade_machine_engine.dart';
 
@@ -29,11 +32,13 @@ class ProductTradeMachine2026Screen extends StatefulWidget {
 
 class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026Screen> {
   final repo = const NbaTradeContractRepository();
+  final picks = const NbaFutureDraftAssetRepository();
   final engine = const TradeMachineEngine();
   final store = const ProductLocalStore();
   late final Future<NbaTradeContractSnapshot> future;
   final routes = <String, String>{};
   final searches = <String, String>{};
+  final tabs = <String, int>{};
   List<String> teams = ['BOS', 'PHI'];
   bool routedOnly = false;
 
@@ -52,6 +57,10 @@ class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026S
       if (restored.length >= 2) teams = restored;
       routes.addAll(_decode(saved['destinations']));
       routedOnly = saved['selectedOnly'] == 'true';
+      for (final part in (saved['tabs'] ?? '').split('|')) {
+        final bits = part.split(':');
+        if (bits.length == 2) tabs[bits[0]] = int.tryParse(bits[1]) ?? 0;
+      }
     });
   }
 
@@ -60,7 +69,7 @@ class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026S
         'teams': teams.join('|'),
         'name': '2026-27 Trade',
         'destinations': _encode(routes),
-        'tabs': '',
+        'tabs': tabs.entries.map((e) => '${e.key}:${e.value}').join('|'),
         'selectedOnly': '$routedOnly',
       });
 
@@ -89,7 +98,12 @@ class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026S
         }
         final data = snapshot.data!;
         _repairTeams(data.teams);
-        routes.removeWhere((id, dest) => !data.records.any((p) => p.id == id) || !teams.contains(dest));
+        final validIds = <String>{
+          ...data.records.map((p) => p.id),
+          ...picks.all().map((p) => p.id),
+          ...teams.map((t) => 'TPE:$t'),
+        };
+        routes.removeWhere((id, dest) => !validIds.contains(id) || !teams.contains(dest));
         final scenario = _scenario(data);
         final report = engine.validate(scenario);
 
@@ -108,13 +122,14 @@ class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026S
                       style: TextStyle(color: _text, fontSize: 30, fontWeight: FontWeight.w900)),
                   const SizedBox(height: 6),
                   const Text(
-                    'Build two- through five-team trades with the uploaded 2026-27 player salaries. Salary matching, post-trade payroll, apron status and CBA findings update immediately.',
+                    'Build two- through five-team trades with 2026-27 player salaries, normalized future first-round assets, team cap-ledger totals and live exception references. Salary matching, apron status and CBA findings update immediately.',
                     style: TextStyle(color: _muted, height: 1.45),
                   ),
                   const SizedBox(height: 10),
                   Wrap(spacing: 7, runSpacing: 7, children: [
                     _pill('2026-27', _blue),
                     _pill('${data.records.length} SALARY ROWS', _green),
+                    _pill('${picks.all().length} DRAFT ASSETS', _cyan),
                     _pill('${teams.length} TEAMS', _cyan),
                     _pill('${routes.length} ROUTED', _amber),
                     _pill('AS OF ${data.asOf}', _muted),
@@ -155,7 +170,7 @@ class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026S
   Widget _capBox() => _panelBox(Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _section('2026-27 CAP ENVIRONMENT'),
+          _section('2026-27 OPERATING ENVIRONMENT'),
           const SizedBox(height: 9),
           Wrap(spacing: 9, runSpacing: 9, children: const [
             _CapMetric('SALARY CAP', 166000000),
@@ -167,6 +182,9 @@ class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026S
             _CapMetric('ROOM MLE', 9425000),
             _CapMetric('BI-ANNUAL', 5511000),
           ]),
+          const SizedBox(height: 8),
+          const Text('Team cap allocation below uses the supplied Spotrac team-cap ledger. It is intentionally separate from active-player cash salary.',
+              style: TextStyle(color: _muted, fontSize: 10, height: 1.4)),
         ],
       ));
 
@@ -184,7 +202,7 @@ class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026S
               onDeleted: teams.length <= 2 ? null : () {
                 setState(() {
                   teams.remove(team);
-                  routes.removeWhere((id, dest) => id.startsWith('$team:') || dest == team);
+                  routes.removeWhere((id, dest) => id.startsWith('$team:') || id.startsWith('$team-') || dest == team);
                 });
                 _save();
               },
@@ -226,12 +244,9 @@ class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026S
   }
 
   Widget _teamBoard(NbaTradeContractSnapshot data, String team) {
-    final payroll = data.payroll(team, '2026-27');
-    final q = (searches[team] ?? '').trim().toLowerCase();
-    var rows = data.forTeam(team, '2026-27')
-        .where((p) => q.isEmpty || p.player.toLowerCase().contains(q));
-    if (routedOnly) rows = rows.where((p) => routes.containsKey(p.id));
-    final list = rows.toList();
+    final activePayroll = data.payroll(team, '2026-27');
+    final capAllocation = NbaTeamCapReference202627.teamSalary(team, activePayroll);
+    final tab = tabs[team] ?? 0;
     return _panelBox(Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -244,52 +259,158 @@ class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026S
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(team, style: const TextStyle(color: _text, fontSize: 19, fontWeight: FontWeight.w900)),
-            Text('${list.length} shown · ${_money(payroll)} active-contract payroll',
+            Text('${_money(capAllocation)} total cap allocation · ${_money(activePayroll)} active salary',
                 style: const TextStyle(color: _muted, fontSize: 10)),
           ])),
-          _pill(_tier(payroll), _tierColor(payroll)),
+          _pill(_tier(capAllocation), _tierColor(capAllocation)),
         ]),
-        const SizedBox(height: 9),
-        TextField(
-          onChanged: (value) => setState(() => searches[team] = value),
-          style: const TextStyle(color: _text),
-          decoration: const InputDecoration(
-            isDense: true, border: OutlineInputBorder(), prefixIcon: Icon(Icons.search_rounded), hintText: 'Search roster',
-          ),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 6, children: [
+          _mini(_signed(capAllocation), 'CAP SPACE'),
+          _mini(_signed(_tax - capAllocation), 'TAX ROOM'),
+          _mini(_signed(_first - capAllocation), '1ST APRON ROOM'),
+          _mini(_signed(_second - capAllocation), '2ND APRON ROOM'),
+          _mini((NbaTeamCapReference202627.hardCap[team] ?? 'none').toUpperCase(), 'HARD CAP'),
+        ]),
+        const SizedBox(height: 10),
+        SegmentedButton<int>(
+          segments: const [
+            ButtonSegment(value: 0, label: Text('Players'), icon: Icon(Icons.person_rounded, size: 16)),
+            ButtonSegment(value: 1, label: Text('Draft Picks'), icon: Icon(Icons.sports_basketball_rounded, size: 16)),
+            ButtonSegment(value: 2, label: Text('Money / Exceptions'), icon: Icon(Icons.account_balance_wallet_rounded, size: 16)),
+          ],
+          selected: {tab},
+          showSelectedIcon: false,
+          onSelectionChanged: (value) {
+            setState(() => tabs[team] = value.first);
+            _save();
+          },
         ),
-        const SizedBox(height: 6),
-        for (final player in list)
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: _line))),
-            child: Row(children: [
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(player.player, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: _text, fontWeight: FontWeight.w900)),
-                Text(player.guaranteed == null ? 'Uploaded salary record' : 'Guaranteed field ${_money(player.guaranteed!)}',
-                    overflow: TextOverflow.ellipsis, style: const TextStyle(color: _muted, fontSize: 9)),
-              ])),
-              SizedBox(width: 92, child: Text(_money(player.salaryFor('2026-27')),
-                  textAlign: TextAlign.right, style: const TextStyle(color: _text, fontWeight: FontWeight.w900))),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 128,
-                child: DropdownButtonFormField<String>(
-                  value: teams.where((t) => t != team).contains(routes[player.id]) ? routes[player.id] : null,
-                  hint: const Text('Route to…'),
-                  isDense: true,
-                  items: [
-                    for (final destination in teams.where((t) => t != team))
-                      DropdownMenuItem(value: destination, child: Text(destination)),
-                  ],
-                  onChanged: (value) => _route(player.id, value),
-                ),
-              ),
-            ]),
-          ),
+        const SizedBox(height: 10),
+        if (tab == 0) _playersTab(data, team),
+        if (tab == 1) _draftPicksTab(team),
+        if (tab == 2) _exceptionsTab(team),
       ],
     ));
   }
+
+  Widget _playersTab(NbaTradeContractSnapshot data, String team) {
+    final q = (searches[team] ?? '').trim().toLowerCase();
+    var rows = data.forTeam(team, '2026-27').where((p) => q.isEmpty || p.player.toLowerCase().contains(q));
+    if (routedOnly) rows = rows.where((p) => routes.containsKey(p.id));
+    final list = rows.toList();
+    return Column(children: [
+      TextField(
+        onChanged: (value) => setState(() => searches[team] = value),
+        style: const TextStyle(color: _text),
+        decoration: const InputDecoration(
+          isDense: true, border: OutlineInputBorder(), prefixIcon: Icon(Icons.search_rounded), hintText: 'Search roster',
+        ),
+      ),
+      const SizedBox(height: 6),
+      for (final player in list)
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: _line))),
+          child: Row(children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(player.player, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: _text, fontWeight: FontWeight.w900)),
+              Text(player.guaranteed == null ? 'Uploaded salary record' : 'Guaranteed field ${_money(player.guaranteed!)}',
+                  overflow: TextOverflow.ellipsis, style: const TextStyle(color: _muted, fontSize: 9)),
+            ])),
+            SizedBox(width: 92, child: Text(_money(player.salaryFor('2026-27')),
+                textAlign: TextAlign.right, style: const TextStyle(color: _text, fontWeight: FontWeight.w900))),
+            const SizedBox(width: 8),
+            SizedBox(width: 128, child: _routeMenu(player.id, team)),
+          ]),
+        ),
+    ]);
+  }
+
+  Widget _draftPicksTab(String team) {
+    var assets = picks.forTeam(team);
+    if (routedOnly) assets = assets.where((p) => routes.containsKey(p.id)).toList();
+    return Column(children: [
+      for (final asset in assets)
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: _line))),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(child: Text(asset.label, style: const TextStyle(color: _text, fontWeight: FontWeight.w900))),
+                if (asset.frozen) _pill('FROZEN', _red),
+                if (!asset.tradable && !asset.frozen) _pill('UNAVAILABLE', _muted),
+                if (asset.swapRight) _pill('SWAP', _cyan),
+                if (asset.conditional) _pill('CONDITIONAL', _amber),
+              ]),
+              const SizedBox(height: 3),
+              Text(asset.description, style: const TextStyle(color: _muted, fontSize: 9, height: 1.35)),
+              if (asset.protection != null)
+                Text('Protection: ${asset.protection}', style: const TextStyle(color: _amber, fontSize: 9)),
+            ])),
+            const SizedBox(width: 8),
+            SizedBox(width: 128, child: asset.tradable ? _routeMenu(asset.id, team) : const SizedBox.shrink()),
+          ]),
+        ),
+      if (assets.isEmpty)
+        const Align(alignment: Alignment.centerLeft, child: Text('No visible draft assets under the current filter.', style: TextStyle(color: _muted))),
+      const SizedBox(height: 6),
+      const Align(
+        alignment: Alignment.centerLeft,
+        child: Text('Registry currently prioritizes first-round interests and frozen/forfeited assets; second-round normalization is being layered into the same model.',
+            style: TextStyle(color: _muted, fontSize: 9, height: 1.35)),
+      ),
+    ]);
+  }
+
+  Widget _exceptionsTab(String team) {
+    final balances = NbaTradeExceptionReference202627.signingExceptions[team] ?? const <String, double>{};
+    final tpe = NbaTradeExceptionReference202627.largestTpe[team];
+    final tpeId = 'TPE:$team';
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      if (balances.isEmpty && tpe == null)
+        const Text('No live exception balance was visible for this team in the supplied reference.', style: TextStyle(color: _muted)),
+      for (final entry in balances.entries)
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 7),
+          padding: const EdgeInsets.all(9),
+          decoration: BoxDecoration(color: _panel2, border: Border.all(color: _line)),
+          child: Row(children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_exceptionName(entry.key), style: const TextStyle(color: _text, fontWeight: FontWeight.w900)),
+              const Text('Remaining signing-exception balance', style: TextStyle(color: _muted, fontSize: 9)),
+            ])),
+            Text(_money(entry.value), style: const TextStyle(color: _green, fontWeight: FontWeight.w900)),
+          ]),
+        ),
+      if (tpe != null)
+        Container(
+          padding: const EdgeInsets.all(9),
+          decoration: BoxDecoration(color: _panel2, border: Border.all(color: _line)),
+          child: Row(children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Largest visible TPE', style: TextStyle(color: _text, fontWeight: FontWeight.w900)),
+              const Text('Amount only from supplied team-summary reference; source transaction/expiry still need authoritative ledger metadata.',
+                  style: TextStyle(color: _muted, fontSize: 9, height: 1.3)),
+            ])),
+            Text(_money(tpe), style: const TextStyle(color: _cyan, fontWeight: FontWeight.w900)),
+            const SizedBox(width: 8),
+            SizedBox(width: 128, child: _routeMenu(tpeId, team)),
+          ]),
+        ),
+    ]);
+  }
+
+  Widget _routeMenu(String id, String origin) => DropdownButtonFormField<String>(
+        value: teams.where((t) => t != origin).contains(routes[id]) ? routes[id] : null,
+        hint: const Text('Route to…'),
+        isDense: true,
+        items: [for (final destination in teams.where((t) => t != origin)) DropdownMenuItem(value: destination, child: Text(destination))],
+        onChanged: (value) => _route(id, value),
+      );
 
   Widget _tradeFlow(NbaTradeContractSnapshot data) => _panelBox(Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,27 +418,40 @@ class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026S
           _section('TRADE FLOW'),
           const SizedBox(height: 8),
           if (routes.isEmpty)
-            const Text('Route a player to start building the transaction.', style: TextStyle(color: _muted))
+            const Text('Route a player, draft asset or exception to start building the transaction.', style: TextStyle(color: _muted))
           else
             for (final team in teams)
-              if (data.records.any((p) => (p.team == team && routes.containsKey(p.id)) || routes[p.id] == team))
-                Container(
+              Builder(builder: (context) {
+                final sent = <String>[];
+                final received = <String>[];
+                for (final p in data.records) {
+                  if (p.team == team && routes[p.id] != null) sent.add('${p.player} → ${routes[p.id]}');
+                  if (routes[p.id] == team) received.add(p.player);
+                }
+                for (final p in picks.forTeam(team)) {
+                  if (routes[p.id] != null) sent.add('${p.label} → ${routes[p.id]}');
+                }
+                for (final p in picks.all()) {
+                  if (routes[p.id] == team) received.add(p.label);
+                }
+                final tpeId = 'TPE:$team';
+                if (routes[tpeId] != null) sent.add('TPE → ${routes[tpeId]}');
+                for (final origin in teams) {
+                  if (routes['TPE:$origin'] == team) received.add('$origin TPE');
+                }
+                if (sent.isEmpty && received.isEmpty) return const SizedBox.shrink();
+                return Container(
                   width: double.infinity,
                   margin: const EdgeInsets.only(bottom: 7),
                   padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(color: _panel2, border: Border.all(color: _line)),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(team, style: const TextStyle(color: _text, fontWeight: FontWeight.w900)),
-                    Text(
-                      'Sends: ${data.records.where((p) => p.team == team && routes.containsKey(p.id)).map((p) => '${p.player} → ${routes[p.id]}').join(' • ')}',
-                      style: const TextStyle(color: _red, fontSize: 10),
-                    ),
-                    Text(
-                      'Receives: ${data.records.where((p) => routes[p.id] == team).map((p) => p.player).join(' • ')}',
-                      style: const TextStyle(color: _green, fontSize: 10),
-                    ),
+                    Text('Sends: ${sent.join(' • ')}', style: const TextStyle(color: _red, fontSize: 10)),
+                    Text('Receives: ${received.join(' • ')}', style: const TextStyle(color: _green, fontSize: 10)),
                   ]),
-                ),
+                );
+              }),
         ],
       ));
 
@@ -361,7 +495,7 @@ class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026S
                 _mini(_money(entry.value.outgoingSalary), 'MATCH OUT'),
                 _mini(_money(entry.value.incomingSalary), 'MATCH IN'),
                 _mini(_money(entry.value.maximumIncomingSalary), 'MAX IN'),
-                _mini(_money(entry.value.postTradeSalary), 'POST PAYROLL'),
+                _mini(_money(entry.value.postTradeSalary), 'POST CAP ALLOCATION'),
                 _mini('${entry.value.projectedRosterPlayers}', 'ROSTER'),
                 _mini(entry.value.apronStatus.toUpperCase(), 'STATUS'),
               ]),
@@ -375,12 +509,12 @@ class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026S
           _section('DATA & RULE BOUNDARY'),
           const SizedBox(height: 7),
           Text(
-            'Player matching uses the uploaded 2026-27 salary schedule rather than a statistical salary proxy. ${data.sourceNote} The CBA engine checks salary matching, apron restrictions, hard caps, roster counts and any player/pick restrictions present in metadata.',
+            'Player matching uses the uploaded 2026-27 salary schedule. Team cap position now uses the supplied Spotrac total-cap allocation ledger rather than simply summing active-player salaries. Draft assets are normalized from the two supplied RealGM PDFs, preserving swaps, protections, frozen status and conditional conveyance language.',
             style: const TextStyle(color: _muted, height: 1.45),
           ),
           const SizedBox(height: 6),
           const Text(
-            'Salary rows do not by themselves prove options, guarantees, no-trade/consent rights, trade kickers, recently signed/acquired dates, BYC or poison-pill treatment, exceptions, dead money/cap holds, cash usage or draft-pick encumbrances. Those fields remain execution-grade data dependencies and are not silently invented.',
+            'The current TPE seed contains amounts visible in the supplied summary, but not yet every source transaction or expiry date. Signing-exception balances come from the supplied Spotrac screenshot and are displayed as reference data; MLE/BAE balances are not treated as generic salary-matching assets. Complex draft interests remain conditional and trigger review rather than being flattened into guaranteed ownership.',
             style: TextStyle(color: _muted, height: 1.45),
           ),
         ],
@@ -391,24 +525,69 @@ class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026S
     for (final route in routes.entries) {
       NbaTradeContract? player;
       for (final row in data.records) {
-        if (row.id == route.key) {
-          player = row;
-          break;
+        if (row.id == route.key) { player = row; break; }
+      }
+      if (player != null) {
+        assignments.add(TradeAssignment(
+          asset: TradeAsset(
+            id: player.id,
+            type: TradeAssetType.player,
+            label: player.player,
+            originTeam: player.team,
+            salary: player.salaryFor('2026-27'),
+            metadata: {'source_status': player.sourceStatus, 'guaranteed_amount': player.guaranteed},
+          ),
+          destinationTeam: route.value,
+        ));
+        continue;
+      }
+
+      NbaFutureDraftAsset? pick;
+      for (final asset in picks.all()) {
+        if (asset.id == route.key) { pick = asset; break; }
+      }
+      if (pick != null) {
+        assignments.add(TradeAssignment(
+          asset: TradeAsset(
+            id: pick.id,
+            type: TradeAssetType.draftPick,
+            label: pick.label,
+            originTeam: pick.team,
+            metadata: {
+              'draft_year': pick.year,
+              'round': '${pick.round}',
+              'frozen': pick.frozen,
+              'swap_right': pick.swapRight,
+              'stepien_safe': pick.stepienSafe,
+              'protection': pick.protection ?? '',
+              'conveyance_uncertain': pick.conditional,
+              'source': pick.source,
+            },
+          ),
+          destinationTeam: route.value,
+        ));
+        continue;
+      }
+
+      if (route.key.startsWith('TPE:')) {
+        final origin = route.key.substring(4);
+        final amount = NbaTradeExceptionReference202627.largestTpe[origin] ?? 0;
+        if (amount > 0) {
+          assignments.add(TradeAssignment(
+            asset: TradeAsset(
+              id: route.key,
+              type: TradeAssetType.tradeException,
+              label: '$origin TPE',
+              originTeam: origin,
+              salary: amount,
+              metadata: {'amount': amount, 'source_status': 'reference-only'},
+            ),
+            destinationTeam: route.value,
+          ));
         }
       }
-      if (player == null) continue;
-      assignments.add(TradeAssignment(
-        asset: TradeAsset(
-          id: player.id,
-          type: TradeAssetType.player,
-          label: player.player,
-          originTeam: player.team,
-          salary: player.salaryFor('2026-27'),
-          metadata: {'source_status': player.sourceStatus, 'guaranteed_amount': player.guaranteed},
-        ),
-        destinationTeam: route.value,
-      ));
     }
+
     return TradeScenario(
       id: 'sports-terminal-2026-27',
       name: '2026-27 Trade',
@@ -420,11 +599,12 @@ class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026S
         for (final team in teams)
           team: TeamCapContext(
             team: team,
-            teamSalary: data.payroll(team, '2026-27'),
+            teamSalary: NbaTeamCapReference202627.teamSalary(team, data.payroll(team, '2026-27')),
             salaryCap: _cap,
             taxLine: _tax,
             firstApron: _first,
             secondApron: _second,
+            hardCappedAt: NbaTeamCapReference202627.hardCapAt(team, _first, _second),
             standardRosterPlayers: data.forTeam(team, '2026-27').length,
           ),
       },
@@ -507,8 +687,17 @@ String _money(double value) {
   return '\$${value.toStringAsFixed(0)}';
 }
 
-String _encode(Map<String, String> values) =>
-    values.entries.map((e) => '${e.key}=>${e.value}').join('||');
+String _signed(double value) => '${value >= 0 ? '+' : ''}${_money(value)}';
+
+String _exceptionName(String key) => switch (key) {
+  'non_tax_mle' => 'Non-Taxpayer MLE',
+  'tax_mle' => 'Taxpayer MLE',
+  'room_mle' => 'Room MLE',
+  'bae' => 'Bi-Annual Exception',
+  _ => key,
+};
+
+String _encode(Map<String, String> values) => values.entries.map((e) => '${e.key}=>${e.value}').join('||');
 
 Map<String, String> _decode(String? raw) {
   final result = <String, String>{};
