@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/app_session.dart';
 import '../services/transaction_case_convergence_service.dart';
 import 'product_front_office_scenario_screen.dart';
-import 'product_trade_machine_v2_screen.dart';
+import 'product_trade_machine_complete_screen.dart';
 
 const _navy = Color(0xFF071A33);
 const _blue = Color(0xFF2563EB);
@@ -27,10 +27,10 @@ class ProductConnectedTradeMachineScreen extends StatelessWidget {
       session: session,
       organizationMode: organizationMode,
       source: 'Trade Machine',
-      title: 'Turn the current trade scenario into a governed case.',
+      title: 'Build the transaction, validate it, then turn it into a governed case.',
       body:
-          'Save the scenario in the Trade Machine, then create a persistent case with its teams, routed assets, operating year and source identity.',
-      child: ProductTradeMachineV2Screen(session: session),
+          'The visible Trade Machine now uses the complete 2026-27 front-office workbench: player salaries, both draft rounds, live TPEs, cap ledgers, hard caps and CBA validation.',
+      child: const ProductTradeMachineCompleteScreen(),
     );
   }
 }
@@ -103,7 +103,8 @@ class _ConnectedToolState extends State<_ConnectedTool> {
       final item = await convergence.importCandidate(
         candidate: matches.first,
         session: widget.session,
-        organizationVisible: widget.organizationMode || shareWithOrganization,
+        organizationVisible:
+            widget.organizationMode || shareWithOrganization,
       );
       _show('Created “${item.title}” in the transaction command center.');
     } catch (error) {
@@ -115,7 +116,9 @@ class _ConnectedToolState extends State<_ConnectedTool> {
 
   void _show(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
