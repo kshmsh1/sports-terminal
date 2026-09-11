@@ -33,7 +33,7 @@ SHELL_SURFACES = (
     ("lib/screens/product_content_ops_screens.dart", "ProductAdminOpsCenterScreen"),
     ("lib/screens/product_backend_sync_screen.dart", "ProductBackendSyncScreen"),
     ("lib/screens/product_shell_screens.dart", "ProductInternalLabScreen"),
-    ("lib/screens/product_shell_screens.dart", "ProductEditorialHomeScreen"),
+    ("lib/screens/product_shell_screens.dart", "ProductArticlesScreen"),
     ("lib/screens/product_platform_content_legal_screen.dart", "ProductPlatformLegalScreen"),
 )
 
