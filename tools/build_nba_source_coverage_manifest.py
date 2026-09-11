@@ -21,7 +21,11 @@ def _read_json(path: Path) -> Any:
 def _count_files(root: Path, suffixes: tuple[str, ...]) -> int:
     if not root.is_dir():
         return 0
-    return sum(1 for path in root.rglob("*") if path.is_file() and path.suffix.lower() in suffixes)
+    return sum(
+        1
+        for path in root.rglob("*")
+        if path.is_file() and path.suffix.lower() in suffixes
+    )
 
 
 def _dataset_rows(manifest: Any) -> list[dict[str, Any]]:
@@ -32,20 +36,24 @@ def _dataset_rows(manifest: Any) -> list[dict[str, Any]]:
 
 
 def _season_bounds(rows: list[dict[str, Any]]) -> tuple[int | None, int | None]:
-    years = sorted(
-        {
-            int(row["season_end_year"])
-            for row in rows
-            if isinstance(row.get("season_end_year"), int)
-        }
-    )
-    return (years[0], years[-1]) if years else (None, None)
+    years: set[int] = set()
+    for row in rows:
+        season_end_year = row.get("season_end_year")
+        if isinstance(season_end_year, int):
+            years.add(season_end_year)
+        for value in row.get("seasons") or []:
+            if isinstance(value, int):
+                years.add(value)
+    ordered = sorted(years)
+    return (ordered[0], ordered[-1]) if ordered else (None, None)
 
 
 def _sportsdataverse_summary(root: Path) -> dict[str, Any]:
     manifest = _read_json(root / "manifest.json")
     rows = _dataset_rows(manifest)
-    datasets = sorted({str(row.get("dataset")) for row in rows if row.get("dataset")})
+    datasets = sorted(
+        {str(row.get("dataset")) for row in rows if row.get("dataset")}
+    )
     lo, hi = _season_bounds(rows)
     return {
         "id": "sportsdataverse",
@@ -53,7 +61,9 @@ def _sportsdataverse_summary(root: Path) -> dict[str, Any]:
         "role": "bulk historical release datasets and cross-check source",
         "runtime_dependency": False,
         "root": str(root),
-        "available": bool(rows or _count_files(root, (".parquet", ".json", ".csv"))),
+        "available": bool(
+            rows or _count_files(root, (".parquet", ".json", ".csv"))
+        ),
         "dataset_count": len(datasets),
         "datasets": datasets,
         "season_end_year_min": lo,
@@ -79,20 +89,27 @@ def _sportsdataverse_summary(root: Path) -> dict[str, Any]:
 def _basketball_reference_summary(root: Path) -> dict[str, Any]:
     manifest = _read_json(root / "manifest.json")
     rows = _dataset_rows(manifest)
-    datasets = sorted({str(row.get("dataset")) for row in rows if row.get("dataset")})
+    datasets = sorted(
+        {str(row.get("dataset")) for row in rows if row.get("dataset")}
+    )
     lo, hi = _season_bounds(rows)
     return {
         "id": "basketball_reference",
         "label": "Basketball-Reference",
-        "role": "historical reference, advanced metrics, shooting, schedules and game logs",
+        "role": "historical reference, advanced metrics, shooting, schedules, rosters, contracts and game logs",
         "runtime_dependency": False,
         "root": str(root),
-        "available": bool(rows or _count_files(root, (".json", ".csv", ".sqlite", ".db"))),
+        "available": bool(
+            rows
+            or _count_files(root, (".json", ".csv", ".sqlite", ".sqlite3", ".db"))
+        ),
         "dataset_count": len(datasets),
         "datasets": datasets,
         "season_end_year_min": lo,
         "season_end_year_max": hi,
-        "files": _count_files(root, (".json", ".csv", ".sqlite", ".db")),
+        "files": _count_files(
+            root, (".json", ".csv", ".sqlite", ".sqlite3", ".db")
+        ),
         "recommended_surfaces": [
             "season_schedule",
             "player_totals",
@@ -102,7 +119,7 @@ def _basketball_reference_summary(root: Path) -> dict[str, Any]:
             "regular_game_logs",
             "playoff_game_logs",
             "rosters",
-            "contracts_when_source_available",
+            "current_contracts",
         ],
     }
 
@@ -110,7 +127,11 @@ def _basketball_reference_summary(root: Path) -> dict[str, Any]:
 def _nba_com_summary(root: Path, static_root: Path) -> dict[str, Any]:
     normalized_files = _count_files(root, (".json",))
     static_manifest = _read_json(static_root / "manifest.json")
-    enrichment = static_manifest.get("nba_com_enrichment") if isinstance(static_manifest, dict) else None
+    enrichment = (
+        static_manifest.get("nba_com_enrichment")
+        if isinstance(static_manifest, dict)
+        else None
+    )
     if not isinstance(enrichment, dict):
         enrichment = {}
     return {
@@ -121,9 +142,13 @@ def _nba_com_summary(root: Path, static_root: Path) -> dict[str, Any]:
         "root": str(root),
         "available": normalized_files > 0 or bool(enrichment),
         "normalized_capture_files": normalized_files,
-        "materialized_player_season_rows": int(enrichment.get("enriched_player_rows") or 0),
+        "materialized_player_season_rows": int(
+            enrichment.get("enriched_player_rows") or 0
+        ),
         "matched_source_rows": int(enrichment.get("matched_source_rows") or 0),
-        "unmatched_source_rows": int(enrichment.get("unmatched_source_rows") or 0),
+        "unmatched_source_rows": int(
+            enrichment.get("unmatched_source_rows") or 0
+        ),
         "recommended_surfaces": [
             "base",
             "advanced",
@@ -160,20 +185,37 @@ def _pbpstats_summary(root: Path) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Build a static source-coverage manifest for the Sports Terminal NBA data layer."
+        description=(
+            "Build a static source-coverage manifest for the Sports Terminal NBA data layer."
+        )
     )
-    parser.add_argument("--output", default=str(ROOT / "web" / "data" / "nba_static" / "source_coverage.json"))
-    parser.add_argument("--static-root", default=str(ROOT / "web" / "data" / "nba_static"))
+    parser.add_argument(
+        "--output",
+        default=str(ROOT / "web" / "data" / "nba_static" / "source_coverage.json"),
+    )
+    parser.add_argument(
+        "--static-root", default=str(ROOT / "web" / "data" / "nba_static")
+    )
     parser.add_argument("--nba-com-root", default=str(ROOT / "raw" / "nba_com"))
-    parser.add_argument("--sportsdataverse-root", default=str(ROOT / "raw" / "sportsdataverse" / "nba"))
-    parser.add_argument("--basketball-reference-root", default=str(ROOT / "raw" / "basketball_reference"))
-    parser.add_argument("--pbpstats-root", default=str(ROOT / "raw" / "pbpstats"))
+    parser.add_argument(
+        "--sportsdataverse-root",
+        default=str(ROOT / "raw" / "sportsdataverse" / "nba"),
+    )
+    parser.add_argument(
+        "--basketball-reference-root",
+        default=str(ROOT / "raw" / "basketball_reference"),
+    )
+    parser.add_argument(
+        "--pbpstats-root", default=str(ROOT / "raw" / "pbpstats")
+    )
     args = parser.parse_args()
 
     static_root = Path(args.static_root).expanduser().resolve()
     nba_com_root = Path(args.nba_com_root).expanduser().resolve()
     sportsdataverse_root = Path(args.sportsdataverse_root).expanduser().resolve()
-    basketball_reference_root = Path(args.basketball_reference_root).expanduser().resolve()
+    basketball_reference_root = (
+        Path(args.basketball_reference_root).expanduser().resolve()
+    )
     pbpstats_root = Path(args.pbpstats_root).expanduser().resolve()
 
     sources = [
@@ -200,13 +242,27 @@ def main() -> int:
             "missing_values_policy": "preserve-column-and-render-dash",
         },
         "sources": sources,
-        "available_source_count": sum(1 for source in sources if source.get("available")),
+        "available_source_count": sum(
+            1 for source in sources if source.get("available")
+        ),
     }
 
     output = Path(args.output).expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(json.dumps({"status": "ok", "output": str(output), "available_sources": manifest["available_source_count"]}, indent=2))
+    output.write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    print(
+        json.dumps(
+            {
+                "status": "ok",
+                "output": str(output),
+                "available_sources": manifest["available_source_count"],
+            },
+            indent=2,
+        )
+    )
     return 0
 
 
