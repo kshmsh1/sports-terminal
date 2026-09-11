@@ -9,6 +9,7 @@ class NbaTradeExceptionRecord {
     this.note,
     this.unusableAboveSecondApron = false,
   });
+
   final String id;
   final String team;
   final String expires;
@@ -17,11 +18,13 @@ class NbaTradeExceptionRecord {
   final double available;
   final String? note;
   final bool unusableAboveSecondApron;
+
   bool get exhausted => available <= 0;
 }
 
 class NbaMleRules202627 {
   const NbaMleRules202627._();
+
   static const double room = 9366000;
   static const double nonTaxpayer = 15044000;
   static const double taxpayer = 6064000;
@@ -30,7 +33,7 @@ class NbaMleRules202627 {
   static const String roomRule =
       'Below the cap; unavailable if BAE, non-taxpayer MLE, or taxpayer MLE was already used.';
   static const String nonTaxpayerRule =
-      'Above the cap but transaction must remain below the first apron; unavailable after room or taxpayer MLE use.';
+      'Above the cap; first-year salary must leave the team below the first apron; unavailable after room or taxpayer MLE use.';
   static const String taxpayerRule =
       'Available only below the second apron; unavailable after BAE, cap-room/room exception, room MLE, or non-taxpayer MLE use.';
 }
@@ -71,74 +74,20 @@ class NbaTradeExceptionReference202627 {
     'WAS': {'non_tax_mle': 15044000},
   };
 
-  static const List<NbaTradeExceptionRecord> tpes = [
-    NbaTradeExceptionRecord(id:'CHA-ball-2027',team:'CHA',expires:'2027-07-10',sourceTransaction:'LaMelo Ball trade with MIN',original:40770520,available:40770520),
-    NbaTradeExceptionRecord(id:'MEM-jackson-2027',team:'MEM',expires:'2027-02-03',sourceTransaction:'Jaren Jackson Jr. trade with UTA',original:28872920,available:28872920),
-    NbaTradeExceptionRecord(id:'BOS-simons-2027',team:'BOS',expires:'2027-02-05',sourceTransaction:'Anfernee Simons trade with CHI',original:27678571,available:27678571),
-    NbaTradeExceptionRecord(id:'MIL-giannis-2027',team:'MIL',expires:'2027-07-06',sourceTransaction:'Giannis Antetokounmpo trade with MIA',original:25456566,available:25456566),
-    NbaTradeExceptionRecord(id:'OKC-dort-2027',team:'OKC',expires:'2027-07-19',sourceTransaction:'Lu Dort trade with ATL',original:17722222,available:17722222),
-    NbaTradeExceptionRecord(id:'CLE-strus-2027',team:'CLE',expires:'2027-08-20',sourceTransaction:'Max Strus trade with LAC',original:16660836,available:16660836),
-    NbaTradeExceptionRecord(id:'UTA-kessler-2027',team:'UTA',expires:'2027-07-08',sourceTransaction:'Walker Kessler trade with LAL',original:15054411,available:15054411),
-    NbaTradeExceptionRecord(id:'DET-stewart-2027',team:'DET',expires:'2027-07-08',sourceTransaction:'Isaiah Stewart trade with MEM',original:15000000,available:15000000),
-    NbaTradeExceptionRecord(id:'HOU-finney-smith-2027',team:'HOU',expires:'2027-07-06',sourceTransaction:'Dorian Finney-Smith trade with ATL',original:13335000,available:13335000),
-    NbaTradeExceptionRecord(id:'OKC-joe-2027',team:'OKC',expires:'2027-07-06',sourceTransaction:'Isaiah Joe trade with DET',original:11323006,available:11323006),
-    NbaTradeExceptionRecord(id:'MIN-conley-2027',team:'MIN',expires:'2027-02-03',sourceTransaction:'Mike Conley trade with CHI',original:10774038,available:10774038),
-    NbaTradeExceptionRecord(id:'DEN-watson-2027',team:'DEN',expires:'2027-08-20',sourceTransaction:'Peyton Watson trade with CLE',original:10232558,available:10232558,note:'Unusable if Denver is over the second apron.',unusableAboveSecondApron:true),
-    NbaTradeExceptionRecord(id:'CLE-ball-2027',team:'CLE',expires:'2027-02-05',sourceTransaction:'Lonzo Ball trade with UTA',original:10000000,available:10000000),
-    NbaTradeExceptionRecord(id:'OKC-wiggins-2027',team:'OKC',expires:'2027-07-06',sourceTransaction:'Aaron Wiggins trade with ATL',original:9028038,available:9028038),
-    NbaTradeExceptionRecord(id:'CHA-sexton-2027',team:'CHA',expires:'2027-02-04',sourceTransaction:'Collin Sexton trade with CHI',original:8200962,available:8200962),
-    NbaTradeExceptionRecord(id:'NOP-hawkins-2027',team:'NOP',expires:'2027-09-08',sourceTransaction:'Jordan Hawkins trade with MEM',original:7021895,available:7021895),
-    NbaTradeExceptionRecord(id:'DAL-davis-2027',team:'DAL',expires:'2027-02-05',sourceTransaction:'Anthony Davis trade with WAS',original:20830154,available:7004114,note:'Partially used by Zaccharie Risacher ($13,826,040).'),
-    NbaTradeExceptionRecord(id:'CHA-jones-2027',team:'CHA',expires:'2027-02-05',sourceTransaction:'Tyus Jones trade with DAL',original:7000000,available:7000000),
-    NbaTradeExceptionRecord(id:'ORL-jones-2027',team:'ORL',expires:'2027-02-04',sourceTransaction:'Tyus Jones trade with DAL',original:7000000,available:7000000),
-    NbaTradeExceptionRecord(id:'MIN-dillingham-2027',team:'MIN',expires:'2027-02-05',sourceTransaction:'Rob Dillingham trade with CHI',original:6576120,available:6576120),
-    NbaTradeExceptionRecord(id:'TOR-agbaji-2027',team:'TOR',expires:'2027-02-05',sourceTransaction:'Ochai Agbaji trade with BKN',original:6383525,available:6383525),
-    NbaTradeExceptionRecord(id:'WAS-hardy-2027',team:'WAS',expires:'2027-07-07',sourceTransaction:'Jaden Hardy trade with LAL',original:6000000,available:6000000),
-    NbaTradeExceptionRecord(id:'WAS-russell-2027',team:'WAS',expires:'2027-07-08',sourceTransaction:"D'Angelo Russell trade with MEM",original:5969250,available:5969250),
-    NbaTradeExceptionRecord(id:'SAC-saric-2027',team:'SAC',expires:'2027-02-01',sourceTransaction:'Dario Saric trade with CHI',original:5426400,available:5426400),
-    NbaTradeExceptionRecord(id:'DET-sasser-2027',team:'DET',expires:'2027-07-08',sourceTransaction:'Marcus Sasser trade with DAL',original:5198983,available:5198983),
-    NbaTradeExceptionRecord(id:'PHO-richards-2027',team:'PHO',expires:'2027-02-05',sourceTransaction:'Nick Richards trade with CHI',original:5000000,available:5000000),
-    NbaTradeExceptionRecord(id:'SAC-carter-2027',team:'SAC',expires:'2027-06-30',sourceTransaction:'Devin Carter trade with ATL',original:4923720,available:4923720),
-    NbaTradeExceptionRecord(id:'ATL-bufkin-2026',team:'ATL',expires:'2026-09-16',sourceTransaction:'Kobe Bufkin trade with BKN',original:4503720,available:4503720),
-    NbaTradeExceptionRecord(id:'NOP-alvarado-2027',team:'NOP',expires:'2027-02-05',sourceTransaction:'Jose Alvarado trade with NYK',original:4500000,available:4500000),
-    NbaTradeExceptionRecord(id:'PHI-mccain-2027',team:'PHI',expires:'2027-02-04',sourceTransaction:'Jared McCain trade with OKC',original:4221360,available:4221360),
-    NbaTradeExceptionRecord(id:'BOS-brown-2027',team:'BOS',expires:'2027-07-06',sourceTransaction:'Jaylen Brown trade with PHI',original:2952348,available:2952348),
-    NbaTradeExceptionRecord(id:'DAL-hardy-2027',team:'DAL',expires:'2027-02-05',sourceTransaction:'Jaden Hardy trade with WAS',original:6000000,available:2909520,note:'Partially used by AJ Johnson ($3,090,480).'),
-    NbaTradeExceptionRecord(id:'LAC-brown-2027',team:'LAC',expires:'2027-02-05',sourceTransaction:'Kobe Brown trade with IND',original:2654880,available:2654880),
-    NbaTradeExceptionRecord(id:'BOS-tillman-2027',team:'BOS',expires:'2027-02-05',sourceTransaction:'Xavier Tillman Sr. trade with CHA',original:2546675,available:2546675),
-    NbaTradeExceptionRecord(id:'OKC-dieng-2027',team:'OKC',expires:'2027-02-04',sourceTransaction:'Ousmane Dieng trade with CHA',original:2449522,available:2449522),
-    NbaTradeExceptionRecord(id:'BOS-minott-2027',team:'BOS',expires:'2027-02-05',sourceTransaction:'Josh Minott trade with BKN',original:2378870,available:2378870),
-    NbaTradeExceptionRecord(id:'ATL-krejci-2027',team:'ATL',expires:'2027-02-01',sourceTransaction:'Vit Krejci trade with POR',original:2349578,available:2349578),
-    NbaTradeExceptionRecord(id:'LAC-paul-2027',team:'LAC',expires:'2027-02-05',sourceTransaction:'Chris Paul trade with TOR',original:2296274,available:2296274),
-    NbaTradeExceptionRecord(id:'BOS-boucher-2027',team:'BOS',expires:'2027-02-05',sourceTransaction:'Chris Boucher trade with UTA',original:2296274,available:2296274),
-    NbaTradeExceptionRecord(id:'PHI-gordon-2027',team:'PHI',expires:'2027-02-05',sourceTransaction:'Eric Gordon trade with MEM',original:2296274,available:2296274),
-    NbaTradeExceptionRecord(id:'UTA-landale-2027',team:'UTA',expires:'2027-02-05',sourceTransaction:'Jock Landale trade with MEM',original:2296274,available:2296274),
-    NbaTradeExceptionRecord(id:'CHA-plumlee-2027',team:'CHA',expires:'2027-02-04',sourceTransaction:'Mason Plumlee trade with OKC',original:2296274,available:2296274),
-    NbaTradeExceptionRecord(id:'DEN-tyson-2027',team:'DEN',expires:'2027-02-05',sourceTransaction:'Hunter Tyson trade with BKN',original:2221677,available:2221677),
-    NbaTradeExceptionRecord(id:'GSW-tjd-2027',team:'GSW',expires:'2027-02-05',sourceTransaction:'Trayce Jackson-Davis trade with TOR',original:2221677,available:2221677),
-    NbaTradeExceptionRecord(id:'MEM-morant-2027',team:'MEM',expires:'2027-06-29',sourceTransaction:'Ja Morant trade with POR',original:4314089,available:2163172,note:'Partially used by Micah Peavy ($2,150,917).'),
-    NbaTradeExceptionRecord(id:'DAL-nembhard-2027',team:'DAL',expires:'2027-07-19',sourceTransaction:'Ryan Nembhard trade with ATL',original:2150917,available:2150917),
-    NbaTradeExceptionRecord(id:'PHO-hayes-davis-2027',team:'PHO',expires:'2027-02-05',sourceTransaction:'Nigel Hayes-Davis trade with MIL',original:2048494,available:2048494),
-    NbaTradeExceptionRecord(id:'ATL-kennard-2027',team:'ATL',expires:'2027-02-05',sourceTransaction:'Luke Kennard trade with LAL',original:11000000,available:1971962,note:'Partially used by Aaron Wiggins ($9,028,038).'),
-    NbaTradeExceptionRecord(id:'CLE-hunter-2027',team:'CLE',expires:'2027-02-01',sourceTransaction:"De'Andre Hunter trade with SAC",original:6897984,available:1439674,note:'Partially used by Cam Whitmore ($5,458,310).'),
-    NbaTradeExceptionRecord(id:'ATL-young-2027',team:'ATL',expires:'2027-01-08',sourceTransaction:'Trae Young trade with WAS',original:1357994,available:1357993),
-    NbaTradeExceptionRecord(id:'LAC-zubac-2027',team:'LAC',expires:'2027-02-05',sourceTransaction:'Ivica Zubac trade with IND',original:1314427,available:1314427),
-    NbaTradeExceptionRecord(id:'IND-jones-2027',team:'IND',expires:'2027-06-24',sourceTransaction:'Kam Jones trade with CHI',original:1075459,available:1075459),
-    NbaTradeExceptionRecord(id:'NYK-terry-2027',team:'NYK',expires:'2027-02-05',sourceTransaction:'Dalen Terry trade with NOP',original:899118,available:899118),
-    NbaTradeExceptionRecord(id:'LAC-collins-2027',team:'LAC',expires:'2027-07-08',sourceTransaction:'John Collins trade with DET',original:17000000,available:339164,note:'Partially used by Max Strus ($16,660,836).'),
-    NbaTradeExceptionRecord(id:'CLE-garland-2027',team:'CLE',expires:'2027-02-04',sourceTransaction:'Darius Garland trade with LAC',original:263397,available:263397),
-    NbaTradeExceptionRecord(id:'NYK-yabusele-2027',team:'NYK',expires:'2027-02-05',sourceTransaction:'Guerschon Yabusele trade with CHI',original:100882,available:100882),
-    NbaTradeExceptionRecord(id:'MIL-portis-2027',team:'MIL',expires:'2027-07-06',sourceTransaction:'Bobby Portis trade with MIA',original:85763,available:85763),
-    NbaTradeExceptionRecord(id:'DAL-exum-2027',team:'DAL',expires:'2027-02-05',sourceTransaction:'Dante Exum trade with WAS',original:2296274,available:0,note:'Fully used.'),
-  ];
+  static final List<NbaTradeExceptionRecord> tpes = _parseTpeSeed();
 
-  static List<NbaTradeExceptionRecord> forTeam(String team, {String? asOfIso}) {
-    final rows = tpes.where((item) => item.team == team && !item.exhausted).where((item) {
-      if (asOfIso == null || asOfIso.isEmpty) return true;
-      final asOf = DateTime.tryParse(asOfIso);
+  static List<NbaTradeExceptionRecord> forTeam(
+    String team, {
+    String? asOfIso,
+  }) {
+    final asOf = asOfIso == null ? null : DateTime.tryParse(asOfIso);
+    final rows = tpes.where((item) {
+      if (item.team != team || item.exhausted) return false;
+      if (asOf == null) return true;
       final expiry = DateTime.tryParse(item.expires);
-      return asOf == null || expiry == null || !expiry.isBefore(asOf);
-    }).toList()..sort((a,b) => b.available.compareTo(a.available));
+      return expiry == null || !expiry.isBefore(asOf);
+    }).toList()
+      ..sort((a, b) => b.available.compareTo(a.available));
     return rows;
   }
 
@@ -147,8 +96,99 @@ class NbaTradeExceptionReference202627 {
     return rows.isEmpty ? null : rows.first.available;
   }
 
-  static Map<String, double> get largestTpe => {
-    for (final team in signingExceptions.keys)
-      if (largestTpeFor(team) case final amount?) team: amount,
-  };
+  static Map<String, double> get largestTpe {
+    final result = <String, double>{};
+    for (final team in _nbaTeams) {
+      final amount = largestTpeFor(team);
+      if (amount != null) result[team] = amount;
+    }
+    return result;
+  }
+}
+
+const _nbaTeams = <String>[
+  'ATL','BOS','BRK','CHA','CHI','CLE','DAL','DEN','DET','GSW','HOU','IND','LAC','LAL','MEM',
+  'MIA','MIL','MIN','NOP','NYK','OKC','ORL','PHI','PHO','POR','SAC','SAS','TOR','UTA','WAS',
+];
+
+const _tpeSeed = r'''
+CHA|ball|2027-07-10|LaMelo Ball trade with MIN|40770520|40770520||0
+MEM|jackson|2027-02-03|Jaren Jackson Jr. trade with UTA|28872920|28872920||0
+BOS|simons|2027-02-05|Anfernee Simons trade with CHI|27678571|27678571||0
+MIL|giannis|2027-07-06|Giannis Antetokounmpo trade with MIA|25456566|25456566||0
+OKC|dort|2027-07-19|Lu Dort trade with ATL|17722222|17722222||0
+CLE|strus|2027-08-20|Max Strus trade with LAC|16660836|16660836||0
+UTA|kessler|2027-07-08|Walker Kessler trade with LAL|15054411|15054411||0
+DET|stewart|2027-07-08|Isaiah Stewart trade with MEM|15000000|15000000||0
+HOU|finney-smith|2027-07-06|Dorian Finney-Smith trade with ATL|13335000|13335000||0
+OKC|joe|2027-07-06|Isaiah Joe trade with DET|11323006|11323006||0
+MIN|conley|2027-02-03|Mike Conley trade with CHI|10774038|10774038||0
+DEN|watson|2027-08-20|Peyton Watson trade with CLE|10232558|10232558|Unusable if Denver is over the second apron.|1
+CLE|lonzo|2027-02-05|Lonzo Ball trade with UTA|10000000|10000000||0
+OKC|wiggins|2027-07-06|Aaron Wiggins trade with ATL|9028038|9028038||0
+CHA|sexton|2027-02-04|Collin Sexton trade with CHI|8200962|8200962||0
+NOP|hawkins|2027-09-08|Jordan Hawkins trade with MEM|7021895|7021895||0
+DAL|davis|2027-02-05|Anthony Davis trade with WAS|20830154|7004114|Partially used by Zaccharie Risacher (13,826,040).|0
+CHA|tyus-dal|2027-02-05|Tyus Jones trade with DAL|7000000|7000000||0
+ORL|tyus-dal|2027-02-04|Tyus Jones trade with DAL|7000000|7000000||0
+MIN|dillingham|2027-02-05|Rob Dillingham trade with CHI|6576120|6576120||0
+TOR|agbaji|2027-02-05|Ochai Agbaji trade with BKN|6383525|6383525||0
+WAS|hardy-lal|2027-07-07|Jaden Hardy trade with LAL|6000000|6000000||0
+WAS|russell|2027-07-08|D'Angelo Russell trade with MEM|5969250|5969250||0
+SAC|saric|2027-02-01|Dario Saric trade with CHI|5426400|5426400||0
+DET|sasser|2027-07-08|Marcus Sasser trade with DAL|5198983|5198983||0
+PHO|richards|2027-02-05|Nick Richards trade with CHI|5000000|5000000||0
+SAC|carter|2027-06-30|Devin Carter trade with ATL|4923720|4923720||0
+ATL|bufkin|2026-09-16|Kobe Bufkin trade with BKN|4503720|4503720||0
+NOP|alvarado|2027-02-05|Jose Alvarado trade with NYK|4500000|4500000||0
+PHI|mccain|2027-02-04|Jared McCain trade with OKC|4221360|4221360||0
+BOS|brown|2027-07-06|Jaylen Brown trade with PHI|2952348|2952348||0
+DAL|hardy-was|2027-02-05|Jaden Hardy trade with WAS|6000000|2909520|Partially used by AJ Johnson (3,090,480).|0
+LAC|brown|2027-02-05|Kobe Brown trade with IND|2654880|2654880||0
+BOS|tillman|2027-02-05|Xavier Tillman Sr. trade with CHA|2546675|2546675||0
+OKC|dieng|2027-02-04|Ousmane Dieng trade with CHA|2449522|2449522||0
+BOS|minott|2027-02-05|Josh Minott trade with BKN|2378870|2378870||0
+ATL|krejci|2027-02-01|Vit Krejci trade with POR|2349578|2349578||0
+LAC|paul|2027-02-05|Chris Paul trade with TOR|2296274|2296274||0
+BOS|boucher|2027-02-05|Chris Boucher trade with UTA|2296274|2296274||0
+PHI|gordon|2027-02-05|Eric Gordon trade with MEM|2296274|2296274||0
+UTA|landale|2027-02-05|Jock Landale trade with MEM|2296274|2296274||0
+CHA|plumlee|2027-02-04|Mason Plumlee trade with OKC|2296274|2296274||0
+DEN|tyson|2027-02-05|Hunter Tyson trade with BKN|2221677|2221677||0
+GSW|tjd|2027-02-05|Trayce Jackson-Davis trade with TOR|2221677|2221677||0
+MEM|morant|2027-06-29|Ja Morant trade with POR|4314089|2163172|Partially used by Micah Peavy (2,150,917).|0
+DAL|nembhard|2027-07-19|Ryan Nembhard trade with ATL|2150917|2150917||0
+PHO|hayes-davis|2027-02-05|Nigel Hayes-Davis trade with MIL|2048494|2048494||0
+ATL|kennard|2027-02-05|Luke Kennard trade with LAL|11000000|1971962|Partially used by Aaron Wiggins (9,028,038).|0
+CLE|hunter|2027-02-01|De'Andre Hunter trade with SAC|6897984|1439674|Partially used by Cam Whitmore (5,458,310).|0
+ATL|young|2027-01-08|Trae Young trade with WAS|1357994|1357993||0
+LAC|zubac|2027-02-05|Ivica Zubac trade with IND|1314427|1314427||0
+IND|jones|2027-06-24|Kam Jones trade with CHI|1075459|1075459||0
+NYK|terry|2027-02-05|Dalen Terry trade with NOP|899118|899118||0
+LAC|collins|2027-07-08|John Collins trade with DET|17000000|339164|Partially used by Max Strus (16,660,836).|0
+CLE|garland|2027-02-04|Darius Garland trade with LAC|263397|263397||0
+NYK|yabusele|2027-02-05|Guerschon Yabusele trade with CHI|100882|100882||0
+MIL|portis|2027-07-06|Bobby Portis trade with MIA|85763|85763||0
+DAL|exum|2027-02-05|Dante Exum trade with WAS|2296274|0|Fully used.|0
+''';
+
+List<NbaTradeExceptionRecord> _parseTpeSeed() {
+  final rows = <NbaTradeExceptionRecord>[];
+  for (final raw in _tpeSeed.split('\n')) {
+    final line = raw.trim();
+    if (line.isEmpty) continue;
+    final fields = line.split('|');
+    if (fields.length != 8) continue;
+    rows.add(NbaTradeExceptionRecord(
+      id: '${fields[0]}-${fields[1]}-${fields[2]}',
+      team: fields[0],
+      expires: fields[2],
+      sourceTransaction: fields[3],
+      original: double.tryParse(fields[4]) ?? 0,
+      available: double.tryParse(fields[5]) ?? 0,
+      note: fields[6].isEmpty ? null : fields[6],
+      unusableAboveSecondApron: fields[7] == '1',
+    ));
+  }
+  return List.unmodifiable(rows);
 }
