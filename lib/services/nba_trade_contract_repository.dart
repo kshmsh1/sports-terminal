@@ -1,6 +1,4 @@
-import 'dart:convert';
-
-import 'package:flutter/services.dart';
+import 'nba_trade_contract_seed.dart';
 
 class NbaTradeContract {
   const NbaTradeContract({
@@ -22,24 +20,6 @@ class NbaTradeContract {
   final String sourceLabel;
 
   double salaryFor(String season) => salaries[season] ?? 0;
-
-  factory NbaTradeContract.fromJson(Map<String, dynamic> json) {
-    final raw = (json['salaries'] as Map?)?.cast<String, dynamic>() ?? const {};
-    return NbaTradeContract(
-      id: '${json['id'] ?? ''}',
-      player: '${json['player'] ?? ''}',
-      team: '${json['team'] ?? ''}'.toUpperCase(),
-      salaries: {
-        for (final entry in raw.entries)
-          if (entry.value is num) entry.key: (entry.value as num).toDouble(),
-      },
-      guaranteed: json['guaranteed'] is num
-          ? (json['guaranteed'] as num).toDouble()
-          : null,
-      sourceStatus: '${json['sourceStatus'] ?? 'uploaded'}',
-      sourceLabel: '${json['sourceLabel'] ?? ''}',
-    );
-  }
 }
 
 class NbaTradeContractSnapshot {
@@ -54,7 +34,12 @@ class NbaTradeContractSnapshot {
   final String sourceNote;
 
   List<String> get teams {
-    final values = records.map((item) => item.team).where((item) => item.isNotEmpty).toSet().toList()..sort();
+    final values = records
+        .map((item) => item.team)
+        .where((item) => item.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
     return values;
   }
 
@@ -66,31 +51,48 @@ class NbaTradeContractSnapshot {
     return rows;
   }
 
-  double payroll(String team, String season) =>
-      forTeam(team, season).fold(0, (sum, item) => sum + item.salaryFor(season));
+  double payroll(String team, String season) => forTeam(team, season)
+      .fold(0, (sum, item) => sum + item.salaryFor(season));
 }
 
 class NbaTradeContractRepository {
-  const NbaTradeContractRepository({
-    this.path = 'assets/data/nba/finance/contracts_2026_27.json',
-  });
-
-  final String path;
+  const NbaTradeContractRepository();
 
   Future<NbaTradeContractSnapshot> load() async {
-    final raw = await rootBundle.loadString(path);
-    final decoded = jsonDecode(raw);
-    if (decoded is! Map) {
-      throw const FormatException('Invalid NBA trade contract dataset.');
+    final rows = <NbaTradeContract>[];
+    final seenPlayers = <String>{};
+    for (final line in nbaTradeContractSeed202627.split('\n')) {
+      final parts = line.split('\t');
+      if (parts.length < 4) continue;
+      final player = parts[0].trim();
+      final team = parts[1].trim().toUpperCase();
+      final salary = double.tryParse(parts[2]) ?? 0;
+      final guaranteed = double.tryParse(parts[3]);
+      if (player.isEmpty || team.isEmpty || salary <= 0) continue;
+      final playerKey = player.toLowerCase();
+      if (!seenPlayers.add(playerKey)) continue;
+      final slug = playerKey
+          .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+          .replaceAll(RegExp(r'^-+|-+$'), '');
+      rows.add(
+        NbaTradeContract(
+          id: '$team:$slug',
+          player: player,
+          team: team,
+          salaries: {'2026-27': salary},
+          guaranteed:
+              guaranteed != null && guaranteed > 0 ? guaranteed : null,
+          sourceStatus: 'uploaded',
+          sourceLabel:
+              'User-supplied Sports Reference salary export (2026-09-11)',
+        ),
+      );
     }
-    final rows = (decoded['records'] as List? ?? const [])
-        .whereType<Map>()
-        .map((item) => NbaTradeContract.fromJson(item.cast<String, dynamic>()))
-        .toList();
     return NbaTradeContractSnapshot(
       records: rows,
-      asOf: '${decoded['asOf'] ?? ''}',
-      sourceNote: '${decoded['deduplication'] ?? ''}',
+      asOf: '2026-09-11',
+      sourceNote:
+          'Duplicate source rows were collapsed to one current-team entry before embedding the salary seed.',
     );
   }
 }
