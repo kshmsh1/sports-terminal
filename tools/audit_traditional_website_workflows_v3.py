@@ -26,28 +26,38 @@ ASSERTIONS: dict[str, tuple[str, ...]] = {
         "maxWidth: 1840",
     ),
     "lib/widgets/website_sticky_stats_table.dart": (
-        "Conventional, borderless website statistics table",
-        "The page owns all vertical scrolling",
+        "website_sticky_stats_table_v2.dart",
+    ),
+    "lib/widgets/website_sticky_stats_table_v2.dart": (
+        "page owns vertical scrolling",
         "scrollDirection: Axis.horizontal",
-        "first column stays frozen horizontally",
-        "There are deliberately no per-cell divider rules",
+        "frozen first column",
+        "ClipRect",
     ),
     "lib/screens/website_nba_stats_screen.dart": (
-        "values: const [0, 65, 60, 50, 40, 30]",
-        "values: const [0, 20, 15, 10]",
+        "website_nba_stats_v2_screen.dart",
+    ),
+    "lib/screens/website_nba_stats_v2_screen.dart": (
+        "values: const [50, 65, 60, 40, 30, 20, 10, 0]",
+        "values: const [0, 30, 25, 20, 15, 10]",
         "WebsiteStickyStatsTable",
         "Regular Season",
         "Playoffs",
         "Copy CSV",
+        "int _minGp = 50",
     ),
     "lib/screens/website_nba_advanced_stats_screen.dart": (
-        "values: const [0, 65, 60, 50, 40, 30]",
-        "values: const [0, 20, 15, 10]",
-        "3P DFG% is the opponent",
-        "never substituted with the player’s offensive 3P%",
+        "website_nba_advanced_stats_v4_screen.dart",
+    ),
+    "lib/screens/website_nba_advanced_stats_v4_screen.dart": (
+        "values: const [50, 65, 60, 40, 30, 20, 10, 0]",
+        "values: const [0, 30, 25, 20, 15, 10]",
+        "Opponent 3P% when defended by the player",
         "WebsiteStickyStatsTable",
         "Regular Season",
         "Playoffs",
+        "_possessionsPerGame",
+        "Totals shows full-sample counting totals",
     ),
     "lib/screens/website_nba_lineup_analysis_screen.dart": (
         "Lineup Analysis",
@@ -108,12 +118,12 @@ ASSERTIONS: dict[str, tuple[str, ...]] = {
 }
 
 FORBIDDEN: dict[str, tuple[str, ...]] = {
-    "lib/widgets/website_sticky_stats_table.dart": (
+    "lib/widgets/website_sticky_stats_table_v2.dart": (
         "scrollDirection: Axis.vertical",
         "horizontalInside:",
         "verticalInside:",
     ),
-    "lib/screens/website_nba_advanced_stats_screen.dart": (
+    "lib/screens/website_nba_advanced_stats_v4_screen.dart": (
         "three_dfg_pct', '3P%'",
         "three_dfg_pct\", \"3P%\"",
     ),
@@ -163,7 +173,7 @@ def main() -> int:
                 failures.append({"path": relative, "problem": f"forbidden: {token}"})
 
     payload = {
-        "contract": "sports-terminal-traditional-website-workflows-v3",
+        "contract": "sports-terminal-traditional-website-workflows-v4",
         "assertions": assertions,
         "passed": passed,
         "failed": len(failures),
