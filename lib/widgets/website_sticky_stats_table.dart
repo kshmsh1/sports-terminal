@@ -20,17 +20,12 @@ class WebsiteStickyStatsColumn {
   final Color? foregroundColor;
 }
 
-/// Conventional, borderless website statistics table.
+/// Conventional, compact website statistics table.
 ///
-/// The page owns all vertical scrolling: choosing 10, 20, 50 or 100 rows makes
-/// the document grow to exactly that many rows. The table owns horizontal
-/// scrolling only. The first column stays frozen horizontally and the header
-/// follows the page while the table remains in view.
-///
-/// There are deliberately no per-cell divider rules. Dense tables use a very
-/// light zebra surface instead, which keeps long leaderboards legible without
-/// the spreadsheet-like white grid that the traditional Sports Terminal UI is
-/// moving away from.
+/// The page owns vertical scrolling and the table owns horizontal scrolling.
+/// The first column stays frozen horizontally while the header follows the page
+/// while this table remains in view. Header labels are scale-down constrained so
+/// expandable labels can never paint Flutter's yellow/red overflow diagnostics.
 class WebsiteStickyStatsTable extends StatefulWidget {
   const WebsiteStickyStatsTable({
     super.key,
@@ -50,14 +45,15 @@ class WebsiteStickyStatsTable extends StatefulWidget {
   final double rowHeight;
 
   /// Retained for source compatibility with older callers. Vertical height is
-  /// deliberately never capped.
+  /// deliberately never capped; the document itself scrolls vertically.
   final double maxBodyHeight;
   final double firstColumnWidth;
   final bool stripeRows;
   final double borderRadius;
 
   @override
-  State<WebsiteStickyStatsTable> createState() => _WebsiteStickyStatsTableState();
+  State<WebsiteStickyStatsTable> createState() =>
+      _WebsiteStickyStatsTableState();
 }
 
 class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
@@ -112,7 +108,8 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
     }
     final tableTop = tableBox.localToGlobal(Offset.zero).dy;
     final viewportTop = viewportBox.localToGlobal(Offset.zero).dy;
-    final totalHeight = widget.headerHeight + widget.rows.length * widget.rowHeight;
+    final totalHeight =
+        widget.headerHeight + widget.rows.length * widget.rowHeight;
     final maxOffset = math.max(0.0, totalHeight - widget.headerHeight);
     final next = (viewportTop - tableTop).clamp(0.0, maxOffset);
     if ((next - _stickyOffset).abs() < .5) return;
@@ -127,12 +124,16 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
     final bodySurface = theme.cardTheme.color ?? colors.surface;
     final headerSurface = colors.surfaceContainerHighest;
     final alternateSurface = Color.alphaBlend(
-      colors.onSurface.withValues(alpha: theme.brightness == Brightness.dark ? .025 : .018),
+      colors.onSurface.withValues(
+        alpha: theme.brightness == Brightness.dark ? .025 : .018,
+      ),
       bodySurface,
     );
     final remaining = widget.columns.skip(1).toList();
-    final remainingWidth = remaining.fold<double>(0, (sum, item) => sum + item.width);
-    final totalHeight = widget.headerHeight + widget.rows.length * widget.rowHeight;
+    final remainingWidth =
+        remaining.fold<double>(0, (sum, item) => sum + item.width);
+    final totalHeight =
+        widget.headerHeight + widget.rows.length * widget.rowHeight;
 
     Color bodyColor(int rowIndex, Color? explicit) {
       if (explicit != null) return explicit;
@@ -151,21 +152,31 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
       Alignment alignment = Alignment.centerLeft,
       VoidCallback? onTap,
     }) {
+      final constrainedChild = headerCell
+          ? FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: alignment,
+              child: child,
+            )
+          : child;
       final content = Container(
         width: width,
         height: height,
+        clipBehavior: Clip.hardEdge,
         alignment: alignment,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        color: headerCell
-            ? (backgroundColor ?? headerSurface)
-            : bodyColor(rowIndex, backgroundColor),
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+        decoration: BoxDecoration(
+          color: headerCell
+              ? (backgroundColor ?? headerSurface)
+              : bodyColor(rowIndex, backgroundColor),
+        ),
         child: DefaultTextStyle.merge(
           style: TextStyle(
             color: foregroundColor,
             fontWeight: headerCell ? FontWeight.w800 : FontWeight.w500,
-            fontSize: 13,
+            fontSize: headerCell ? 12.5 : 13,
           ),
-          child: child,
+          child: constrainedChild,
         ),
       );
       return onTap == null ? content : InkWell(onTap: onTap, child: content);
@@ -175,21 +186,26 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
           width: widget.firstColumnWidth,
           height: totalHeight,
           child: Stack(
+            clipBehavior: Clip.hardEdge,
             children: [
               Positioned.fill(
                 top: widget.headerHeight,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (var rowIndex = 0; rowIndex < widget.rows.length; rowIndex++)
+                    for (var rowIndex = 0;
+                        rowIndex < widget.rows.length;
+                        rowIndex++)
                       cell(
                         child: widget.rows[rowIndex].first,
                         width: widget.firstColumnWidth,
                         height: widget.rowHeight,
                         headerCell: false,
                         rowIndex: rowIndex,
-                        backgroundColor: widget.columns.first.backgroundColor,
-                        foregroundColor: widget.columns.first.foregroundColor,
+                        backgroundColor:
+                            widget.columns.first.backgroundColor,
+                        foregroundColor:
+                            widget.columns.first.foregroundColor,
                       ),
                   ],
                 ),
@@ -228,24 +244,32 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
               width: remainingWidth,
               height: totalHeight,
               child: Stack(
+                clipBehavior: Clip.hardEdge,
                 children: [
                   Positioned.fill(
                     top: widget.headerHeight,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        for (var rowIndex = 0; rowIndex < widget.rows.length; rowIndex++)
+                        for (var rowIndex = 0;
+                            rowIndex < widget.rows.length;
+                            rowIndex++)
                           Row(
                             children: [
-                              for (var index = 1; index < widget.rows[rowIndex].length; index++)
+                              for (var index = 1;
+                                  index < widget.rows[rowIndex].length &&
+                                      index < widget.columns.length;
+                                  index++)
                                 cell(
                                   child: widget.rows[rowIndex][index],
                                   width: widget.columns[index].width,
                                   height: widget.rowHeight,
                                   headerCell: false,
                                   rowIndex: rowIndex,
-                                  backgroundColor: widget.columns[index].backgroundColor,
-                                  foregroundColor: widget.columns[index].foregroundColor,
+                                  backgroundColor:
+                                      widget.columns[index].backgroundColor,
+                                  foregroundColor:
+                                      widget.columns[index].foregroundColor,
                                   alignment: widget.columns[index].numeric
                                       ? Alignment.centerRight
                                       : Alignment.centerLeft,
@@ -273,7 +297,9 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
                               headerCell: true,
                               backgroundColor: column.backgroundColor,
                               foregroundColor: column.foregroundColor,
-                              alignment: column.numeric ? Alignment.centerRight : Alignment.centerLeft,
+                              alignment: column.numeric
+                                  ? Alignment.centerRight
+                                  : Alignment.centerLeft,
                               onTap: column.onTap,
                             ),
                         ],
