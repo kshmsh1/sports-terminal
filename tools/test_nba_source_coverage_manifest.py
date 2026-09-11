@@ -35,7 +35,10 @@ def main() -> int:
                 }
             },
         )
-        _write_json(nba / "players_hustle" / "2025-26" / "normalized.json", {"rows": []})
+        _write_json(
+            nba / "players_hustle" / "2025-26" / "normalized.json",
+            {"rows": []},
+        )
         _write_json(
             sdv / "manifest.json",
             {
@@ -79,13 +82,20 @@ def main() -> int:
         payload = json.loads(output.read_text(encoding="utf-8"))
         assert payload["contract"] == "sports-terminal-nba-source-coverage-v1"
         assert payload["architecture"]["historical_runtime"] == "static-first"
-        assert payload["architecture"]["browser_runtime_external_scraping_required"] is False
+        assert (
+            payload["architecture"]["browser_runtime_external_scraping_required"]
+            is False
+        )
         assert payload["available_source_count"] == 4
 
         sources = {row["id"]: row for row in payload["sources"]}
         assert sources["nba_com"]["materialized_player_season_rows"] == 10
         assert sources["sportsdataverse"]["dataset_count"] == 2
+        assert sources["sportsdataverse"]["season_end_year_min"] == 2025
+        assert sources["sportsdataverse"]["season_end_year_max"] == 2026
         assert sources["basketball_reference"]["dataset_count"] == 2
+        assert sources["basketball_reference"]["season_end_year_min"] == 2026
+        assert sources["basketball_reference"]["season_end_year_max"] == 2026
         assert sources["pbpstats"]["available"] is True
 
     print("NBA source coverage manifest: PASS")
