@@ -16,6 +16,7 @@ from tools.build_static_nba_website_data_v2_core import (
 from tools.nba_awards_static_supplement import apply_award_supplement
 from tools.nba_com_lineup_static_enrichment import materialize_lineups
 from tools.nba_com_static_enrichment import enrich_static_corpus
+from tools.nba_data_foundation import build_data_foundation
 from tools.repair_static_nba_playoffs import repair_playoff_shards
 
 DEFAULT_OUTPUT = ROOT / "web/data/nba_static"
@@ -92,6 +93,13 @@ def build() -> int:
         f"{award_result['added_history']} history rows; "
         f"{award_result['added_player']} player-honor rows; "
         f"{award_result['unmatched_players']} unmatched player names"
+    )
+
+    foundation = build_data_foundation(output, database)
+    print(
+        "NBA data foundation: "
+        f"{foundation['available_provider_count']}/{foundation['provider_count']} "
+        f"providers available; fingerprint={foundation['fingerprint'][:12]}"
     )
     return 0
 
