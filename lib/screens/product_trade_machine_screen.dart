@@ -11,13 +11,9 @@ class ProductTradeMachineScreen extends StatelessWidget {
     final theme = Theme.of(context);
     return Theme(
       data: theme.copyWith(
-        inputDecorationTheme: theme.inputDecorationTheme.copyWith(
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 6,
-            vertical: 8,
-          ),
-          hintStyle: theme.textTheme.bodySmall,
+        dropdownButtonTheme: theme.dropdownButtonTheme.copyWith(
+          textStyle: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+          iconSize: 18,
         ),
       ),
       child: const ProductTradeMachineCompleteScreen(),
