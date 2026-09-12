@@ -11,7 +11,7 @@ void main() {
     expect(source, isNot(contains('child: const TerminalShell()')));
   });
 
-  test('login lands on cross-sport home with NBA as the enabled league', () {
+  test('login lands on cross-sport home with navigable league homes', () {
     final shell =
         File('lib/widgets/canonical_product_shell.dart').readAsStringSync();
     final sportsHome =
@@ -38,7 +38,9 @@ void main() {
       expect(sportsHome, contains("'$league'"));
     }
     expect(sportsHome, contains("'NBA', 'Basketball'"));
-    expect(sportsHome, contains('COMING SOON'));
+    expect(sportsHome, contains("name: '/sports/"));
+    expect(sportsHome, contains('League data not enabled yet'));
+    expect(sportsHome, contains('does not synthesize standings'));
   });
 
   test('canonical NBA navigation uses static website surfaces', () {
