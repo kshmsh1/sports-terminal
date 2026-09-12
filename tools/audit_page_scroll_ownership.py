@@ -12,9 +12,9 @@ SHELL = ROOT / "lib/widgets/canonical_product_shell.dart"
 # is intentionally class-scoped: pushed drill-in routes may own their own
 # viewport after leaving the canonical shell.
 SHELL_SURFACES = (
-    ("lib/screens/product_role_home_screen.dart", "ProductRoleHomeScreen"),
-    ("lib/screens/product_nba_public_pages_screen.dart", "ProductNbaBasicStatsScreen"),
-    ("lib/screens/product_advanced_nba_tools_screen.dart", "ProductAdvancedNbaToolsScreen"),
+    ("lib/screens/product_arena_home_screen.dart", "ProductArenaHomeScreen"),
+    ("lib/screens/product_nba_stats_center_screen.dart", "ProductNbaStatsCenterScreen"),
+    ("lib/screens/product_nba_stats_workstation_screen.dart", "ProductNbaStatsWorkstationScreen"),
     ("lib/screens/product_analytics_suite_screen.dart", "ProductAnalyticsSuiteScreen"),
     ("lib/screens/product_trade_machine_screen.dart", "ProductTradeMachineScreen"),
     ("lib/screens/product_nba_public_pages_screen.dart", "ProductNbaHubV2Screen"),
