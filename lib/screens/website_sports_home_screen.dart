@@ -33,7 +33,7 @@ class WebsiteSportsHomeScreen extends StatelessWidget {
         settings: RouteSettings(
           name: '/sports/${Uri.encodeComponent(league.name.toLowerCase())}',
         ),
-        builder: (_) => WebsiteLeagueHomePlaceholder(league: league),
+        builder: (_) => _WebsiteLeagueHomePlaceholder(league: league),
       ),
     );
   }
@@ -106,11 +106,8 @@ class WebsiteSportsHomeScreen extends StatelessWidget {
   }
 }
 
-class WebsiteLeagueHomePlaceholder extends StatelessWidget {
-  const WebsiteLeagueHomePlaceholder({
-    super.key,
-    required this.league,
-  });
+class _WebsiteLeagueHomePlaceholder extends StatelessWidget {
+  const _WebsiteLeagueHomePlaceholder({required this.league});
 
   final _LeagueCardData league;
 
