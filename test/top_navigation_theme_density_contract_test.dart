@@ -3,27 +3,31 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('role terminal uses horizontal top navigation instead of desktop sidebar', () {
+  test('canonical product shell owns desktop top navigation', () {
     final source = File(
-      'lib/widgets/connected_role_terminal_shell.dart',
+      'lib/widgets/canonical_product_shell.dart',
     ).readAsStringSync();
 
-    expect(source, contains('class _TerminalTopNavigation'));
-    expect(source, contains('scrollDirection: Axis.horizontal'));
+    expect(source, contains('class _TopNav'));
+    expect(source, contains('height: 68'));
+    expect(source, contains('for (final entry in primary)'));
+    expect(source, contains('drawer: compact'));
     expect(source, isNot(contains('width: 288')));
-    expect(source, isNot(contains('class _TerminalNavigation')));
-    expect(source, isNot(contains('drawer: compact')));
+    expect(File('lib/widgets/connected_role_terminal_shell.dart').existsSync(), isFalse);
   });
 
   test('dark mode is the first-run default while saved preference is preserved', () {
     final source = File(
-      'lib/widgets/connected_role_terminal_shell.dart',
+      'lib/widgets/canonical_product_shell.dart',
     ).readAsStringSync();
 
-    expect(source, contains('bool darkMode = true;'));
+    expect(source, contains('bool _darkMode = true;'));
     expect(source, contains('ProductLocalStore.darkModeKey'));
     expect(source, contains('fallback: true'));
-    expect(source, contains('await store.saveBool(ProductLocalStore.darkModeKey, next)'));
+    expect(
+      source,
+      contains('await _store.saveBool(ProductLocalStore.darkModeKey, value);'),
+    );
   });
 
   test('stats table density is modestly tighter without becoming ultra compact', () {
@@ -39,12 +43,14 @@ void main() {
     expect(source, isNot(contains('height: 32,')));
   });
 
-  test('research launchers no longer reserve deleted sidebar width', () {
+  test('deleted research sidebar shell stays out of the canonical product', () {
     final source = File(
-      'lib/widgets/role_research_augmented_shell.dart',
+      'lib/widgets/canonical_product_shell.dart',
     ).readAsStringSync();
 
-    expect(source, contains('const left = 18.0;'));
-    expect(source, isNot(contains('306.0')));
+    expect(source, contains("'Search players & teams'"));
+    expect(source, contains("'More'"));
+    expect(File('lib/widgets/role_research_augmented_shell.dart').existsSync(), isFalse);
+    expect(File('lib/widgets/launch_role_product_shell.dart').existsSync(), isFalse);
   });
 }
