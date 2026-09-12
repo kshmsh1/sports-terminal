@@ -11,7 +11,8 @@ void main() {
     expect(source, contains('class _TopNav'));
     expect(source, contains('height: 68'));
     expect(source, contains('for (final entry in primary)'));
-    expect(source, contains('drawer: compact'));
+    expect(source, contains('final compact = constraints.maxWidth < 900'));
+    expect(source, contains("tooltip: 'Navigation'"));
     expect(source, isNot(contains('width: 288')));
     expect(File('lib/widgets/connected_role_terminal_shell.dart').existsSync(), isFalse);
   });
