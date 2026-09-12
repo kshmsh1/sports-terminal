@@ -51,8 +51,18 @@ EOF
 fi
 export SPORTS_TERMINAL_NBA_HISTORY_DB="$NBA_HISTORY_DB"
 
-echo "NBA historical warehouse: $NBA_HISTORY_DB"
+PYTHON_BIN="${SPORTS_TERMINAL_PYTHON:-python3}"
+if [[ -x "$ROOT/.historical-venv/bin/python" ]]; then
+  PYTHON_BIN="$ROOT/.historical-venv/bin/python"
+elif ! "$PYTHON_BIN" -c 'import fastapi' >/dev/null 2>&1; then
+  echo "Preparing one-time local Python environment for the static compiler..."
+  python3 -m venv "$ROOT/.historical-venv"
+  "$ROOT/.historical-venv/bin/python" -m pip install --upgrade pip >/dev/null
+  "$ROOT/.historical-venv/bin/python" -m pip install -r "$ROOT/backend/requirements.txt"
+  PYTHON_BIN="$ROOT/.historical-venv/bin/python"
+fi
 
+echo "NBA historical warehouse: $NBA_HISTORY_DB"
 echo "Building/fingerprint-checking immutable NBA website data..."
 STATIC_ARGS=(
   --database "$NBA_HISTORY_DB"
@@ -61,19 +71,19 @@ STATIC_ARGS=(
 if [[ "$FORCE_STATIC" -eq 1 ]]; then
   STATIC_ARGS+=(--force)
 fi
-python3 "$ROOT/tools/build_static_nba_website_data_v2_core.py" "${STATIC_ARGS[@]}"
+"$PYTHON_BIN" "$ROOT/tools/build_static_nba_website_data_v2_core.py" "${STATIC_ARGS[@]}"
 
 # Optional source-backed NBA.com fields such as deflections are read only from
 # already-normalized local captures. This script performs no network requests.
-python3 "$ROOT/tools/nba_com_static_enrichment.py" \
+"$PYTHON_BIN" "$ROOT/tools/nba_com_static_enrichment.py" \
   --output "$ROOT/web/data/nba_static"
-python3 "$ROOT/tools/rebuild_static_nba_dashboards.py" \
+"$PYTHON_BIN" "$ROOT/tools/rebuild_static_nba_dashboards.py" \
   --output "$ROOT/web/data/nba_static"
 
 # Contracts/cap/draft records are also published as static read-only website
 # files when the local mutable registry exists. Missing registry data produces
 # explicit empty static files rather than a runtime API dependency.
-python3 "$ROOT/tools/build_static_front_office_snapshot.py" \
+"$PYTHON_BIN" "$ROOT/tools/build_static_front_office_snapshot.py" \
   --output "$ROOT/web/data/nba_static/front_office"
 
 for required in \
@@ -87,7 +97,7 @@ for required in \
   fi
 done
 
-LATEST_SEASON="$(python3 - <<'PY'
+LATEST_SEASON="$("$PYTHON_BIN" - <<'PY'
 import json
 from pathlib import Path
 manifest = json.loads(Path('web/data/nba_static/manifest.json').read_text())
