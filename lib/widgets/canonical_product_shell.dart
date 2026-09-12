@@ -290,75 +290,73 @@ class _TopNav extends StatelessWidget {
                 if (!compact) ...[
                   const SizedBox(width: 18),
                   Expanded(
-                    child: SingleChildScrollView(
+                    child: ListView(
                       scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          for (final entry in primary)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 1),
-                              child: Tooltip(
-                                message: entry.enabled
-                                    ? entry.label
-                                    : '${entry.label} is visible but not connected yet',
-                                child: TextButton(
-                                  onPressed: entry.enabled
-                                      ? () => onSelect(entry.id)
-                                      : null,
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: selected == entry.id
-                                        ? colors.primary
-                                        : colors.onSurfaceVariant,
-                                    textStyle: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: selected == entry.id
-                                          ? FontWeight.w900
-                                          : FontWeight.w600,
-                                    ),
-                                  ),
-                                  child: Text(entry.label),
-                                ),
-                              ),
-                            ),
-                          PopupMenuButton<String>(
-                            tooltip: 'More',
-                            onSelected: onSelect,
-                            itemBuilder: (_) => [
-                              for (final entry in more)
-                                PopupMenuItem<String>(
-                                  value: entry.id,
-                                  enabled: entry.enabled,
-                                  child: ListTile(
-                                    enabled: entry.enabled,
-                                    contentPadding: EdgeInsets.zero,
-                                    leading: Icon(entry.icon),
-                                    title: Text(entry.label),
-                                    subtitle: entry.enabled
-                                        ? null
-                                        : const Text('Display only — not connected'),
-                                    trailing: entry.id == selected
-                                        ? const Icon(Icons.check_rounded)
-                                        : null,
+                      children: [
+                        for (final entry in primary)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 1),
+                            child: Tooltip(
+                              message: entry.enabled
+                                  ? entry.label
+                                  : '${entry.label} is visible but not connected yet',
+                              child: TextButton(
+                                onPressed: entry.enabled
+                                    ? () => onSelect(entry.id)
+                                    : null,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: selected == entry.id
+                                      ? colors.primary
+                                      : colors.onSurfaceVariant,
+                                  textStyle: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: selected == entry.id
+                                        ? FontWeight.w900
+                                        : FontWeight.w600,
                                   ),
                                 ),
-                            ],
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text('More'),
-                                  SizedBox(width: 2),
-                                  Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-                                ],
+                                child: Text(entry.label),
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        PopupMenuButton<String>(
+                          tooltip: 'More',
+                          onSelected: onSelect,
+                          itemBuilder: (_) => [
+                            for (final entry in more)
+                              PopupMenuItem<String>(
+                                value: entry.id,
+                                enabled: entry.enabled,
+                                child: ListTile(
+                                  enabled: entry.enabled,
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: Icon(entry.icon),
+                                  title: Text(entry.label),
+                                  subtitle: entry.enabled
+                                      ? null
+                                      : const Text('Display only — not connected'),
+                                  trailing: entry.id == selected
+                                      ? const Icon(Icons.check_rounded)
+                                      : null,
+                                ),
+                              ),
+                          ],
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('More'),
+                                SizedBox(width: 2),
+                                Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 10),
