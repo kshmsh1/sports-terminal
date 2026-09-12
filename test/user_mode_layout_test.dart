@@ -40,7 +40,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Sports Terminal'), findsOneWidget);
-    expect(find.byIcon(Icons.menu), findsOneWidget);
+    expect(find.byIcon(Icons.menu_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
