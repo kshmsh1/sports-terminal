@@ -1,48 +1,26 @@
 import 'package:flutter/material.dart';
 
 import '../models/app_session.dart';
-import '../screens/product_analytics_suite_screen.dart';
-import '../screens/product_arena_home_screen.dart';
-import '../screens/product_backend_sync_screen.dart';
 import '../screens/product_community_v2_screen.dart';
-import '../screens/product_connected_data_studio_screen.dart';
-import '../screens/product_connected_network_screens.dart';
-import '../screens/product_connected_transaction_screens.dart';
-import '../screens/product_connected_workspace_screen.dart';
-import '../screens/product_content_ops_screens.dart';
-import '../screens/product_fantasy_community_screens.dart';
 import '../screens/product_front_office_registry_screen.dart';
-import '../screens/product_nba_awards_v2_screen.dart';
-import '../screens/product_nba_public_pages_screen.dart';
-import '../screens/product_nba_stats_center_screen.dart';
-import '../screens/product_nba_stats_workstation_screen.dart';
-import '../screens/product_platform_content_legal_screen.dart';
 import '../screens/product_profile_v3_screen.dart';
-import '../screens/product_shell_screens.dart';
-import '../screens/product_strategy_map_screen.dart';
-import '../screens/product_team_blogs_screen.dart';
 import '../screens/product_trade_machine_screen.dart';
-import '../screens/product_transaction_command_center_screen.dart';
+import '../screens/website_nba_advanced_stats_screen.dart';
+import '../screens/website_nba_entity_pages.dart';
+import '../screens/website_nba_home_dashboard.dart';
+import '../screens/website_nba_research_screen.dart';
+import '../screens/website_nba_stats_screen.dart';
+import '../screens/website_sports_home_screen.dart';
 import '../services/product_local_store.dart';
+import '../services/website_nba_api_service.dart';
 
-const _darkBg = Color(0xFF080F18);
-const _lightBg = Color(0xFFF5F7FB);
-const _darkNav = Color(0xFF0A101A);
-const _darkPanel = Color(0xFF111A27);
-const _darkLine = Color(0xFF283243);
-const _lightLine = Color(0xFFDDE3EC);
-const _darkText = Color(0xFFF2F4FA);
-const _lightText = Color(0xFF172033);
-const _darkMuted = Color(0xFFAAB2C1);
-const _lightMuted = Color(0xFF657084);
-const _active = Color(0xFFB8C0FF);
-const _logo = Color(0xFF424B83);
+const _brandBlue = Color(0xFF6674C7);
 
-/// The canonical Sports Terminal product shell.
+/// Canonical customer-facing Sports Terminal shell.
 ///
-/// The five primary destinations intentionally match the approved product UI:
-/// Home, Stats, Advanced Stats, Lineup Analysis, and Trade Machine. Everything
-/// else remains available through More rather than expanding the top bar.
+/// Login lands on the cross-sport home. NBA is the first enabled league and
+/// its completed historical data is read from the static website corpus rather
+/// than the old terminal-seed/runtime-API path.
 class CanonicalProductShell extends StatefulWidget {
   const CanonicalProductShell({
     super.key,
@@ -58,158 +36,79 @@ class CanonicalProductShell extends StatefulWidget {
 }
 
 class _CanonicalProductShellState extends State<CanonicalProductShell> {
-  final ProductLocalStore _store = const ProductLocalStore();
-  int _selectedIndex = 0;
-  bool _darkMode = true;
-
-  bool get _organizationMode => widget.session.role.canManageOrganization;
+  final _store = const ProductLocalStore();
+  String _selected = 'sports';
+  bool _dark = true;
 
   List<_Destination> get _items => [
         _Destination(
-          'Home',
-          Icons.home_rounded,
-          ProductArenaHomeScreen(session: widget.session),
-          primary: true,
-        ),
-        const _Destination(
-          'Stats',
-          Icons.leaderboard_rounded,
-          ProductNbaStatsCenterScreen(),
-          primary: true,
-        ),
-        const _Destination(
-          'Advanced Stats',
-          Icons.analytics_rounded,
-          ProductNbaStatsWorkstationScreen(),
-          primary: true,
-        ),
-        const _Destination(
-          'Lineup Analysis',
-          Icons.groups_rounded,
-          ProductAnalyticsSuiteScreen(),
-          primary: true,
-        ),
-        const _Destination(
-          'Trade Machine',
-          Icons.swap_horiz_rounded,
-          ProductTradeMachineScreen(),
-          primary: true,
-        ),
-        const _Destination(
-          'NBA Hub',
-          Icons.sports_basketball_rounded,
-          ProductNbaHubV2Screen(),
-        ),
-        const _Destination(
-          'Awards',
-          Icons.emoji_events_rounded,
-          ProductNbaAwardsVotingScreen(),
-        ),
-        _Destination(
-          _organizationMode ? 'Organization' : 'My Work',
-          _organizationMode
-              ? Icons.corporate_fare_rounded
-              : Icons.space_dashboard_rounded,
-          ProductTransactionCommandCenterScreen(
-            session: widget.session,
-            organizationMode: _organizationMode,
+          id: 'sports',
+          label: 'Sports',
+          icon: Icons.public_rounded,
+          builder: () => WebsiteSportsHomeScreen(
+            onOpenNba: () => _select('nba-home'),
           ),
         ),
         _Destination(
-          'Front Office',
-          Icons.account_tree_rounded,
-          ProductConnectedFrontOfficeScreen(
-            session: widget.session,
-            organizationMode: _organizationMode,
-          ),
+          id: 'nba-home',
+          label: 'NBA Home',
+          icon: Icons.sports_basketball_rounded,
+          builder: () => WebsiteNbaHomeDashboard(session: widget.session),
         ),
         _Destination(
-          'Contracts & Assets',
-          Icons.inventory_2_rounded,
-          ProductFrontOfficeRegistryScreen(session: widget.session),
+          id: 'stats',
+          label: 'Stats',
+          icon: Icons.leaderboard_rounded,
+          builder: () => WebsiteNbaStatsScreen(session: widget.session),
         ),
         _Destination(
-          'Workspace',
-          Icons.grid_on_rounded,
-          ProductConnectedWorkspaceScreen(session: widget.session),
+          id: 'advanced',
+          label: 'Advanced Stats',
+          icon: Icons.analytics_rounded,
+          builder: () => WebsiteNbaAdvancedStatsScreen(session: widget.session),
+        ),
+        const _Destination(
+          id: 'trade',
+          label: 'Trade Machine',
+          icon: Icons.swap_horiz_rounded,
+          builder: ProductTradeMachineScreen.new,
         ),
         _Destination(
-          'Python Lab',
-          Icons.code_rounded,
-          ProductConnectedDataStudioScreen(session: widget.session),
+          id: 'front-office',
+          label: 'Front Office',
+          icon: Icons.account_tree_rounded,
+          builder: () => ProductFrontOfficeRegistryScreen(session: widget.session),
         ),
         const _Destination(
-          'Strategy',
-          Icons.radar_rounded,
-          ProductStrategyMapScreen(),
-        ),
-        const _Destination(
-          'Fantasy',
-          Icons.bolt_rounded,
-          ProductFantasyWarRoomScreen(),
-        ),
-        const _Destination(
-          'Team Blogs',
-          Icons.newspaper_rounded,
-          ProductTeamBlogsScreen(),
+          id: 'research',
+          label: 'Research',
+          icon: Icons.science_outlined,
+          builder: WebsiteNbaResearchScreen.new,
         ),
         _Destination(
-          'Community',
-          Icons.forum_rounded,
-          ProductCommunityV2Screen(session: widget.session),
+          id: 'community',
+          label: 'Community',
+          icon: Icons.forum_rounded,
+          builder: () => ProductCommunityV2Screen(session: widget.session),
         ),
         const _Destination(
-          'Articles',
-          Icons.article_rounded,
-          ProductEditorialHomeScreen(),
+          id: 'python-lab',
+          label: 'Python Lab',
+          icon: Icons.code_rounded,
+          enabled: false,
+        ),
+        const _Destination(
+          id: 'excel-workspace',
+          label: 'Excel Workspace',
+          icon: Icons.table_chart_outlined,
+          enabled: false,
         ),
         _Destination(
-          'Messages',
-          Icons.chat_bubble_rounded,
-          ProductConnectedMessagesScreen(session: widget.session),
-        ),
-        _Destination(
-          'Profile',
-          Icons.person_rounded,
-          ProductProfileV3Screen(session: widget.session),
-        ),
-        if (_organizationMode || widget.session.role.canAccessPlatformAdmin)
-          _Destination(
-            'Admin',
-            Icons.admin_panel_settings_rounded,
-            ProductAdminOpsCenterScreen(session: widget.session),
-          ),
-        if (_organizationMode || widget.session.role.canAccessPlatformAdmin)
-          _Destination(
-            'Backend',
-            Icons.cloud_sync_rounded,
-            ProductBackendSyncScreen(session: widget.session),
-          ),
-        if (_organizationMode || widget.session.role.canAccessPlatformAdmin)
-          const _Destination(
-            'Internal Lab',
-            Icons.science_rounded,
-            ProductInternalLabScreen(),
-          ),
-        const _Destination(
-          'About Us',
-          Icons.info_outline_rounded,
-          ProductPlatformLegalScreen(kind: 'about'),
-        ),
-        const _Destination(
-          'Contact',
-          Icons.mail_outline_rounded,
-          ProductPlatformLegalScreen(kind: 'contact'),
-        ),
-        const _Destination(
-          'Privacy Policy',
-          Icons.privacy_tip_outlined,
-          ProductPlatformLegalScreen(kind: 'privacy'),
-        ),
-        const _Destination(
-          'Terms & Conditions',
-          Icons.description_outlined,
-          ProductPlatformLegalScreen(kind: 'terms'),
+          id: 'profile',
+          label: 'Profile',
+          icon: Icons.person_outline_rounded,
+          builder: () => ProductProfileV3Screen(session: widget.session),
+          showInMainNav: false,
         ),
       ];
 
@@ -224,383 +123,492 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
       ProductLocalStore.darkModeKey,
       fallback: true,
     );
-    if (mounted) setState(() => _darkMode = value);
+    if (mounted) setState(() => _dark = value);
   }
 
   Future<void> _toggleTheme() async {
-    final value = !_darkMode;
-    setState(() => _darkMode = value);
-    await _store.saveBool(ProductLocalStore.darkModeKey, value);
+    final next = !_dark;
+    setState(() => _dark = next);
+    await _store.saveBool(ProductLocalStore.darkModeKey, next);
   }
 
-  void _select(int index) {
-    if (index < 0 || index >= _items.length) return;
-    setState(() => _selectedIndex = index);
-  }
-
-  void _selectLabel(String label) {
-    final index = _items.indexWhere((item) => item.label == label);
-    if (index >= 0) _select(index);
+  void _select(String id) {
+    _Destination? match;
+    for (final item in _items) {
+      if (item.id == id) {
+        match = item;
+        break;
+      }
+    }
+    if (match == null || !match.enabled || match.builder == null) return;
+    setState(() => _selected = id);
   }
 
   @override
   Widget build(BuildContext context) {
-    final items = _items;
-    if (_selectedIndex >= items.length) _selectedIndex = 0;
-    final palette = _Palette(_darkMode);
-    final selected = items[_selectedIndex];
-
-    return Theme(
-      data: ThemeData(
-        useMaterial3: true,
-        brightness: _darkMode ? Brightness.dark : Brightness.light,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: _active,
-          brightness: _darkMode ? Brightness.dark : Brightness.light,
+    final selected = _items.firstWhere(
+      (item) => item.id == _selected,
+      orElse: () => _items.first,
+    );
+    final brightness = _dark ? Brightness.dark : Brightness.light;
+    final theme = ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: _brandBlue,
+        brightness: brightness,
+      ),
+      scaffoldBackgroundColor:
+          _dark ? const Color(0xFF0B111A) : const Color(0xFFF7F8FA),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        color: _dark ? const Color(0xFF141B25) : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: _dark ? const Color(0xFF263241) : const Color(0xFFE5E7EB),
+          ),
         ),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 900;
-          return Scaffold(
-            backgroundColor: palette.background,
-            appBar: compact
-                ? AppBar(
-                    backgroundColor: palette.nav,
-                    foregroundColor: palette.text,
-                    title: const _Brand(compact: true),
-                    actions: [
-                      IconButton(
-                        tooltip: _darkMode ? 'Light mode' : 'Dark mode',
-                        onPressed: _toggleTheme,
-                        icon: Icon(
-                          _darkMode
-                              ? Icons.light_mode_outlined
-                              : Icons.dark_mode_outlined,
-                        ),
-                      ),
-                    ],
-                  )
-                : null,
-            drawer: compact
-                ? Drawer(
-                    backgroundColor: palette.panel,
-                    child: SafeArea(
-                      child: Column(
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: _Brand(compact: true),
-                            ),
-                          ),
-                          Divider(color: palette.line, height: 1),
-                          Expanded(
-                            child: ListView.builder(
-                              padding: const EdgeInsets.all(8),
-                              itemCount: items.length,
-                              itemBuilder: (context, index) => ListTile(
-                                selected: index == _selectedIndex,
-                                selectedColor: _active,
-                                leading: Icon(items[index].icon),
-                                title: Text(items[index].label),
-                                onTap: () {
-                                  _select(index);
-                                  Navigator.of(context).pop();
-                                },
-                              ),
-                            ),
-                          ),
-                          ListTile(
-                            leading: const Icon(Icons.logout_rounded),
-                            title: const Text('Sign out'),
-                            onTap: widget.onSignOut,
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : null,
-            body: Column(
-              children: [
-                if (!compact)
-                  _TopNav(
-                    items: items,
-                    selectedIndex: _selectedIndex,
-                    session: widget.session,
-                    palette: palette,
-                    darkMode: _darkMode,
-                    onSelected: _select,
-                    onSearch: () => _selectLabel('NBA Hub'),
-                    onToggleTheme: _toggleTheme,
-                    onProfile: () => _selectLabel('Profile'),
-                    onSignOut: widget.onSignOut,
-                  ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1600),
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            compact ? 12 : 14,
-                            compact ? 16 : 24,
-                            compact ? 12 : 14,
-                            36,
-                          ),
-                          child: selected.screen,
-                        ),
-                      ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      dataTableTheme: const DataTableThemeData(
+        headingTextStyle: TextStyle(fontWeight: FontWeight.w800),
+      ),
+    );
+
+    return Theme(
+      data: theme,
+      child: Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              _WebsiteHeader(
+                session: widget.session,
+                items: _items,
+                selected: _selected,
+                dark: _dark,
+                onSelect: _select,
+                onTheme: _toggleTheme,
+                onSignOut: widget.onSignOut,
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 64),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1320),
+                      child: selected.builder!(),
                     ),
                   ),
                 ),
-              ],
-            ),
-          );
-        },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-class _Destination {
-  const _Destination(
-    this.label,
-    this.icon,
-    this.screen, {
-    this.primary = false,
-  });
-
-  final String label;
-  final IconData icon;
-  final Widget screen;
-  final bool primary;
-}
-
-class _TopNav extends StatelessWidget {
-  const _TopNav({
-    required this.items,
-    required this.selectedIndex,
+class _WebsiteHeader extends StatelessWidget {
+  const _WebsiteHeader({
     required this.session,
-    required this.palette,
-    required this.darkMode,
-    required this.onSelected,
-    required this.onSearch,
-    required this.onToggleTheme,
-    required this.onProfile,
+    required this.items,
+    required this.selected,
+    required this.dark,
+    required this.onSelect,
+    required this.onTheme,
     required this.onSignOut,
   });
 
-  final List<_Destination> items;
-  final int selectedIndex;
   final AppSession session;
-  final _Palette palette;
-  final bool darkMode;
-  final ValueChanged<int> onSelected;
-  final VoidCallback onSearch;
-  final VoidCallback onToggleTheme;
-  final VoidCallback onProfile;
+  final List<_Destination> items;
+  final String selected;
+  final bool dark;
+  final ValueChanged<String> onSelect;
+  final VoidCallback onTheme;
   final VoidCallback onSignOut;
 
   @override
   Widget build(BuildContext context) {
-    final primary = <MapEntry<int, _Destination>>[
-      for (var i = 0; i < items.length; i++)
-        if (items[i].primary) MapEntry(i, items[i]),
-    ];
-    final more = <MapEntry<int, _Destination>>[
-      for (var i = 0; i < items.length; i++)
-        if (!items[i].primary) MapEntry(i, items[i]),
-    ];
-
+    final colors = Theme.of(context).colorScheme;
+    final navItems = items.where((item) => item.showInMainNav).toList();
     return Material(
-      color: palette.nav,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Container(
-        height: 68,
+        height: 70,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: palette.line)),
+          border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
         ),
-        child: Row(
-          children: [
-            InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: () => onSelected(primary.first.key),
-              child: const _Brand(),
-            ),
-            const SizedBox(width: 24),
-            for (final entry in primary)
-              TextButton(
-                onPressed: () => onSelected(entry.key),
-                style: TextButton.styleFrom(
-                  foregroundColor:
-                      entry.key == selectedIndex ? _active : palette.text,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 22,
-                  ),
-                  textStyle: TextStyle(
-                    fontWeight: entry.key == selectedIndex
-                        ? FontWeight.w800
-                        : FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                ),
-                child: Text(entry.value.label),
-              ),
-            const Spacer(),
-            OutlinedButton.icon(
-              onPressed: onSearch,
-              icon: const Icon(Icons.search_rounded, size: 18),
-              label: const Text('Search players & teams'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: palette.text,
-                side: BorderSide(color: palette.searchLine),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 18,
-                ),
-                shape: const StadiumBorder(),
-              ),
-            ),
-            const SizedBox(width: 10),
-            PopupMenuButton<int>(
-              tooltip: 'More',
-              color: palette.panel,
-              onSelected: onSelected,
-              itemBuilder: (context) => [
-                for (final entry in more)
-                  PopupMenuItem<int>(
-                    value: entry.key,
-                    child: Row(
-                      children: [
-                        Icon(
-                          entry.value.icon,
-                          size: 18,
-                          color: palette.muted,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final desktop = constraints.maxWidth >= 900;
+            return Row(
+              children: [
+                InkWell(
+                  onTap: () => onSelect('sports'),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: colors.primaryContainer,
+                          borderRadius: BorderRadius.circular(10),
                         ),
+                        child: Text(
+                          'ST',
+                          style: TextStyle(
+                            color: colors.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      if (constraints.maxWidth >= 620) ...[
                         const SizedBox(width: 10),
-                        Text(entry.value.label),
+                        const Text(
+                          'Sports Terminal',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -.3,
+                          ),
+                        ),
                       ],
-                    ),
+                    ],
                   ),
-              ],
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 12,
                 ),
-                child: Row(
-                  children: [
-                    Text(
-                      'More',
-                      style: TextStyle(
-                        color: palette.text,
-                        fontWeight: FontWeight.w700,
+                if (desktop) ...[
+                  const SizedBox(width: 18),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          for (final item in navItems)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 1),
+                              child: Tooltip(
+                                message: item.enabled
+                                    ? item.label
+                                    : '${item.label} is visible but not connected yet',
+                                child: TextButton(
+                                  onPressed: item.enabled
+                                      ? () => onSelect(item.id)
+                                      : null,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: selected == item.id
+                                        ? colors.primary
+                                        : colors.onSurfaceVariant,
+                                    textStyle: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: selected == item.id
+                                          ? FontWeight.w900
+                                          : FontWeight.w600,
+                                    ),
+                                  ),
+                                  child: Text(item.label),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 3),
-                    Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: palette.text,
+                  ),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 220,
+                    height: 40,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openSearchDialog(context, session),
+                      icon: const Icon(Icons.search_rounded, size: 18),
+                      label: const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('Search players & teams'),
+                      ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            IconButton(
-              tooltip: darkMode ? 'Light mode' : 'Dark mode',
-              onPressed: onToggleTheme,
-              icon: Icon(
-                darkMode
-                    ? Icons.light_mode_outlined
-                    : Icons.dark_mode_outlined,
-                color: palette.text,
-              ),
-            ),
-            PopupMenuButton<String>(
-              tooltip: session.displayName,
-              color: palette.panel,
-              onSelected: (value) {
-                if (value == 'profile') onProfile();
-                if (value == 'signout') onSignOut();
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem(value: 'profile', child: Text('Profile')),
-                PopupMenuItem(value: 'signout', child: Text('Sign out')),
-              ],
-              child: CircleAvatar(
-                radius: 20,
-                backgroundColor: _logo,
-                child: Text(
-                  session.displayName.isEmpty
-                      ? 'U'
-                      : session.displayName[0].toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
+                  ),
+                ] else ...[
+                  const Spacer(),
+                  IconButton(
+                    tooltip: 'Search NBA players and teams',
+                    onPressed: () => _openSearchDialog(context, session),
+                    icon: const Icon(Icons.search_rounded),
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: 'Navigation',
+                    onSelected: onSelect,
+                    itemBuilder: (_) => [
+                      for (final item in navItems)
+                        PopupMenuItem<String>(
+                          value: item.id,
+                          enabled: item.enabled,
+                          child: ListTile(
+                            enabled: item.enabled,
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(item.icon),
+                            title: Text(item.label),
+                            subtitle: item.enabled
+                                ? null
+                                : const Text('Display only — not connected'),
+                            trailing: item.id == selected
+                                ? const Icon(Icons.check_rounded)
+                                : null,
+                          ),
+                        ),
+                    ],
+                    icon: const Icon(Icons.menu_rounded),
+                  ),
+                ],
+                IconButton(
+                  tooltip: dark ? 'Light mode' : 'Dark mode',
+                  onPressed: onTheme,
+                  icon: Icon(
+                    dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                   ),
                 ),
-              ),
-            ),
-          ],
+                PopupMenuButton<String>(
+                  tooltip: session.displayName,
+                  onSelected: (value) {
+                    if (value == 'profile') onSelect('profile');
+                    if (value == 'sign-out') onSignOut();
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'profile', child: Text('Profile')),
+                    PopupMenuItem(value: 'sign-out', child: Text('Sign out')),
+                  ],
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: colors.primaryContainer,
+                    child: Text(
+                      _initials(session.displayName),
+                      style: TextStyle(
+                        color: colors.primary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class _Brand extends StatelessWidget {
-  const _Brand({this.compact = false});
+Future<void> _openSearchDialog(BuildContext context, AppSession session) {
+  return showDialog<void>(
+    context: context,
+    builder: (_) => _NbaSearchDialog(session: session),
+  );
+}
 
-  final bool compact;
+class _NbaSearchDialog extends StatefulWidget {
+  const _NbaSearchDialog({required this.session});
+
+  final AppSession session;
 
   @override
-  Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: compact ? 36 : 42,
-            height: compact ? 36 : 42,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: _logo,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              'ST',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: compact ? 13 : 14,
+  State<_NbaSearchDialog> createState() => _NbaSearchDialogState();
+}
+
+class _NbaSearchDialogState extends State<_NbaSearchDialog> {
+  final _data = const WebsiteNbaApiService();
+  final _controller = TextEditingController();
+  Future<Map<String, dynamic>>? _future;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _search(String value) {
+    final query = value.trim();
+    setState(() {
+      _future = query.length < 2 ? null : _data.searchEntities(query);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('Search NBA players and teams'),
+        content: SizedBox(
+          width: 620,
+          height: 470,
+          child: Column(
+            children: [
+              TextField(
+                controller: _controller,
+                autofocus: true,
+                onChanged: _search,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search_rounded),
+                  hintText: 'Jayson Tatum, Boston Celtics…',
+                ),
               ),
-            ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: _future == null
+                    ? const Center(child: Text('Type at least two characters.'))
+                    : FutureBuilder<Map<String, dynamic>>(
+                        future: _future,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState != ConnectionState.done) {
+                            return const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            );
+                          }
+                          if (snapshot.hasError || snapshot.data == null) {
+                            return Center(
+                              child: Text('Static search unavailable: ${snapshot.error}'),
+                            );
+                          }
+                          final groups = _map(snapshot.data!['groups']);
+                          final players = _maps(groups['players']);
+                          final teams = _maps(groups['teams']);
+                          if (players.isEmpty && teams.isEmpty) {
+                            return const Center(child: Text('No matches found.'));
+                          }
+                          return ListView(
+                            children: [
+                              if (players.isNotEmpty) const _SearchSection('Players'),
+                              for (final player in players)
+                                ListTile(
+                                  leading: const Icon(Icons.person_outline_rounded),
+                                  title: Text(_text(player['canonical_name'], 'Player')),
+                                  subtitle: Text(
+                                    [
+                                      _text(player['primary_position']),
+                                      _text(player['last_season']),
+                                    ].where((item) => item.isNotEmpty).join(' · '),
+                                  ),
+                                  onTap: () {
+                                    final playerKey = _text(player['player_key']);
+                                    final playerName = _text(
+                                      player['canonical_name'],
+                                      'Player',
+                                    );
+                                    Navigator.of(context).pop();
+                                    openWebsiteNbaPlayerPage(
+                                      context,
+                                      session: widget.session,
+                                      playerKey: playerKey,
+                                      playerName: playerName,
+                                    );
+                                  },
+                                ),
+                              if (teams.isNotEmpty) const _SearchSection('Teams'),
+                              for (final team in teams)
+                                ListTile(
+                                  leading: const Icon(Icons.groups_outlined),
+                                  title: Text(_text(team['canonical_name'], 'Team')),
+                                  subtitle: Text(_text(team['abbreviation'])),
+                                  onTap: () {
+                                    final teamKey = _text(team['team_key']);
+                                    final teamName = _text(
+                                      team['canonical_name'],
+                                      'Team',
+                                    );
+                                    Navigator.of(context).pop();
+                                    openWebsiteNbaTeamPage(
+                                      context,
+                                      session: widget.session,
+                                      teamKey: teamKey,
+                                      teamName: teamName,
+                                    );
+                                  },
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          const Text(
-            'Sports Terminal',
-            style: TextStyle(
-              color: _darkText,
-              fontWeight: FontWeight.w800,
-              fontSize: 17,
-            ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
           ),
         ],
       );
 }
 
-class _Palette {
-  const _Palette(this.dark);
+class _SearchSection extends StatelessWidget {
+  const _SearchSection(this.label);
 
-  final bool dark;
+  final String label;
 
-  Color get nav => dark ? _darkNav : Colors.white;
-  Color get background => dark ? _darkBg : _lightBg;
-  Color get panel => dark ? _darkPanel : Colors.white;
-  Color get line => dark ? _darkLine : _lightLine;
-  Color get text => dark ? _darkText : _lightText;
-  Color get muted => dark ? _darkMuted : _lightMuted;
-  Color get searchLine =>
-      dark ? const Color(0xFF747E92) : const Color(0xFF9BA6B8);
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
+        ),
+      );
+}
+
+class _Destination {
+  const _Destination({
+    required this.id,
+    required this.label,
+    required this.icon,
+    this.builder,
+    this.enabled = true,
+    this.showInMainNav = true,
+  });
+
+  final String id;
+  final String label;
+  final IconData icon;
+  final Widget Function()? builder;
+  final bool enabled;
+  final bool showInMainNav;
+}
+
+String _initials(String value) {
+  final parts = value
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .take(2);
+  final result = parts.map((part) => part.substring(0, 1).toUpperCase()).join();
+  return result.isEmpty ? 'ST' : result;
+}
+
+Map<String, dynamic> _map(Object? value) {
+  if (value is! Map) return const {};
+  return value.map((key, item) => MapEntry(key.toString(), item));
+}
+
+List<Map<String, dynamic>> _maps(Object? value) {
+  if (value is! List) return const [];
+  return [
+    for (final item in value)
+      if (item is Map) _map(item),
+  ];
+}
+
+String _text(Object? value, [String fallback = '']) {
+  final text = value?.toString().trim() ?? '';
+  return text.isEmpty || text.toLowerCase() == 'null' ? fallback : text;
 }
