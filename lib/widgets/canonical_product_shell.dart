@@ -288,38 +288,36 @@ class _WebsiteHeader extends StatelessWidget {
                 if (desktop) ...[
                   const SizedBox(width: 18),
                   Expanded(
-                    child: SingleChildScrollView(
+                    child: ListView(
                       scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          for (final item in navItems)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 1),
-                              child: Tooltip(
-                                message: item.enabled
-                                    ? item.label
-                                    : '${item.label} is visible but not connected yet',
-                                child: TextButton(
-                                  onPressed: item.enabled
-                                      ? () => onSelect(item.id)
-                                      : null,
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: selected == item.id
-                                        ? colors.primary
-                                        : colors.onSurfaceVariant,
-                                    textStyle: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: selected == item.id
-                                          ? FontWeight.w900
-                                          : FontWeight.w600,
-                                    ),
+                      children: [
+                        for (final item in navItems)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 1),
+                            child: Tooltip(
+                              message: item.enabled
+                                  ? item.label
+                                  : '${item.label} is visible but not connected yet',
+                              child: TextButton(
+                                onPressed: item.enabled
+                                    ? () => onSelect(item.id)
+                                    : null,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: selected == item.id
+                                      ? colors.primary
+                                      : colors.onSurfaceVariant,
+                                  textStyle: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: selected == item.id
+                                        ? FontWeight.w900
+                                        : FontWeight.w600,
                                   ),
-                                  child: Text(item.label),
                                 ),
+                                child: Text(item.label),
                               ),
                             ),
-                        ],
-                      ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 10),
