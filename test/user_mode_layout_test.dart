@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sports_terminal/controllers/auth_controller.dart';
-import 'package:sports_terminal/controllers/internal_workspace_controller.dart';
 import 'package:sports_terminal/controllers/route_payload_controller.dart';
 import 'package:sports_terminal/screens/login_screen.dart';
-import 'package:sports_terminal/widgets/user_terminal_shell.dart';
+import 'package:sports_terminal/widgets/canonical_product_shell.dart';
 
 void main() {
   testWidgets('login renders at 720 pixel width', (tester) async {
@@ -20,7 +19,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('user shell renders at 820 pixel width', (tester) async {
+  testWidgets('canonical product shell renders at 820 pixel width', (tester) async {
     await tester.binding.setSurfaceSize(const Size(820, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final auth = AuthController();
@@ -31,9 +30,8 @@ void main() {
       RoutePayloadScope(
         controller: routes,
         child: MaterialApp(
-          home: UserTerminalShell(
+          home: CanonicalProductShell(
             session: session,
-            workspaceController: InternalWorkspaceController(),
             onSignOut: () {},
           ),
         ),
@@ -41,7 +39,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Dashboard'), findsWidgets);
+    expect(find.text('Sports Terminal'), findsOneWidget);
+    expect(find.byType(Drawer), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
