@@ -38,7 +38,7 @@ class CanonicalProductShell extends StatefulWidget {
 class _CanonicalProductShellState extends State<CanonicalProductShell> {
   final _store = const ProductLocalStore();
   String _selected = 'sports';
-  bool _dark = true;
+  bool _darkMode = true;
 
   List<_Destination> get _items => [
         _Destination(
@@ -123,13 +123,13 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
       ProductLocalStore.darkModeKey,
       fallback: true,
     );
-    if (mounted) setState(() => _dark = value);
+    if (mounted) setState(() => _darkMode = value);
   }
 
   Future<void> _toggleTheme() async {
-    final next = !_dark;
-    setState(() => _dark = next);
-    await _store.saveBool(ProductLocalStore.darkModeKey, next);
+    final value = !_darkMode;
+    setState(() => _darkMode = value);
+    await _store.saveBool(ProductLocalStore.darkModeKey, value);
   }
 
   void _select(String id) {
@@ -150,7 +150,7 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
       (item) => item.id == _selected,
       orElse: () => _items.first,
     );
-    final brightness = _dark ? Brightness.dark : Brightness.light;
+    final brightness = _darkMode ? Brightness.dark : Brightness.light;
     final theme = ThemeData(
       useMaterial3: true,
       brightness: brightness,
@@ -159,14 +159,14 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
         brightness: brightness,
       ),
       scaffoldBackgroundColor:
-          _dark ? const Color(0xFF0B111A) : const Color(0xFFF7F8FA),
+          _darkMode ? const Color(0xFF0B111A) : const Color(0xFFF7F8FA),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: _dark ? const Color(0xFF141B25) : Colors.white,
+        color: _darkMode ? const Color(0xFF141B25) : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
           side: BorderSide(
-            color: _dark ? const Color(0xFF263241) : const Color(0xFFE5E7EB),
+            color: _darkMode ? const Color(0xFF263241) : const Color(0xFFE5E7EB),
           ),
         ),
       ),
@@ -184,11 +184,11 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
         body: SafeArea(
           child: Column(
             children: [
-              _WebsiteHeader(
+              _TopNav(
                 session: widget.session,
                 items: _items,
                 selected: _selected,
-                dark: _dark,
+                dark: _darkMode,
                 onSelect: _select,
                 onTheme: _toggleTheme,
                 onSignOut: widget.onSignOut,
@@ -212,8 +212,8 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
   }
 }
 
-class _WebsiteHeader extends StatelessWidget {
-  const _WebsiteHeader({
+class _TopNav extends StatelessWidget {
+  const _TopNav({
     required this.session,
     required this.items,
     required this.selected,
@@ -235,17 +235,19 @@ class _WebsiteHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final navItems = items.where((item) => item.showInMainNav).toList();
+    final primary = navItems.take(5).toList();
+    final more = navItems.skip(5).toList();
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Container(
-        height: 70,
+        height: 68,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final desktop = constraints.maxWidth >= 900;
+            final compact = constraints.maxWidth < 900;
             return Row(
               children: [
                 InkWell(
@@ -285,39 +287,78 @@ class _WebsiteHeader extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (desktop) ...[
+                if (!compact) ...[
                   const SizedBox(width: 18),
                   Expanded(
-                    child: ListView(
+                    child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
-                      children: [
-                        for (final item in navItems)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 1),
-                            child: Tooltip(
-                              message: item.enabled
-                                  ? item.label
-                                  : '${item.label} is visible but not connected yet',
-                              child: TextButton(
-                                onPressed: item.enabled
-                                    ? () => onSelect(item.id)
-                                    : null,
-                                style: TextButton.styleFrom(
-                                  foregroundColor: selected == item.id
-                                      ? colors.primary
-                                      : colors.onSurfaceVariant,
-                                  textStyle: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: selected == item.id
-                                        ? FontWeight.w900
-                                        : FontWeight.w600,
+                      child: Row(
+                        children: [
+                          for (final entry in primary)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 1),
+                              child: Tooltip(
+                                message: entry.enabled
+                                    ? entry.label
+                                    : '${entry.label} is visible but not connected yet',
+                                child: TextButton(
+                                  onPressed: entry.enabled
+                                      ? () => onSelect(entry.id)
+                                      : null,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: selected == entry.id
+                                        ? colors.primary
+                                        : colors.onSurfaceVariant,
+                                    textStyle: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: selected == entry.id
+                                          ? FontWeight.w900
+                                          : FontWeight.w600,
+                                    ),
+                                  ),
+                                  child: Text(entry.label),
+                                ),
+                              ),
+                            ),
+                          PopupMenuButton<String>(
+                            tooltip: 'More',
+                            onSelected: onSelect,
+                            itemBuilder: (_) => [
+                              for (final entry in more)
+                                PopupMenuItem<String>(
+                                  value: entry.id,
+                                  enabled: entry.enabled,
+                                  child: ListTile(
+                                    enabled: entry.enabled,
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: Icon(entry.icon),
+                                    title: Text(entry.label),
+                                    subtitle: entry.enabled
+                                        ? null
+                                        : const Text('Display only — not connected'),
+                                    trailing: entry.id == selected
+                                        ? const Icon(Icons.check_rounded)
+                                        : null,
                                   ),
                                 ),
-                                child: Text(item.label),
+                            ],
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('More'),
+                                  SizedBox(width: 2),
+                                  Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                                ],
                               ),
                             ),
                           ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
