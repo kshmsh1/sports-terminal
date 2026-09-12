@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../models/app_session.dart';
-import '../screens/product_advanced_nba_tools_screen.dart';
 import '../screens/product_analytics_suite_screen.dart';
+import '../screens/product_arena_home_screen.dart';
 import '../screens/product_backend_sync_screen.dart';
 import '../screens/product_community_v2_screen.dart';
 import '../screens/product_connected_data_studio_screen.dart';
@@ -14,9 +14,10 @@ import '../screens/product_fantasy_community_screens.dart';
 import '../screens/product_front_office_registry_screen.dart';
 import '../screens/product_nba_awards_v2_screen.dart';
 import '../screens/product_nba_public_pages_screen.dart';
+import '../screens/product_nba_stats_center_screen.dart';
+import '../screens/product_nba_stats_workstation_screen.dart';
 import '../screens/product_platform_content_legal_screen.dart';
 import '../screens/product_profile_v3_screen.dart';
-import '../screens/product_role_home_screen.dart';
 import '../screens/product_shell_screens.dart';
 import '../screens/product_strategy_map_screen.dart';
 import '../screens/product_team_blogs_screen.dart';
@@ -67,22 +68,19 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
         _Destination(
           'Home',
           Icons.home_rounded,
-          ProductRoleHomeScreen(
-            session: widget.session,
-            organizationMode: _organizationMode,
-          ),
+          ProductArenaHomeScreen(session: widget.session),
           primary: true,
         ),
         const _Destination(
           'Stats',
           Icons.leaderboard_rounded,
-          ProductNbaBasicStatsScreen(),
+          ProductNbaStatsCenterScreen(),
           primary: true,
         ),
         const _Destination(
           'Advanced Stats',
           Icons.analytics_rounded,
-          ProductAdvancedNbaToolsScreen(),
+          ProductNbaStatsWorkstationScreen(),
           primary: true,
         ),
         const _Destination(
@@ -140,15 +138,31 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
           Icons.code_rounded,
           ProductConnectedDataStudioScreen(session: widget.session),
         ),
-        const _Destination('Strategy', Icons.radar_rounded, ProductStrategyMapScreen()),
-        const _Destination('Fantasy', Icons.bolt_rounded, ProductFantasyWarRoomScreen()),
-        const _Destination('Team Blogs', Icons.newspaper_rounded, ProductTeamBlogsScreen()),
+        const _Destination(
+          'Strategy',
+          Icons.radar_rounded,
+          ProductStrategyMapScreen(),
+        ),
+        const _Destination(
+          'Fantasy',
+          Icons.bolt_rounded,
+          ProductFantasyWarRoomScreen(),
+        ),
+        const _Destination(
+          'Team Blogs',
+          Icons.newspaper_rounded,
+          ProductTeamBlogsScreen(),
+        ),
         _Destination(
           'Community',
           Icons.forum_rounded,
           ProductCommunityV2Screen(session: widget.session),
         ),
-        const _Destination('Articles', Icons.article_rounded, ProductEditorialHomeScreen()),
+        const _Destination(
+          'Articles',
+          Icons.article_rounded,
+          ProductEditorialHomeScreen(),
+        ),
         _Destination(
           'Messages',
           Icons.chat_bubble_rounded,
@@ -172,7 +186,11 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
             ProductBackendSyncScreen(session: widget.session),
           ),
         if (_organizationMode || widget.session.role.canAccessPlatformAdmin)
-          const _Destination('Internal Lab', Icons.science_rounded, ProductInternalLabScreen()),
+          const _Destination(
+            'Internal Lab',
+            Icons.science_rounded,
+            ProductInternalLabScreen(),
+          ),
         const _Destination(
           'About Us',
           Icons.info_outline_rounded,
@@ -347,7 +365,12 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
 }
 
 class _Destination {
-  const _Destination(this.label, this.icon, this.screen, {this.primary = false});
+  const _Destination(
+    this.label,
+    this.icon,
+    this.screen, {
+    this.primary = false,
+  });
 
   final String label;
   final IconData icon;
@@ -434,8 +457,10 @@ class _TopNav extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 foregroundColor: palette.text,
                 side: BorderSide(color: palette.searchLine),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 18,
+                ),
                 shape: const StadiumBorder(),
               ),
             ),
@@ -450,7 +475,11 @@ class _TopNav extends StatelessWidget {
                     value: entry.key,
                     child: Row(
                       children: [
-                        Icon(entry.value.icon, size: 18, color: palette.muted),
+                        Icon(
+                          entry.value.icon,
+                          size: 18,
+                          color: palette.muted,
+                        ),
                         const SizedBox(width: 10),
                         Text(entry.value.label),
                       ],
@@ -458,7 +487,10 @@ class _TopNav extends StatelessWidget {
                   ),
               ],
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     Text(
@@ -469,7 +501,10 @@ class _TopNav extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 3),
-                    Icon(Icons.keyboard_arrow_down_rounded, color: palette.text),
+                    Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: palette.text,
+                    ),
                   ],
                 ),
               ),
@@ -478,7 +513,9 @@ class _TopNav extends StatelessWidget {
               tooltip: darkMode ? 'Light mode' : 'Dark mode',
               onPressed: onToggleTheme,
               icon: Icon(
-                darkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                darkMode
+                    ? Icons.light_mode_outlined
+                    : Icons.dark_mode_outlined,
                 color: palette.text,
               ),
             ),
