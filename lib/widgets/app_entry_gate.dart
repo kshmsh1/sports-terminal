@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../controllers/auth_controller.dart';
 import '../controllers/internal_workspace_controller.dart';
-import '../models/app_session.dart';
 import '../screens/login_screen.dart';
-import 'admin_nba_terminal_overlay.dart';
-import 'role_research_augmented_shell.dart';
-import 'terminal_shell.dart';
+import 'canonical_product_shell.dart';
 
 class AppEntryGate extends StatelessWidget {
   const AppEntryGate({
@@ -30,15 +27,8 @@ class AppEntryGate extends StatelessWidget {
         if (session == null) {
           return LoginScreen(controller: authController);
         }
-        if (session.role.canAccessPlatformAdmin) {
-          return AdminNbaTerminalOverlay(
-            session: session,
-            child: const TerminalShell(),
-          );
-        }
-        return RoleResearchAugmentedShell(
+        return CanonicalProductShell(
           session: session,
-          workspaceController: workspaceController,
           onSignOut: authController.signOut,
         );
       },

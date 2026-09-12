@@ -32,9 +32,6 @@ void main() {
       'lib/screens/product_nba_historical_intelligence_screen.dart': [
         'setState(() => _contextFuture =',
       ],
-      'lib/widgets/launch_role_product_shell.dart': [
-        'setState(() => _statusFuture =',
-      ],
     };
 
     for (final entry in forbiddenByFile.entries) {

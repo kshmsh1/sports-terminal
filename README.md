@@ -1,108 +1,102 @@
 # Sports Terminal
 
-Sports Terminal is an NBA-first Flutter web terminal for professional research, structured analysis, cap and transaction modeling, personal work management, and organization review workflows.
+Sports Terminal is a multi-sport web product with an NBA-first data platform. After login, users land on a league-selection home. NBA is the first fully enabled league; NFL, NHL, MLB, MLS, F1, Premier League, WNBA, ATP, WTA, PGA and IPL remain explicit future league surfaces until source-backed datasets are added.
 
-The current product has three distinct experiences:
+## NBA website
 
-- **Individual Terminal** for personal research, workspaces, transaction cases, collaboration, and saved analysis.
-- **Organization Terminal** for shared cases, assignments, approvals, members, activity, and organization operations.
-- **Platform Admin Terminal** for internal product, data, and platform operations.
+The normal NBA customer experience includes:
 
-## Product foundation
+- NBA Home with season switching, player search, league leaders and team cards;
+- Stats with the original sortable player statistics table;
+- Advanced Stats with the original category-driven advanced table and glossary;
+- canonical Player pages with separate Regular Season and Playoff careers, awards, All-Star/draft context, recent games, team history and registered contract information when available;
+- canonical Team pages with franchise/season history, player navigation and recent games;
+- global player/team search in the website header;
+- the 2026-27 Trade Machine;
+- Front Office, Research and Community;
+- visible but intentionally disconnected Python Lab and Excel Workspace navigation placeholders.
 
-The connected customer products include:
+## Static-first historical data
 
-- NBA Stats Center;
-- player, team, and game Hub;
-- structured NBA Object Router;
-- Workspace;
-- Data & Code Studio;
-- official Cap Lab;
-- Trade Machine;
-- Front Office contract, cap, draft, and transaction ledgers;
-- personal and organization transaction command centers;
-- comments, assignments, activity, notifications, and approval workflows;
-- role-aware Home metrics and customer launch status.
+Completed NBA history is immutable product data. It does not need a runtime basketball API call every time a user opens Home, Stats, Advanced Stats, a player page or a team page.
 
-The shared `RoutePayload` contract lets NBA datasets and modeled scenarios move between product surfaces without screen-specific copy logic.
+The primary historical path is:
 
-## Data policy
+```text
+nba_history.sqlite
+  -> static compiler
+  -> web/data/nba_static/*
+  -> Flutter website
+```
 
-Sports Terminal does not add fake production data to make screens appear complete.
+`WebsiteNbaStaticRepository` reads same-origin static JSON. The compatibility class `WebsiteNbaApiService` delegates to that static repository; it is not a historical HTTP API transport.
 
-- Connected data may be shown.
-- Source-pending data remains blank or visibly modeled.
-- Missing values remain null rather than invented zeroes.
-- Every release preserves source state, validation, generation time, and blockers.
-- Commercial data rights and attribution are external launch requirements and are never represented as complete without approval.
+The static corpus includes season indexes and shards, player/team indexes, canonical player/team dossiers, awards, All-Star and draft context, historical games, dashboard leader data and a published read-only Front Office snapshot when local contract/cap/draft records exist. Missing source-backed metrics remain unavailable rather than being filled with invented values.
 
-## Single-season launch profile
+Optional already-normalized NBA.com captures can enrich static seasons with source-backed fields such as deflections. `tools/nba_com_static_enrichment.py` performs no network requests. When those local captures do not exist, NBA.com-only metrics stay unavailable.
 
-The first customer launch is scoped to the complete **2025–26 NBA season**.
+The intended active-season model is **static historical base + live current-season overlay**. When 2026-27 begins, a live layer can populate the active season without changing completed historical seasons. At season end, that season can be frozen into the static corpus.
 
-The Flutter client is season-aware:
+## Local launch
 
-- candidate release: `assets/data/nba/terminal_seed/nba_2026`;
-- validated development fallback: `assets/data/nba/terminal_seed/nba_2025`;
-- activation config: `assets/data/nba/launch/season_config.json`.
+Use the repository launcher so the static NBA corpus exists before Flutter starts:
 
-The 2025–26 release is activated only after the warehouse, seed, complete player game logs, launch certification, backend smoke test, Flutter analysis, complete test suite, and release web build pass.
+```bash
+bash scripts/open_terminal.sh
+```
 
-## Run the Flutter product
+Force a static rebuild:
+
+```bash
+bash scripts/open_terminal.sh --rebuild-static
+```
+
+The launcher searches for the canonical historical warehouse at:
+
+```text
+data/warehouse/nba_history.sqlite
+nba_history.sqlite
+```
+
+It also checks the same locations in the immediately previous repository directory so an existing local historical warehouse can be reused. You can point to a specific warehouse with:
+
+```bash
+SPORTS_TERMINAL_NBA_HISTORY_DB=/path/to/nba_history.sqlite \
+  bash scripts/open_terminal.sh
+```
+
+The launcher deliberately does not scrape or download sports data. It compiles/fingerprint-checks the local warehouse, applies any already-authorized local static enrichment, publishes the read-only Front Office snapshot, validates the required files, runs `flutter pub get`, and opens Chrome.
+
+If `web/data/nba_static/` has already been built, direct Flutter launch also works:
 
 ```bash
 flutter pub get
 flutter run -d chrome
 ```
 
-## Run the launch backend
+Generated static files under `web/data/nba_static/` are ignored by Git because they are build artifacts derived from the canonical local warehouse.
+
+## Dynamic application services
+
+The historical basketball website does not require the FastAPI backend. Mutable workflows such as account/session state, collaboration, explicit Front Office edits and other application operations may still use it when needed:
 
 ```bash
 bash scripts/dev_backend.sh
 ```
 
-The launch entrypoint extends the original FastAPI backend with:
+The read path remains static-first. Mutable Front Office state can be published into static read-only website files while explicit edits continue to use the backend workflow.
 
-- organizations and memberships;
-- server-backed personal and shared transaction cases;
-- activity and notifications;
-- organization member records;
-- saved structured sports objects;
-- data-release certification;
-- launch checks and readiness.
+## Data policy
 
-When the backend is reachable, the existing Flutter transaction repositories synchronize remotely across browser sessions. When it is unavailable, the product retains its local fallback.
+Sports Terminal does not add fake production data to make screens appear complete.
 
-## Build the complete 2025–26 launch release
-
-```bash
-bash scripts/overnight_launch_build.sh
-```
-
-The raw Basketball Reference catalog must already exist at:
-
-```text
-raw/basketball_reference/catalog.sqlite
-```
-
-A known local raw-catalog command can be supplied with:
-
-```bash
-bash scripts/overnight_launch_build.sh \
-  --prepare-raw-command '<your existing raw-catalog command>'
-```
-
-The pipeline never activates a failed dataset. Timestamped logs and the machine-readable final report are written under `data/launch_reports/`.
+- Source-backed data may be shown.
+- Missing values remain null or visibly unavailable rather than invented zeroes.
+- Regular Season and Playoff statistics remain separate where the source distinguishes them.
+- Historical facts are compiled once and reused across every website surface.
+- Current-season live data is layered over, not substituted for, completed historical data.
+- Commercial data rights and attribution remain external launch requirements and are never represented as complete without approval.
 
 ## External launch requirements
 
-The repository cannot fabricate or complete external commercial steps. Public launch still requires:
-
-- a real authentication provider and secure sessions;
-- managed Postgres or equivalent hosted storage;
-- payment-provider credentials and billing webhooks;
-- approved data-source rights and attribution policy;
-- deployment, secrets, monitoring, backups, rate limits, and incident operations;
-- moderation operations before public Community or Messages are enabled.
-
-The `/v2/launch/readiness` endpoint reports these separately from code and data work so the application never labels itself launch-ready while an external blocker remains.
+Public launch still requires the external items code cannot create on its own, including approved commercial data rights where applicable, production hosting/storage, authentication, monitoring, payment infrastructure if used, secrets, backups and operating processes.

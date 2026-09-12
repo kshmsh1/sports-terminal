@@ -7,5 +7,15 @@ class ProductTradeMachineScreen extends StatelessWidget {
   const ProductTradeMachineScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => const ProductTradeMachineCompleteScreen();
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Theme(
+      data: theme.copyWith(
+        textTheme: theme.textTheme.copyWith(
+          titleMedium: theme.textTheme.titleMedium?.copyWith(fontSize: 9),
+        ),
+      ),
+      child: const ProductTradeMachineCompleteScreen(),
+    );
+  }
 }
