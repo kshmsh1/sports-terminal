@@ -31,4 +31,19 @@ void main() {
     expect(source, isNot(contains('NBA OPERATING TERMINAL')));
     expect(source, isNot(contains('Find terminal function')));
   });
+
+  test('canonical primary tabs preserve the full product surfaces', () {
+    final source =
+        File('lib/widgets/canonical_product_shell.dart').readAsStringSync();
+
+    expect(source, contains('ProductArenaHomeScreen(session: widget.session)'));
+    expect(source, contains('ProductNbaStatsCenterScreen()'));
+    expect(source, contains('ProductNbaStatsWorkstationScreen()'));
+    expect(source, contains('ProductAnalyticsSuiteScreen()'));
+    expect(source, contains('ProductTradeMachineScreen()'));
+
+    expect(source, isNot(contains('ProductRoleHomeScreen(')));
+    expect(source, isNot(contains('ProductNbaBasicStatsScreen()')));
+    expect(source, isNot(contains('ProductAdvancedNbaToolsScreen()')));
+  });
 }
