@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import '../models/app_session.dart';
@@ -65,24 +64,21 @@ class FrontOfficeRegistryService {
   static const _assetsKey = 'sports_terminal.front_office.draft_assets.v1';
   static const _ledgerKey = 'sports_terminal.front_office.ledger.v1';
 
-  /// Cache-first product read.
+  /// Static-first product read.
   ///
-  /// Player pages and the Trade Machine must never be held behind mutable
-  /// front-office networking. Return the published static snapshot merged with
-  /// any newer browser cache immediately, then refresh the mutable cache in the
-  /// background for the next read.
+  /// Contracts, cap positions, draft assets, and ledger records are published
+  /// before launch into same-origin static JSON. Browser-local edits can overlay
+  /// that immutable snapshot. Merely opening a player page or Front Office does
+  /// not perform a background API request.
   Future<FrontOfficeRegistrySnapshot> load({
     required AppSession session,
     String season = '2025-26',
-  }) async {
-    final cached = await loadCached();
-    unawaited(
-      loadRemote(session: session, season: season).catchError((_) => cached),
-    );
-    return cached;
+  }) {
+    return loadCached();
   }
 
-  /// Explicit fresh read for dedicated front-office workflows.
+  /// Explicit fresh read reserved for workflows that intentionally ask the
+  /// mutable backend for current registry state.
   Future<FrontOfficeRegistrySnapshot> loadRemote({
     required AppSession session,
     String season = '2025-26',
@@ -254,7 +250,9 @@ class FrontOfficeRegistryService {
     return _CollectionResult(await _loadCachedCollection(cacheKey), false);
   }
 
-  Future<List<Map<String, dynamic>>> _loadCachedCollection(String cacheKey) async {
+  Future<List<Map<String, dynamic>>> _loadCachedCollection(
+    String cacheKey,
+  ) async {
     final cached = await _store.loadString(cacheKey);
     if (cached.isEmpty) return const [];
     try {
