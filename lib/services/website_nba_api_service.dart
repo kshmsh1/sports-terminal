@@ -19,8 +19,8 @@ class WebsiteNbaSeason {
 ///
 /// Historical basketball data is now a static website concern. The canonical
 /// SQLite warehouse is compiled before launch into sharded JSON under
-/// `web/data/nba_static`, and the browser reads those files directly. No
-/// FastAPI request or runtime SQLite query is required for Home, Stats,
+/// `web/data/nba_static`, and the browser reads those files directly.
+/// No FastAPI request or runtime SQLite query is required for Home, Stats,
 /// Advanced Stats, player pages, team pages, awards, drafts, or historical
 /// game metadata.
 ///
