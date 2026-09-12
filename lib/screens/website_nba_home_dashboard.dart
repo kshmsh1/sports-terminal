@@ -569,9 +569,26 @@ class _SectionTitle extends StatelessWidget {
 class _DashboardLoading extends StatelessWidget {
   const _DashboardLoading();
   @override
-  Widget build(BuildContext context) => const SizedBox(
-        height: 260,
-        child: Center(child: CircularProgressIndicator()),
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Reading local static NBA data…',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
       );
 }
 
@@ -629,16 +646,15 @@ class _LeaderSpec {
 }
 
 const _leaderSpecs = <_LeaderSpec>[
-  _LeaderSpec('points', 'Points', 'PPG'),
-  _LeaderSpec('rebounds', 'Rebounds', 'RPG'),
+  _LeaderSpec('points', 'Scoring', 'PPG'),
+  _LeaderSpec('rebounds', 'Rebounding', 'RPG'),
   _LeaderSpec('assists', 'Assists', 'APG'),
   _LeaderSpec('steals', 'Steals', 'SPG'),
   _LeaderSpec('blocks', 'Blocks', 'BPG'),
-  _LeaderSpec('turnovers', 'Turnovers', 'TPG'),
+  _LeaderSpec('deflections', 'Deflections', 'DEF/G'),
   _LeaderSpec('personal_fouls', 'Personal Fouls', 'PF/G'),
-  _LeaderSpec('field_goals_made', 'Field Goals Made', 'FGM/G'),
+  _LeaderSpec('turnovers', 'Turnovers', 'TPG'),
   _LeaderSpec('three_pointers_made', 'Three-Pointers Made', '3PM/G'),
-  _LeaderSpec('free_throws_made', 'Free Throws Made', 'FTM/G'),
 ];
 
 List<_TeamCardData> _teamCards(Map<String, dynamic> data) {
