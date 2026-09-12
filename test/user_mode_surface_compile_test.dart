@@ -5,7 +5,7 @@ import 'package:sports_terminal/screens/internal_spreadsheet_screen.dart';
 import 'package:sports_terminal/screens/login_screen.dart';
 import 'package:sports_terminal/screens/safe_sql_screen.dart';
 import 'package:sports_terminal/widgets/app_entry_gate.dart';
-import 'package:sports_terminal/widgets/user_terminal_shell.dart';
+import 'package:sports_terminal/widgets/canonical_product_shell.dart';
 
 void main() {
   test('user product surfaces instantiate', () {
@@ -22,12 +22,11 @@ void main() {
       isA<AppEntryGate>(),
     );
     expect(
-      UserTerminalShell(
+      CanonicalProductShell(
         session: analyst,
-        workspaceController: workspaces,
         onSignOut: () {},
       ),
-      isA<UserTerminalShell>(),
+      isA<CanonicalProductShell>(),
     );
     expect(
       InternalSpreadsheetScreen(
