@@ -68,10 +68,25 @@ void main() {
     expect(source, contains("'player_season_totals': totals"));
   });
 
+  test('Basketball Reference 3P and 3PA aliases are normalized', () {
+    final source = File(
+      'tools/normalize_static_nba_three_point_fields.py',
+    ).readAsStringSync();
+
+    expect(source, contains('"3P"'));
+    expect(source, contains('"3PA"'));
+    expect(source, contains('"3P%"'));
+    expect(source, contains('"three_pointers_made"'));
+    expect(source, contains('"three_point_attempts"'));
+    expect(source, contains('"three_point_percentage"'));
+    expect(source, contains('"network_requests": 0'));
+  });
+
   test('local launcher builds static data before Flutter starts', () {
     final source = File('scripts/open_terminal.sh').readAsStringSync();
 
     expect(source, contains('build_static_nba_website_data_v2_core.py'));
+    expect(source, contains('normalize_static_nba_three_point_fields.py'));
     expect(source, contains('nba_com_static_enrichment.py'));
     expect(source, contains('rebuild_static_nba_dashboards.py'));
     expect(source, contains('enrich_static_nba_pdf_early_totals.py'));
