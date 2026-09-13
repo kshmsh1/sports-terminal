@@ -73,6 +73,13 @@ if [[ "$FORCE_STATIC" -eq 1 ]]; then
 fi
 "$PYTHON_BIN" "$ROOT/tools/build_static_nba_website_data_v2_core.py" "${STATIC_ARGS[@]}"
 
+# Basketball Reference regular-season totals label made threes as 3P and
+# attempts as 3PA. Normalize those source-backed aliases (plus equivalent
+# canonical import names) before dashboard generation so Stats and Advanced
+# Stats consume one consistent three-point contract.
+"$PYTHON_BIN" "$ROOT/tools/normalize_static_nba_three_point_fields.py" \
+  --output "$ROOT/web/data/nba_static"
+
 # Optional source-backed NBA.com fields such as deflections are read only from
 # already-normalized local captures. This script performs no network requests.
 "$PYTHON_BIN" "$ROOT/tools/nba_com_static_enrichment.py" \
