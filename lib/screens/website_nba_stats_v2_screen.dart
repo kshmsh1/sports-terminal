@@ -7,6 +7,7 @@ import '../models/app_session.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
+import '../widgets/nba_percentage_heat_cell.dart';
 import '../widgets/website_pagination.dart';
 import '../widgets/website_sticky_stats_table.dart';
 import 'website_nba_entity_pages.dart';
@@ -87,9 +88,6 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
     if (next == _seasonType) return;
     setState(() {
       _seasonType = next;
-      // 50+ is the default regular-season qualification. A playoff sample can
-      // never reach 50 games, so switching to playoffs intentionally opens the
-      // GP filter while preserving 50+ as the regular-season default.
       _minGp = next == NbaStatsSeasonType.regular ? 50 : 0;
       _team = 'All';
       _page = 1;
@@ -297,10 +295,9 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
           _TeamLink(session: widget.session, row: row),
           Text(row.position, maxLines: 1, overflow: TextOverflow.ellipsis),
           for (final visible in visibleColumns)
-            Text(
-              _format(row.value(visible.column.key), visible.column),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            _StatValueCell(
+              column: visible.column,
+              value: row.value(visible.column.key),
             ),
         ],
     ];
@@ -508,6 +505,31 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
   }
 }
 
+class _StatValueCell extends StatelessWidget {
+  const _StatValueCell({required this.column, required this.value});
+  final _StatColumn column;
+  final double? value;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Text(
+      _format(value, column),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+    final metric = nbaPercentageHeatMetricForKey(column.key);
+    if (metric == null) return text;
+    return Align(
+      alignment: Alignment.centerRight,
+      child: NbaPercentageHeatCell(
+        metric: metric,
+        value: value,
+        child: text,
+      ),
+    );
+  }
+}
+
 class _TeamLink extends StatelessWidget {
   const _TeamLink({required this.session, required this.row});
 
@@ -661,14 +683,12 @@ const _baseColumns = <_StatColumn>[
       _StatColumn('fga', 'FGA'),
     ],
   ),
+  _StatColumn('three_pm', '3PM'),
+  _StatColumn('three_pa', '3PA'),
   _StatColumn(
     'three_pct',
     '3P%',
     percent: true,
-    children: [
-      _StatColumn('three_pm', '3PM'),
-      _StatColumn('three_pa', '3PA'),
-    ],
   ),
   _StatColumn(
     'ft_pct',
@@ -759,17 +779,12 @@ bool _matchesPosition(String value, String wanted) {
 
 String _format(double? value, _StatColumn column) {
   if (value == null || value.isNaN || value.isInfinite) return '—';
+  if (column.percent) return '${(value * 100).toStringAsFixed(1)}%';
   if (column.integer) return value.round().toString();
-  if (column.percent) {
-    final scaled = value.abs() <= 1.5 ? value * 100 : value;
-    return '${scaled.toStringAsFixed(1)}%';
-  }
   return value.toStringAsFixed(1);
 }
 
-String _csvLine(Iterable<String> cells) => cells.map((cell) {
-      final escaped = cell.replaceAll('"', '""');
-      return escaped.contains(',') || escaped.contains('"') || escaped.contains('\n')
-          ? '"$escaped"'
-          : escaped;
+String _csvLine(List<Object?> values) => values.map((value) {
+      final text = value?.toString() ?? '';
+      return '"${text.replaceAll('"', '""')}"';
     }).join(',');
