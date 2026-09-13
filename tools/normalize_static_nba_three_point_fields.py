@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,7 @@ THREE_POINT_ALIASES: dict[str, tuple[str, ...]] = {
     "three_point_percentage": (
         "three_point_percentage",
         "three_pct",
+        "three_point_pct",
         "fg3_pct",
         "3P%",
         "3p%",
@@ -53,6 +55,24 @@ def _present(value: Any) -> bool:
     return value is not None and str(value).strip() != ""
 
 
+def _number(value: Any) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        result = float(value)
+        return result if math.isfinite(result) else None
+    text = str(value).strip().replace(",", "").replace("%", "")
+    if not text:
+        return None
+    try:
+        result = float(text)
+    except ValueError:
+        return None
+    if not math.isfinite(result):
+        return None
+    return result
+
+
 def _first(row: dict[str, Any], aliases: tuple[str, ...]) -> Any:
     for alias in aliases:
         if _present(row.get(alias)):
@@ -60,21 +80,71 @@ def _first(row: dict[str, Any], aliases: tuple[str, ...]) -> Any:
     return None
 
 
+def _ratio_value(value: Any) -> float | None:
+    number = _number(value)
+    if number is None:
+        return None
+    return number / 100.0 if abs(number) > 1.5 else number
+
+
+def _infer_integer_makes(attempts: Any, percentage: Any) -> int | None:
+    """Recover an exact integer made-shot total from source-backed A and %.
+
+    Basketball Reference publishes attempts and percentages rounded to three
+    decimals. When the canonical import accidentally materialized a zero made
+    total, search the small integer neighborhood implied by A * %. We only use
+    a value when exactly one integer reproduces the published percentage to
+    three decimals; ambiguous cases remain untouched rather than fabricated.
+    """
+
+    attempts_number = _number(attempts)
+    percentage_number = _ratio_value(percentage)
+    if attempts_number is None or attempts_number <= 0 or percentage_number is None:
+        return None
+    attempts_int = int(round(attempts_number))
+    estimate = attempts_int * percentage_number
+    lower = max(0, int(math.floor(estimate)) - 2)
+    upper = min(attempts_int, int(math.ceil(estimate)) + 2)
+    target = round(percentage_number, 3)
+    matches = [
+        made
+        for made in range(lower, upper + 1)
+        if round(made / attempts_int, 3) == target
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
 def normalize_row(row: dict[str, Any]) -> bool:
     changed = False
     for canonical, aliases in THREE_POINT_ALIASES.items():
-        if _present(row.get(canonical)):
-            continue
+        current = row.get(canonical)
         value = _first(row, aliases)
-        if not _present(value):
-            continue
-        row[canonical] = value
-        changed = True
+        if not _present(current) and _present(value):
+            row[canonical] = value
+            changed = True
+
+    made = _number(row.get("three_pointers_made"))
+    attempts = row.get("three_point_attempts")
+    percentage = row.get("three_point_percentage")
+
+    # Some historical canonical rows currently contain the impossible trio
+    # 3PM=0, 3PA>0, 3P%>0 even though the source PDF contains made threes. This
+    # is a static import-shape bug, not a basketball fact. Repair it only when
+    # the attempts + published percentage identify one exact integer make total.
+    if (made is None or made == 0) and (_number(attempts) or 0) > 0 and (_ratio_value(percentage) or 0) > 0:
+        inferred = _infer_integer_makes(attempts, percentage)
+        if inferred is not None:
+            row["three_pointers_made"] = inferred
+            made = float(inferred)
+            changed = True
 
     # Publish the aliases consumed directly by NbaStatsWorkstationEngine too.
-    if not _present(row.get("three_pm")) and _present(row.get("three_pointers_made")):
-        row["three_pm"] = row["three_pointers_made"]
-        changed = True
+    canonical_made = row.get("three_pointers_made")
+    if _present(canonical_made):
+        current = _number(row.get("three_pm"))
+        if current is None or (current == 0 and (_number(canonical_made) or 0) > 0):
+            row["three_pm"] = canonical_made
+            changed = True
     if not _present(row.get("three_pa")) and _present(row.get("three_point_attempts")):
         row["three_pa"] = row["three_point_attempts"]
         changed = True
@@ -124,11 +194,12 @@ def main() -> int:
     print(
         json.dumps(
             {
-                "contract": "sports-terminal-static-three-point-normalization-v1",
+                "contract": "sports-terminal-static-three-point-normalization-v2",
                 "files_scanned": files_scanned,
                 "files_changed": files_changed,
                 "rows_changed": rows_changed,
                 "source_labels": ["3P", "3PA", "3P%"],
+                "repair_policy": "unique-integer-from-source-attempts-and-rounded-percentage",
                 "network_requests": 0,
             },
             indent=2,
