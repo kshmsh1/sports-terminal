@@ -9,10 +9,6 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "web/data/nba_static"
 
-# Basketball Reference regular-season totals label made threes as 3P and
-# attempts as 3PA. Historical import layers can expose those same facts under
-# several normalized aliases. Keep one canonical static contract for the
-# Flutter Stats / Advanced Stats surfaces without fabricating unavailable eras.
 THREE_POINT_ALIASES: dict[str, tuple[str, ...]] = {
     "three_pointers_made": (
         "three_pointers_made",
@@ -44,7 +40,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Normalize source-backed three-point totals in already-built static "
-            "NBA season shards. No network requests are performed."
+            "NBA season shards and player dossiers. No network requests are performed."
         )
     )
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
@@ -68,9 +64,7 @@ def _number(value: Any) -> float | None:
         result = float(text)
     except ValueError:
         return None
-    if not math.isfinite(result):
-        return None
-    return result
+    return result if math.isfinite(result) else None
 
 
 def _first(row: dict[str, Any], aliases: tuple[str, ...]) -> Any:
@@ -88,15 +82,6 @@ def _ratio_value(value: Any) -> float | None:
 
 
 def _infer_integer_makes(attempts: Any, percentage: Any) -> int | None:
-    """Recover an exact integer made-shot total from source-backed A and %.
-
-    Basketball Reference publishes attempts and percentages rounded to three
-    decimals. When the canonical import accidentally materialized a zero made
-    total, search the small integer neighborhood implied by A * %. We only use
-    a value when exactly one integer reproduces the published percentage to
-    three decimals; ambiguous cases remain untouched rather than fabricated.
-    """
-
     attempts_number = _number(attempts)
     percentage_number = _ratio_value(percentage)
     if attempts_number is None or attempts_number <= 0 or percentage_number is None:
@@ -127,22 +112,25 @@ def normalize_row(row: dict[str, Any]) -> bool:
     attempts = row.get("three_point_attempts")
     percentage = row.get("three_point_percentage")
 
-    # Some historical canonical rows currently contain the impossible trio
-    # 3PM=0, 3PA>0, 3P%>0 even though the source PDF contains made threes. This
-    # is a static import-shape bug, not a basketball fact. Repair it only when
-    # the attempts + published percentage identify one exact integer make total.
-    if (made is None or made == 0) and (_number(attempts) or 0) > 0 and (_ratio_value(percentage) or 0) > 0:
+    # Repair the impossible import shape 3PM=0, 3PA>0, 3P%>0 only when the
+    # source-backed attempts + rounded percentage identify exactly one integer
+    # made-shot total. Ambiguous rows stay untouched.
+    if (
+        (made is None or made == 0)
+        and (_number(attempts) or 0) > 0
+        and (_ratio_value(percentage) or 0) > 0
+    ):
         inferred = _infer_integer_makes(attempts, percentage)
         if inferred is not None:
             row["three_pointers_made"] = inferred
-            made = float(inferred)
             changed = True
 
-    # Publish the aliases consumed directly by NbaStatsWorkstationEngine too.
     canonical_made = row.get("three_pointers_made")
     if _present(canonical_made):
         current = _number(row.get("three_pm"))
-        if current is None or (current == 0 and (_number(canonical_made) or 0) > 0):
+        if current is None or (
+            current == 0 and (_number(canonical_made) or 0) > 0
+        ):
             row["three_pm"] = canonical_made
             changed = True
     if not _present(row.get("three_pa")) and _present(row.get("three_point_attempts")):
@@ -151,6 +139,16 @@ def normalize_row(row: dict[str, Any]) -> bool:
     if not _present(row.get("three_pct")) and _present(row.get("three_point_percentage")):
         row["three_pct"] = row["three_point_percentage"]
         changed = True
+    return changed
+
+
+def _normalize_rows(value: Any) -> int:
+    if not isinstance(value, list):
+        return 0
+    changed = 0
+    for row in value:
+        if isinstance(row, dict) and normalize_row(row):
+            changed += 1
     return changed
 
 
@@ -163,40 +161,58 @@ def _write(path: Path, payload: Any) -> None:
     temp.replace(path)
 
 
+def _normalize_file(path: Path, row_lists: tuple[str, ...]) -> int:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return 0
+    if not isinstance(payload, dict):
+        return 0
+    changed = sum(_normalize_rows(payload.get(key)) for key in row_lists)
+    if changed:
+        _write(path, payload)
+    return changed
+
+
 def main() -> int:
     args = parse_args()
     output = Path(args.output).expanduser().resolve()
     seasons_root = output / "seasons"
+    players_root = output / "players"
     if not seasons_root.is_dir():
         raise SystemExit(f"Static NBA season corpus is missing: {seasons_root}")
 
-    files_scanned = 0
-    files_changed = 0
+    season_files_scanned = 0
+    season_files_changed = 0
+    dossier_files_scanned = 0
+    dossier_files_changed = 0
     rows_changed = 0
+
     for path in sorted(seasons_root.glob("*/regular.json")):
-        files_scanned += 1
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        raw_rows = payload.get("player_season_totals")
-        if not isinstance(raw_rows, list):
-            continue
-        changed_here = 0
-        for row in raw_rows:
-            if isinstance(row, dict) and normalize_row(row):
-                changed_here += 1
-        if changed_here:
-            _write(path, payload)
-            files_changed += 1
-            rows_changed += changed_here
+        season_files_scanned += 1
+        changed = _normalize_file(path, ("player_season_totals",))
+        if changed:
+            season_files_changed += 1
+            rows_changed += changed
+
+    if players_root.is_dir():
+        for path in sorted(players_root.glob("*.json")):
+            if path.name == "index.json":
+                continue
+            dossier_files_scanned += 1
+            changed = _normalize_file(path, ("regular_seasons", "seasons"))
+            if changed:
+                dossier_files_changed += 1
+                rows_changed += changed
 
     print(
         json.dumps(
             {
-                "contract": "sports-terminal-static-three-point-normalization-v2",
-                "files_scanned": files_scanned,
-                "files_changed": files_changed,
+                "contract": "sports-terminal-static-three-point-normalization-v3",
+                "season_files_scanned": season_files_scanned,
+                "season_files_changed": season_files_changed,
+                "dossier_files_scanned": dossier_files_scanned,
+                "dossier_files_changed": dossier_files_changed,
                 "rows_changed": rows_changed,
                 "source_labels": ["3P", "3PA", "3P%"],
                 "repair_policy": "unique-integer-from-source-attempts-and-rounded-percentage",
