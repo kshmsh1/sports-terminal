@@ -6,32 +6,34 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SHELL = ROOT / "lib/widgets/connected_role_terminal_shell.dart"
+SHELL = ROOT / "lib/widgets/canonical_product_shell.dart"
 
-# Top-level surfaces mounted directly inside ConnectedRoleTerminalShell. The audit
-# is intentionally class-scoped: pushed drill-in routes (for example a full
-# community thread) may own their own viewport after leaving the terminal shell.
+# Top-level surfaces mounted directly inside CanonicalProductShell. The audit
+# is intentionally class-scoped: pushed drill-in routes may own their own
+# viewport after leaving the canonical shell.
 SHELL_SURFACES = (
-    ("lib/screens/product_transaction_command_center_screen.dart", "ProductTransactionCommandCenterScreen"),
-    ("lib/screens/product_role_home_screen.dart", "ProductRoleHomeScreen"),
-    ("lib/screens/product_nba_public_pages_screen.dart", "ProductNbaBasicStatsScreen"),
-    ("lib/screens/product_nba_public_pages_screen.dart", "ProductNbaHubV2Screen"),
-    ("lib/screens/product_advanced_nba_tools_screen.dart", "ProductAdvancedNbaToolsScreen"),
+    ("lib/screens/product_arena_home_screen.dart", "ProductArenaHomeScreen"),
+    ("lib/screens/product_nba_stats_center_screen.dart", "ProductNbaStatsCenterScreen"),
     ("lib/screens/product_nba_stats_workstation_screen.dart", "ProductNbaStatsWorkstationScreen"),
+    ("lib/screens/product_analytics_suite_screen.dart", "ProductAnalyticsSuiteScreen"),
+    ("lib/screens/product_trade_machine_screen.dart", "ProductTradeMachineScreen"),
+    ("lib/screens/product_nba_public_pages_screen.dart", "ProductNbaHubV2Screen"),
     ("lib/screens/product_nba_awards_v2_screen.dart", "ProductNbaAwardsVotingScreen"),
-    ("lib/screens/product_connected_transaction_screens.dart", "ProductConnectedTradeMachineScreen"),
+    ("lib/screens/product_transaction_command_center_screen.dart", "ProductTransactionCommandCenterScreen"),
     ("lib/screens/product_connected_transaction_screens.dart", "ProductConnectedFrontOfficeScreen"),
-    ("lib/screens/product_trade_machine_v2_screen.dart", "ProductTradeMachineV2Screen"),
     ("lib/screens/product_front_office_registry_screen.dart", "ProductFrontOfficeRegistryScreen"),
     ("lib/screens/product_connected_workspace_screen.dart", "ProductConnectedWorkspaceScreen"),
     ("lib/screens/product_connected_data_studio_screen.dart", "ProductConnectedDataStudioScreen"),
-    ("lib/screens/product_content_ops_screens.dart", "ProductAdminOpsCenterScreen"),
-    ("lib/screens/product_connected_network_screens.dart", "ProductTrustSafetyConsoleScreen"),
     ("lib/screens/product_strategy_map_screen.dart", "ProductStrategyMapScreen"),
     ("lib/screens/product_fantasy_community_screens.dart", "ProductFantasyWarRoomScreen"),
     ("lib/screens/product_team_blogs_screen.dart", "ProductTeamBlogsScreen"),
     ("lib/screens/product_community_v2_screen.dart", "ProductCommunityV2Screen"),
+    ("lib/screens/product_connected_network_screens.dart", "ProductConnectedMessagesScreen"),
     ("lib/screens/product_profile_v3_screen.dart", "ProductProfileV3Screen"),
+    ("lib/screens/product_content_ops_screens.dart", "ProductAdminOpsCenterScreen"),
+    ("lib/screens/product_backend_sync_screen.dart", "ProductBackendSyncScreen"),
+    ("lib/screens/product_shell_screens.dart", "ProductInternalLabScreen"),
+    ("lib/screens/product_shell_screens.dart", "ProductArticlesScreen"),
     ("lib/screens/product_platform_content_legal_screen.dart", "ProductPlatformLegalScreen"),
 )
 
@@ -44,12 +46,6 @@ SCROLLER_PATTERNS = (
 
 
 def class_source(text: str, class_name: str) -> tuple[str, int] | None:
-    """Return one top-level class body and its source offset.
-
-    Product files commonly contain pushed drill-in page classes below the shell
-    surface. Auditing the full file would incorrectly forbid those independent
-    routes from scrolling, so we stop at the next top-level class declaration.
-    """
     match = re.search(rf"(?m)^class\s+{re.escape(class_name)}\b", text)
     if match is None:
         return None
@@ -118,7 +114,7 @@ def main() -> int:
         "shell": str(SHELL.relative_to(ROOT)),
         "shell_vertical_scrollers": shell_vertical_scrollers,
         "surface_count": len(SHELL_SURFACES),
-        "contract": "one-shell-owned-vertical-scroll-v2",
+        "contract": "one-shell-owned-vertical-scroll-v3",
         "violations": findings,
     }
     output = ROOT / args.json
@@ -128,14 +124,14 @@ def main() -> int:
 
     if shell_vertical_scrollers != 1:
         print(
-            "Expected exactly one vertical SingleChildScrollView in the role shell; "
+            "Expected exactly one vertical SingleChildScrollView in the canonical product shell; "
             f"found {shell_vertical_scrollers}."
         )
         return 1 if args.check else 0
     if args.check and findings:
         print(
-            "Shell-mounted surfaces must render vertical content intrinsically. "
-            "Use the role shell as the page scroll owner; internal table scrolling "
+            "Canonical-shell-mounted surfaces must render vertical content intrinsically. "
+            "Use the canonical product shell as the page scroll owner; internal table scrolling "
             "may be horizontal, and embedded lists must be shrink-wrapped/non-primary."
         )
         return 1

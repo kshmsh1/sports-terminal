@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../models/app_session.dart';
+import 'front_office_static_snapshot_repository.dart';
 import 'launch_backend_transport.dart';
 import 'product_local_store.dart';
 
@@ -18,6 +19,14 @@ class FrontOfficeRegistrySnapshot {
   final List<Map<String, dynamic>> draftAssets;
   final List<Map<String, dynamic>> ledger;
   final bool remoteAvailable;
+
+  static const empty = FrontOfficeRegistrySnapshot(
+    contracts: [],
+    teamPositions: [],
+    draftAssets: [],
+    ledger: [],
+    remoteAvailable: false,
+  );
 
   int get verifiedCount => [
         ...contracts,
@@ -47,12 +56,30 @@ class FrontOfficeRegistryService {
   final LaunchBackendTransport _transport;
   final ProductLocalStore _store;
 
+  static final FrontOfficeStaticSnapshotRepository _staticRepository =
+      FrontOfficeStaticSnapshotRepository();
+
   static const _contractsKey = 'sports_terminal.front_office.contracts.v1';
   static const _positionsKey = 'sports_terminal.front_office.positions.v1';
   static const _assetsKey = 'sports_terminal.front_office.draft_assets.v1';
   static const _ledgerKey = 'sports_terminal.front_office.ledger.v1';
 
+  /// Static-first product read.
+  ///
+  /// Contracts, cap positions, draft assets, and ledger records are published
+  /// before launch into same-origin static JSON. Browser-local edits can overlay
+  /// that immutable snapshot. Merely opening a player page or Front Office does
+  /// not perform a background API request.
   Future<FrontOfficeRegistrySnapshot> load({
+    required AppSession session,
+    String season = '2025-26',
+  }) {
+    return loadCached();
+  }
+
+  /// Explicit fresh read reserved for workflows that intentionally ask the
+  /// mutable backend for current registry state.
+  Future<FrontOfficeRegistrySnapshot> loadRemote({
     required AppSession session,
     String season = '2025-26',
   }) async {
@@ -91,6 +118,26 @@ class FrontOfficeRegistryService {
       draftAssets: results[2].rows,
       ledger: results[3].rows,
       remoteAvailable: results.any((result) => result.remoteAvailable),
+    );
+  }
+
+  /// Reads the published static registry plus the browser's newer local cache.
+  /// Local cached rows win by record ID, so mutable updates overlay rather than
+  /// rewrite the immutable published snapshot.
+  Future<FrontOfficeRegistrySnapshot> loadCached() async {
+    final staticSnapshot = await _staticRepository.load();
+    final results = await Future.wait([
+      _loadCachedCollection(_contractsKey),
+      _loadCachedCollection(_positionsKey),
+      _loadCachedCollection(_assetsKey),
+      _loadCachedCollection(_ledgerKey),
+    ]);
+    return FrontOfficeRegistrySnapshot(
+      contracts: _mergeById(staticSnapshot.contracts, results[0]),
+      teamPositions: _mergeById(staticSnapshot.teamPositions, results[1]),
+      draftAssets: _mergeById(staticSnapshot.draftAssets, results[2]),
+      ledger: _mergeById(staticSnapshot.ledger, results[3]),
+      remoteAvailable: false,
     );
   }
 
@@ -200,13 +247,18 @@ class FrontOfficeRegistryService {
       await _store.saveString(cacheKey, jsonEncode(rows));
       return _CollectionResult(rows, true);
     }
+    return _CollectionResult(await _loadCachedCollection(cacheKey), false);
+  }
+
+  Future<List<Map<String, dynamic>>> _loadCachedCollection(
+    String cacheKey,
+  ) async {
     final cached = await _store.loadString(cacheKey);
-    if (cached.isEmpty) return const _CollectionResult([], false);
+    if (cached.isEmpty) return const [];
     try {
-      final decoded = jsonDecode(cached);
-      return _CollectionResult(_list(decoded), false);
+      return _list(jsonDecode(cached));
     } catch (_) {
-      return const _CollectionResult([], false);
+      return const [];
     }
   }
 
@@ -239,6 +291,23 @@ class FrontOfficeRegistryService {
     rows.insert(0, item);
     await _store.saveString(cacheKey, jsonEncode(rows));
     return item;
+  }
+
+  static List<Map<String, dynamic>> _mergeById(
+    List<Map<String, dynamic>> published,
+    List<Map<String, dynamic>> local,
+  ) {
+    final merged = <String, Map<String, dynamic>>{};
+    var anonymous = 0;
+    for (final row in published) {
+      final id = row['id']?.toString() ?? '';
+      merged[id.isEmpty ? 'published-${anonymous++}' : id] = row;
+    }
+    for (final row in local) {
+      final id = row['id']?.toString() ?? '';
+      merged[id.isEmpty ? 'local-${anonymous++}' : id] = row;
+    }
+    return merged.values.toList();
   }
 
   static List<Map<String, dynamic>> _list(Object? value) {
