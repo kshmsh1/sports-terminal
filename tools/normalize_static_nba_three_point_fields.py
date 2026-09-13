@@ -39,8 +39,8 @@ THREE_POINT_ALIASES: dict[str, tuple[str, ...]] = {
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Normalize source-backed three-point totals in already-built static "
-            "NBA season shards and player dossiers. No network requests are performed."
+            "Normalize and repair source-backed three-point totals in already-built "
+            "static NBA season shards and player dossiers. No network requests are performed."
         )
     )
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
@@ -81,6 +81,37 @@ def _ratio_value(value: Any) -> float | None:
     return number / 100.0 if abs(number) > 1.5 else number
 
 
+def _near_integer(value: float, *, tolerance: float = 1e-6) -> int | None:
+    rounded = int(round(value))
+    return rounded if abs(value - rounded) <= tolerance else None
+
+
+def _derived_makes_from_scoring(row: dict[str, Any]) -> int | None:
+    # Exact basketball identity for season totals:
+    # PTS = 2 * FGM + 3PM + FTM.
+    points = _number(_first(row, ("points", "pts")))
+    fgm = _number(_first(row, ("field_goals_made", "fgm", "fg")))
+    ftm = _number(_first(row, ("free_throws_made", "ftm", "ft")))
+    if points is None or fgm is None or ftm is None:
+        return None
+    made = _near_integer(points - (2.0 * fgm) - ftm)
+    if made is None or made < 0 or made > int(round(fgm)):
+        return None
+    return made
+
+
+def _derived_attempts_from_two_point_attempts(row: dict[str, Any]) -> int | None:
+    # Exact attempt identity when 2PA is source-backed: FGA = 2PA + 3PA.
+    fga = _number(_first(row, ("field_goal_attempts", "fga")))
+    two_pa = _number(_first(row, ("two_point_attempts", "two_pa", "fg2a")))
+    if fga is None or two_pa is None:
+        return None
+    attempts = _near_integer(fga - two_pa)
+    if attempts is None or attempts < 0 or attempts > int(round(fga)):
+        return None
+    return attempts
+
+
 def _infer_integer_makes(attempts: Any, percentage: Any) -> int | None:
     attempts_number = _number(attempts)
     percentage_number = _ratio_value(percentage)
@@ -99,46 +130,76 @@ def _infer_integer_makes(attempts: Any, percentage: Any) -> int | None:
     return matches[0] if len(matches) == 1 else None
 
 
+def _replace_if_different(row: dict[str, Any], key: str, value: Any) -> bool:
+    if value is None:
+        return False
+    current = _number(row.get(key))
+    candidate = _number(value)
+    if candidate is not None and current is not None and abs(current - candidate) <= 1e-9:
+        return False
+    if candidate is None and row.get(key) == value:
+        return False
+    row[key] = value
+    return True
+
+
 def normalize_row(row: dict[str, Any]) -> bool:
     changed = False
     for canonical, aliases in THREE_POINT_ALIASES.items():
-        current = row.get(canonical)
-        value = _first(row, aliases)
-        if not _present(current) and _present(value):
-            row[canonical] = value
-            changed = True
+        if not _present(row.get(canonical)):
+            value = _first(row, aliases)
+            if _present(value):
+                row[canonical] = value
+                changed = True
 
     made = _number(row.get("three_pointers_made"))
-    attempts = row.get("three_point_attempts")
-    percentage = row.get("three_point_percentage")
+    attempts = _number(row.get("three_point_attempts"))
+    percentage = _ratio_value(row.get("three_point_percentage"))
 
-    # Repair the impossible import shape 3PM=0, 3PA>0, 3P%>0 only when the
-    # source-backed attempts + rounded percentage identify exactly one integer
-    # made-shot total. Ambiguous rows stay untouched.
-    if (
-        (made is None or made == 0)
-        and (_number(attempts) or 0) > 0
-        and (_ratio_value(percentage) or 0) > 0
+    # Prefer exact identities from other source-backed box-score totals. This
+    # repairs the observed bad import shape where 3P was materialized as 0.0
+    # even though PTS/FGM/FTM and the source PDF imply a nonzero integer total.
+    exact_made = _derived_makes_from_scoring(row)
+    if exact_made is not None and (made is None or abs(made - exact_made) > 1e-9):
+        row["three_pointers_made"] = exact_made
+        made = float(exact_made)
+        changed = True
+
+    exact_attempts = _derived_attempts_from_two_point_attempts(row)
+    if exact_attempts is not None and (
+        attempts is None or abs(attempts - exact_attempts) > 1e-9
     ):
+        row["three_point_attempts"] = exact_attempts
+        attempts = float(exact_attempts)
+        changed = True
+
+    # If the exact scoring identity is unavailable, the published rounded 3P%
+    # may still identify one and only one integer make total.
+    if (made is None or made == 0) and (attempts or 0) > 0 and (percentage or 0) > 0:
         inferred = _infer_integer_makes(attempts, percentage)
         if inferred is not None:
             row["three_pointers_made"] = inferred
+            made = float(inferred)
             changed = True
 
-    canonical_made = row.get("three_pointers_made")
-    if _present(canonical_made):
-        current = _number(row.get("three_pm"))
-        if current is None or (
-            current == 0 and (_number(canonical_made) or 0) > 0
-        ):
-            row["three_pm"] = canonical_made
+    # Once exact makes/attempts are known, percentage is deterministic. This
+    # also fixes rows where a stale/misaligned percentage survived canonical import.
+    if made is not None and attempts is not None and attempts > 0:
+        exact_pct = made / attempts
+        if percentage is None or abs(percentage - exact_pct) > 0.0005:
+            row["three_point_percentage"] = exact_pct
+            percentage = exact_pct
             changed = True
-    if not _present(row.get("three_pa")) and _present(row.get("three_point_attempts")):
-        row["three_pa"] = row["three_point_attempts"]
-        changed = True
-    if not _present(row.get("three_pct")) and _present(row.get("three_point_percentage")):
-        row["three_pct"] = row["three_point_percentage"]
-        changed = True
+    elif made == 0 and attempts == 0:
+        row["three_point_percentage"] = None
+
+    canonical_made = row.get("three_pointers_made")
+    canonical_attempts = row.get("three_point_attempts")
+    canonical_pct = row.get("three_point_percentage")
+    changed = _replace_if_different(row, "three_pm", canonical_made) or changed
+    changed = _replace_if_different(row, "three_pa", canonical_attempts) or changed
+    if canonical_pct is not None:
+        changed = _replace_if_different(row, "three_pct", canonical_pct) or changed
     return changed
 
 
@@ -208,14 +269,14 @@ def main() -> int:
     print(
         json.dumps(
             {
-                "contract": "sports-terminal-static-three-point-normalization-v3",
+                "contract": "sports-terminal-static-three-point-normalization-v4",
                 "season_files_scanned": season_files_scanned,
                 "season_files_changed": season_files_changed,
                 "dossier_files_scanned": dossier_files_scanned,
                 "dossier_files_changed": dossier_files_changed,
                 "rows_changed": rows_changed,
                 "source_labels": ["3P", "3PA", "3P%"],
-                "repair_policy": "unique-integer-from-source-attempts-and-rounded-percentage",
+                "repair_policy": "exact-box-score-identities-then-unique-rounded-percentage",
                 "network_requests": 0,
             },
             indent=2,
