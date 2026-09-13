@@ -80,6 +80,12 @@ fi
 "$PYTHON_BIN" "$ROOT/tools/rebuild_static_nba_dashboards.py" \
   --output "$ROOT/web/data/nba_static"
 
+# User-provided regular-season totals fill the three documented 1946-49 gaps.
+# The same static pass also rebuilds every dashboard player leaderboard with a
+# 50-game qualification, including locally materialized tracking categories.
+"$PYTHON_BIN" "$ROOT/tools/enrich_static_nba_pdf_early_totals.py" \
+  --output "$ROOT/web/data/nba_static"
+
 # Contracts/cap/draft records are also published as static read-only website
 # files when the local mutable registry exists. Missing registry data produces
 # explicit empty static files rather than a runtime API dependency.
