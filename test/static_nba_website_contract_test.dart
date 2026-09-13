@@ -51,12 +51,30 @@ void main() {
     }
   });
 
+  test('PDF supplement fills the three earliest NBA seasons statically', () {
+    final supplement = File(
+      'data/reference/nba_regular_totals_1946_49.csv.gz.b64',
+    );
+    final source = File(
+      'tools/enrich_static_nba_pdf_early_totals.py',
+    ).readAsStringSync();
+
+    expect(supplement.existsSync(), isTrue);
+    expect(supplement.lengthSync(), greaterThan(1000));
+    expect(source, contains("{'1946-47', '1947-48', '1948-49'}"));
+    expect(source, contains('MIN_PLAYER_LEADER_GAMES = 50'));
+    expect(source, contains("'known_missing_seasons'] = []"));
+    expect(source, contains("'network_requests': 0"));
+    expect(source, contains("'player_season_totals': totals"));
+  });
+
   test('local launcher builds static data before Flutter starts', () {
     final source = File('scripts/open_terminal.sh').readAsStringSync();
 
     expect(source, contains('build_static_nba_website_data_v2_core.py'));
     expect(source, contains('nba_com_static_enrichment.py'));
     expect(source, contains('rebuild_static_nba_dashboards.py'));
+    expect(source, contains('enrich_static_nba_pdf_early_totals.py'));
     expect(source, contains('build_static_front_office_snapshot.py'));
     expect(source, contains('flutter run -d chrome'));
     expect(source, contains('deliberately does not scrape or download'));
