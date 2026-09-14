@@ -8,6 +8,7 @@ import '../screens/product_trade_machine_screen.dart';
 import '../screens/website_nba_advanced_stats_screen.dart';
 import '../screens/website_nba_entity_pages.dart';
 import '../screens/website_nba_home_dashboard.dart';
+import '../screens/website_nba_player_comparison_screen.dart';
 import '../screens/website_nba_research_screen.dart';
 import '../screens/website_nba_stats_screen.dart';
 import '../screens/website_sports_home_screen.dart';
@@ -66,6 +67,12 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
           label: 'Advanced Stats',
           icon: Icons.analytics_rounded,
           builder: () => WebsiteNbaAdvancedStatsScreen(session: widget.session),
+        ),
+        _Destination(
+          id: 'compare',
+          label: 'Compare',
+          icon: Icons.compare_arrows_rounded,
+          builder: () => WebsiteNbaPlayerComparisonScreen(session: widget.session),
         ),
         const _Destination(
           id: 'trade',
@@ -235,8 +242,8 @@ class _TopNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final navItems = items.where((item) => item.showInMainNav).toList();
-    final primary = navItems.take(5).toList();
-    final more = navItems.skip(5).toList();
+    final primary = navItems.take(6).toList();
+    final more = navItems.skip(6).toList();
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Container(
