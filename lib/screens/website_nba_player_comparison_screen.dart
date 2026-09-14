@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../models/app_session.dart';
 import '../services/nba_stats_workstation_engine.dart';
-import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
 import 'website_nba_entity_pages.dart';
 
@@ -76,26 +75,30 @@ class _WebsiteNbaPlayerComparisonScreenState
       basis: _basis,
       seasonType: _seasonType,
     );
-    leftRows.sort((a, b) => (b.value('pts') ?? -1).compareTo(a.value('pts') ?? -1));
-    rightRows.sort((a, b) => (b.value('pts') ?? -1).compareTo(a.value('pts') ?? -1));
+    leftRows.sort(
+      (a, b) => (b.value('pts') ?? -1).compareTo(a.value('pts') ?? -1),
+    );
+    rightRows.sort(
+      (a, b) => (b.value('pts') ?? -1).compareTo(a.value('pts') ?? -1),
+    );
 
-    if (leftRows.isNotEmpty && !leftRows.any((row) => row.playerId == _leftPlayerId)) {
+    if (leftRows.isNotEmpty &&
+        !leftRows.any((row) => row.playerId == _leftPlayerId)) {
       _leftPlayerId = leftRows.first.playerId;
     }
     if (rightRows.isNotEmpty &&
         !rightRows.any((row) => row.playerId == _rightPlayerId)) {
-      final alternate = rightRows.firstWhere(
-        (row) => row.playerId != _leftPlayerId,
-        orElse: () => rightRows.first,
-      );
-      _rightPlayerId = alternate.playerId;
+      _rightPlayerId = rightRows
+          .firstWhere(
+            (row) => row.playerId != _leftPlayerId,
+            orElse: () => rightRows.first,
+          )
+          .playerId;
     }
     return _ComparisonData(leftRows: leftRows, rightRows: rightRows);
   }
 
-  void _reload() {
-    setState(() => _future = _loadData());
-  }
+  void _reload() => setState(() => _future = _loadData());
 
   void _setLeftSeason(String season) {
     _leftSeason = season;
@@ -242,7 +245,10 @@ class _WebsiteNbaPlayerComparisonScreenState
                 Tooltip(
                   message:
                       'Cross-era mode compares each player to the league environment of their own selected season.',
-                  child: Icon(Icons.info_outline_rounded, color: colors.onSurfaceVariant),
+                  child: Icon(
+                    Icons.info_outline_rounded,
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -307,13 +313,7 @@ class _WebsiteNbaPlayerComparisonScreenState
         ),
         const SizedBox(height: 18),
         if (left != null && right != null) ...[
-          _ComparisonSummary(
-            left: left,
-            right: right,
-            leftSeason: _leftSeason,
-            rightSeason: _rightSeason,
-            edge: edge,
-          ),
+          _ComparisonSummary(left: left, right: right, edge: edge),
           const SizedBox(height: 18),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -341,11 +341,7 @@ class _WebsiteNbaPlayerComparisonScreenState
             engine: _engine,
           ),
           const SizedBox(height: 18),
-          _PercentileFingerprint(
-            left: left,
-            right: right,
-            metrics: metrics,
-          ),
+          _PercentileFingerprint(left: left, right: right, metrics: metrics),
           const SizedBox(height: 16),
           Text(
             'Percentile bars are season-relative. In cross-era mode, each player is ranked against the player pool from that player’s selected season, which makes era-to-era comparison more meaningful than raw values alone.',
@@ -458,7 +454,10 @@ class _PlayerSelectorCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 if (player == null)
-                  const SizedBox(height: 100, child: Center(child: Text('Choose a player')))
+                  const SizedBox(
+                    height: 100,
+                    child: Center(child: Text('Choose a player')),
+                  )
                 else
                   Row(
                     children: [
@@ -513,15 +512,11 @@ class _ComparisonSummary extends StatelessWidget {
   const _ComparisonSummary({
     required this.left,
     required this.right,
-    required this.leftSeason,
-    required this.rightSeason,
     required this.edge,
   });
 
   final NbaStatsRow left;
   final NbaStatsRow right;
-  final String leftSeason;
-  final String rightSeason;
   final _EdgeSummary edge;
 
   @override
@@ -582,7 +577,11 @@ class _ComparisonSummary extends StatelessWidget {
               );
             }
             return Row(
-              children: [Expanded(child: headline), const SizedBox(width: 18), chips],
+              children: [
+                Expanded(child: headline),
+                const SizedBox(width: 18),
+                chips,
+              ],
             );
           },
         ),
@@ -592,10 +591,15 @@ class _ComparisonSummary extends StatelessWidget {
 }
 
 class _SummaryChip extends StatelessWidget {
-  const _SummaryChip({required this.icon, required this.label, required this.color});
+  const _SummaryChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
   final IconData icon;
   final String label;
   final Color color;
+
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -645,16 +649,34 @@ class _MetricBattleTable extends StatelessWidget {
                   child: Text(
                     '${left.player} · $leftSeason',
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: colors.primary, fontWeight: FontWeight.w900),
+                    style: TextStyle(
+                      color: colors.primary,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 100, child: Center(child: Text('METRIC', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1)))),
+                const SizedBox(
+                  width: 112,
+                  child: Center(
+                    child: Text(
+                      'METRIC',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                ),
                 Expanded(
                   child: Text(
                     '${right.player} · $rightSeason',
                     textAlign: TextAlign.right,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: colors.tertiary, fontWeight: FontWeight.w900),
+                    style: TextStyle(
+                      color: colors.tertiary,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
               ],
@@ -689,11 +711,11 @@ class _MetricBattleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final lv = metric.value(left);
-    final rv = metric.value(right);
-    final winner = metric.winner(lv, rv);
-    final lp = metric.percentile(left);
-    final rp = metric.percentile(right);
+    final leftValue = metric.value(left);
+    final rightValue = metric.value(right);
+    final winner = metric.winner(leftValue, rightValue);
+    final leftPercentile = metric.percentile(left);
+    final rightPercentile = metric.percentile(right);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -703,17 +725,24 @@ class _MetricBattleRow extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    metric.format(lv, engine),
+                    metric.format(leftValue, engine),
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       fontSize: 17,
-                      fontWeight: winner == -1 ? FontWeight.w900 : FontWeight.w600,
+                      fontWeight:
+                          winner == -1 ? FontWeight.w900 : FontWeight.w600,
                       color: winner == -1 ? colors.primary : null,
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                _EdgeBadge(value: lv, other: rv, winner: winner == -1, metric: metric, color: colors.primary),
+                _EdgeBadge(
+                  value: leftValue,
+                  other: rightValue,
+                  winner: winner == -1,
+                  metric: metric,
+                  color: colors.primary,
+                ),
               ],
             ),
           ),
@@ -721,11 +750,18 @@ class _MetricBattleRow extends StatelessWidget {
             width: 112,
             child: Column(
               children: [
-                Text(metric.label, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800)),
-                if (lp != null || rp != null)
+                Text(
+                  metric.label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                if (leftPercentile != null || rightPercentile != null)
                   Text(
-                    '${lp?.round() ?? '—'}p · ${rp?.round() ?? '—'}p',
-                    style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant),
+                    '${leftPercentile?.round() ?? '—'}p · ${rightPercentile?.round() ?? '—'}p',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: colors.onSurfaceVariant,
+                    ),
                   ),
               ],
             ),
@@ -733,14 +769,21 @@ class _MetricBattleRow extends StatelessWidget {
           Expanded(
             child: Row(
               children: [
-                _EdgeBadge(value: rv, other: lv, winner: winner == 1, metric: metric, color: colors.tertiary),
+                _EdgeBadge(
+                  value: rightValue,
+                  other: leftValue,
+                  winner: winner == 1,
+                  metric: metric,
+                  color: colors.tertiary,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    metric.format(rv, engine),
+                    metric.format(rightValue, engine),
                     style: TextStyle(
                       fontSize: 17,
-                      fontWeight: winner == 1 ? FontWeight.w900 : FontWeight.w600,
+                      fontWeight:
+                          winner == 1 ? FontWeight.w900 : FontWeight.w600,
                       color: winner == 1 ? colors.tertiary : null,
                     ),
                   ),
@@ -755,16 +798,27 @@ class _MetricBattleRow extends StatelessWidget {
 }
 
 class _EdgeBadge extends StatelessWidget {
-  const _EdgeBadge({required this.value, required this.other, required this.winner, required this.metric, required this.color});
+  const _EdgeBadge({
+    required this.value,
+    required this.other,
+    required this.winner,
+    required this.metric,
+    required this.color,
+  });
   final double? value;
   final double? other;
   final bool winner;
   final _CompareMetric metric;
   final Color color;
+
   @override
   Widget build(BuildContext context) {
-    if (!winner || value == null || other == null) return const SizedBox(width: 46);
-    final delta = (value - other).abs();
+    final current = value;
+    final comparison = other;
+    if (!winner || current == null || comparison == null) {
+      return const SizedBox(width: 46);
+    }
+    final delta = (current - comparison).abs();
     return Container(
       width: 46,
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -775,14 +829,22 @@ class _EdgeBadge extends StatelessWidget {
       child: Text(
         metric.delta(delta),
         textAlign: TextAlign.center,
-        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w900),
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }
 }
 
 class _PercentileFingerprint extends StatelessWidget {
-  const _PercentileFingerprint({required this.left, required this.right, required this.metrics});
+  const _PercentileFingerprint({
+    required this.left,
+    required this.right,
+    required this.metrics,
+  });
   final NbaStatsRow left;
   final NbaStatsRow right;
   final List<_CompareMetric> metrics;
@@ -790,7 +852,12 @@ class _PercentileFingerprint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final visible = metrics.where((metric) => metric.percentile(left) != null || metric.percentile(right) != null).toList();
+    final visible = metrics
+        .where(
+          (metric) =>
+              metric.percentile(left) != null || metric.percentile(right) != null,
+        )
+        .toList();
     if (visible.isEmpty) return const SizedBox.shrink();
     return Card(
       child: Padding(
@@ -798,9 +865,17 @@ class _PercentileFingerprint extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Season-relative fingerprint', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+            Text(
+              'Season-relative fingerprint',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
             const SizedBox(height: 4),
-            Text('Percentile context helps separate raw production from the league environment around each player.', style: TextStyle(color: colors.onSurfaceVariant)),
+            Text(
+              'Percentile context helps separate raw production from the league environment around each player.',
+              style: TextStyle(color: colors.onSurfaceVariant),
+            ),
             const SizedBox(height: 16),
             for (final metric in visible)
               Padding(
@@ -815,7 +890,11 @@ class _PercentileFingerprint extends StatelessWidget {
 }
 
 class _PercentileRow extends StatelessWidget {
-  const _PercentileRow({required this.metric, required this.left, required this.right});
+  const _PercentileRow({
+    required this.metric,
+    required this.left,
+    required this.right,
+  });
   final _CompareMetric metric;
   final NbaStatsRow left;
   final NbaStatsRow right;
@@ -823,37 +902,49 @@ class _PercentileRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final lp = metric.percentile(left) ?? 0;
-    final rp = metric.percentile(right) ?? 0;
+    final leftPercentile = metric.percentile(left) ?? 0;
+    final rightPercentile = metric.percentile(right) ?? 0;
     return Row(
       children: [
-        SizedBox(width: 76, child: Text(metric.label, style: const TextStyle(fontWeight: FontWeight.w700))),
+        SizedBox(
+          width: 76,
+          child: Text(
+            metric.label,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
         Expanded(
           child: Column(
             children: [
-              _PercentileBar(value: lp, color: colors.primary, reverse: true),
+              _PercentileBar(value: leftPercentile, color: colors.primary),
               const SizedBox(height: 4),
-              _PercentileBar(value: rp, color: colors.tertiary, reverse: false),
+              _PercentileBar(value: rightPercentile, color: colors.tertiary),
             ],
           ),
         ),
         const SizedBox(width: 10),
-        SizedBox(width: 82, child: Text('${lp.round()}p · ${rp.round()}p', textAlign: TextAlign.right)),
+        SizedBox(
+          width: 82,
+          child: Text(
+            '${leftPercentile.round()}p · ${rightPercentile.round()}p',
+            textAlign: TextAlign.right,
+          ),
+        ),
       ],
     );
   }
 }
 
 class _PercentileBar extends StatelessWidget {
-  const _PercentileBar({required this.value, required this.color, required this.reverse});
+  const _PercentileBar({required this.value, required this.color});
   final double value;
   final Color color;
-  final bool reverse;
+
   @override
   Widget build(BuildContext context) => ClipRRect(
         borderRadius: BorderRadius.circular(999),
         child: LinearProgressIndicator(
-          value: (value.clamp(0, 100)) / 100,
+          value: value.clamp(0, 100) / 100,
           minHeight: 8,
           backgroundColor: color.withValues(alpha: .10),
           valueColor: AlwaysStoppedAnimation(color),
@@ -869,6 +960,7 @@ class _CompareMetric {
     this.percent = false,
     this.rawAliases = const [],
   });
+
   final String key;
   final String label;
   final bool higherIsBetter;
@@ -878,7 +970,7 @@ class _CompareMetric {
   double? value(NbaStatsRow row) {
     final direct = row.value(key);
     if (direct != null) return direct;
-    for (final alias in [key, ...rawAliases]) {
+    for (final alias in <String>[key, ...rawAliases]) {
       final raw = _number(row.raw[alias]);
       if (raw != null) return percent && raw > 1 ? raw / 100 : raw;
     }
@@ -900,11 +992,18 @@ class _CompareMetric {
     return engine.formatValue(key, value);
   }
 
-  String delta(double value) => percent ? '${(value * 100).toStringAsFixed(1)}' : value.toStringAsFixed(1);
+  String delta(double value) =>
+      percent ? (value * 100).toStringAsFixed(1) : value.toStringAsFixed(1);
 }
 
 class _EdgeSummary {
-  const _EdgeSummary({required this.leftWins, required this.rightWins, required this.ties, required this.available, required this.total});
+  const _EdgeSummary({
+    required this.leftWins,
+    required this.rightWins,
+    required this.ties,
+    required this.available,
+    required this.total,
+  });
   final int leftWins;
   final int rightWins;
   final int ties;
@@ -912,31 +1011,53 @@ class _EdgeSummary {
   final int total;
 
   String text(String left, String right) {
-    if (available == 0) return 'No comparable metrics are available for this category.';
-    if (leftWins == rightWins) return '$left and $right are even across the available metrics in this view.';
+    if (available == 0) {
+      return 'No comparable metrics are available for this category.';
+    }
+    if (leftWins == rightWins) {
+      return '$left and $right are even across the available metrics in this view.';
+    }
     final leader = leftWins > rightWins ? left : right;
     final margin = (leftWins - rightWins).abs();
     return '$leader holds the broader edge in this view, leading by $margin metric${margin == 1 ? '' : 's'} across $available comparable fields.';
   }
 }
 
-_EdgeSummary _edgeSummary(NbaStatsRow? left, NbaStatsRow? right, List<_CompareMetric> metrics) {
-  if (left == null || right == null) return _EdgeSummary(leftWins: 0, rightWins: 0, ties: 0, available: 0, total: metrics.length);
+_EdgeSummary _edgeSummary(
+  NbaStatsRow? left,
+  NbaStatsRow? right,
+  List<_CompareMetric> metrics,
+) {
+  if (left == null || right == null) {
+    return _EdgeSummary(
+      leftWins: 0,
+      rightWins: 0,
+      ties: 0,
+      available: 0,
+      total: metrics.length,
+    );
+  }
   var leftWins = 0;
   var rightWins = 0;
   var ties = 0;
   var available = 0;
   for (final metric in metrics) {
-    final lv = metric.value(left);
-    final rv = metric.value(right);
-    if (lv == null || rv == null) continue;
+    final leftValue = metric.value(left);
+    final rightValue = metric.value(right);
+    if (leftValue == null || rightValue == null) continue;
     available++;
-    final winner = metric.winner(lv, rv);
+    final winner = metric.winner(leftValue, rightValue);
     if (winner == -1) leftWins++;
     if (winner == 1) rightWins++;
     if (winner == 0) ties++;
   }
-  return _EdgeSummary(leftWins: leftWins, rightWins: rightWins, ties: ties, available: available, total: metrics.length);
+  return _EdgeSummary(
+    leftWins: leftWins,
+    rightWins: rightWins,
+    ties: ties,
+    available: available,
+    total: metrics.length,
+  );
 }
 
 NbaStatsRow? _findRow(List<NbaStatsRow> rows, String? id) {
@@ -948,9 +1069,16 @@ NbaStatsRow? _findRow(List<NbaStatsRow> rows, String? id) {
 }
 
 String _initials(String name) {
-  final words = name.trim().split(RegExp(r'\s+')).where((word) => word.isNotEmpty).toList();
+  final words = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((word) => word.isNotEmpty)
+      .toList();
   if (words.isEmpty) return '?';
-  if (words.length == 1) return words.first.substring(0, math.min(2, words.first.length)).toUpperCase();
+  if (words.length == 1) {
+    final count = math.min(2, words.first.length);
+    return words.first.substring(0, count).toUpperCase();
+  }
   return '${words.first[0]}${words.last[0]}'.toUpperCase();
 }
 
@@ -1008,10 +1136,30 @@ const _categories = <String, List<_CompareMetric>>{
     _CompareMetric('stocks', 'STOCKS'),
     _CompareMetric('defense_events', 'DEF EVT'),
     _CompareMetric('pf', 'PF', higherIsBetter: false),
-    _CompareMetric('deflections_pg', 'Deflections', rawAliases: ['deflections']),
-    _CompareMetric('dfg_pct', 'DFG%', higherIsBetter: false, percent: true, rawAliases: ['defended_fg_pct']),
-    _CompareMetric('rim_dfg_pct', 'Rim DFG%', higherIsBetter: false, percent: true),
-    _CompareMetric('three_dfg_pct', '3P DFG%', higherIsBetter: false, percent: true),
+    _CompareMetric(
+      'deflections_pg',
+      'Deflections',
+      rawAliases: ['deflections'],
+    ),
+    _CompareMetric(
+      'dfg_pct',
+      'DFG%',
+      higherIsBetter: false,
+      percent: true,
+      rawAliases: ['defended_fg_pct'],
+    ),
+    _CompareMetric(
+      'rim_dfg_pct',
+      'Rim DFG%',
+      higherIsBetter: false,
+      percent: true,
+    ),
+    _CompareMetric(
+      'three_dfg_pct',
+      '3P DFG%',
+      higherIsBetter: false,
+      percent: true,
+    ),
   ],
   'Impact': [
     _CompareMetric('bpm', 'BPM'),
@@ -1024,6 +1172,7 @@ const _categories = <String, List<_CompareMetric>>{
 
 class _ComparisonLoading extends StatelessWidget {
   const _ComparisonLoading();
+
   @override
   Widget build(BuildContext context) => const SizedBox(
         height: 420,
@@ -1035,6 +1184,7 @@ class _ComparisonError extends StatelessWidget {
   const _ComparisonError({required this.error, required this.onRetry});
   final Object? error;
   final VoidCallback onRetry;
+
   @override
   Widget build(BuildContext context) => Card(
         child: Padding(
@@ -1042,11 +1192,22 @@ class _ComparisonError extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Player comparison data unavailable', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+              Text(
+                'Player comparison data unavailable',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
               const SizedBox(height: 8),
-              Text('The comparison lab reads the same local static season shards as Stats and Advanced Stats. ${error ?? ''}'),
+              Text(
+                'The comparison lab reads the same local static season shards as Stats and Advanced Stats. ${error ?? ''}',
+              ),
               const SizedBox(height: 14),
-              OutlinedButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh_rounded), label: const Text('Retry')),
+              OutlinedButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Retry'),
+              ),
             ],
           ),
         ),
