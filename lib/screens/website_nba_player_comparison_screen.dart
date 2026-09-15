@@ -23,10 +23,10 @@ class _WebsiteNbaPlayerComparisonScreenState
   final _engine = const NbaStatsWorkstationEngine();
 
   List<WebsiteNbaSeason> _seasons = const [];
-  String _leftSeason = '2025-26';
-  String _rightSeason = '2025-26';
-  String? _leftPlayerId;
-  String? _rightPlayerId;
+  final List<_PlayerSlotState> _slots = [
+    _PlayerSlotState(season: '2025-26'),
+    _PlayerSlotState(season: '2025-26'),
+  ];
   NbaStatsSeasonType _seasonType = NbaStatsSeasonType.regular;
   NbaStatsBasis _basis = NbaStatsBasis.perGame;
   String _category = 'Overall';
@@ -46,74 +46,99 @@ class _WebsiteNbaPlayerComparisonScreenState
         (item) => item.id == '2025-26',
         orElse: () => _seasons.first,
       );
-      _leftSeason = preferred.id;
-      _rightSeason = preferred.id;
+      for (final slot in _slots) {
+        slot.season = preferred.id;
+      }
     }
     return _loadData();
   }
 
   Future<_ComparisonData> _loadData() async {
-    final snapshots = await Future.wait([
-      _api.seasonSnapshot(
-        _leftSeason,
-        seasonType:
-            _seasonType == NbaStatsSeasonType.playoffs ? 'playoffs' : 'regular',
-      ),
-      _api.seasonSnapshot(
-        _rightSeason,
-        seasonType:
-            _seasonType == NbaStatsSeasonType.playoffs ? 'playoffs' : 'regular',
-      ),
+    final uniqueSeasons = _slots.map((slot) => slot.season).toSet().toList();
+    final entries = await Future.wait([
+      for (final season in uniqueSeasons) _loadSeason(season),
     ]);
-    final leftRows = _engine.buildRows(
-      snapshots[0],
-      basis: _basis,
-      seasonType: _seasonType,
-    );
-    final rightRows = _engine.buildRows(
-      snapshots[1],
-      basis: _basis,
-      seasonType: _seasonType,
-    );
-    leftRows.sort(
-      (a, b) => (b.value('pts') ?? -1).compareTo(a.value('pts') ?? -1),
-    );
-    rightRows.sort(
-      (a, b) => (b.value('pts') ?? -1).compareTo(a.value('pts') ?? -1),
-    );
+    final rowsBySeason = <String, List<NbaStatsRow>>{
+      for (var i = 0; i < uniqueSeasons.length; i++) uniqueSeasons[i]: entries[i],
+    };
 
-    if (leftRows.isNotEmpty &&
-        !leftRows.any((row) => row.playerId == _leftPlayerId)) {
-      _leftPlayerId = leftRows.first.playerId;
+    for (var index = 0; index < _slots.length; index++) {
+      final slot = _slots[index];
+      final rows = rowsBySeason[slot.season] ?? const <NbaStatsRow>[];
+      if (rows.isEmpty) {
+        slot.playerId = null;
+        continue;
+      }
+      if (!rows.any((row) => row.playerId == slot.playerId)) {
+        slot.playerId = _defaultPlayer(rows, index);
+      }
     }
-    if (rightRows.isNotEmpty &&
-        !rightRows.any((row) => row.playerId == _rightPlayerId)) {
-      _rightPlayerId = rightRows
-          .firstWhere(
-            (row) => row.playerId != _leftPlayerId,
-            orElse: () => rightRows.first,
-          )
-          .playerId;
-    }
-    return _ComparisonData(leftRows: leftRows, rightRows: rightRows);
+    return _ComparisonData(rowsBySeason: rowsBySeason);
+  }
+
+  Future<List<NbaStatsRow>> _loadSeason(String season) async {
+    final snapshot = await _api.seasonSnapshot(
+      season,
+      seasonType:
+          _seasonType == NbaStatsSeasonType.playoffs ? 'playoffs' : 'regular',
+    );
+    final rows = _engine.buildRows(
+      snapshot,
+      basis: _basis,
+      seasonType: _seasonType,
+    );
+    rows.sort(
+      (a, b) => (b.value('pts') ?? -1).compareTo(a.value('pts') ?? -1),
+    );
+    return rows;
+  }
+
+  String _defaultPlayer(List<NbaStatsRow> rows, int slotIndex) {
+    final used = <String>{
+      for (var i = 0; i < _slots.length; i++)
+        if (i != slotIndex && _slots[i].season == _slots[slotIndex].season)
+          if (_slots[i].playerId != null) _slots[i].playerId!,
+    };
+    return rows
+        .firstWhere(
+          (row) => !used.contains(row.playerId),
+          orElse: () => rows.first,
+        )
+        .playerId;
   }
 
   void _reload() => setState(() => _future = _loadData());
 
-  void _setLeftSeason(String season) {
-    _leftSeason = season;
-    if (_lockSeasons) _rightSeason = season;
-    _leftPlayerId = null;
-    if (_lockSeasons) _rightPlayerId = null;
+  void _setSeason(int index, String season) {
+    if (_lockSeasons) {
+      for (final slot in _slots) {
+        slot
+          ..season = season
+          ..playerId = null;
+      }
+    } else {
+      _slots[index]
+        ..season = season
+        ..playerId = null;
+    }
     _reload();
   }
 
-  void _setRightSeason(String season) {
-    _rightSeason = season;
-    if (_lockSeasons) _leftSeason = season;
-    _rightPlayerId = null;
-    if (_lockSeasons) _leftPlayerId = null;
-    _reload();
+  void _addPlayer() {
+    if (_slots.length >= 5) return;
+    final season = _lockSeasons ? _slots.first.season : _slots.last.season;
+    setState(() {
+      _slots.add(_PlayerSlotState(season: season));
+      _future = _loadData();
+    });
+  }
+
+  void _removePlayer(int index) {
+    if (_slots.length <= 2) return;
+    setState(() {
+      _slots.removeAt(index);
+      _future = _loadData();
+    });
   }
 
   @override
@@ -134,10 +159,25 @@ class _WebsiteNbaPlayerComparisonScreenState
 
   Widget _buildPage(BuildContext context, _ComparisonData data) {
     final colors = Theme.of(context).colorScheme;
-    final left = _findRow(data.leftRows, _leftPlayerId);
-    final right = _findRow(data.rightRows, _rightPlayerId);
+    final palette = _playerColors(colors);
+    final selected = <_SelectedPlayer>[];
+    for (var i = 0; i < _slots.length; i++) {
+      final slot = _slots[i];
+      final rows = data.rowsBySeason[slot.season] ?? const <NbaStatsRow>[];
+      final row = _findRow(rows, slot.playerId);
+      if (row != null) {
+        selected.add(
+          _SelectedPlayer(
+            slotIndex: i,
+            row: row,
+            season: slot.season,
+            color: palette[i],
+          ),
+        );
+      }
+    }
     final metrics = _categories[_category] ?? _categories['Overall']!;
-    final edge = _edgeSummary(left, right, metrics);
+    final standings = _buildStandings(selected, metrics);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,13 +207,19 @@ class _WebsiteNbaPlayerComparisonScreenState
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Compare players within one season or across eras using the local static NBA corpus.',
+                    'Compare two to five players within one season or across eras using the local static NBA corpus.',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: colors.onSurfaceVariant,
                         ),
                   ),
                 ],
               ),
+            ),
+            const SizedBox(width: 12),
+            FilledButton.icon(
+              onPressed: _slots.length < 5 ? _addPlayer : null,
+              icon: const Icon(Icons.person_add_alt_1_rounded),
+              label: Text(_slots.length < 5 ? 'Add player' : '5 players max'),
             ),
           ],
         ),
@@ -200,8 +246,9 @@ class _WebsiteNbaPlayerComparisonScreenState
                   selected: {_seasonType},
                   onSelectionChanged: (value) {
                     _seasonType = value.first;
-                    _leftPlayerId = null;
-                    _rightPlayerId = null;
+                    for (final slot in _slots) {
+                      slot.playerId = null;
+                    }
                     _reload();
                   },
                 ),
@@ -231,12 +278,16 @@ class _WebsiteNbaPlayerComparisonScreenState
                     size: 18,
                   ),
                   label: Text(_lockSeasons ? 'Seasons linked' : 'Cross-era mode'),
-                  onSelected: (selected) {
+                  onSelected: (selectedValue) {
                     setState(() {
-                      _lockSeasons = selected;
-                      if (selected) {
-                        _rightSeason = _leftSeason;
-                        _rightPlayerId = null;
+                      _lockSeasons = selectedValue;
+                      if (selectedValue && _slots.isNotEmpty) {
+                        final season = _slots.first.season;
+                        for (final slot in _slots) {
+                          slot
+                            ..season = season
+                            ..playerId = null;
+                        }
                         _future = _loadData();
                       }
                     });
@@ -244,7 +295,7 @@ class _WebsiteNbaPlayerComparisonScreenState
                 ),
                 Tooltip(
                   message:
-                      'Cross-era mode compares each player to the league environment of their own selected season.',
+                      'Cross-era mode lets every player use a different season. Percentiles remain relative to each player’s own season.',
                   child: Icon(
                     Icons.info_outline_rounded,
                     color: colors.onSurfaceVariant,
@@ -255,65 +306,57 @@ class _WebsiteNbaPlayerComparisonScreenState
           ),
         ),
         const SizedBox(height: 16),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final stacked = constraints.maxWidth < 820;
-            final leftCard = _PlayerSelectorCard(
-              accent: colors.primary,
-              season: _leftSeason,
-              seasons: _seasons,
-              rows: data.leftRows,
-              selectedPlayerId: _leftPlayerId,
-              player: left,
-              label: 'Player A',
-              onSeason: _setLeftSeason,
-              onPlayer: (id) => setState(() => _leftPlayerId = id),
-              onOpen: left == null
-                  ? null
-                  : () => openWebsiteNbaPlayerPage(
-                        context,
-                        session: widget.session,
-                        playerKey: left.playerId,
-                        playerName: left.player,
-                      ),
-            );
-            final rightCard = _PlayerSelectorCard(
-              accent: colors.tertiary,
-              season: _rightSeason,
-              seasons: _seasons,
-              rows: data.rightRows,
-              selectedPlayerId: _rightPlayerId,
-              player: right,
-              label: 'Player B',
-              onSeason: _setRightSeason,
-              onPlayer: (id) => setState(() => _rightPlayerId = id),
-              onOpen: right == null
-                  ? null
-                  : () => openWebsiteNbaPlayerPage(
-                        context,
-                        session: widget.session,
-                        playerKey: right.playerId,
-                        playerName: right.player,
-                      ),
-            );
-            if (stacked) {
-              return Column(
-                children: [leftCard, const SizedBox(height: 12), rightCard],
-              );
-            }
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: leftCard),
-                const SizedBox(width: 14),
-                Expanded(child: rightCard),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var index = 0; index < _slots.length; index++) ...[
+                SizedBox(
+                  width: 300,
+                  child: _PlayerSelectorCard(
+                    accent: palette[index],
+                    season: _slots[index].season,
+                    seasons: _seasons,
+                    rows: data.rowsBySeason[_slots[index].season] ??
+                        const <NbaStatsRow>[],
+                    selectedPlayerId: _slots[index].playerId,
+                    player: _findRow(
+                      data.rowsBySeason[_slots[index].season] ??
+                          const <NbaStatsRow>[],
+                      _slots[index].playerId,
+                    ),
+                    label: 'Player ${String.fromCharCode(65 + index)}',
+                    canRemove: _slots.length > 2,
+                    onRemove: () => _removePlayer(index),
+                    onSeason: (season) => _setSeason(index, season),
+                    onPlayer: (id) => setState(() => _slots[index].playerId = id),
+                    onOpen: _slots[index].playerId == null
+                        ? null
+                        : () {
+                            final row = _findRow(
+                              data.rowsBySeason[_slots[index].season] ??
+                                  const <NbaStatsRow>[],
+                              _slots[index].playerId,
+                            );
+                            if (row == null) return;
+                            openWebsiteNbaPlayerPage(
+                              context,
+                              session: widget.session,
+                              playerKey: row.playerId,
+                              playerName: row.player,
+                            );
+                          },
+                  ),
+                ),
+                if (index != _slots.length - 1) const SizedBox(width: 12),
               ],
-            );
-          },
+            ],
+          ),
         ),
         const SizedBox(height: 18),
-        if (left != null && right != null) ...[
-          _ComparisonSummary(left: left, right: right, edge: edge),
+        if (selected.length >= 2) ...[
+          _ComparisonSummary(players: selected, standings: standings),
           const SizedBox(height: 18),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -333,18 +376,15 @@ class _WebsiteNbaPlayerComparisonScreenState
           ),
           const SizedBox(height: 14),
           _MetricBattleTable(
-            left: left,
-            right: right,
-            leftSeason: _leftSeason,
-            rightSeason: _rightSeason,
+            players: selected,
             metrics: metrics,
             engine: _engine,
           ),
           const SizedBox(height: 18),
-          _PercentileFingerprint(left: left, right: right, metrics: metrics),
+          _PercentileFingerprint(players: selected, metrics: metrics),
           const SizedBox(height: 16),
           Text(
-            'Percentile bars are season-relative. In cross-era mode, each player is ranked against the player pool from that player’s selected season, which makes era-to-era comparison more meaningful than raw values alone.',
+            'The ★ marker identifies the most favorable available value for each metric among every selected player. Ties receive the marker together. Percentile bars are season-relative, so cross-era mode compares each player against the league environment of that player’s selected season.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: colors.onSurfaceVariant,
                   height: 1.45,
@@ -356,10 +396,28 @@ class _WebsiteNbaPlayerComparisonScreenState
   }
 }
 
+class _PlayerSlotState {
+  _PlayerSlotState({required this.season, this.playerId});
+  String season;
+  String? playerId;
+}
+
 class _ComparisonData {
-  const _ComparisonData({required this.leftRows, required this.rightRows});
-  final List<NbaStatsRow> leftRows;
-  final List<NbaStatsRow> rightRows;
+  const _ComparisonData({required this.rowsBySeason});
+  final Map<String, List<NbaStatsRow>> rowsBySeason;
+}
+
+class _SelectedPlayer {
+  const _SelectedPlayer({
+    required this.slotIndex,
+    required this.row,
+    required this.season,
+    required this.color,
+  });
+  final int slotIndex;
+  final NbaStatsRow row;
+  final String season;
+  final Color color;
 }
 
 class _PlayerSelectorCard extends StatelessWidget {
@@ -371,6 +429,8 @@ class _PlayerSelectorCard extends StatelessWidget {
     required this.selectedPlayerId,
     required this.player,
     required this.label,
+    required this.canRemove,
+    required this.onRemove,
     required this.onSeason,
     required this.onPlayer,
     required this.onOpen,
@@ -383,6 +443,8 @@ class _PlayerSelectorCard extends StatelessWidget {
   final String? selectedPlayerId;
   final NbaStatsRow? player;
   final String label;
+  final bool canRemove;
+  final VoidCallback onRemove;
   final ValueChanged<String> onSeason;
   final ValueChanged<String> onPlayer;
   final VoidCallback? onOpen;
@@ -396,7 +458,7 @@ class _PlayerSelectorCard extends StatelessWidget {
         children: [
           Container(height: 4, color: accent),
           Padding(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -406,33 +468,40 @@ class _PlayerSelectorCard extends StatelessWidget {
                       label.toUpperCase(),
                       style: TextStyle(
                         color: accent,
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2,
+                        letterSpacing: 1.1,
                       ),
                     ),
                     const Spacer(),
-                    SizedBox(
-                      width: 128,
-                      child: DropdownButtonFormField<String>(
-                        key: ValueKey('$label-$season'),
-                        initialValue: season,
-                        decoration: const InputDecoration(
-                          labelText: 'Season',
-                          isDense: true,
-                        ),
-                        items: [
-                          for (final item in seasons)
-                            DropdownMenuItem(value: item.id, child: Text(item.id)),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) onSeason(value);
-                        },
+                    if (canRemove)
+                      IconButton(
+                        tooltip: 'Remove player',
+                        onPressed: onRemove,
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.close_rounded, size: 18),
                       ),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: DropdownButtonFormField<String>(
+                    key: ValueKey('$label-$season'),
+                    initialValue: season,
+                    decoration: const InputDecoration(
+                      labelText: 'Season',
+                      isDense: true,
+                    ),
+                    items: [
+                      for (final item in seasons)
+                        DropdownMenuItem(value: item.id, child: Text(item.id)),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) onSeason(value);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
                 DropdownMenu<String>(
                   key: ValueKey('$label-$season-$selectedPlayerId'),
                   initialSelection: selectedPlayerId,
@@ -452,42 +521,47 @@ class _PlayerSelectorCard extends StatelessWidget {
                     if (value != null) onPlayer(value);
                   },
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
                 if (player == null)
                   const SizedBox(
-                    height: 100,
+                    height: 88,
                     child: Center(child: Text('Choose a player')),
                   )
                 else
                   Row(
                     children: [
                       CircleAvatar(
-                        radius: 34,
+                        radius: 28,
                         backgroundColor: accent.withValues(alpha: .16),
                         child: Text(
                           _initials(player!.player),
                           style: TextStyle(
                             color: accent,
-                            fontSize: 20,
+                            fontSize: 16,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               player!.player,
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w900,
                                   ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 3),
                             Text(
                               '${player!.team} · ${player!.position} · ${_whole(player!.value('gp'))} GP',
-                              style: TextStyle(color: colors.onSurfaceVariant),
+                              style: TextStyle(
+                                color: colors.onSurfaceVariant,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),
@@ -495,7 +569,7 @@ class _PlayerSelectorCard extends StatelessWidget {
                       IconButton(
                         tooltip: 'Open player page',
                         onPressed: onOpen,
-                        icon: const Icon(Icons.open_in_new_rounded),
+                        icon: const Icon(Icons.open_in_new_rounded, size: 18),
                       ),
                     ],
                   ),
@@ -509,81 +583,58 @@ class _PlayerSelectorCard extends StatelessWidget {
 }
 
 class _ComparisonSummary extends StatelessWidget {
-  const _ComparisonSummary({
-    required this.left,
-    required this.right,
-    required this.edge,
-  });
+  const _ComparisonSummary({required this.players, required this.standings});
 
-  final NbaStatsRow left;
-  final NbaStatsRow right;
-  final _EdgeSummary edge;
+  final List<_SelectedPlayer> players;
+  final List<_PlayerStanding> standings;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final maxWins = standings.isEmpty
+        ? 0
+        : standings.map((item) => item.wins).reduce(math.max);
+    final leaders = standings.where((item) => item.wins == maxWins).toList();
+    final leaderText = maxWins == 0
+        ? 'No comparable metrics are available in this view.'
+        : leaders.length == 1
+            ? '${leaders.first.player.row.player} leads this category with $maxWins best-in-group metric${maxWins == 1 ? '' : 's'}.'
+            : '${leaders.map((item) => item.player.row.player).join(', ')} are tied with $maxWins best-in-group metrics.';
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(18),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = constraints.maxWidth < 760;
-            final headline = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Matchup readout',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  edge.text(left.player, right.player),
-                  style: TextStyle(color: colors.onSurfaceVariant, height: 1.4),
-                ),
-              ],
-            );
-            final chips = Wrap(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Comparison readout',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              leaderText,
+              style: TextStyle(color: colors.onSurfaceVariant, height: 1.4),
+            ),
+            const SizedBox(height: 14),
+            Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                _SummaryChip(
-                  icon: Icons.trending_up_rounded,
-                  label: '${edge.leftWins} metric edges',
-                  color: colors.primary,
-                ),
-                _SummaryChip(
-                  icon: Icons.trending_down_rounded,
-                  label: '${edge.rightWins} metric edges',
-                  color: colors.tertiary,
-                ),
-                _SummaryChip(
-                  icon: Icons.balance_rounded,
-                  label: '${edge.ties} ties',
-                  color: colors.secondary,
-                ),
-                _SummaryChip(
-                  icon: Icons.dataset_outlined,
-                  label: '${edge.available}/${edge.total} comparable',
-                  color: colors.onSurfaceVariant,
-                ),
+                for (final standing in standings)
+                  _SummaryChip(
+                    icon: standing.wins == maxWins && maxWins > 0
+                        ? Icons.workspace_premium_rounded
+                        : Icons.bar_chart_rounded,
+                    label:
+                        '${standing.player.row.player}: ${standing.wins} best · ${standing.ties} tied',
+                    color: standing.player.color,
+                  ),
               ],
-            );
-            if (compact) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [headline, const SizedBox(height: 14), chips],
-              );
-            }
-            return Row(
-              children: [
-                Expanded(child: headline),
-                const SizedBox(width: 18),
-                chips,
-              ],
-            );
-          },
+            ),
+          ],
         ),
       ),
     );
@@ -620,76 +671,88 @@ class _SummaryChip extends StatelessWidget {
 
 class _MetricBattleTable extends StatelessWidget {
   const _MetricBattleTable({
-    required this.left,
-    required this.right,
-    required this.leftSeason,
-    required this.rightSeason,
+    required this.players,
     required this.metrics,
     required this.engine,
   });
 
-  final NbaStatsRow left;
-  final NbaStatsRow right;
-  final String leftSeason;
-  final String rightSeason;
+  final List<_SelectedPlayer> players;
   final List<_CompareMetric> metrics;
   final NbaStatsWorkstationEngine engine;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    const metricWidth = 120.0;
+    const playerWidth = 174.0;
+    final tableWidth = metricWidth + playerWidth * players.length;
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${left.player} · $leftSeason',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: colors.primary,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                const SizedBox(
-                  width: 112,
-                  child: Center(
-                    child: Text(
-                      'METRIC',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1,
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: math.max(tableWidth, 620),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                color: colors.surfaceContainerHighest.withValues(alpha: .35),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: metricWidth,
+                      child: Center(
+                        child: Text(
+                          'METRIC',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    for (final player in players)
+                      SizedBox(
+                        width: playerWidth,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Column(
+                            children: [
+                              Text(
+                                player.row.player,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: player.color,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              Text(
+                                player.season,
+                                style: TextStyle(
+                                  color: colors.onSurfaceVariant,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                Expanded(
-                  child: Text(
-                    '${right.player} · $rightSeason',
-                    textAlign: TextAlign.right,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: colors.tertiary,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-            for (final metric in metrics)
-              _MetricBattleRow(
-                metric: metric,
-                left: left,
-                right: right,
-                engine: engine,
               ),
-          ],
+              for (var index = 0; index < metrics.length; index++)
+                _MetricBattleRow(
+                  metric: metrics[index],
+                  players: players,
+                  engine: engine,
+                  shaded: index.isOdd,
+                  metricWidth: metricWidth,
+                  playerWidth: playerWidth,
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -699,55 +762,34 @@ class _MetricBattleTable extends StatelessWidget {
 class _MetricBattleRow extends StatelessWidget {
   const _MetricBattleRow({
     required this.metric,
-    required this.left,
-    required this.right,
+    required this.players,
     required this.engine,
+    required this.shaded,
+    required this.metricWidth,
+    required this.playerWidth,
   });
+
   final _CompareMetric metric;
-  final NbaStatsRow left;
-  final NbaStatsRow right;
+  final List<_SelectedPlayer> players;
   final NbaStatsWorkstationEngine engine;
+  final bool shaded;
+  final double metricWidth;
+  final double playerWidth;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final leftValue = metric.value(left);
-    final rightValue = metric.value(right);
-    final winner = metric.winner(leftValue, rightValue);
-    final leftPercentile = metric.percentile(left);
-    final rightPercentile = metric.percentile(right);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    final values = [for (final player in players) metric.value(player.row)];
+    final winnerIndexes = metric.bestIndexes(values);
+    return Container(
+      color: shaded
+          ? colors.surfaceContainerHighest.withValues(alpha: .14)
+          : Colors.transparent,
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    metric.format(leftValue, engine),
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight:
-                          winner == -1 ? FontWeight.w900 : FontWeight.w600,
-                      color: winner == -1 ? colors.primary : null,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _EdgeBadge(
-                  value: leftValue,
-                  other: rightValue,
-                  winner: winner == -1,
-                  metric: metric,
-                  color: colors.primary,
-                ),
-              ],
-            ),
-          ),
           SizedBox(
-            width: 112,
+            width: metricWidth,
             child: Column(
               children: [
                 Text(
@@ -755,84 +797,93 @@ class _MetricBattleRow extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
-                if (leftPercentile != null || rightPercentile != null)
-                  Text(
-                    '${leftPercentile?.round() ?? '—'}p · ${rightPercentile?.round() ?? '—'}p',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Row(
-              children: [
-                _EdgeBadge(
-                  value: rightValue,
-                  other: leftValue,
-                  winner: winner == 1,
-                  metric: metric,
-                  color: colors.tertiary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    metric.format(rightValue, engine),
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight:
-                          winner == 1 ? FontWeight.w900 : FontWeight.w600,
-                      color: winner == 1 ? colors.tertiary : null,
-                    ),
-                  ),
+                Text(
+                  metric.higherIsBetter ? 'higher is better' : 'lower is better',
+                  style: TextStyle(fontSize: 9, color: colors.onSurfaceVariant),
                 ),
               ],
             ),
           ),
+          for (var index = 0; index < players.length; index++)
+            SizedBox(
+              width: playerWidth,
+              child: _MetricValueCell(
+                value: values[index],
+                percentile: metric.percentile(players[index].row),
+                winner: winnerIndexes.contains(index),
+                metric: metric,
+                engine: engine,
+                color: players[index].color,
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
-class _EdgeBadge extends StatelessWidget {
-  const _EdgeBadge({
+class _MetricValueCell extends StatelessWidget {
+  const _MetricValueCell({
     required this.value,
-    required this.other,
+    required this.percentile,
     required this.winner,
     required this.metric,
+    required this.engine,
     required this.color,
   });
+
   final double? value;
-  final double? other;
+  final double? percentile;
   final bool winner;
   final _CompareMetric metric;
+  final NbaStatsWorkstationEngine engine;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final current = value;
-    final comparison = other;
-    if (!winner || current == null || comparison == null) {
-      return const SizedBox(width: 46);
-    }
-    final delta = (current - comparison).abs();
-    return Container(
-      width: 46,
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .14),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        metric.delta(delta),
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        decoration: BoxDecoration(
+          color: winner ? color.withValues(alpha: .13) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: winner
+              ? Border.all(color: color.withValues(alpha: .45))
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (winner && value != null) ...[
+              Icon(Icons.star_rounded, size: 17, color: color),
+              const SizedBox(width: 4),
+            ],
+            Flexible(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    metric.format(value, engine),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: winner ? FontWeight.w900 : FontWeight.w600,
+                      color: winner ? color : null,
+                    ),
+                  ),
+                  if (percentile != null)
+                    Text(
+                      '${percentile!.round()}th pct',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -841,12 +892,11 @@ class _EdgeBadge extends StatelessWidget {
 
 class _PercentileFingerprint extends StatelessWidget {
   const _PercentileFingerprint({
-    required this.left,
-    required this.right,
+    required this.players,
     required this.metrics,
   });
-  final NbaStatsRow left;
-  final NbaStatsRow right;
+
+  final List<_SelectedPlayer> players;
   final List<_CompareMetric> metrics;
 
   @override
@@ -854,11 +904,13 @@ class _PercentileFingerprint extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final visible = metrics
         .where(
-          (metric) =>
-              metric.percentile(left) != null || metric.percentile(right) != null,
+          (metric) => players.any(
+            (player) => metric.percentile(player.row) != null,
+          ),
         )
         .toList();
     if (visible.isEmpty) return const SizedBox.shrink();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -873,14 +925,40 @@ class _PercentileFingerprint extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Percentile context helps separate raw production from the league environment around each player.',
+              'Every bar is a percentile within that player’s selected season, preserving era context.',
               style: TextStyle(color: colors.onSurfaceVariant),
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 12,
+              runSpacing: 6,
+              children: [
+                for (final player in players)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 9,
+                        height: 9,
+                        decoration: BoxDecoration(
+                          color: player.color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        player.row.player,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
             for (final metric in visible)
               Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _PercentileRow(metric: metric, left: left, right: right),
+                padding: const EdgeInsets.only(bottom: 14),
+                child: _PercentileMultiRow(metric: metric, players: players),
               ),
           ],
         ),
@@ -889,45 +967,64 @@ class _PercentileFingerprint extends StatelessWidget {
   }
 }
 
-class _PercentileRow extends StatelessWidget {
-  const _PercentileRow({
-    required this.metric,
-    required this.left,
-    required this.right,
-  });
+class _PercentileMultiRow extends StatelessWidget {
+  const _PercentileMultiRow({required this.metric, required this.players});
+
   final _CompareMetric metric;
-  final NbaStatsRow left;
-  final NbaStatsRow right;
+  final List<_SelectedPlayer> players;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final leftPercentile = metric.percentile(left) ?? 0;
-    final rightPercentile = metric.percentile(right) ?? 0;
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 76,
-          child: Text(
-            metric.label,
-            style: const TextStyle(fontWeight: FontWeight.w700),
+          width: 92,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text(
+              metric.label,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
           ),
         ),
         Expanded(
           child: Column(
             children: [
-              _PercentileBar(value: leftPercentile, color: colors.primary),
-              const SizedBox(height: 4),
-              _PercentileBar(value: rightPercentile, color: colors.tertiary),
+              for (final player in players) ...[
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 110,
+                      child: Text(
+                        player.row.player,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ),
+                    Expanded(
+                      child: _PercentileBar(
+                        value: metric.percentile(player.row),
+                        color: player.color,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 38,
+                      child: Text(
+                        metric.percentile(player.row) == null
+                            ? '—'
+                            : '${metric.percentile(player.row)!.round()}p',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+              ],
             ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        SizedBox(
-          width: 82,
-          child: Text(
-            '${leftPercentile.round()}p · ${rightPercentile.round()}p',
-            textAlign: TextAlign.right,
           ),
         ),
       ],
@@ -937,14 +1034,14 @@ class _PercentileRow extends StatelessWidget {
 
 class _PercentileBar extends StatelessWidget {
   const _PercentileBar({required this.value, required this.color});
-  final double value;
+  final double? value;
   final Color color;
 
   @override
   Widget build(BuildContext context) => ClipRRect(
         borderRadius: BorderRadius.circular(999),
         child: LinearProgressIndicator(
-          value: value.clamp(0, 100) / 100,
+          value: value == null ? 0 : value!.clamp(0, 100) / 100,
           minHeight: 8,
           backgroundColor: color.withValues(alpha: .10),
           valueColor: AlwaysStoppedAnimation(color),
@@ -979,11 +1076,24 @@ class _CompareMetric {
 
   double? percentile(NbaStatsRow row) => row.percentiles[key];
 
-  int winner(double? left, double? right) {
-    if (left == null || right == null) return 0;
-    if ((left - right).abs() < 0.000001) return 0;
-    final leftWins = higherIsBetter ? left > right : left < right;
-    return leftWins ? -1 : 1;
+  Set<int> bestIndexes(List<double?> values) {
+    final valid = <MapEntry<int, double>>[];
+    for (var i = 0; i < values.length; i++) {
+      final value = values[i];
+      if (value != null && value.isFinite) valid.add(MapEntry(i, value));
+    }
+    if (valid.isEmpty) return const <int>{};
+    var best = valid.first.value;
+    for (final entry in valid.skip(1)) {
+      if (higherIsBetter ? entry.value > best : entry.value < best) {
+        best = entry.value;
+      }
+    }
+    const epsilon = 0.000001;
+    return {
+      for (final entry in valid)
+        if ((entry.value - best).abs() < epsilon) entry.key,
+    };
   }
 
   String format(double? value, NbaStatsWorkstationEngine engine) {
@@ -991,73 +1101,42 @@ class _CompareMetric {
     if (percent) return '${(value * 100).toStringAsFixed(1)}%';
     return engine.formatValue(key, value);
   }
-
-  String delta(double value) =>
-      percent ? (value * 100).toStringAsFixed(1) : value.toStringAsFixed(1);
 }
 
-class _EdgeSummary {
-  const _EdgeSummary({
-    required this.leftWins,
-    required this.rightWins,
+class _PlayerStanding {
+  const _PlayerStanding({
+    required this.player,
+    required this.wins,
     required this.ties,
-    required this.available,
-    required this.total,
   });
-  final int leftWins;
-  final int rightWins;
+  final _SelectedPlayer player;
+  final int wins;
   final int ties;
-  final int available;
-  final int total;
-
-  String text(String left, String right) {
-    if (available == 0) {
-      return 'No comparable metrics are available for this category.';
-    }
-    if (leftWins == rightWins) {
-      return '$left and $right are even across the available metrics in this view.';
-    }
-    final leader = leftWins > rightWins ? left : right;
-    final margin = (leftWins - rightWins).abs();
-    return '$leader holds the broader edge in this view, leading by $margin metric${margin == 1 ? '' : 's'} across $available comparable fields.';
-  }
 }
 
-_EdgeSummary _edgeSummary(
-  NbaStatsRow? left,
-  NbaStatsRow? right,
+List<_PlayerStanding> _buildStandings(
+  List<_SelectedPlayer> players,
   List<_CompareMetric> metrics,
 ) {
-  if (left == null || right == null) {
-    return _EdgeSummary(
-      leftWins: 0,
-      rightWins: 0,
-      ties: 0,
-      available: 0,
-      total: metrics.length,
-    );
-  }
-  var leftWins = 0;
-  var rightWins = 0;
-  var ties = 0;
-  var available = 0;
+  final wins = List<int>.filled(players.length, 0);
+  final ties = List<int>.filled(players.length, 0);
   for (final metric in metrics) {
-    final leftValue = metric.value(left);
-    final rightValue = metric.value(right);
-    if (leftValue == null || rightValue == null) continue;
-    available++;
-    final winner = metric.winner(leftValue, rightValue);
-    if (winner == -1) leftWins++;
-    if (winner == 1) rightWins++;
-    if (winner == 0) ties++;
+    final values = [for (final player in players) metric.value(player.row)];
+    final winners = metric.bestIndexes(values);
+    if (winners.isEmpty) continue;
+    final tied = winners.length > 1;
+    for (final index in winners) {
+      if (tied) {
+        ties[index]++;
+      } else {
+        wins[index]++;
+      }
+    }
   }
-  return _EdgeSummary(
-    leftWins: leftWins,
-    rightWins: rightWins,
-    ties: ties,
-    available: available,
-    total: metrics.length,
-  );
+  return [
+    for (var i = 0; i < players.length; i++)
+      _PlayerStanding(player: players[i], wins: wins[i], ties: ties[i]),
+  ];
 }
 
 NbaStatsRow? _findRow(List<NbaStatsRow> rows, String? id) {
@@ -1067,6 +1146,14 @@ NbaStatsRow? _findRow(List<NbaStatsRow> rows, String? id) {
   }
   return null;
 }
+
+List<Color> _playerColors(ColorScheme colors) => [
+      colors.primary,
+      colors.tertiary,
+      const Color(0xFFFFB74D),
+      const Color(0xFF66D9A7),
+      const Color(0xFFE879F9),
+    ];
 
 String _initials(String name) {
   final words = name
