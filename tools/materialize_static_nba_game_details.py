@@ -54,6 +54,14 @@ def _fingerprint(path: Path) -> dict[str, Any]:
     return {"size": stat.st_size, "mtime_ns": stat.st_mtime_ns}
 
 
+def _columns(db: sqlite3.Connection, table: str) -> set[str]:
+    return {str(row[1]) for row in db.execute(f"PRAGMA table_info({table})").fetchall()}
+
+
+def _league_where(alias: str, columns: set[str]) -> str:
+    return f" AND {alias}.league_id='NBA'" if "league_id" in columns else ""
+
+
 def main() -> int:
     args = parse_args()
     database = Path(args.database).expanduser().resolve()
@@ -80,18 +88,23 @@ def main() -> int:
     written = 0
     with sqlite3.connect(str(database)) as db:
         db.row_factory = sqlite3.Row
+        player_columns = _columns(db, "canon_fact_player_game")
+        team_columns = _columns(db, "canon_fact_team_game")
+        player_league_filter = _league_where("pg", player_columns)
+        team_league_filter = _league_where("tg", team_columns)
+
         counts = {
             str(row[0]): int(row[1] or 0)
             for row in db.execute(
-                "SELECT game_key,COUNT(*) FROM canon_fact_player_game "
-                "WHERE league_id='NBA' GROUP BY game_key"
+                "SELECT game_key,COUNT(*) FROM canon_fact_player_game pg "
+                f"WHERE 1=1{player_league_filter} GROUP BY game_key"
             ).fetchall()
         }
         team_counts = {
             str(row[0]): int(row[1] or 0)
             for row in db.execute(
-                "SELECT game_key,COUNT(*) FROM canon_fact_team_game "
-                "WHERE league_id='NBA' GROUP BY game_key"
+                "SELECT game_key,COUNT(*) FROM canon_fact_team_game tg "
+                f"WHERE 1=1{team_league_filter} GROUP BY game_key"
             ).fetchall()
         }
 
@@ -113,7 +126,7 @@ def main() -> int:
             game["box_score_available"] = True
             player_rows = _rows(
                 db.execute(
-                    """
+                    f"""
                     SELECT pg.*,p.canonical_name AS player_name,
                            t.canonical_name AS team_name,t.abbreviation AS team_abbreviation,
                            ot.canonical_name AS opponent_name,ot.abbreviation AS opponent_abbreviation
@@ -121,7 +134,7 @@ def main() -> int:
                     LEFT JOIN canon_dim_player p ON p.player_key=pg.player_key
                     LEFT JOIN canon_dim_team t ON t.team_key=pg.team_key
                     LEFT JOIN canon_dim_team ot ON ot.team_key=pg.opponent_team_key
-                    WHERE pg.game_key=? AND pg.league_id='NBA'
+                    WHERE pg.game_key=?{player_league_filter}
                     ORDER BY pg.team_key,COALESCE(pg.minutes,0) DESC,p.canonical_name
                     """,
                     (game_key,),
@@ -129,13 +142,13 @@ def main() -> int:
             ) if has_players else []
             team_rows = _rows(
                 db.execute(
-                    """
+                    f"""
                     SELECT tg.*,t.canonical_name AS team_name,t.abbreviation AS team_abbreviation,
                            ot.canonical_name AS opponent_name,ot.abbreviation AS opponent_abbreviation
                     FROM canon_fact_team_game tg
                     LEFT JOIN canon_dim_team t ON t.team_key=tg.team_key
                     LEFT JOIN canon_dim_team ot ON ot.team_key=tg.opponent_team_key
-                    WHERE tg.game_key=? AND tg.league_id='NBA'
+                    WHERE tg.game_key=?{team_league_filter}
                     ORDER BY tg.team_key
                     """,
                     (game_key,),
