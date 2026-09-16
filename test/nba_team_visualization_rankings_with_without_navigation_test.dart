@@ -60,7 +60,7 @@ void main() {
     expect(screen, contains('STAT / Δ'));
     expect(screen, contains('With minus Without'));
     expect(screen, contains('Small sample'));
-    expect(screen, contains('Season $formattedBaseline'));
+    expect(screen, contains(r'Season $formattedBaseline'));
     expect(repository, contains('with_without.json'));
     expect(repository, contains('available: false'));
     expect(repository, isNot(contains('Math.random')));
@@ -112,7 +112,7 @@ void main() {
     expect(source, contains('beforeId'));
     expect(source, contains('Move earlier'));
     expect(source, contains('Move later'));
-    expect(source, contains("'#$rank'"));
+    expect(source, contains(r"'#$rank'"));
     expect(source, contains('Sort pool'));
     expect(source, contains('SharedPreferences'));
     expect(source, contains('Save As'));
