@@ -12,9 +12,12 @@ import '../screens/website_nba_home_dashboard.dart';
 import '../screens/website_nba_live_games_screen.dart';
 import '../screens/website_nba_media_feed_screen.dart';
 import '../screens/website_nba_player_comparison_screen.dart';
+import '../screens/website_nba_rankings_screen.dart';
 import '../screens/website_nba_research_screen.dart';
 import '../screens/website_nba_stats_screen.dart';
 import '../screens/website_nba_team_comparison_screen.dart';
+import '../screens/website_nba_visualizations_screen.dart';
+import '../screens/website_nba_with_without_screen.dart';
 import '../screens/website_sports_home_screen.dart';
 import '../services/product_local_store.dart';
 import '../services/website_nba_api_service.dart';
@@ -24,7 +27,7 @@ const _brandBlue = Color(0xFF6674C7);
 /// Sole customer-facing Sports Terminal shell.
 ///
 /// Historical NBA data is served from the local static corpus. Live scores and
-/// public social embeds are isolated to the explicitly live product surfaces.
+/// public social embeds are isolated to explicitly live product surfaces.
 class CanonicalProductShell extends StatefulWidget {
   const CanonicalProductShell({
     super.key,
@@ -76,14 +79,12 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
           label: 'Player Compare',
           icon: Icons.people_alt_outlined,
           builder: () => WebsiteNbaPlayerComparisonScreen(session: widget.session),
-          showInMainNav: false,
         ),
         _Destination(
           id: 'team-compare',
           label: 'Team Compare',
           icon: Icons.groups_2_outlined,
           builder: () => WebsiteNbaTeamComparisonScreen(session: widget.session),
-          showInMainNav: false,
         ),
         const _Destination(
           id: 'trade',
@@ -108,6 +109,24 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
           label: 'Media Feed',
           icon: Icons.dynamic_feed_rounded,
           builder: WebsiteNbaMediaFeedScreen.new,
+        ),
+        const _Destination(
+          id: 'visualizations',
+          label: 'Visualizations',
+          icon: Icons.auto_graph_rounded,
+          builder: WebsiteNbaVisualizationsScreen.new,
+        ),
+        const _Destination(
+          id: 'with-without',
+          label: 'With / Without',
+          icon: Icons.compare_arrows_rounded,
+          builder: WebsiteNbaWithWithoutScreen.new,
+        ),
+        const _Destination(
+          id: 'rankings',
+          label: 'Rankings',
+          icon: Icons.format_list_numbered_rounded,
+          builder: WebsiteNbaRankingsScreen.new,
         ),
         _Destination(
           id: 'front-office',
@@ -144,7 +163,6 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
           label: 'Profile',
           icon: Icons.person_outline_rounded,
           builder: () => ProductProfileV3Screen(session: widget.session),
-          showInMainNav: false,
         ),
       ];
 
@@ -163,9 +181,9 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
   }
 
   Future<void> _toggleTheme() async {
-    final next = !_darkMode;
-    setState(() => _darkMode = next);
-    await _store.saveBool(ProductLocalStore.darkModeKey, next);
+    final value = !_darkMode;
+    setState(() => _darkMode = value);
+    await _store.saveBool(ProductLocalStore.darkModeKey, value);
   }
 
   void _select(String id) {
@@ -267,25 +285,33 @@ class _TopNav extends StatelessWidget {
   final VoidCallback onTheme;
   final VoidCallback onSignOut;
 
+  _Destination _item(String id) => items.firstWhere((item) => item.id == id);
+
   bool get _compareSelected =>
       selected == 'player-compare' || selected == 'team-compare';
-
-  _Destination _item(String id) => items.firstWhere((item) => item.id == id);
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final moreIds = <String>[
-      'live-games',
-      'box-scores',
-      'media-feed',
-      'front-office',
-      'research',
-      'community',
-      'python-lab',
-      'excel-workspace',
+    final primary = <_Destination>[
+      _item('sports'),
+      _item('nba-home'),
+      _item('stats'),
+      _item('advanced'),
     ];
-    final primaryIds = <String>['sports', 'nba-home', 'stats', 'advanced', 'trade'];
+    final more = <_Destination>[
+      _item('live-games'),
+      _item('box-scores'),
+      _item('media-feed'),
+      _item('visualizations'),
+      _item('with-without'),
+      _item('rankings'),
+      _item('front-office'),
+      _item('research'),
+      _item('community'),
+      _item('python-lab'),
+      _item('excel-workspace'),
+    ];
 
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -297,7 +323,7 @@ class _TopNav extends StatelessWidget {
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final compact = constraints.maxWidth < 980;
+            final compact = constraints.maxWidth < 900;
             return Row(
               children: [
                 InkWell(
@@ -338,15 +364,15 @@ class _TopNav extends StatelessWidget {
                   ),
                 ),
                 if (!compact) ...[
-                  const SizedBox(width: 18),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-                        for (final id in primaryIds.take(4))
+                        for (final entry in primary)
                           _NavButton(
-                            item: _item(id),
-                            selected: selected == id,
+                            item: entry,
+                            selected: selected == entry.id,
                             onSelect: onSelect,
                           ),
                         _CompareMenu(
@@ -362,26 +388,26 @@ class _TopNav extends StatelessWidget {
                           tooltip: 'More',
                           onSelected: onSelect,
                           itemBuilder: (_) => [
-                            for (final id in moreIds)
+                            for (final entry in more)
                               PopupMenuItem<String>(
-                                value: id,
-                                enabled: _item(id).enabled,
+                                value: entry.id,
+                                enabled: entry.enabled,
                                 child: ListTile(
-                                  enabled: _item(id).enabled,
+                                  enabled: entry.enabled,
                                   contentPadding: EdgeInsets.zero,
-                                  leading: Icon(_item(id).icon),
-                                  title: Text(_item(id).label),
-                                  subtitle: _item(id).enabled
+                                  leading: Icon(entry.icon),
+                                  title: Text(entry.label),
+                                  subtitle: entry.enabled
                                       ? null
                                       : const Text('Display only — not connected'),
-                                  trailing: selected == id
+                                  trailing: selected == entry.id
                                       ? const Icon(Icons.check_rounded)
                                       : null,
                                 ),
                               ),
                           ],
                           child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: EdgeInsets.symmetric(horizontal: 11, vertical: 8),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -395,7 +421,7 @@ class _TopNav extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   SizedBox(
                     width: 220,
                     height: 40,
@@ -419,8 +445,8 @@ class _TopNav extends StatelessWidget {
                     tooltip: 'Navigation',
                     onSelected: onSelect,
                     itemBuilder: (_) => [
-                      for (final id in ['sports', 'nba-home', 'stats', 'advanced'])
-                        _mobileMenuItem(_item(id), selected),
+                      for (final entry in primary)
+                        _mobileMenuItem(entry, selected),
                       const PopupMenuItem<String>(
                         enabled: false,
                         child: Text(
@@ -432,7 +458,8 @@ class _TopNav extends StatelessWidget {
                       _mobileMenuItem(_item('team-compare'), selected),
                       const PopupMenuDivider(),
                       _mobileMenuItem(_item('trade'), selected),
-                      for (final id in moreIds) _mobileMenuItem(_item(id), selected),
+                      for (final entry in more)
+                        _mobileMenuItem(entry, selected),
                     ],
                     icon: const Icon(Icons.menu_rounded),
                   ),
@@ -559,7 +586,7 @@ class _CompareMenu extends StatelessWidget {
         ),
       ],
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -751,7 +778,6 @@ class _Destination {
     required this.icon,
     this.builder,
     this.enabled = true,
-    this.showInMainNav = true,
   });
 
   final String id;
@@ -759,7 +785,6 @@ class _Destination {
   final IconData icon;
   final Widget Function()? builder;
   final bool enabled;
-  final bool showInMainNav;
 }
 
 String _initials(String value) {
