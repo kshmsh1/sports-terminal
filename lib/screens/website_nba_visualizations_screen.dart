@@ -478,7 +478,12 @@ class _NbaChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Rect.fromLTWH(62, 20, math.max(10, size.width - 88), math.max(10, size.height - 72));
+    final rect = Rect.fromLTWH(
+      62,
+      20,
+      math.max(10.0, size.width - 88),
+      math.max(10.0, size.height - 72),
+    );
     final paint = Paint()..strokeWidth = 1.2;
     paint.color = colorScheme.outlineVariant;
     canvas.drawLine(rect.bottomLeft, rect.bottomRight, paint);
@@ -552,11 +557,27 @@ class _NbaChartPainter extends CustomPainter {
       points.add(point);
       final color = _colorFor(row, index);
       final radius = bubbles
-          ? _bubbleRadius(row.value(sizeMetric), valid.map((item) => item.value(sizeMetric)).whereType<double>().toList())
+          ? _bubbleRadius(
+              row.value(sizeMetric),
+              valid
+                  .map((item) => item.value(sizeMetric))
+                  .whereType<double>()
+                  .toList(),
+            )
           : 4.5;
-      canvas.drawCircle(point, radius, Paint()..color = color.withValues(alpha: .82));
+      canvas.drawCircle(
+        point,
+        radius,
+        Paint()..color = color.withValues(alpha: .82),
+      );
       if (valid.length <= 24 || index < 12) {
-        _text(canvas, _shortLabel(row.player), point + const Offset(6, -11), colorScheme.onSurface, small: true);
+        _text(
+          canvas,
+          _shortLabel(row.player),
+          point + const Offset(6, -11),
+          colorScheme.onSurface,
+          small: true,
+        );
       }
     }
     if (connect && points.length > 1) {
@@ -569,7 +590,10 @@ class _NbaChartPainter extends CustomPainter {
           ..lineTo(points.last.dx, rect.bottom)
           ..lineTo(points.first.dx, rect.bottom)
           ..close();
-        canvas.drawPath(area, Paint()..color = colorScheme.primary.withValues(alpha: .14));
+        canvas.drawPath(
+          area,
+          Paint()..color = colorScheme.primary.withValues(alpha: .14),
+        );
       }
       canvas.drawPath(
         path,
@@ -582,13 +606,20 @@ class _NbaChartPainter extends CustomPainter {
   }
 
   void _paintBars(Canvas canvas, Rect rect) {
-    final valid = rows.where((row) => row.value(yMetric) != null).take(16).toList();
+    final valid = rows
+        .where((row) => row.value(yMetric) != null)
+        .take(16)
+        .toList();
     if (valid.isEmpty) return;
-    final maxValue = valid.map((row) => row.value(yMetric)!.abs()).fold<double>(0, math.max);
+    final maxValue = valid
+        .map((row) => row.value(yMetric)!.abs())
+        .fold<double>(0, math.max);
     final width = rect.width / valid.length;
     for (var index = 0; index < valid.length; index++) {
       final value = valid[index].value(yMetric)!;
-      final height = maxValue <= 0 ? 0 : rect.height * .82 * (value.abs() / maxValue);
+      final height = maxValue <= 0
+          ? 0.0
+          : rect.height * .82 * (value.abs() / maxValue);
       final bar = Rect.fromLTWH(
         rect.left + index * width + width * .14,
         rect.bottom - height,
@@ -597,7 +628,8 @@ class _NbaChartPainter extends CustomPainter {
       );
       canvas.drawRRect(
         RRect.fromRectAndRadius(bar, const Radius.circular(4)),
-        Paint()..color = _colorFor(valid[index], index).withValues(alpha: .86),
+        Paint()
+          ..color = _colorFor(valid[index], index).withValues(alpha: .86),
       );
       _text(
         canvas,
@@ -615,12 +647,17 @@ class _NbaChartPainter extends CustomPainter {
         .take(10)
         .toList();
     if (valid.isEmpty) return;
-    final total = valid.fold<double>(0, (sum, row) => sum + row.value(yMetric)!);
-    final radius = math.min(rect.width, rect.height) * .34;
+    final total = valid.fold<double>(
+      0,
+      (sum, row) => sum + row.value(yMetric)!,
+    );
+    final radius = (math.min(rect.width, rect.height) * .34).toDouble();
     final center = Offset(rect.center.dx - rect.width * .12, rect.center.dy);
     var start = -math.pi / 2;
     for (var index = 0; index < valid.length; index++) {
-      final sweep = total <= 0 ? 0 : valid[index].value(yMetric)! / total * math.pi * 2;
+      final sweep = total <= 0
+          ? 0.0
+          : valid[index].value(yMetric)! / total * math.pi * 2;
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         start,
@@ -645,7 +682,10 @@ class _NbaChartPainter extends CustomPainter {
   }
 
   void _paintHistogram(Canvas canvas, Rect rect) {
-    final values = rows.map((row) => row.value(yMetric)).whereType<double>().toList();
+    final values = rows
+        .map((row) => row.value(yMetric))
+        .whereType<double>()
+        .toList();
     if (values.isEmpty) return;
     final minValue = values.reduce(math.min);
     final maxValue = values.reduce(math.max);
@@ -653,16 +693,25 @@ class _NbaChartPainter extends CustomPainter {
     final counts = List<int>.filled(bins, 0);
     final span = maxValue - minValue;
     for (final value in values) {
-      final raw = span == 0 ? 0 : ((value - minValue) / span * bins).floor();
+      final raw = span == 0
+          ? 0
+          : ((value - minValue) / span * bins).floor();
       final index = raw.clamp(0, bins - 1);
       counts[index] += 1;
     }
     final maxCount = counts.reduce(math.max);
     final width = rect.width / bins;
     for (var index = 0; index < bins; index++) {
-      final height = maxCount == 0 ? 0 : rect.height * .84 * counts[index] / maxCount;
+      final height = maxCount == 0
+          ? 0.0
+          : rect.height * .84 * counts[index] / maxCount;
       canvas.drawRect(
-        Rect.fromLTWH(rect.left + index * width + 1, rect.bottom - height, width - 2, height),
+        Rect.fromLTWH(
+          rect.left + index * width + 1,
+          rect.bottom - height,
+          width - 2,
+          height,
+        ),
         Paint()..color = colorScheme.primary.withValues(alpha: .76),
       );
     }
@@ -680,7 +729,8 @@ class _NbaChartPainter extends CustomPainter {
       final path = Path();
       for (var index = 0; index < metrics.length; index++) {
         final angle = -math.pi / 2 + index * math.pi * 2 / metrics.length;
-        final point = center + Offset(math.cos(angle), math.sin(angle)) * radius * fraction;
+        final point =
+            center + Offset(math.cos(angle), math.sin(angle)) * radius * fraction;
         if (index == 0) {
           path.moveTo(point.dx, point.dy);
         } else {
@@ -696,7 +746,10 @@ class _NbaChartPainter extends CustomPainter {
       final percentile = (row.percentiles[metric] ?? 0) / 100;
       final angle = -math.pi / 2 + index * math.pi * 2 / metrics.length;
       final outer = center + Offset(math.cos(angle), math.sin(angle)) * radius;
-      final point = center + Offset(math.cos(angle), math.sin(angle)) * radius * percentile.clamp(0, 1);
+      final point = center +
+          Offset(math.cos(angle), math.sin(angle)) *
+              radius *
+              percentile.clamp(0, 1);
       canvas.drawLine(center, outer, grid);
       _text(
         canvas,
@@ -713,7 +766,10 @@ class _NbaChartPainter extends CustomPainter {
       }
     }
     shape.close();
-    canvas.drawPath(shape, Paint()..color = colorScheme.primary.withValues(alpha: .18));
+    canvas.drawPath(
+      shape,
+      Paint()..color = colorScheme.primary.withValues(alpha: .18),
+    );
     canvas.drawPath(
       shape,
       Paint()
@@ -735,13 +791,18 @@ class _NbaChartPainter extends CustomPainter {
     final minValue = values.reduce(math.min);
     final maxValue = values.reduce(math.max);
     if (maxValue == minValue) return 10;
-    return 5 + 15 * ((value - minValue) / (maxValue - minValue)).clamp(0, 1);
+    return 5 +
+        15 * ((value - minValue) / (maxValue - minValue)).clamp(0, 1);
   }
 
   Color _colorFor(NbaStatsRow row, int index) {
     if (groupBy == 'None') return colorScheme.primary;
     final token = groupBy == 'Position' ? row.position : row.team;
-    final hash = token.codeUnits.fold<int>(0, (sum, value) => sum + value * 17) + index;
+    final hash = token.codeUnits.fold<int>(
+          0,
+          (sum, value) => sum + value * 17,
+        ) +
+        index;
     final hue = (hash * 37) % 360;
     return HSVColor.fromAHSV(1, hue.toDouble(), .62, .86).toColor();
   }
@@ -769,7 +830,13 @@ class _NbaChartPainter extends CustomPainter {
     painter.paint(canvas, offset);
   }
 
-  double _scale(double value, double min, double max, double outMin, double outMax) {
+  double _scale(
+    double value,
+    double min,
+    double max,
+    double outMin,
+    double outMax,
+  ) {
     if (max == min) return (outMin + outMax) / 2;
     return outMin + (value - min) / (max - min) * (outMax - outMin);
   }
