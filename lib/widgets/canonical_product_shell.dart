@@ -6,21 +6,28 @@ import '../screens/product_front_office_registry_screen.dart';
 import '../screens/product_profile_v3_screen.dart';
 import '../screens/product_trade_machine_screen.dart';
 import '../screens/website_nba_advanced_stats_screen.dart';
+import '../screens/website_nba_box_scores_screen.dart';
 import '../screens/website_nba_entity_pages.dart';
 import '../screens/website_nba_home_dashboard.dart';
+import '../screens/website_nba_live_games_screen.dart';
+import '../screens/website_nba_media_feed_screen.dart';
+import '../screens/website_nba_player_comparison_screen.dart';
+import '../screens/website_nba_rankings_screen.dart';
 import '../screens/website_nba_research_screen.dart';
 import '../screens/website_nba_stats_screen.dart';
+import '../screens/website_nba_team_comparison_screen.dart';
+import '../screens/website_nba_visualizations_screen.dart';
+import '../screens/website_nba_with_without_screen.dart';
 import '../screens/website_sports_home_screen.dart';
 import '../services/product_local_store.dart';
 import '../services/website_nba_api_service.dart';
 
 const _brandBlue = Color(0xFF6674C7);
 
-/// Canonical customer-facing Sports Terminal shell.
+/// Sole customer-facing Sports Terminal shell.
 ///
-/// Login lands on the cross-sport home. NBA is the first enabled league and
-/// its completed historical data is read from the static website corpus rather
-/// than the old terminal-seed/runtime-API path.
+/// Historical NBA data is served from the local static corpus. Live scores and
+/// public social embeds are isolated to explicitly live product surfaces.
 class CanonicalProductShell extends StatefulWidget {
   const CanonicalProductShell({
     super.key,
@@ -67,11 +74,59 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
           icon: Icons.analytics_rounded,
           builder: () => WebsiteNbaAdvancedStatsScreen(session: widget.session),
         ),
+        _Destination(
+          id: 'player-compare',
+          label: 'Player Compare',
+          icon: Icons.people_alt_outlined,
+          builder: () => WebsiteNbaPlayerComparisonScreen(session: widget.session),
+        ),
+        _Destination(
+          id: 'team-compare',
+          label: 'Team Compare',
+          icon: Icons.groups_2_outlined,
+          builder: () => WebsiteNbaTeamComparisonScreen(session: widget.session),
+        ),
         const _Destination(
           id: 'trade',
           label: 'Trade Machine',
           icon: Icons.swap_horiz_rounded,
           builder: ProductTradeMachineScreen.new,
+        ),
+        const _Destination(
+          id: 'live-games',
+          label: 'Live Games',
+          icon: Icons.sports_score_rounded,
+          builder: WebsiteNbaLiveGamesScreen.new,
+        ),
+        const _Destination(
+          id: 'box-scores',
+          label: 'Box Scores',
+          icon: Icons.table_rows_rounded,
+          builder: WebsiteNbaBoxScoresScreen.new,
+        ),
+        const _Destination(
+          id: 'media-feed',
+          label: 'Media Feed',
+          icon: Icons.dynamic_feed_rounded,
+          builder: WebsiteNbaMediaFeedScreen.new,
+        ),
+        const _Destination(
+          id: 'visualizations',
+          label: 'Visualizations',
+          icon: Icons.auto_graph_rounded,
+          builder: WebsiteNbaVisualizationsScreen.new,
+        ),
+        const _Destination(
+          id: 'with-without',
+          label: 'With / Without',
+          icon: Icons.compare_arrows_rounded,
+          builder: WebsiteNbaWithWithoutScreen.new,
+        ),
+        const _Destination(
+          id: 'rankings',
+          label: 'Rankings',
+          icon: Icons.format_list_numbered_rounded,
+          builder: WebsiteNbaRankingsScreen.new,
         ),
         _Destination(
           id: 'front-office',
@@ -108,7 +163,6 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
           label: 'Profile',
           icon: Icons.person_outline_rounded,
           builder: () => ProductProfileV3Screen(session: widget.session),
-          showInMainNav: false,
         ),
       ];
 
@@ -231,12 +285,34 @@ class _TopNav extends StatelessWidget {
   final VoidCallback onTheme;
   final VoidCallback onSignOut;
 
+  _Destination _item(String id) => items.firstWhere((item) => item.id == id);
+
+  bool get _compareSelected =>
+      selected == 'player-compare' || selected == 'team-compare';
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final navItems = items.where((item) => item.showInMainNav).toList();
-    final primary = navItems.take(5).toList();
-    final more = navItems.skip(5).toList();
+    final primary = <_Destination>[
+      _item('sports'),
+      _item('nba-home'),
+      _item('stats'),
+      _item('advanced'),
+    ];
+    final more = <_Destination>[
+      _item('live-games'),
+      _item('box-scores'),
+      _item('media-feed'),
+      _item('visualizations'),
+      _item('with-without'),
+      _item('rankings'),
+      _item('front-office'),
+      _item('research'),
+      _item('community'),
+      _item('python-lab'),
+      _item('excel-workspace'),
+    ];
+
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Container(
@@ -273,7 +349,7 @@ class _TopNav extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (constraints.maxWidth >= 620) ...[
+                      if (constraints.maxWidth >= 680) ...[
                         const SizedBox(width: 10),
                         const Text(
                           'Sports Terminal',
@@ -288,37 +364,26 @@ class _TopNav extends StatelessWidget {
                   ),
                 ),
                 if (!compact) ...[
-                  const SizedBox(width: 18),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
                         for (final entry in primary)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 1),
-                            child: Tooltip(
-                              message: entry.enabled
-                                  ? entry.label
-                                  : '${entry.label} is visible but not connected yet',
-                              child: TextButton(
-                                onPressed: entry.enabled
-                                    ? () => onSelect(entry.id)
-                                    : null,
-                                style: TextButton.styleFrom(
-                                  foregroundColor: selected == entry.id
-                                      ? colors.primary
-                                      : colors.onSurfaceVariant,
-                                  textStyle: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: selected == entry.id
-                                        ? FontWeight.w900
-                                        : FontWeight.w600,
-                                  ),
-                                ),
-                                child: Text(entry.label),
-                              ),
-                            ),
+                          _NavButton(
+                            item: entry,
+                            selected: selected == entry.id,
+                            onSelect: onSelect,
                           ),
+                        _CompareMenu(
+                          selected: _compareSelected,
+                          onSelect: onSelect,
+                        ),
+                        _NavButton(
+                          item: _item('trade'),
+                          selected: selected == 'trade',
+                          onSelect: onSelect,
+                        ),
                         PopupMenuButton<String>(
                           tooltip: 'More',
                           onSelected: onSelect,
@@ -335,17 +400,14 @@ class _TopNav extends StatelessWidget {
                                   subtitle: entry.enabled
                                       ? null
                                       : const Text('Display only — not connected'),
-                                  trailing: entry.id == selected
+                                  trailing: selected == entry.id
                                       ? const Icon(Icons.check_rounded)
                                       : null,
                                 ),
                               ),
                           ],
                           child: const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
+                            padding: EdgeInsets.symmetric(horizontal: 11, vertical: 8),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -359,7 +421,7 @@ class _TopNav extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   SizedBox(
                     width: 220,
                     height: 40,
@@ -383,23 +445,21 @@ class _TopNav extends StatelessWidget {
                     tooltip: 'Navigation',
                     onSelected: onSelect,
                     itemBuilder: (_) => [
-                      for (final item in navItems)
-                        PopupMenuItem<String>(
-                          value: item.id,
-                          enabled: item.enabled,
-                          child: ListTile(
-                            enabled: item.enabled,
-                            contentPadding: EdgeInsets.zero,
-                            leading: Icon(item.icon),
-                            title: Text(item.label),
-                            subtitle: item.enabled
-                                ? null
-                                : const Text('Display only — not connected'),
-                            trailing: item.id == selected
-                                ? const Icon(Icons.check_rounded)
-                                : null,
-                          ),
+                      for (final entry in primary)
+                        _mobileMenuItem(entry, selected),
+                      const PopupMenuItem<String>(
+                        enabled: false,
+                        child: Text(
+                          'COMPARE',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
                         ),
+                      ),
+                      _mobileMenuItem(_item('player-compare'), selected),
+                      _mobileMenuItem(_item('team-compare'), selected),
+                      const PopupMenuDivider(),
+                      _mobileMenuItem(_item('trade'), selected),
+                      for (final entry in more)
+                        _mobileMenuItem(entry, selected),
                     ],
                     icon: const Icon(Icons.menu_rounded),
                   ),
@@ -437,6 +497,114 @@ class _TopNav extends StatelessWidget {
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _mobileMenuItem(
+    _Destination item,
+    String selectedId,
+  ) =>
+      PopupMenuItem<String>(
+        value: item.id,
+        enabled: item.enabled,
+        child: ListTile(
+          enabled: item.enabled,
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(item.icon),
+          title: Text(item.label),
+          subtitle: item.enabled ? null : const Text('Display only — not connected'),
+          trailing: selectedId == item.id
+              ? const Icon(Icons.check_rounded)
+              : null,
+        ),
+      );
+}
+
+class _NavButton extends StatelessWidget {
+  const _NavButton({
+    required this.item,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final _Destination item;
+  final bool selected;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 1),
+      child: TextButton(
+        onPressed: item.enabled ? () => onSelect(item.id) : null,
+        style: TextButton.styleFrom(
+          foregroundColor: selected ? colors.primary : colors.onSurfaceVariant,
+          textStyle: TextStyle(
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
+          ),
+        ),
+        child: Text(item.label),
+      ),
+    );
+  }
+}
+
+class _CompareMenu extends StatelessWidget {
+  const _CompareMenu({required this.selected, required this.onSelect});
+
+  final bool selected;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return PopupMenuButton<String>(
+      tooltip: 'Compare',
+      onSelected: onSelect,
+      itemBuilder: (_) => const [
+        PopupMenuItem(
+          value: 'player-compare',
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.people_alt_outlined),
+            title: Text('Player Compare'),
+            subtitle: Text('2–5 players · cross-era · custom metrics'),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'team-compare',
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.groups_2_outlined),
+            title: Text('Team Compare'),
+            subtitle: Text('2–5 teams · season and playoff comparisons'),
+          ),
+        ),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Compare',
+              style: TextStyle(
+                color: selected ? colors.primary : colors.onSurfaceVariant,
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 2),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 18,
+              color: selected ? colors.primary : colors.onSurfaceVariant,
+            ),
+          ],
         ),
       ),
     );
@@ -589,7 +757,6 @@ class _NbaSearchDialogState extends State<_NbaSearchDialog> {
 
 class _SearchSection extends StatelessWidget {
   const _SearchSection(this.label);
-
   final String label;
 
   @override
@@ -611,7 +778,6 @@ class _Destination {
     required this.icon,
     this.builder,
     this.enabled = true,
-    this.showInMainNav = true,
   });
 
   final String id;
@@ -619,7 +785,6 @@ class _Destination {
   final IconData icon;
   final Widget Function()? builder;
   final bool enabled;
-  final bool showInMainNav;
 }
 
 String _initials(String value) {
