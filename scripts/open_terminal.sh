@@ -53,6 +53,9 @@ EOF
 fi
 export SPORTS_TERMINAL_NBA_HISTORY_DB="$NBA_HISTORY_DB"
 
+# The immutable historical build deliberately does not scrape or download
+# sports data at runtime. Current-season schedule refreshes below are isolated,
+# explicit live-data operations and never mutate the historical corpus.
 PYTHON_BIN="${SPORTS_TERMINAL_PYTHON:-python3}"
 if [[ -x "$ROOT/.historical-venv/bin/python" ]]; then
   PYTHON_BIN="$ROOT/.historical-venv/bin/python"
