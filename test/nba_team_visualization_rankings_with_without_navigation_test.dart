@@ -36,32 +36,45 @@ void main() {
     expect(team, contains('onOpenPlayer'));
   });
 
-  test('with-without keeps a source-backed empty state until lineup data exists', () {
-    final screen = File(
+  test('with-without keeps a source-backed boundary and exposes pair analysis polish', () {
+    final alias = File(
       'lib/screens/website_nba_with_without_screen.dart',
+    ).readAsStringSync();
+    final screen = File(
+      'lib/screens/website_nba_with_without_v2_screen.dart',
     ).readAsStringSync();
     final repository = File(
       'lib/services/nba_with_without_repository.dart',
     ).readAsStringSync();
 
+    expect(alias, contains("export 'website_nba_with_without_v2_screen.dart'"));
     expect(screen, contains("String _season = '2025-26';"));
     expect(screen, contains('Stat Line Shift'));
     expect(screen, contains('_playerOne'));
     expect(screen, contains('_playerTwo'));
-    expect(screen, contains('Select exactly two players'));
+    expect(screen, contains('Select exactly two distinct players'));
     expect(screen, contains('Customize Stats'));
     expect(screen, contains('NbaWithWithoutRepository'));
     expect(screen, contains('lineup stints or play-by-play'));
+    expect(screen, contains('Swap'));
+    expect(screen, contains('STAT / Δ'));
+    expect(screen, contains('With minus Without'));
+    expect(screen, contains('Small sample'));
+    expect(screen, contains('Season $formattedBaseline'));
     expect(repository, contains('with_without.json'));
     expect(repository, contains('available: false'));
     expect(repository, isNot(contains('Math.random')));
   });
 
-  test('visualization studio exposes multiple configurable chart families', () {
-    final source = File(
+  test('visualization studio supports saved presets and analytical overlays', () {
+    final alias = File(
       'lib/screens/website_nba_visualizations_screen.dart',
     ).readAsStringSync();
+    final source = File(
+      'lib/screens/website_nba_visualizations_v2_screen.dart',
+    ).readAsStringSync();
 
+    expect(alias, contains("export 'website_nba_visualizations_v2_screen.dart'"));
     expect(source, contains('Visualization Studio'));
     expect(source, contains("scatter('Scatterplot')"));
     expect(source, contains("bubble('Bubble chart')"));
@@ -74,16 +87,33 @@ void main() {
     expect(source, contains('CustomPaint'));
     expect(source, contains('WebsiteNbaApiService'));
     expect(source, contains('seasonSnapshot('));
+    expect(source, contains('nba_visualization_presets_v1'));
+    expect(source, contains('SharedPreferences'));
+    expect(source, contains('Save As'));
+    expect(source, contains('Best-fit line'));
+    expect(source, contains('Mean reference lines'));
+    expect(source, contains('Correlation (r)'));
+    expect(source, contains('R²'));
+    expect(source, contains('_RegressionSummary'));
   });
 
-  test('rankings supports drag-drop tiers and durable saved boards', () {
-    final source = File(
+  test('rankings supports ordered drag-drop tiers and durable saved boards', () {
+    final alias = File(
       'lib/screens/website_nba_rankings_screen.dart',
     ).readAsStringSync();
+    final source = File(
+      'lib/screens/website_nba_rankings_v2_screen.dart',
+    ).readAsStringSync();
 
+    expect(alias, contains("export 'website_nba_rankings_v2_screen.dart'"));
     expect(source, contains("_tiers = ['S', 'A', 'B', 'C', 'D', 'E', 'F']"));
     expect(source, contains('Draggable<String>'));
     expect(source, contains('DragTarget<String>'));
+    expect(source, contains('beforeId'));
+    expect(source, contains('Move earlier'));
+    expect(source, contains('Move later'));
+    expect(source, contains("'#$rank'"));
+    expect(source, contains('Sort pool'));
     expect(source, contains('SharedPreferences'));
     expect(source, contains('Save As'));
     expect(source, contains("'Guards'"));
