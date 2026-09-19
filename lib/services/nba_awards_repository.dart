@@ -1,7 +1,4 @@
-import 'dart:async';
-import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import 'product_local_store.dart';
 
@@ -57,6 +54,10 @@ class NbaAwardsRepository {
   Future<Map<String, dynamic>> _get(
     String path, {
     Map<String, String> query = const {},
+  }) async {
+    throw const NbaAwardsException(
+      'Runtime awards API access is disabled. Awards must be materialized into the static corpus.',
+    );
   }) async {
     final baseUrl = await _store.loadString(
       ProductLocalStore.backendBaseUrlKey,
