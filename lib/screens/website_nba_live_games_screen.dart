@@ -16,6 +16,7 @@ class _WebsiteNbaLiveGamesScreenState extends State<WebsiteNbaLiveGamesScreen> {
   final _service = NbaLiveGameService();
   late Future<NbaScheduleSnapshot> _scheduleFuture;
   String? _selectedDate;
+  String _teamFilter = 'All';
   Map<String, NbaLiveGameState> _live = const {};
   Object? _liveError;
   Timer? _timer;
@@ -120,8 +121,26 @@ class _WebsiteNbaLiveGamesScreenState extends State<WebsiteNbaLiveGamesScreen> {
     final colors = Theme.of(context).colorScheme;
     final selectedDate = _selectedDate ??
         (schedule.dates.isEmpty ? '' : schedule.dates.first);
-    final games = schedule.forDate(selectedDate);
+    final dateGames = schedule.forDate(selectedDate);
+    final teamOptions = <String>{
+      for (final game in schedule.games)
+        if (game.homeTricode.isNotEmpty) game.homeTricode.toUpperCase(),
+      for (final game in schedule.games)
+        if (game.awayTricode.isNotEmpty) game.awayTricode.toUpperCase(),
+    }.toList()
+      ..sort();
+    final games = _teamFilter == 'All'
+        ? dateGames
+        : dateGames
+            .where(
+              (game) =>
+                  game.homeTricode.toUpperCase() == _teamFilter ||
+                  game.awayTricode.toUpperCase() == _teamFilter,
+            )
+            .toList(growable: false);
     final currentIndex = schedule.dates.indexOf(selectedDate);
+    final todayKey = _dateKey(DateTime.now());
+    final hasToday = schedule.dates.contains(todayKey);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,13 +218,46 @@ class _WebsiteNbaLiveGamesScreenState extends State<WebsiteNbaLiveGamesScreen> {
                       : null,
                   icon: const Icon(Icons.chevron_right_rounded),
                 ),
+                SizedBox(
+                  width: 135,
+                  child: DropdownButtonFormField<String>(
+                    key: ValueKey(_teamFilter),
+                    initialValue: _teamFilter,
+                    decoration: const InputDecoration(
+                      labelText: 'Team',
+                      isDense: true,
+                    ),
+                    items: [
+                      const DropdownMenuItem(
+                        value: 'All',
+                        child: Text('All teams'),
+                      ),
+                      for (final team in teamOptions)
+                        DropdownMenuItem(value: team, child: Text(team)),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _teamFilter = value);
+                      }
+                    },
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: hasToday && !_selectedIsToday
+                      ? () => _selectDate(todayKey)
+                      : null,
+                  icon: const Icon(Icons.today_rounded),
+                  label: const Text('Today'),
+                ),
                 OutlinedButton.icon(
                   onPressed: _selectedIsToday ? _refreshLive : null,
                   icon: const Icon(Icons.refresh_rounded),
                   label: const Text('Refresh live'),
                 ),
                 Text(
-                  '${games.length} game${games.length == 1 ? '' : 's'}',
+                  _teamFilter == 'All'
+                      ? '${games.length} game${games.length == 1 ? '' : 's'}'
+                      : '${games.length} $_teamFilter game${games.length == 1 ? '' : 's'}',
                   style: TextStyle(
                     color: colors.onSurfaceVariant,
                     fontWeight: FontWeight.w700,
@@ -227,7 +279,11 @@ class _WebsiteNbaLiveGamesScreenState extends State<WebsiteNbaLiveGamesScreen> {
           const Card(
             child: Padding(
               padding: EdgeInsets.all(28),
-              child: Center(child: Text('No NBA games are scheduled on this date.')),
+              child: Center(
+                child: Text(
+                  'No NBA games match this date and team filter.',
+                ),
+              ),
             ),
           )
         else
