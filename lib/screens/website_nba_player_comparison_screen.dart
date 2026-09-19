@@ -316,8 +316,10 @@ class _WebsiteNbaPlayerComparisonScreenState
     );
   }
 
-  String _csvCell(String value) =>
-      '"${value.replaceAll('"', '""')}"';
+  String _csvCell(String value) {
+    final escaped = value.replaceAll('"', '""');
+    return '"$escaped"';
+  }
 
   Future<void> _editCustomMetrics() async {
     final working = Set<String>.from(_customMetricKeys);
