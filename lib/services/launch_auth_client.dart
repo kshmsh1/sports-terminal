@@ -254,61 +254,6 @@ class LaunchAuthClient {
       available: false,
       error: 'Runtime authentication API access is disabled in static-only mode.',
     );
-  }) async {
-    final baseUrl = await _store.loadString(
-      ProductLocalStore.backendBaseUrlKey,
-      fallback: 'http://127.0.0.1:8000',
-    );
-    final normalizedBase = baseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
-    if (normalizedBase.isEmpty) {
-      return const _AuthHttpResponse(available: false);
-    }
-    try {
-      final base = Uri.parse(normalizedBase);
-      final relative = path.startsWith('/') ? path : '/$path';
-      final uri = base.replace(
-        path: '${base.path.replaceFirst(RegExp(r'/+$'), '')}$relative',
-      );
-      final headers = <String, String>{
-        'Accept': 'application/json',
-        if (body != null) 'Content-Type': 'application/json',
-        if (token.isNotEmpty) 'Authorization': 'Bearer $token',
-      };
-      late final http.Response response;
-      if (method == 'GET') {
-        response = await http
-            .get(uri, headers: headers)
-            .timeout(const Duration(seconds: 2));
-      } else {
-        response = await http
-            .post(
-              uri,
-              headers: headers,
-              body: jsonEncode(body ?? const {}),
-            )
-            .timeout(const Duration(seconds: 3));
-      }
-      Object? data;
-      if (response.body.trim().isNotEmpty) {
-        try {
-          data = jsonDecode(response.body);
-        } catch (_) {
-          data = null;
-        }
-      }
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return _AuthHttpResponse(available: true, data: data);
-      }
-      var error = 'Authentication request failed.';
-      if (data is Map && data['detail'] != null) {
-        error = data['detail'].toString();
-      }
-      return _AuthHttpResponse(available: true, error: error);
-    } on TimeoutException {
-      return const _AuthHttpResponse(available: false);
-    } catch (_) {
-      return const _AuthHttpResponse(available: false);
-    }
   }
 }
 
