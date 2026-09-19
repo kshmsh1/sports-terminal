@@ -27,8 +27,8 @@ const _brandBlue = Color(0xFF6674C7);
 
 /// Sole customer-facing Sports Terminal shell.
 ///
-/// Historical NBA data is served from the local static corpus. Live scores and
-/// public social embeds are isolated to explicitly live product surfaces.
+/// Customer-facing sports data is served from the local static corpus.
+/// Remote sports/social/product API calls are disabled at runtime.
 class CanonicalProductShell extends StatefulWidget {
   const CanonicalProductShell({
     super.key,
@@ -95,7 +95,7 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
         ),
         const _Destination(
           id: 'live-games',
-          label: 'Live Games',
+          label: 'Schedule',
           icon: Icons.sports_score_rounded,
           builder: WebsiteNbaLiveGamesScreen.new,
         ),
@@ -107,7 +107,7 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
         ),
         const _Destination(
           id: 'media-feed',
-          label: 'Media Feed',
+          label: 'Media Sources',
           icon: Icons.dynamic_feed_rounded,
           builder: WebsiteNbaMediaFeedScreen.new,
         ),
