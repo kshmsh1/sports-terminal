@@ -37,6 +37,10 @@ class _WebsiteNbaLiveGamesScreenState extends State<WebsiteNbaLiveGamesScreen> {
     return dates.last;
   }
 
+  void _selectDate(String date) {
+    setState(() => _selectedDate = date);
+  }
+
   void _moveDate(NbaScheduleSnapshot schedule, int delta) {
     final current = schedule.dates.indexOf(_selectedDate ?? '');
     if (current < 0) return;
