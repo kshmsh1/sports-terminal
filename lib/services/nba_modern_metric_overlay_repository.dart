@@ -83,11 +83,3 @@ class NbaModernMetricOverlayRepository {
   };
 }
 
-double? _number(Object? value) {
-  if (value is num) return value.toDouble();
-  if (value == null) return null;
-  return double.tryParse(value.toString());
-}
-
-String _normalizeName(String value) =>
-    value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
