@@ -1,7 +1,5 @@
-import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import '../models/app_session.dart';
 import 'product_local_store.dart';
@@ -251,6 +249,11 @@ class LaunchAuthClient {
     String path, {
     Map<String, dynamic>? body,
     String token = '',
+  }) async {
+    return const _AuthHttpResponse(
+      available: false,
+      error: 'Runtime authentication API access is disabled in static-only mode.',
+    );
   }) async {
     final baseUrl = await _store.loadString(
       ProductLocalStore.backendBaseUrlKey,
