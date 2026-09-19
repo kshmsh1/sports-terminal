@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_with_without_repository.dart';
@@ -14,6 +17,8 @@ class WebsiteNbaWithWithoutScreen extends StatefulWidget {
 
 class _WebsiteNbaWithWithoutScreenState
     extends State<WebsiteNbaWithWithoutScreen> {
+  static const _savedPairsKey = 'nba_with_without_saved_pairs_v1';
+  static const _maxSavedPairs = 10;
   static const _defaultMetrics = <String>{
     'pts',
     'ast',
@@ -37,6 +42,8 @@ class _WebsiteNbaWithWithoutScreenState
   String? _playerOne;
   String? _playerTwo;
   final Set<String> _metrics = Set<String>.from(_defaultMetrics);
+  final List<_SavedPair> _savedPairs = [];
+  String? _activeSavedPairId;
   late Future<_WithWithoutData> _future;
 
   static const _metricChoices = <String>[
@@ -68,6 +75,7 @@ class _WebsiteNbaWithWithoutScreenState
     if (_seasons.isNotEmpty && !_seasons.any((item) => item.id == _season)) {
       _season = _seasons.first.id;
     }
+    await _loadSavedPairs();
     return _load();
   }
 
@@ -121,6 +129,119 @@ class _WebsiteNbaWithWithoutScreenState
   }
 
   void _reload() => setState(() => _future = _load());
+
+  Future<void> _loadSavedPairs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_savedPairsKey);
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return;
+      _savedPairs
+        ..clear()
+        ..addAll(
+          decoded.whereType<Map>().map(
+                (item) => _SavedPair.fromJson(
+                  item.map((key, value) => MapEntry(key.toString(), value)),
+                ),
+              ),
+        );
+    } catch (_) {
+      // Saved pair presets are local convenience state only.
+    }
+  }
+
+  Future<void> _persistSavedPairs() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _savedPairsKey,
+      jsonEncode([for (final item in _savedPairs) item.toJson()]),
+    );
+  }
+
+  Future<void> _savePair() async {
+    if (_playerOne == null || _playerTwo == null || _team.isEmpty) return;
+    if (_savedPairs.length >= _maxSavedPairs) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You can save up to 10 with/without pairs.')),
+      );
+      return;
+    }
+    final controller = TextEditingController(
+      text: '$_team Pair ${_savedPairs.length + 1}',
+    );
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Save with / without pair'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Preset name'),
+          onSubmitted: (value) => Navigator.pop(context, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.trim().isEmpty) return;
+    final id = DateTime.now().microsecondsSinceEpoch.toString();
+    _savedPairs.add(
+      _SavedPair(
+        id: id,
+        name: name.trim(),
+        season: _season,
+        seasonType: _seasonType.name,
+        basis: _basis.name,
+        team: _team,
+        playerOne: _playerOne!,
+        playerTwo: _playerTwo!,
+        metrics: _metrics.toList(growable: false),
+      ),
+    );
+    _activeSavedPairId = id;
+    await _persistSavedPairs();
+    if (mounted) setState(() {});
+  }
+
+  void _applySavedPair(_SavedPair pair) {
+    setState(() {
+      _season = pair.season;
+      _seasonType = NbaStatsSeasonType.values.firstWhere(
+        (value) => value.name == pair.seasonType,
+        orElse: () => NbaStatsSeasonType.regular,
+      );
+      _basis = NbaStatsBasis.values.firstWhere(
+        (value) => value.name == pair.basis,
+        orElse: () => NbaStatsBasis.per75,
+      );
+      _team = pair.team;
+      _playerOne = pair.playerOne;
+      _playerTwo = pair.playerTwo;
+      _metrics
+        ..clear()
+        ..addAll(pair.metrics.where(_metricChoices.contains));
+      if (_metrics.isEmpty) _metrics.addAll(_defaultMetrics);
+      _activeSavedPairId = pair.id;
+      _future = _load();
+    });
+  }
+
+  Future<void> _deleteSavedPair(_SavedPair pair) async {
+    _savedPairs.removeWhere((item) => item.id == pair.id);
+    if (_activeSavedPairId == pair.id) _activeSavedPairId = null;
+    await _persistSavedPairs();
+    if (mounted) setState(() {});
+  }
 
   void _swapPlayers() {
     if (_playerOne == null || _playerTwo == null) return;
@@ -348,10 +469,32 @@ class _WebsiteNbaWithWithoutScreenState
                   icon: const Icon(Icons.tune_rounded),
                   label: const Text('Customize Stats'),
                 ),
+                OutlinedButton.icon(
+                  onPressed:
+                      _playerOne != null && _playerTwo != null ? _savePair : null,
+                  icon: const Icon(Icons.bookmark_add_outlined),
+                  label: const Text('Save Pair'),
+                ),
               ],
             ),
           ),
         ),
+        if (_savedPairs.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final pair in _savedPairs)
+                InputChip(
+                  selected: pair.id == _activeSavedPairId,
+                  label: Text(pair.name),
+                  onPressed: () => _applySavedPair(pair),
+                  onDeleted: () => _deleteSavedPair(pair),
+                ),
+            ],
+          ),
+        ],
         const SizedBox(height: 16),
         Card(
           child: Padding(
@@ -466,6 +609,59 @@ class _WebsiteNbaWithWithoutScreenState
       ],
     );
   }
+}
+
+class _SavedPair {
+  const _SavedPair({
+    required this.id,
+    required this.name,
+    required this.season,
+    required this.seasonType,
+    required this.basis,
+    required this.team,
+    required this.playerOne,
+    required this.playerTwo,
+    required this.metrics,
+  });
+
+  final String id;
+  final String name;
+  final String season;
+  final String seasonType;
+  final String basis;
+  final String team;
+  final String playerOne;
+  final String playerTwo;
+  final List<String> metrics;
+
+  factory _SavedPair.fromJson(Map<String, dynamic> json) => _SavedPair(
+        id: json['id']?.toString() ?? '',
+        name: json['name']?.toString() ?? 'Saved pair',
+        season: json['season']?.toString() ?? '2025-26',
+        seasonType: json['seasonType']?.toString() ?? 'regular',
+        basis: json['basis']?.toString() ?? 'per75',
+        team: json['team']?.toString() ?? '',
+        playerOne: json['playerOne']?.toString() ?? '',
+        playerTwo: json['playerTwo']?.toString() ?? '',
+        metrics: [
+          for (final item in (json['metrics'] is List
+              ? json['metrics'] as List
+              : const []))
+            item.toString(),
+        ],
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'season': season,
+        'seasonType': seasonType,
+        'basis': basis,
+        'team': team,
+        'playerOne': playerOne,
+        'playerTwo': playerTwo,
+        'metrics': metrics,
+      };
 }
 
 class _WithWithoutData {
