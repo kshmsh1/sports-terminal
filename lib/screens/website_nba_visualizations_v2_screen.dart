@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/nba_stats_workstation_engine.dart';
@@ -259,6 +260,42 @@ class _WebsiteNbaVisualizationsScreenState
     if (mounted) setState(() {});
   }
 
+  Future<void> _copyPlottedData(List<NbaStatsRow> rows) async {
+    final buffer = StringBuffer()
+      ..writeln(
+        'player,team,position,season,x_metric,x_value,y_metric,y_value,size_metric,size_value',
+      );
+    for (final row in rows) {
+      final values = [
+        row.player,
+        row.team,
+        row.position,
+        _season,
+        _xMetric,
+        row.value(_xMetric)?.toString() ?? '',
+        _yMetric,
+        row.value(_yMetric)?.toString() ?? '',
+        _sizeMetric,
+        row.value(_sizeMetric)?.toString() ?? '',
+      ].map(_csvCell).join(',');
+      buffer.writeln(values);
+    }
+    await Clipboard.setData(ClipboardData(text: buffer.toString()));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Copied ${rows.length} plotted player rows as CSV.',
+        ),
+      ),
+    );
+  }
+
+  String _csvCell(String value) {
+    final escaped = value.replaceAll('"', '""');
+    return '"$escaped"';
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<NbaStatsRow>>(
@@ -491,6 +528,11 @@ class _WebsiteNbaVisualizationsScreenState
               onPressed: () => _savePreset(saveAs: true),
               icon: const Icon(Icons.save_as_outlined),
               label: const Text('Save As'),
+            ),
+            OutlinedButton.icon(
+              onPressed: rows.isEmpty ? null : () => _copyPlottedData(rows),
+              icon: const Icon(Icons.content_copy_rounded),
+              label: const Text('Copy plotted data'),
             ),
           ],
         ),

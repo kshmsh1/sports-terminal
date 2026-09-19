@@ -21,6 +21,7 @@ import '../screens/website_nba_with_without_screen.dart';
 import '../screens/website_sports_home_screen.dart';
 import '../services/product_local_store.dart';
 import '../services/website_nba_api_service.dart';
+import 'nba_workspace_navigation.dart';
 
 const _brandBlue = Color(0xFF6674C7);
 
@@ -60,7 +61,14 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
           id: 'nba-home',
           label: 'NBA Home',
           icon: Icons.sports_basketball_rounded,
-          builder: () => WebsiteNbaHomeDashboard(session: widget.session),
+          builder: () => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              NbaWorkspaceLauncher(onSelect: _select),
+              const SizedBox(height: 18),
+              WebsiteNbaHomeDashboard(session: widget.session),
+            ],
+          ),
         ),
         _Destination(
           id: 'stats',
@@ -253,7 +261,19 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1320),
-                      child: selected.builder!(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (nbaWorkspaceLinkFor(_selected) != null) ...[
+                            NbaWorkspaceContextBar(
+                              selected: _selected,
+                              onSelect: _select,
+                            ),
+                            const SizedBox(height: 14),
+                          ],
+                          selected.builder!(),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -299,13 +319,17 @@ class _TopNav extends StatelessWidget {
       _item('stats'),
       _item('advanced'),
     ];
-    final more = <_Destination>[
+    final games = <_Destination>[
       _item('live-games'),
       _item('box-scores'),
       _item('media-feed'),
+    ];
+    final analysis = <_Destination>[
       _item('visualizations'),
       _item('with-without'),
       _item('rankings'),
+    ];
+    final more = <_Destination>[
       _item('front-office'),
       _item('research'),
       _item('community'),
@@ -377,6 +401,18 @@ class _TopNav extends StatelessWidget {
                           ),
                         _CompareMenu(
                           selected: _compareSelected,
+                          onSelect: onSelect,
+                        ),
+                        _DestinationMenu(
+                          label: 'Games',
+                          items: games,
+                          selectedId: selected,
+                          onSelect: onSelect,
+                        ),
+                        _DestinationMenu(
+                          label: 'Analysis',
+                          items: analysis,
+                          selectedId: selected,
                           onSelect: onSelect,
                         ),
                         _NavButton(
@@ -456,6 +492,24 @@ class _TopNav extends StatelessWidget {
                       ),
                       _mobileMenuItem(_item('player-compare'), selected),
                       _mobileMenuItem(_item('team-compare'), selected),
+                      const PopupMenuItem<String>(
+                        enabled: false,
+                        child: Text(
+                          'GAMES',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                      for (final entry in games)
+                        _mobileMenuItem(entry, selected),
+                      const PopupMenuItem<String>(
+                        enabled: false,
+                        child: Text(
+                          'ANALYSIS',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                      for (final entry in analysis)
+                        _mobileMenuItem(entry, selected),
                       const PopupMenuDivider(),
                       _mobileMenuItem(_item('trade'), selected),
                       for (final entry in more)
@@ -548,6 +602,68 @@ class _NavButton extends StatelessWidget {
           ),
         ),
         child: Text(item.label),
+      ),
+    );
+  }
+}
+
+class _DestinationMenu extends StatelessWidget {
+  const _DestinationMenu({
+    required this.label,
+    required this.items,
+    required this.selectedId,
+    required this.onSelect,
+  });
+
+  final String label;
+  final List<_Destination> items;
+  final String selectedId;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final selected = items.any((item) => item.id == selectedId);
+    return PopupMenuButton<String>(
+      tooltip: label,
+      onSelected: onSelect,
+      itemBuilder: (_) => [
+        for (final item in items)
+          PopupMenuItem<String>(
+            value: item.id,
+            enabled: item.enabled,
+            child: ListTile(
+              enabled: item.enabled,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(item.icon),
+              title: Text(item.label),
+              trailing: selectedId == item.id
+                  ? const Icon(Icons.check_rounded)
+                  : null,
+            ),
+          ),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? colors.primary : colors.onSurfaceVariant,
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 2),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 18,
+              color: selected ? colors.primary : colors.onSurfaceVariant,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_session.dart';
@@ -281,6 +282,43 @@ class _WebsiteNbaPlayerComparisonScreenState
     if (_activeSavedViewId == view.id) _activeSavedViewId = null;
     await _persistSavedViews();
     if (mounted) setState(() {});
+  }
+
+  Future<void> _copyComparison(
+    List<_SelectedPlayer> players,
+    List<_CompareMetric> metrics,
+  ) async {
+    final buffer = StringBuffer()
+      ..writeln(
+        [
+          'metric',
+          for (final player in players)
+            '${player.row.player} (${player.season})',
+        ].map(_csvCell).join(','),
+      );
+    for (final metric in metrics) {
+      buffer.writeln(
+        [
+          metric.label,
+          for (final player in players)
+            metric.format(metric.value(player.row), _engine),
+        ].map(_csvCell).join(','),
+      );
+    }
+    await Clipboard.setData(ClipboardData(text: buffer.toString()));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Copied ${metrics.length} metrics for ${players.length} players as CSV.',
+        ),
+      ),
+    );
+  }
+
+  String _csvCell(String value) {
+    final escaped = value.replaceAll('"', '""');
+    return '"$escaped"';
   }
 
   Future<void> _editCustomMetrics() async {
@@ -570,6 +608,11 @@ class _WebsiteNbaPlayerComparisonScreenState
                   icon: const Icon(Icons.tune_rounded),
                   label: const Text('Edit metrics'),
                 ),
+              OutlinedButton.icon(
+                onPressed: () => _copyComparison(selected, metrics),
+                icon: const Icon(Icons.content_copy_rounded),
+                label: const Text('Copy comparison'),
+              ),
             ],
           ),
           const SizedBox(height: 14),

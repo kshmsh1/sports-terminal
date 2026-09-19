@@ -187,6 +187,14 @@ class _WebsiteNbaTeamDetailScreenState
     final name = _text(profile['canonical_name'], widget.teamName);
     final abbreviation = _text(profile['abbreviation']);
     final colors = Theme.of(context).colorScheme;
+    final rosterPayroll = data.roster.fold<double>(
+      0,
+      (sum, row) => sum + row.salary,
+    );
+    final knownGuaranteed = data.roster.fold<double>(
+      0,
+      (sum, row) => sum + (row.guaranteed ?? 0),
+    );
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 72),
@@ -242,11 +250,15 @@ class _WebsiteNbaTeamDetailScreenState
               _SummaryStrip(
                 items: [
                   _SummaryValue('2026–27 roster', '${data.roster.length}'),
+                  _SummaryValue('2026–27 payroll', _money(rosterPayroll)),
+                  _SummaryValue('Known guaranteed', _money(knownGuaranteed)),
                   _SummaryValue('2026–27 games', '${data.schedule.length}'),
                   _SummaryValue('Historical seasons', '${_uniqueSeasons(allSeasons)}'),
                   _SummaryValue('Team key', widget.teamKey),
                 ],
               ),
+              const SizedBox(height: 18),
+              _RosterFinancialSummary(rows: data.roster),
               const SizedBox(height: 30),
               const _SectionTitle('2026–27 depth chart'),
               const SizedBox(height: 6),
@@ -445,6 +457,107 @@ class _SummaryStrip extends StatelessWidget {
           );
         },
       );
+}
+
+class _RosterFinancialSummary extends StatelessWidget {
+  const _RosterFinancialSummary({required this.rows});
+
+  final List<_RosterRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    if (rows.isEmpty) return const SizedBox.shrink();
+    final ordered = [...rows]
+      ..sort((a, b) => b.salary.compareTo(a.salary));
+    final payroll = rows.fold<double>(0, (sum, row) => sum + row.salary);
+    final guaranteed =
+        rows.fold<double>(0, (sum, row) => sum + (row.guaranteed ?? 0));
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 760;
+            final totals = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Roster financial snapshot',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Salary rows reflect the current 2026–27 contract snapshot loaded into Sports Terminal.',
+                  style: TextStyle(color: colors.onSurfaceVariant),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _money(payroll),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                Text(
+                  'Known guaranteed: ${_money(guaranteed)}',
+                  style: TextStyle(color: colors.onSurfaceVariant),
+                ),
+              ],
+            );
+            final leaders = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Largest 2026–27 cap hits',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                for (final row in ordered.take(5))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            row.player,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          _money(row.salary),
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            );
+            if (compact) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  totals,
+                  const SizedBox(height: 18),
+                  leaders,
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: totals),
+                const SizedBox(width: 28),
+                Expanded(child: leaders),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
 }
 
 class _DepthChartTable extends StatelessWidget {
