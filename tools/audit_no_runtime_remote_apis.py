@@ -14,6 +14,8 @@ LIB = ROOT / "lib"
 ALLOWED_STATIC_LOADERS = {
     LIB / "services" / "website_nba_static_repository.dart",
     LIB / "services" / "nba_live_game_service.dart",
+    LIB / "services" / "front_office_static_snapshot_repository.dart",
+    LIB / "services" / "nba_with_without_repository.dart",
 }
 REMOTE_URL = re.compile(r"https?://", re.IGNORECASE)
 HTTP_IMPORT = "package:http/http.dart"
