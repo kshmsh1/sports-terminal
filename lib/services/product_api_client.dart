@@ -1,14 +1,10 @@
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-
 class ProductApiClient {
-  ProductApiClient({String baseUrl = 'http://127.0.0.1:8000', http.Client? httpClient})
+  ProductApiClient({String baseUrl = 'static://sports-terminal', Object? httpClient})
       : baseUri = Uri.parse(baseUrl),
-        client = httpClient ?? http.Client();
+        client = httpClient;
 
   final Uri baseUri;
-  final http.Client client;
+  final Object? client;
 
   Future<Map<String, dynamic>> health() => _getMap('/health');
 
@@ -161,48 +157,30 @@ class ProductApiClient {
 
   Future<Map<String, dynamic>> recordPipelineRun(Map<String, dynamic> payload) => _postMap('/admin/data/pipeline-runs', payload);
 
-  Future<Uri> _uri(String path) async => baseUri.resolve(path);
+  String _pathWithQuery(String path, Map<String, String> params) => path;
 
-  String _pathWithQuery(String path, Map<String, String> params) {
-    if (params.isEmpty) return path;
-    final query = params.entries.map((entry) => '${Uri.encodeQueryComponent(entry.key)}=${Uri.encodeQueryComponent(entry.value)}').join('&');
-    return '$path?$query';
-  }
+  Never _networkDisabled() => throw const ProductApiException(
+        'Runtime product API calls are disabled. Sports Terminal is static/local-only.',
+        0,
+      );
 
-  Future<Map<String, dynamic>> _getMap(String path) async => _decodeMap(await client.get(await _uri(path)));
+  Future<Map<String, dynamic>> _getMap(String path) async =>
+      _networkDisabled();
 
-  Future<List<dynamic>> _getList(String path) async => _decodeList(await client.get(await _uri(path)));
+  Future<List<dynamic>> _getList(String path) async => _networkDisabled();
 
-  Future<Map<String, dynamic>> _postMap(String path, Map<String, dynamic> body) async {
-    return _decodeMap(await client.post(await _uri(path), headers: _headers, body: jsonEncode(body)));
-  }
+  Future<Map<String, dynamic>> _postMap(
+    String path,
+    Map<String, dynamic> body,
+  ) async => _networkDisabled();
 
-  Future<Map<String, dynamic>> _putMap(String path, Map<String, dynamic> body) async {
-    return _decodeMap(await client.put(await _uri(path), headers: _headers, body: jsonEncode(body)));
-  }
+  Future<Map<String, dynamic>> _putMap(
+    String path,
+    Map<String, dynamic> body,
+  ) async => _networkDisabled();
 
-  Future<Map<String, dynamic>> _deleteMap(String path) async => _decodeMap(await client.delete(await _uri(path)));
-
-  Map<String, String> get _headers => const {'content-type': 'application/json'};
-
-  Map<String, dynamic> _decodeMap(http.Response response) {
-    _throwIfBad(response);
-    final decoded = jsonDecode(response.body);
-    if (decoded is Map<String, dynamic>) return decoded;
-    throw ProductApiException('Expected object response but received ${decoded.runtimeType}', response.statusCode);
-  }
-
-  List<dynamic> _decodeList(http.Response response) {
-    _throwIfBad(response);
-    final decoded = jsonDecode(response.body);
-    if (decoded is List<dynamic>) return decoded;
-    throw ProductApiException('Expected list response but received ${decoded.runtimeType}', response.statusCode);
-  }
-
-  void _throwIfBad(http.Response response) {
-    if (response.statusCode >= 200 && response.statusCode < 300) return;
-    throw ProductApiException(response.body, response.statusCode);
-  }
+  Future<Map<String, dynamic>> _deleteMap(String path) async =>
+      _networkDisabled();
 }
 
 class ProductApiException implements Exception {
