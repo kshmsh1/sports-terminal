@@ -34,6 +34,9 @@ void main() {
     expect(team, contains('NbaTradeContractRepository'));
     expect(team, contains('NbaLiveGameService'));
     expect(team, contains('onOpenPlayer'));
+    expect(team, contains('Roster financial snapshot'));
+    expect(team, contains('Largest 2026–27 cap hits'));
+    expect(team, contains('Known guaranteed'));
   });
 
   test('with-without keeps a source-backed boundary and exposes pair analysis polish', () {
@@ -60,6 +63,9 @@ void main() {
     expect(screen, contains('STAT / Δ'));
     expect(screen, contains('With minus Without'));
     expect(screen, contains('Small sample'));
+    expect(screen, contains('nba_with_without_saved_pairs_v1'));
+    expect(screen, contains('Save Pair'));
+    expect(screen, contains('SharedPreferences'));
     expect(screen, contains(r'Season $formattedBaseline'));
     expect(repository, contains('with_without.json'));
     expect(repository, contains('available: false'));
@@ -95,6 +101,8 @@ void main() {
     expect(source, contains('Correlation (r)'));
     expect(source, contains('R²'));
     expect(source, contains('_RegressionSummary'));
+    expect(source, contains('Copy plotted data'));
+    expect(source, contains('Clipboard.setData'));
   });
 
   test('rankings supports ordered drag-drop tiers and durable saved boards', () {
@@ -120,5 +128,7 @@ void main() {
     expect(source, contains("'Wings'"));
     expect(source, contains("'Bigs'"));
     expect(source, contains('nba_custom_rankings_v1'));
+    expect(source, contains('Auto-seed by'));
+    expect(source, contains('_autoSeed'));
   });
 }
