@@ -37,16 +37,25 @@ void main() {
     expect(media, contains('Marc Stein'));
     expect(media, contains('NbaXTimeline'));
     expect(media, contains('Live X embed'));
+    expect(media, contains("'Breaking'"));
+    expect(media, contains("'Reporting'"));
+    expect(media, contains("'Cap'"));
+    expect(media, contains('sources'));
 
     expect(box, contains('Historical static archive'));
     expect(box, contains('Search box scores'));
     expect(box, contains('gameDetail('));
     expect(box, contains('player_box_scores'));
+    expect(box, contains('Detailed only'));
+    expect(box, contains('Newest first'));
+    expect(box, contains('Oldest first'));
     expect(box, isNot(contains('/v2/nba/history')));
 
     expect(live, contains('2026-27 schedule'));
     expect(live, contains('15s live refresh'));
     expect(live, contains('Refresh live'));
+    expect(live, contains('All teams'));
+    expect(live, contains("label: const Text('Today')"));
     expect(live, contains('forDate('));
     expect(service, contains('schedule_2026_27.json'));
     expect(service, contains('todaysScoreboard_00.json'));
