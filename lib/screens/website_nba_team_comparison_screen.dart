@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_session.dart';
 import '../services/nba_stats_workstation_engine.dart';
@@ -20,7 +22,9 @@ class WebsiteNbaTeamComparisonScreen extends StatefulWidget {
 
 class _WebsiteNbaTeamComparisonScreenState
     extends State<WebsiteNbaTeamComparisonScreen> {
+  static const _savedViewsKey = 'nba_team_compare_saved_views_v1';
   static const _maxTeams = 5;
+  static const _maxSavedViews = 8;
   final _api = const WebsiteNbaApiService();
   final List<_TeamSlot> _slots = [
     _TeamSlot(season: '2025-26'),
@@ -31,6 +35,8 @@ class _WebsiteNbaTeamComparisonScreenState
   NbaStatsSeasonType _seasonType = NbaStatsSeasonType.regular;
   String _category = 'Overview';
   bool _lockSeasons = true;
+  final List<_SavedTeamView> _savedViews = [];
+  String? _activeSavedViewId;
   late Future<_TeamComparisonData> _future;
 
   @override
@@ -50,6 +56,7 @@ class _WebsiteNbaTeamComparisonScreenState
         slot.season = preferred.id;
       }
     }
+    await _loadSavedViews();
     return _loadData();
   }
 
@@ -89,6 +96,140 @@ class _WebsiteNbaTeamComparisonScreenState
   }
 
   void _reload() => setState(() => _future = _loadData());
+
+  Future<void> _loadSavedViews() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_savedViewsKey);
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return;
+      _savedViews
+        ..clear()
+        ..addAll(
+          decoded.whereType<Map>().map(
+                (item) => _SavedTeamView.fromJson(
+                  item.map((key, value) => MapEntry(key.toString(), value)),
+                ),
+              ),
+        );
+    } catch (_) {
+      // Saved comparison views are local convenience state only.
+    }
+  }
+
+  Future<void> _persistSavedViews() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _savedViewsKey,
+      jsonEncode([for (final view in _savedViews) view.toJson()]),
+    );
+  }
+
+  _SavedTeamView _captureView({required String id, required String name}) =>
+      _SavedTeamView(
+        id: id,
+        name: name,
+        seasonType: _seasonType.name,
+        category: _category,
+        lockSeasons: _lockSeasons,
+        slots: [
+          for (final slot in _slots)
+            _SavedTeamSlot(season: slot.season, teamKey: slot.teamKey ?? ''),
+        ],
+      );
+
+  Future<void> _saveCurrent({required bool saveAs}) async {
+    if (!saveAs && _activeSavedViewId != null) {
+      final index = _savedViews.indexWhere(
+        (view) => view.id == _activeSavedViewId,
+      );
+      if (index >= 0) {
+        _savedViews[index] = _captureView(
+          id: _savedViews[index].id,
+          name: _savedViews[index].name,
+        );
+        await _persistSavedViews();
+        if (mounted) setState(() {});
+        return;
+      }
+    }
+    if (_savedViews.length >= _maxSavedViews) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You can save up to 8 team comparisons.')),
+      );
+      return;
+    }
+    final controller = TextEditingController(
+      text: 'Team Comparison ${_savedViews.length + 1}',
+    );
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Save team comparison'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'View name'),
+          onSubmitted: (value) => Navigator.pop(context, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.trim().isEmpty) return;
+    final id = DateTime.now().microsecondsSinceEpoch.toString();
+    _savedViews.add(_captureView(id: id, name: name.trim()));
+    _activeSavedViewId = id;
+    await _persistSavedViews();
+    if (mounted) setState(() {});
+  }
+
+  void _applySavedView(_SavedTeamView view) {
+    setState(() {
+      _seasonType = NbaStatsSeasonType.values.firstWhere(
+        (value) => value.name == view.seasonType,
+        orElse: () => NbaStatsSeasonType.regular,
+      );
+      _category = _teamCategories.containsKey(view.category)
+          ? view.category
+          : 'Overview';
+      _lockSeasons = view.lockSeasons;
+      _slots
+        ..clear()
+        ..addAll(
+          view.slots
+              .take(_maxTeams)
+              .map(
+                (slot) => _TeamSlot(
+                  season: slot.season,
+                  teamKey: slot.teamKey.isEmpty ? null : slot.teamKey,
+                ),
+              ),
+        );
+      while (_slots.length < 2) {
+        _slots.add(_TeamSlot(season: _seasons.isEmpty ? '2025-26' : _seasons.first.id));
+      }
+      _activeSavedViewId = view.id;
+      _future = _loadData();
+    });
+  }
+
+  Future<void> _deleteSavedView(_SavedTeamView view) async {
+    _savedViews.removeWhere((item) => item.id == view.id);
+    if (_activeSavedViewId == view.id) _activeSavedViewId = null;
+    await _persistSavedViews();
+    if (mounted) setState(() {});
+  }
 
   void _setSeason(int index, String season) {
     if (_lockSeasons) {
@@ -246,10 +387,36 @@ class _WebsiteNbaTeamComparisonScreenState
                     });
                   },
                 ),
+                OutlinedButton.icon(
+                  onPressed: () => _saveCurrent(saveAs: false),
+                  icon: const Icon(Icons.save_outlined),
+                  label: const Text('Save'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _saveCurrent(saveAs: true),
+                  icon: const Icon(Icons.save_as_outlined),
+                  label: const Text('Save As'),
+                ),
               ],
             ),
           ),
         ),
+        if (_savedViews.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final view in _savedViews)
+                InputChip(
+                  selected: view.id == _activeSavedViewId,
+                  label: Text(view.name),
+                  onPressed: () => _applySavedView(view),
+                  onDeleted: () => _deleteSavedView(view),
+                ),
+            ],
+          ),
+        ],
         const SizedBox(height: 16),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -584,6 +751,65 @@ class _TeamError extends StatelessWidget {
           ),
         ),
       );
+}
+
+class _SavedTeamSlot {
+  const _SavedTeamSlot({required this.season, required this.teamKey});
+
+  final String season;
+  final String teamKey;
+
+  factory _SavedTeamSlot.fromJson(Map<String, dynamic> json) => _SavedTeamSlot(
+        season: json['season']?.toString() ?? '2025-26',
+        teamKey: json['teamKey']?.toString() ?? '',
+      );
+
+  Map<String, dynamic> toJson() => {
+        'season': season,
+        'teamKey': teamKey,
+      };
+}
+
+class _SavedTeamView {
+  const _SavedTeamView({
+    required this.id,
+    required this.name,
+    required this.seasonType,
+    required this.category,
+    required this.lockSeasons,
+    required this.slots,
+  });
+
+  final String id;
+  final String name;
+  final String seasonType;
+  final String category;
+  final bool lockSeasons;
+  final List<_SavedTeamSlot> slots;
+
+  factory _SavedTeamView.fromJson(Map<String, dynamic> json) => _SavedTeamView(
+        id: json['id']?.toString() ?? '',
+        name: json['name']?.toString() ?? 'Saved comparison',
+        seasonType: json['seasonType']?.toString() ?? 'regular',
+        category: json['category']?.toString() ?? 'Overview',
+        lockSeasons: json['lockSeasons'] == true,
+        slots: [
+          for (final item in (json['slots'] is List ? json['slots'] as List : const []))
+            if (item is Map)
+              _SavedTeamSlot.fromJson(
+                item.map((key, value) => MapEntry(key.toString(), value)),
+              ),
+        ],
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'seasonType': seasonType,
+        'category': category,
+        'lockSeasons': lockSeasons,
+        'slots': [for (final slot in slots) slot.toJson()],
+      };
 }
 
 class _TeamSlot {
