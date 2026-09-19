@@ -15,13 +15,32 @@ class WebsiteNbaMediaFeedScreen extends StatefulWidget {
 class _WebsiteNbaMediaFeedScreenState
     extends State<WebsiteNbaMediaFeedScreen> {
   String _selectedHandle = _insiders.first.handle;
+  String _deskFilter = 'All';
+
+  void _setDeskFilter(String value) {
+    final visible = value == 'All'
+        ? _insiders
+        : _insiders.where((item) => item.desk == value).toList(growable: false);
+    setState(() {
+      _deskFilter = value;
+      if (!visible.any((item) => item.handle == _selectedHandle) &&
+          visible.isNotEmpty) {
+        _selectedHandle = visible.first.handle;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final visibleInsiders = _deskFilter == 'All'
+        ? _insiders
+        : _insiders
+            .where((item) => item.desk == _deskFilter)
+            .toList(growable: false);
     final selected = _insiders.firstWhere(
       (item) => item.handle == _selectedHandle,
-      orElse: () => _insiders.first,
+      orElse: () => visibleInsiders.isEmpty ? _insiders.first : visibleInsiders.first,
     );
 
     return Column(
@@ -50,12 +69,35 @@ class _WebsiteNbaMediaFeedScreenState
           'A live NBA news desk centered on the league’s highest-signal reporters. Select an insider to switch the embedded X timeline without leaving Sports Terminal.',
           style: TextStyle(color: colors.onSurfaceVariant),
         ),
+        const SizedBox(height: 14),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            const Text(
+              'Desk:',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+            for (final desk in const ['All', 'Breaking', 'Reporting', 'Cap'])
+              ChoiceChip(
+                selected: _deskFilter == desk,
+                label: Text(desk),
+                onSelected: (_) => _setDeskFilter(desk),
+              ),
+            Chip(
+              avatar: const Icon(Icons.person_search_rounded, size: 16),
+              label: Text('${visibleInsiders.length} sources'),
+            ),
+          ],
+        ),
         const SizedBox(height: 18),
         LayoutBuilder(
           builder: (context, constraints) {
             final stacked = constraints.maxWidth < 980;
             final timeline = _TimelinePanel(insider: selected);
             final sources = _InsiderPanel(
+              insiders: visibleInsiders,
               selectedHandle: _selectedHandle,
               onSelect: (handle) => setState(() => _selectedHandle = handle),
             );
@@ -139,10 +181,12 @@ class _TimelinePanel extends StatelessWidget {
 
 class _InsiderPanel extends StatelessWidget {
   const _InsiderPanel({
+    required this.insiders,
     required this.selectedHandle,
     required this.onSelect,
   });
 
+  final List<_Insider> insiders;
   final String selectedHandle;
   final ValueChanged<String> onSelect;
 
@@ -172,7 +216,7 @@ class _InsiderPanel extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                for (final insider in _insiders)
+                for (final insider in insiders)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: Material(
@@ -228,11 +272,13 @@ class _Insider {
     required this.name,
     required this.handle,
     required this.outlet,
+    required this.desk,
   });
 
   final String name;
   final String handle;
   final String outlet;
+  final String desk;
 
   String get initials {
     final parts = name.split(' ');
@@ -242,12 +288,52 @@ class _Insider {
 }
 
 const _insiders = <_Insider>[
-  _Insider(name: 'Shams Charania', handle: 'ShamsCharania', outlet: 'ESPN'),
-  _Insider(name: 'Chris Haynes', handle: 'ChrisBHaynes', outlet: 'NBA insider'),
-  _Insider(name: 'Marc Stein', handle: 'TheSteinLine', outlet: 'The Stein Line'),
-  _Insider(name: 'Jake Fischer', handle: 'JakeLFischer', outlet: 'NBA insider'),
-  _Insider(name: 'Bobby Marks', handle: 'BobbyMarks42', outlet: 'ESPN'),
-  _Insider(name: 'Tim Bontemps', handle: 'TimBontemps', outlet: 'ESPN'),
-  _Insider(name: 'Brian Windhorst', handle: 'WindhorstESPN', outlet: 'ESPN'),
-  _Insider(name: 'Michael Scotto', handle: 'MikeAScotto', outlet: 'HoopsHype'),
+  _Insider(
+    name: 'Shams Charania',
+    handle: 'ShamsCharania',
+    outlet: 'ESPN',
+    desk: 'Breaking',
+  ),
+  _Insider(
+    name: 'Chris Haynes',
+    handle: 'ChrisBHaynes',
+    outlet: 'NBA insider',
+    desk: 'Breaking',
+  ),
+  _Insider(
+    name: 'Marc Stein',
+    handle: 'TheSteinLine',
+    outlet: 'The Stein Line',
+    desk: 'Reporting',
+  ),
+  _Insider(
+    name: 'Jake Fischer',
+    handle: 'JakeLFischer',
+    outlet: 'NBA insider',
+    desk: 'Reporting',
+  ),
+  _Insider(
+    name: 'Bobby Marks',
+    handle: 'BobbyMarks42',
+    outlet: 'ESPN',
+    desk: 'Cap',
+  ),
+  _Insider(
+    name: 'Tim Bontemps',
+    handle: 'TimBontemps',
+    outlet: 'ESPN',
+    desk: 'Reporting',
+  ),
+  _Insider(
+    name: 'Brian Windhorst',
+    handle: 'WindhorstESPN',
+    outlet: 'ESPN',
+    desk: 'Reporting',
+  ),
+  _Insider(
+    name: 'Michael Scotto',
+    handle: 'MikeAScotto',
+    outlet: 'HoopsHype',
+    desk: 'Reporting',
+  ),
 ];
