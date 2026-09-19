@@ -242,7 +242,7 @@ class NbaWorkspaceContextBar extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w900),
             ),
             Chip(
-              avatar: const Icon(Icons.database_outlined, size: 15),
+              avatar: const Icon(Icons.storage_rounded, size: 15),
               label: Text(current.mode),
             ),
             const SizedBox(width: 2),
