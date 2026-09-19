@@ -291,8 +291,10 @@ class _WebsiteNbaVisualizationsScreenState
     );
   }
 
-  String _csvCell(String value) =>
-      '"${value.replaceAll('"', '""')}"';
+  String _csvCell(String value) {
+    final escaped = value.replaceAll('"', '""');
+    return '"$escaped"';
+  }
 
   @override
   Widget build(BuildContext context) {
