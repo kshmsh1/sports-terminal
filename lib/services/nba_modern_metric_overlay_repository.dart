@@ -1,7 +1,4 @@
-import 'dart:async';
-import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import 'nba_stats_metric_catalog.dart';
 import 'nba_stats_workstation_engine.dart';
@@ -78,6 +75,10 @@ class NbaModernMetricOverlayRepository {
   Future<NbaModernMetricOverlay> load({
     required String season,
     required String seasonType,
+  }) async {
+    // Modern metrics must be materialized into the static season snapshot.
+    // The runtime overlay endpoint is intentionally disabled.
+    return NbaModernMetricOverlay.empty;
   }) async {
     final cleanSeason = season.trim();
     if (cleanSeason.isEmpty) return NbaModernMetricOverlay.empty;
@@ -159,34 +160,10 @@ class NbaModernMetricOverlayRepository {
     }
   }
 
-  Future<Map<String, dynamic>> status() async {
-    final baseUrl = await _store.loadString(
-      ProductLocalStore.backendBaseUrlKey,
-      fallback: 'http://127.0.0.1:8000',
-    );
-    final normalizedBase = baseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
-    if (normalizedBase.isEmpty) return const {'ready': false};
-    final base = Uri.parse(normalizedBase);
-    final uri = base.replace(
-      path:
-          '${base.path.replaceFirst(RegExp(r'/+$'), '')}/v2/nba/modern-metrics/status',
-    );
-    try {
-      final response = await http
-          .get(uri, headers: const {'Accept': 'application/json'})
-          .timeout(const Duration(seconds: 4));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return const {'ready': false};
-      }
-      final decoded = jsonDecode(response.body);
-      if (decoded is Map) {
-        return decoded.map((key, value) => MapEntry(key.toString(), value));
-      }
-    } catch (_) {
-      // A missing local overlay must never make core Stats unavailable.
-    }
-    return const {'ready': false};
-  }
+  Future<Map<String, dynamic>> status() async => const {
+    'ready': false,
+    'mode': 'static-only',
+  };
 }
 
 double? _number(Object? value) {
