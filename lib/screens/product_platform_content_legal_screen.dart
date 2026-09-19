@@ -70,6 +70,9 @@ class ProductPlatformLegalScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     if (kind == 'about') return const _AboutPage();
     if (kind == 'contact') return const _ContactPage();
+    if (kind == 'sitemap') return const _SitemapPage();
+    if (kind == 'accessibility') return const _AccessibilityPage();
+    if (kind == 'data') return const _DataMethodologyPage();
     final privacy = kind == 'privacy';
     final sections = privacy ? _privacySections : _termsSections;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -168,6 +171,145 @@ const _termsSections = <(String,String)>[
   ('Entire Agreement, Severability and Assignment','These Terms, the Privacy Policy, incorporated policies and applicable order forms constitute the agreement for the covered Services unless another signed agreement controls. If a provision is unenforceable, the remainder remains effective to the extent permitted. Users may not assign rights without consent; Sports Terminal may assign in connection with corporate transactions or as otherwise permitted by law.'),
   ('Contact','Legal notices should be sent to [legal@sportsterminal.com placeholder] and the legal mailing address to be added before launch. Support questions should use the Contact page. Formal notices may require specific delivery methods under enterprise agreements.'),
 ];
+
+class _SitemapPage extends StatelessWidget {
+  const _SitemapPage();
+
+  @override
+  Widget build(BuildContext context) => const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Hero(
+            'SPORTS TERMINAL / SITEMAP',
+            'Explore the platform',
+            'A product-wide map of Sports Terminal. Availability can vary by build and data coverage.',
+          ),
+          SizedBox(height: 12),
+          _Surface(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SectionTitle('Core sports'),
+                SizedBox(height: 8),
+                Text(
+                  'Sports Home · NBA Home · Stats · Advanced Stats · Player Compare · Team Compare · Trade Machine · Schedule Snapshot · Box Scores · Visualizations · With / Without · Rankings · Research.',
+                  style: TextStyle(color: _cMuted, height: 1.55),
+                ),
+                SizedBox(height: 16),
+                _SectionTitle('Research and workflow'),
+                SizedBox(height: 8),
+                Text(
+                  'Front Office · Community · Profile · research workspaces and analytical tooling as enabled in the current build.',
+                  style: TextStyle(color: _cMuted, height: 1.55),
+                ),
+                SizedBox(height: 16),
+                _SectionTitle('Company and legal'),
+                SizedBox(height: 8),
+                Text(
+                  'About · Contact · Privacy Policy · Terms & Conditions · Accessibility · Data & Methodology.',
+                  style: TextStyle(color: _cMuted, height: 1.55),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+}
+
+class _AccessibilityPage extends StatelessWidget {
+  const _AccessibilityPage();
+
+  @override
+  Widget build(BuildContext context) => const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Hero(
+            'ACCESSIBILITY',
+            'Accessibility Statement',
+            'Sports Terminal is intended to be usable by people with a wide range of abilities, devices and input methods.',
+          ),
+          SizedBox(height: 12),
+          _Surface(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SectionTitle('Our commitment'),
+                SizedBox(height: 8),
+                Text(
+                  'We aim to design and maintain Sports Terminal in substantial alignment with widely adopted accessibility practices, including keyboard operability, meaningful focus states, semantic labels, sufficient contrast, scalable text, understandable form controls, non-color-only status communication, and responsive layouts.',
+                  style: TextStyle(color: _cMuted, height: 1.6),
+                ),
+                SizedBox(height: 16),
+                _SectionTitle('Known limitations and continuous improvement'),
+                SizedBox(height: 8),
+                Text(
+                  'Dense statistical tables, charts, data visualizations and experimental analytical tools can create accessibility challenges. Accessibility is treated as an ongoing engineering and content requirement rather than a one-time certification. Features that do not yet meet the intended standard should be remediated before a broad commercial launch.',
+                  style: TextStyle(color: _cMuted, height: 1.6),
+                ),
+                SizedBox(height: 16),
+                _SectionTitle('Feedback and accommodation'),
+                SizedBox(height: 8),
+                Text(
+                  'Users who encounter an accessibility barrier should contact support@sportsterminal.com with the affected page, feature, device/browser and a description of the issue. Production contact information and formal response targets must be finalized before launch.',
+                  style: TextStyle(color: _cMuted, height: 1.6),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+}
+
+class _DataMethodologyPage extends StatelessWidget {
+  const _DataMethodologyPage();
+
+  @override
+  Widget build(BuildContext context) => const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Hero(
+            'DATA & METHODOLOGY',
+            'Static-data and source methodology',
+            'Sports Terminal separates immutable product snapshots, derived metrics and source-specific definitions so users can understand what a number represents and where it came from.',
+          ),
+          SizedBox(height: 12),
+          _Surface(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SectionTitle('Runtime data policy'),
+                SizedBox(height: 8),
+                Text(
+                  'The customer-facing application is designed to operate from pre-materialized static datasets and local persistence. It does not call live third-party sports, social-media or product-data APIs at runtime. Static files can still be delivered by the application host in the ordinary course of serving a web application; that delivery is not a live third-party data integration.',
+                  style: TextStyle(color: _cMuted, height: 1.6),
+                ),
+                SizedBox(height: 16),
+                _SectionTitle('Source boundaries'),
+                SizedBox(height: 8),
+                Text(
+                  'Statistics and records should preserve source provenance, season type, coverage windows and provider definitions. Where a requested field is not present in the reviewed static corpus, Sports Terminal should display an unavailable state rather than fabricate a value.',
+                  style: TextStyle(color: _cMuted, height: 1.6),
+                ),
+                SizedBox(height: 16),
+                _SectionTitle('Derived metrics'),
+                SizedBox(height: 8),
+                Text(
+                  'Derived measures should identify their formula and required inputs. Provider-native or third-party proprietary metrics should remain separately labeled and should only be distributed when Sports Terminal has an appropriate source and rights posture.',
+                  style: TextStyle(color: _cMuted, height: 1.6),
+                ),
+                SizedBox(height: 16),
+                _SectionTitle('Corrections and revisions'),
+                SizedBox(height: 8),
+                Text(
+                  'Static releases may be replaced when source records are corrected, historical conflicts are reconciled or methodology changes. Material changes should be versioned and documented so research can be reproduced against the relevant release.',
+                  style: TextStyle(color: _cMuted, height: 1.6),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+}
 
 class _AboutPage extends StatelessWidget {
   const _AboutPage();
