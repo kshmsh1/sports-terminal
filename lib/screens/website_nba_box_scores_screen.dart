@@ -16,6 +16,8 @@ class _WebsiteNbaBoxScoresScreenState extends State<WebsiteNbaBoxScoresScreen> {
   late Future<_BoxScoreArchive> _future;
   String _season = 'All';
   String _segment = 'All';
+  bool _detailedOnly = false;
+  bool _newestFirst = true;
   int _page = 1;
   static const _pageSize = 30;
 
@@ -79,6 +81,9 @@ class _WebsiteNbaBoxScoresScreenState extends State<WebsiteNbaBoxScoresScreen> {
         if (_segment == 'Regular Season' && type.contains('play')) return false;
         if (_segment == 'Playoffs' && !type.contains('play')) return false;
       }
+      final detailed = game['box_score_available'] == true ||
+          _text(game['file']).isNotEmpty;
+      if (_detailedOnly && !detailed) return false;
       if (query.isEmpty) return true;
       final haystack = [
         game['game_date'],
@@ -91,6 +96,17 @@ class _WebsiteNbaBoxScoresScreenState extends State<WebsiteNbaBoxScoresScreen> {
       ].map((value) => _text(value).toLowerCase()).join(' ');
       return haystack.contains(query);
     }).toList(growable: false);
+    filtered.sort((a, b) {
+      final left = _text(a['game_date']);
+      final right = _text(b['game_date']);
+      final byDate = _newestFirst ? right.compareTo(left) : left.compareTo(right);
+      if (byDate != 0) return byDate;
+      final leftKey = _text(a['game_key']);
+      final rightKey = _text(b['game_key']);
+      return _newestFirst
+          ? rightKey.compareTo(leftKey)
+          : leftKey.compareTo(rightKey);
+    });
 
     final pageCount = filtered.isEmpty
         ? 1
@@ -192,6 +208,42 @@ class _WebsiteNbaBoxScoresScreenState extends State<WebsiteNbaBoxScoresScreen> {
                       if (value == null) return;
                       setState(() {
                         _segment = value;
+                        _page = 1;
+                      });
+                    },
+                  ),
+                ),
+                FilterChip(
+                  selected: _detailedOnly,
+                  avatar: const Icon(Icons.table_rows_rounded, size: 16),
+                  label: const Text('Detailed only'),
+                  onSelected: (selected) => setState(() {
+                    _detailedOnly = selected;
+                    _page = 1;
+                  }),
+                ),
+                SizedBox(
+                  width: 150,
+                  child: DropdownButtonFormField<bool>(
+                    initialValue: _newestFirst,
+                    decoration: const InputDecoration(
+                      labelText: 'Sort',
+                      isDense: true,
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: true,
+                        child: Text('Newest first'),
+                      ),
+                      DropdownMenuItem(
+                        value: false,
+                        child: Text('Oldest first'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _newestFirst = value;
                         _page = 1;
                       });
                     },
