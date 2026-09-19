@@ -46,6 +46,8 @@ void main() {
     expect(player, contains('Saved views'));
     expect(player, contains('Save As'));
     expect(player, contains('_maxSavedViews = 5'));
+    expect(player, contains('Copy comparison'));
+    expect(player, contains('Clipboard.setData'));
     expect(player, contains('PLAYER IMAGE PLACEHOLDER'));
     expect(player, contains('WebsiteNbaApiService'));
     expect(player, contains('seasonSnapshot('));
@@ -57,6 +59,9 @@ void main() {
     expect(team, contains('Add team'));
     expect(team, contains('Remove team'));
     expect(team, contains('Cross-era mode'));
+    expect(team, contains('nba_team_compare_saved_views_v1'));
+    expect(team, contains('SharedPreferences'));
+    expect(team, contains('Save As'));
     expect(team, contains('Regular Season'));
     expect(team, contains('Playoffs'));
     expect(team, contains('Icons.star_rounded'));
