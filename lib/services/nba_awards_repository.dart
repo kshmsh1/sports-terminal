@@ -5,9 +5,7 @@ import 'product_local_store.dart';
 class NbaAwardsRepository {
   const NbaAwardsRepository({
     ProductLocalStore store = const ProductLocalStore(),
-  }) : _store = store;
-
-  final ProductLocalStore _store;
+  });
 
   Future<Map<String, dynamic>> catalog({String league = 'NBA'}) => _get(
         '/v2/nba/awards/catalog',
