@@ -1,7 +1,4 @@
-import 'dart:async';
-import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import 'historical_nba_repository.dart';
 import 'product_local_store.dart';
@@ -39,6 +36,10 @@ class NbaTerminalRepository {
   Future<Map<String, dynamic>> _get(
     String path, {
     Map<String, String> query = const {},
+  }) async {
+    throw const HistoricalNbaException(
+      'Runtime terminal API access is disabled. Use static terminal data.',
+    );
   }) async {
     final baseUrl = await _store.loadString(
       ProductLocalStore.backendBaseUrlKey,
