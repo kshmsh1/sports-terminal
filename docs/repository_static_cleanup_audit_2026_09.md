@@ -24,9 +24,13 @@ Changes in this pass:
 - the media feed is now a static source directory with no social embed;
 - backend sync transport is disabled;
 - the legacy product REST client is retained only as a source-compatible disabled facade;
-- the standard launcher no longer has a live-refresh option and no longer materializes the schedule from a remote endpoint.
+- legacy historical/research/awards/entity/terminal backend repositories are disabled rather than permitted to make runtime calls;
+- modern metric overlays must be pre-materialized into the static corpus;
+- authentication transport and remote workbook synchronization are disabled in static-only mode;
+- the standard launcher no longer has a live-refresh option and no longer materializes the schedule from a remote endpoint;
+- CI now runs `tools/audit_no_runtime_remote_apis.py` to reject explicit remote URLs or unapproved HTTP clients in customer-facing Dart code.
 
-The website still reads its own static JSON files from the application host. On web, that means the browser can issue same-origin file requests for bundled/static application assets. These are file-delivery operations, not third-party/live sports APIs.
+The website still reads its own static JSON files from the application host. On web, that means the browser can issue same-origin file requests for bundled/static application assets. These are file-delivery operations, not third-party/live sports APIs. The runtime network audit explicitly allows only reviewed same-origin static loaders.
 
 ## Build-time collection tools
 
