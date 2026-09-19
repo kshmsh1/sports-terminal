@@ -68,9 +68,7 @@ class NbaModernMetricOverlay {
 class NbaModernMetricOverlayRepository {
   const NbaModernMetricOverlayRepository({
     ProductLocalStore store = const ProductLocalStore(),
-  }) : _store = store;
-
-  final ProductLocalStore _store;
+  });
 
   Future<NbaModernMetricOverlay> load({
     required String season,
