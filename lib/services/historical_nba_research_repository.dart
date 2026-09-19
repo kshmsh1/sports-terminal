@@ -1,7 +1,4 @@
-import 'dart:async';
-import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import 'historical_nba_repository.dart';
 import 'product_local_store.dart';
@@ -142,6 +139,10 @@ class HistoricalNbaResearchRepository {
   Future<Map<String, dynamic>> _get(
     String path, {
     Map<String, String> query = const {},
+  }) async {
+    throw const HistoricalNbaException(
+      'Legacy backend research access is disabled. Use the static NBA website repository.',
+    );
   }) async {
     final baseUrl = await _store.loadString(
       ProductLocalStore.backendBaseUrlKey,
