@@ -6,9 +6,7 @@ import 'product_local_store.dart';
 class NbaEntityIntelligenceRepository {
   const NbaEntityIntelligenceRepository({
     ProductLocalStore store = const ProductLocalStore(),
-  }) : _store = store;
-
-  final ProductLocalStore _store;
+  });
 
   Future<Map<String, dynamic>> search(
     String query, {
