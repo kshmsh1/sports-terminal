@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/app_session.dart';
+import '../services/nba_stats_metric_catalog.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
@@ -12,9 +13,8 @@ import '../widgets/website_pagination.dart';
 import '../widgets/website_sticky_stats_table.dart';
 import 'website_nba_entity_pages.dart';
 
-// NOTE: The remainder of this file is intentionally kept identical to the
-// previous implementation except for percentage heat-cell rendering and a
-// visible 3PM metric in Overview/Shooting categories.
+// Advanced Stats is driven by the canonical metric catalog so the full
+// source-aware family set stays in sync with the underlying data model.
 
 class WebsiteNbaAdvancedStatsScreen extends StatefulWidget {
   const WebsiteNbaAdvancedStatsScreen({super.key, required this.session});
@@ -210,7 +210,7 @@ class _WebsiteNbaAdvancedStatsScreenState
     final colors = Theme.of(context).colorScheme;
     final rows = _engine.buildRows(
       snapshot,
-      basis: NbaStatsBasis.perGame,
+      basis: _basis,
       seasonType: _seasonType,
     );
     final query = _search.text.trim().toLowerCase();
@@ -475,6 +475,66 @@ class _Metric {
 _Metric countMetric(String key,String perGameLabel,String totalLabel,String abbreviation,String glossary,{List<_Metric> children=const []}) => _Metric(key,perGameLabel,glossary,totalLabel:totalLabel,rateAbbreviation:abbreviation,rateSensitive:true,children:children);
 _Metric childCount(String key,String label,String totalLabel,String abbreviation,String glossary) => _Metric(key,label,glossary,totalLabel:totalLabel,rateAbbreviation:abbreviation,rateSensitive:true);
 
+final _resolver = const NbaTerminalMetricResolver();
+
+_Metric _catalogMetric(String key) {
+  final metric = nbaTerminalMetricByKey[key];
+  if (metric == null) {
+    return _Metric(key, key.toUpperCase(), 'Source-backed metric.');
+  }
+  final children = [
+    for (final childKey in metric.children) _catalogMetric(childKey),
+  ];
+  final engineKey = metric.engineKey;
+  final rateSensitive = engineKey != null &&
+      const {
+        'min','pts','ast','reb','oreb','dreb','stl','blk','tov','pf',
+        'fgm','fga','two_pm','two_pa','three_pm','three_pa','ftm','fta',
+        'plus_minus','stocks','defense_events','possessions_proxy','game_score_proxy'
+      }.contains(engineKey);
+  return _Metric(
+    key,
+    metric.shortLabel,
+    metric.description,
+    totalLabel: rateSensitive ? metric.shortLabel : null,
+    rateAbbreviation: metric.shortLabel,
+    rateSensitive: rateSensitive,
+    percent: metric.format == NbaTerminalMetricFormat.percent,
+    signed: metric.format == NbaTerminalMetricFormat.signed,
+    integer: metric.format == NbaTerminalMetricFormat.integer,
+    children: children,
+  );
+}
+
+_Category _catalogCategory(String familyId, {String? label}) {
+  final family = nbaTerminalFamily(familyId);
+  return _Category(
+    label ?? family.label,
+    family.description,
+    [
+      for (final key in family.metrics)
+        _catalogMetricWithExpansion(key, family.expansionOverrides[key]),
+    ],
+  );
+}
+
+_Metric _catalogMetricWithExpansion(String key, List<String>? overrideChildren) {
+  final base = _catalogMetric(key);
+  if (overrideChildren == null || overrideChildren.isEmpty) return base;
+  return _Metric(
+    base.key,
+    base.label,
+    base.glossary,
+    totalLabel: base.totalLabel,
+    rateAbbreviation: base.rateAbbreviation,
+    rateSensitive: base.rateSensitive,
+    percent: base.percent,
+    signed: base.signed,
+    integer: base.integer,
+    children: [for (final childKey in overrideChildren) _catalogMetric(childKey)],
+  );
+}
+
 final _categories = <_Category>[
   _Category('Overview','Core production, traditional shooting efficiency and headline impact measures.',[
     const _Metric('gp','GP','Games played.',integer:true),
@@ -507,30 +567,20 @@ final _categories = <_Category>[
     const _Metric('efg_pct','eFG%','Effective field-goal percentage.',percent:true),
     const _Metric('ts_pct','TS%','True shooting percentage.',percent:true),
   ]),
-  _Category('Defense','Box-score events, hustle activity, defended shooting, contests, deterrence and foul discipline.',[
-    countMetric('stl','SPG','Steals','STL','Steals.'),
-    countMetric('blk','BPG','Blocks','BLK','Blocks.'),
-    countMetric('deflections_pg','DPG','Deflections','DEFL','Deflections.'),
-    _Metric('dfg_pct','DFG%','Opponent field-goal percentage on attempts defended by the player.',percent:true,children:[childCount('dfgm','DFGM','Defended Field Goals Made','DFGM','Opponent field goals made when defended.'),childCount('dfga','DFGA','Defended Field Goal Attempts','DFGA','Opponent field-goal attempts when defended.')]),
-    const _Metric('rim_dfg_pct','Rim DFG%','Opponent rim FG% when defended by the player.',percent:true),
-    const _Metric('three_dfg_pct','3P DFG%','Opponent 3P% when defended by the player.',percent:true),
-    const _Metric('dbpm','DBPM','Defensive Box Plus/Minus.',signed:true),
-    const _Metric('drtg','DRtg','Defensive rating.'),
-  ]),
-  _Category('Rebounding','Overall, offensive and defensive rebounding volume.',[
-    countMetric('reb','RPG','Rebounds','REB','Total rebounds.'),
-    countMetric('dreb','DREB','Defensive Rebounds','DREB','Defensive rebounds.'),
-    countMetric('oreb','OREB','Offensive Rebounds','OREB','Offensive rebounds.'),
-  ]),
-  _Category('Impact','Team impact and all-in-one value metrics.',const [
-    _Metric('ortg','ORtg','Offensive rating.'),
-    _Metric('drtg','DRtg','Defensive rating.'),
-    _Metric('net_rating','Net Rating','Offensive rating minus defensive rating.',signed:true),
-    _Metric('per','PER','Player Efficiency Rating.'),
-    _Metric('bpm','BPM','Box Plus/Minus.',signed:true),
-    _Metric('vorp','VORP','Value Over Replacement Player.'),
-    _Metric('ws','WS','Win Shares.'),
-  ]),
+  _catalogCategory('defense_hustle'),
+  _catalogCategory('playmaking'),
+  _catalogCategory('rebounding'),
+  _catalogCategory('efficiency'),
+  _catalogCategory('impact'),
+  _catalogCategory('aggregate'),
+  _catalogCategory('movement'),
+  _catalogCategory('clutch'),
+  _catalogCategory('shot_profile'),
+  _catalogCategory('play_type'),
+  _catalogCategory('gravity_creation'),
+  _catalogCategory('physical'),
+  _catalogCategory('discipline'),
+  _catalogCategory('availability'),
   _Category('Rate Adjusted','Core counting production on the selected rate basis.',[
     countMetric('min','MPG','Minutes','MIN','Minutes played.'),
     countMetric('pts','PPG','Points','PTS','Points.'),
@@ -558,11 +608,10 @@ class _EmptyCard extends StatelessWidget { const _EmptyCard(this.message); final
 bool _matchesPosition(String value,String wanted){final positions=RegExp(r'PG|SG|SF|PF|C').allMatches(value.toUpperCase()).map((m)=>m.group(0)).whereType<String>().toSet();return positions.contains(wanted.toUpperCase());}
 
 double? _metricValue(NbaStatsRow row,String key,NbaStatsBasis basis){
-  final base=row.value(key); if(base==null)return null;
-  if (basis==NbaStatsBasis.perGame) return base;
-  if (const {'fg_pct','three_pct','ft_pct','efg_pct','ts_pct','dfg_pct','rim_dfg_pct','three_dfg_pct','pie','per','bpm','vorp','ws','ortg','drtg','net_rating'}.contains(key)) return base;
-  final gp=row.value('gp')??0; final min=row.value('min')??0;
-  switch(basis){case NbaStatsBasis.totals:return base*gp;case NbaStatsBasis.per36:return min>0?base*36/min:null;case NbaStatsBasis.per48:return min>0?base*48/min:null;case NbaStatsBasis.per75:case NbaStatsBasis.per100:return base;case NbaStatsBasis.perGame:return base;}
+  // Engine-backed counting metrics are already normalized to the selected basis.
+  // Catalog-native metrics resolve from source-backed raw aliases and remain
+  // unavailable (—) when the static corpus does not contain the field.
+  return _resolver.value(row, key) ?? row.value(key);
 }
 
 String _formatMetric(double? value,_Metric metric,NbaStatsBasis basis){if(value==null||value.isNaN||value.isInfinite)return '—';if(metric.percent)return '${(value*100).toStringAsFixed(1)}%';if(metric.integer)return value.round().toString();if(metric.signed)return '${value>=0?'+':''}${value.toStringAsFixed(1)}';return value.toStringAsFixed(1);}
