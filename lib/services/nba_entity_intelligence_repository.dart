@@ -1,7 +1,4 @@
-import 'dart:async';
-import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import 'historical_nba_repository.dart';
 import 'product_local_store.dart';
@@ -88,6 +85,10 @@ class NbaEntityIntelligenceRepository {
   Future<Map<String, dynamic>> _get(
     String path, {
     Map<String, String> query = const {},
+  }) async {
+    throw const HistoricalNbaException(
+      'Runtime entity API access is disabled. Use static entity intelligence data.',
+    );
   }) async {
     final baseUrl = await _store.loadString(
       ProductLocalStore.backendBaseUrlKey,
