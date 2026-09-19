@@ -163,6 +163,27 @@ class _WebsiteNbaRankingsScreenState extends State<WebsiteNbaRankingsScreen> {
     });
   }
 
+  void _autoSeed(List<NbaStatsRow> rows) {
+    final candidates = rows
+        .where((row) => row.value(_statOne) != null)
+        .toList()
+      ..sort(
+        (a, b) => (b.value(_statOne) ?? double.negativeInfinity)
+            .compareTo(a.value(_statOne) ?? double.negativeInfinity),
+      );
+    final seeded = candidates.take(_tiers.length * 5).toList(growable: false);
+    setState(() {
+      for (final values in _tierPlayers.values) {
+        values.clear();
+      }
+      for (var index = 0; index < seeded.length; index++) {
+        final tierIndex = index ~/ 5;
+        _tierPlayers[_tiers[tierIndex]]!.add(seeded[index].playerId);
+      }
+      _activeBoardId = null;
+    });
+  }
+
   Future<void> _saveBoard({bool saveAs = false}) async {
     if (!saveAs && _activeBoardId != null) {
       final index = _saved.indexWhere((item) => item.id == _activeBoardId);
@@ -405,6 +426,13 @@ class _WebsiteNbaRankingsScreenState extends State<WebsiteNbaRankingsScreen> {
                   onPressed: _clearBoard,
                   icon: const Icon(Icons.restart_alt_rounded),
                   label: const Text('Clear'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _autoSeed(rows),
+                  icon: const Icon(Icons.auto_awesome_rounded),
+                  label: Text(
+                    'Auto-seed by ${_engine.metric(_statOne).shortLabel}',
+                  ),
                 ),
                 FilledButton.icon(
                   onPressed: () => _saveBoard(),
