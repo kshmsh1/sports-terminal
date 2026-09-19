@@ -1,9 +1,7 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show FlutterError;
 import 'package:flutter/services.dart' show AssetManifest, rootBundle;
-import 'package:http/http.dart' as http;
 
 import 'product_local_store.dart';
 
@@ -105,6 +103,10 @@ class NbaTerminalSeedRepository {
     String league = 'NBA',
     String seasonType = 'regular',
     bool includeGameLogs = true,
+  }) async {
+    throw const NbaTerminalSeedException(
+      'Legacy backend historical seed loading is disabled. Customer historical pages use the static website corpus.',
+    );
   }) async {
     final normalizedSeason = season.trim();
     if (normalizedSeason.isEmpty) {
