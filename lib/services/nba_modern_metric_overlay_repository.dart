@@ -83,3 +83,6 @@ class NbaModernMetricOverlayRepository {
   };
 }
 
+
+String _normalizeName(String value) =>
+    value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
