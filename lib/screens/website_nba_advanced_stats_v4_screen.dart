@@ -577,6 +577,18 @@ final _categories = <_Category>[
   _catalogCategory('clutch'),
   _catalogCategory('shot_profile'),
   _catalogCategory('play_type'),
+  _Category(
+    'Isolation',
+    'Isolation scoring efficiency and nearby self-creation context.',
+    [
+      _catalogMetric('isolation_ppp'),
+      _catalogMetric('usage'),
+      _catalogMetric('unassisted_fg_pct'),
+      _catalogMetric('unassisted_ppg'),
+      _catalogMetric('drive_ppg'),
+      _catalogMetric('drive_apg'),
+    ],
+  ),
   _catalogCategory('gravity_creation'),
   _catalogCategory('physical'),
   _catalogCategory('discipline'),
