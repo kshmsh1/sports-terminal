@@ -219,66 +219,6 @@ class HistoricalNbaRepository {
     throw const HistoricalNbaException(
       'Legacy backend historical access is disabled. Use the static NBA website repository.',
     );
-  }) async {
-    final baseUrl = await _store.loadString(
-      ProductLocalStore.backendBaseUrlKey,
-      fallback: 'http://127.0.0.1:8000',
-    );
-    final normalized = baseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
-    if (normalized.isEmpty) {
-      throw const HistoricalNbaException('Historical backend URL is empty.');
-    }
-    final base = Uri.parse(normalized);
-    final relative = path.startsWith('/') ? path : '/$path';
-    final uri = base.replace(
-      path: '${base.path.replaceFirst(RegExp(r'/+$'), '')}$relative',
-      queryParameters: query.isEmpty ? null : query,
-    );
-    final token = await _store.loadString(ProductLocalStore.launchAuthTokenKey);
-    try {
-      final response = await http
-          .get(
-            uri,
-            headers: {
-              'Accept': 'application/json',
-              if (token.isNotEmpty) 'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(const Duration(seconds: 12));
-      Object? decoded;
-      if (response.body.trim().isNotEmpty) {
-        try {
-          decoded = jsonDecode(response.body);
-        } catch (_) {
-          throw HistoricalNbaException(
-            'Historical API returned non-JSON content (${response.statusCode}).',
-            statusCode: response.statusCode,
-          );
-        }
-      }
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        final detail = decoded is Map && decoded['detail'] != null
-            ? decoded['detail'].toString()
-            : 'Historical API request failed (${response.statusCode}).';
-        throw HistoricalNbaException(detail, statusCode: response.statusCode);
-      }
-      if (decoded is! Map) {
-        throw const HistoricalNbaException(
-          'Historical API returned an unexpected response shape.',
-        );
-      }
-      return decoded.map(
-        (key, value) => MapEntry(key.toString(), value),
-      );
-    } on TimeoutException {
-      throw const HistoricalNbaException(
-        'Historical API request timed out. Confirm the launch backend is running.',
-      );
-    } on HistoricalNbaException {
-      rethrow;
-    } catch (error) {
-      throw HistoricalNbaException('Historical API unavailable: $error');
-    }
   }
 
   List<Map<String, dynamic>> _mapRows(Object? value) {
