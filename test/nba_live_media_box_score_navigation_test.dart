@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('canonical shell exposes NBA media, box scores and live games', () {
+  test('canonical shell exposes static NBA media, box scores and schedule', () {
     final shell = File('lib/widgets/canonical_product_shell.dart').readAsStringSync();
     final media = File(
       'lib/screens/website_nba_media_feed_screen.dart',
