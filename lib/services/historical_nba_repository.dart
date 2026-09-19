@@ -6,9 +6,7 @@ import 'product_local_store.dart';
 class HistoricalNbaRepository {
   const HistoricalNbaRepository({
     ProductLocalStore store = const ProductLocalStore(),
-  }) : _store = store;
-
-  final ProductLocalStore _store;
+  });
 
   Future<Map<String, dynamic>> status() => _get('/v2/nba/history/status');
 
