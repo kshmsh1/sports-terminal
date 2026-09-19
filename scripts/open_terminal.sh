@@ -5,14 +5,12 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 FORCE_STATIC=0
-REFRESH_LIVE=0
 for arg in "$@"; do
   case "$arg" in
     --rebuild-static) FORCE_STATIC=1 ;;
-    --refresh-live) REFRESH_LIVE=1 ;;
     *)
       echo "Unknown option: $arg" >&2
-      echo "Usage: bash scripts/open_terminal.sh [--rebuild-static] [--refresh-live]" >&2
+      echo "Usage: bash scripts/open_terminal.sh [--rebuild-static]" >&2
       exit 2
       ;;
   esac
@@ -53,9 +51,8 @@ EOF
 fi
 export SPORTS_TERMINAL_NBA_HISTORY_DB="$NBA_HISTORY_DB"
 
-# The immutable historical build deliberately does not scrape or download
-# sports data at runtime. Current-season schedule refreshes below are isolated,
-# explicit live-data operations and never mutate the historical corpus.
+# The customer-facing runtime and launcher deliberately do not scrape, poll or
+# download sports data. Every product dataset is read from local static inputs.
 PYTHON_BIN="${SPORTS_TERMINAL_PYTHON:-python3}"
 if [[ -x "$ROOT/.historical-venv/bin/python" ]]; then
   PYTHON_BIN="$ROOT/.historical-venv/bin/python"
@@ -117,19 +114,9 @@ fi
 "$PYTHON_BIN" "$ROOT/tools/materialize_static_nba_game_details.py" \
   "${GAME_DETAIL_ARGS[@]}"
 
-# The 2026-27 schedule is current-season fixture metadata, not historical stat
-# data. Acquire it once from the official NBA CDN, then serve the local snapshot
-# to the browser. Normal launches reuse the snapshot; --refresh-live explicitly
-# refreshes it if the league changes a future game/date.
+# The 2026-27 schedule must already exist as a reviewed static snapshot.
+# The launcher never refreshes it from a remote source.
 SCHEDULE_FILE="$ROOT/web/data/nba_live/schedule_2026_27.json"
-if [[ ! -s "$SCHEDULE_FILE" || "$REFRESH_LIVE" -eq 1 ]]; then
-  SCHEDULE_ARGS=(--output "$SCHEDULE_FILE")
-  if [[ "$REFRESH_LIVE" -eq 1 ]]; then
-    SCHEDULE_ARGS+=(--force)
-  fi
-  "$PYTHON_BIN" "$ROOT/tools/materialize_nba_2026_27_schedule.py" \
-    "${SCHEDULE_ARGS[@]}" || true
-fi
 
 for required in \
   "$ROOT/web/data/nba_static/manifest.json" \
@@ -158,7 +145,7 @@ echo "Static NBA website corpus ready${LATEST_SEASON:+ through $LATEST_SEASON}."
 if [[ -s "$SCHEDULE_FILE" ]]; then
   echo "2026-27 schedule snapshot ready."
 else
-  echo "2026-27 schedule snapshot is not available yet; Live Games will show setup guidance." >&2
+  echo "2026-27 schedule snapshot is not available; Schedule Snapshot will show setup guidance." >&2
 fi
 
 echo "Resolving Flutter dependencies..."
