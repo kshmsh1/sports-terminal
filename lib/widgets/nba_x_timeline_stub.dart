@@ -20,7 +20,7 @@ class NbaXTimeline extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Text(
-                'Live X timeline for @$handle is available in the Sports Terminal web build. $displayName remains in the insider watchlist on this platform.',
+                'Third-party social embeds are disabled in the static Sports Terminal runtime. @$handle ($displayName) remains available as descriptive source metadata only.',
                 textAlign: TextAlign.center,
               ),
             ),
