@@ -60,7 +60,7 @@ class NbaTradeExceptionReference202627 {
     'MIA': {'non_tax_mle': 8979000, 'bae': 5477000},
     'MIL': {'non_tax_mle': 15044000, 'bae': 5477000},
     'MIN': {'tax_mle': 6064000},
-    'NOP': {'non_tax_mle': 7239122, 'bae': 5477000},
+    'NOP': {'non_tax_mle': 15044000, 'bae': 5477000},
     'NYK': {'tax_mle': 6064000},
     'OKC': {'tax_mle': 6064000},
     'ORL': {'tax_mle': 6064000},
