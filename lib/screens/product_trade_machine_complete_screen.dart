@@ -19,10 +19,10 @@ const _green = Color(0xFF65D19E);
 const _amber = Color(0xFFF2C66D);
 const _red = Color(0xFFFF7C83);
 
-const _cap = 166000000.0;
-const _tax = 201690000.0;
-const _first = 210690000.0;
-const _second = 223690000.0;
+const _cap = 164961000.0;
+const _tax = 200428000.0;
+const _first = 209015000.0;
+const _second = 221686000.0;
 
 class ProductTradeMachineCompleteScreen extends StatefulWidget {
   const ProductTradeMachineCompleteScreen({super.key});
@@ -243,7 +243,7 @@ class _ProductTradeMachineCompleteScreenState
           ),
           const SizedBox(height: 8),
           const Text(
-            'Operating thresholds: \$166.0M salary cap · \$201.69M tax · \$210.69M first apron · \$223.69M second apron.',
+            'Operating thresholds: \$164.961M salary cap · \$200.428M tax · \$209.015M first apron · \$221.686M second apron.',
             style: TextStyle(color: _muted, fontSize: 10),
           ),
         ],
