@@ -120,3 +120,34 @@ The next focused data task should be a **contract normalization pass**:
 - signing/acquisition timing fields.
 
 That will allow the Trade Machine rules engine to stop relying on manual "review required" flags for several edge cases.
+
+
+## Exception, hard-cap, tax and transaction tracker pass
+
+A further 2026-09-20 data pass added six tracker sources:
+- mid-level exception tracker;
+- bi-annual exception tracker;
+- disabled player exception tracker;
+- traded-player exception tracker;
+- hard-cap trigger tracker;
+- 2026-27 luxury-tax tracker.
+
+These are now normalized into `nba_front_office_tracker_2026.dart` alongside the existing signing-exception and TPE references.
+
+### Disabled Player Exceptions captured
+- DAL — Dereck Lively II — $3,619,565
+- HOU — Fred VanVleet — $12,500,000
+- IND — Tyrese Haliburton — $15,044,000
+- LAC — Bradley Beal — $3,212,400
+- OKC — Thomas Sorber — $2,443,860
+
+### Hard-cap trigger history
+The supplied tracker identifies first-apron and second-apron triggering events by team, including TP-MLE usage, BAE usage, sign-and-trades, trade salary acquired, cash traded, aggregation and prior-season TPE use. This materially closes the prior gap where Sports Terminal knew some teams were hard-capped but did not know why.
+
+### Luxury-tax / repeater status
+The supplied tracker now gives a static 2026-27 tax snapshot with estimated tax, taxed amount and repeater status. This should remain separate from trade-matching salary because tax payroll and trade salary are different accounting concepts.
+
+### Transaction history
+The supplied official 2026 offseason trade list has been normalized into `nba_transaction_history_2026.dart`. The transaction history now provides dated acquisition events that can be used to automate recently-acquired aggregation checks rather than relying only on manual review flags.
+
+The supplied all-30-team free-agency / extension / trade transaction log is retained as the next source for signing-date and extension-date normalization. It should be modeled separately from trade acquisition events because signing restrictions depend on the precise transaction type and date.
