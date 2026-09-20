@@ -28,7 +28,12 @@ For those teams, Sports Terminal now treats the team-level sheet as the newer au
 
 The team sheets also provide cap holds and available signing exceptions. Exception balances were cross-checked against the existing reference; Miami's remaining non-taxpayer MLE was corrected to $8,979,000. Where a source displays a room-MLE amount above the NBA's official maximum, Sports Terminal retains the official league maximum rather than an impossible higher balance.
 
+A final team-sheet batch supplied MIL, MIN, NOP, NYK, OKC, ORL, PHI, PHO, POR, SAC, SAS, TOR, UTA and WAS. Together with the earlier batch, all 30 NBA teams now have team-level current salary-position coverage in the normalized reference.
+
 ### Trade kickers
+
+The final user-supplied recorded-kicker table supersedes the earlier mixed-status list for current 2026-27 team assignments. Sports Terminal now stores the recorded current-team kicker inventory as active contract metadata, including moved players such as Darius Garland (LAC), Desmond Bane (ORL), Giannis Antetokounmpo (MIA), LaMelo Ball (MIN), Paul George (BOS) and Zach LaVine (SAC). Jaylen Brown retains an explicit note that the source lists "7% / $7,000,000", which requires fixed-dollar cap treatment when the exact bonus is calculated.
+
 The user-supplied 2026-27 trade-kicker list has been normalized with four explicit states:
 - active in 2026-27;
 - contract kicker exists but produces no 2026-27 bonus because the player is already at the max;
