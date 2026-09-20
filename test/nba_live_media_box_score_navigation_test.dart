@@ -46,7 +46,7 @@ void main() {
     expect(box, isNot(contains('/v2/nba/history')));
 
     expect(live, contains('2026-27 schedule'));
-    expect(live, contains('static schedule snapshot'));
+    expect(live, contains('locally materialized snapshot'));
     expect(live, isNot(contains('Refresh live')));
     expect(live, contains('forDate('));
     expect(service, contains('schedule_2026_27.json'));
