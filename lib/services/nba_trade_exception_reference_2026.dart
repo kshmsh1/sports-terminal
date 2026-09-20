@@ -57,7 +57,7 @@ class NbaTradeExceptionReference202627 {
     'LAC': {'non_tax_mle': 1044000, 'bae': 5477000},
     'LAL': {'room_mle': 0},
     'MEM': {'non_tax_mle': 4694000, 'bae': 5477000},
-    'MIA': {'non_tax_mle': 3379000, 'bae': 5477000},
+    'MIA': {'non_tax_mle': 8979000, 'bae': 5477000},
     'MIL': {'non_tax_mle': 15044000, 'bae': 5477000},
     'MIN': {'tax_mle': 6064000},
     'NOP': {'non_tax_mle': 7239122, 'bae': 5477000},
