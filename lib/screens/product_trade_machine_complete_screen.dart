@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../services/nba_complete_draft_asset_repository.dart';
 import '../services/nba_future_draft_asset_repository.dart';
 import '../services/nba_team_cap_reference_2026.dart';
+import '../services/nba_team_salary_position_2026.dart';
 import '../services/nba_trade_contract_repository.dart';
 import '../services/nba_trade_exception_reference_2026.dart';
+import '../services/nba_trade_kicker_reference_2026.dart';
 import '../services/trade_machine_engine.dart';
 
 const _bg = Color(0xFF08111D);
@@ -254,7 +256,8 @@ class _ProductTradeMachineCompleteScreenState
   Widget _teamBoard(NbaTradeContractSnapshot data, String team) {
     final activeSalary = data.payroll(team, '2026-27');
     final ledger = NbaTeamCapReference202627.forTeam(team);
-    final totalCap = ledger?.totalCap ?? activeSalary;
+    final salaryPosition = NbaTeamSalaryPosition202627.forTeam(team);
+    final totalCap = salaryPosition?.totalSalary ?? ledger?.totalCap ?? activeSalary;
     final tab = tabs[team] ?? 0;
 
     return _panelBox(
@@ -295,7 +298,7 @@ class _ProductTradeMachineCompleteScreenState
                       ),
                     ),
                     Text(
-                      '${_money(totalCap)} total cap · ${_money(ledger?.active ?? activeSalary)} active',
+                      '${_money(totalCap)} current salary · ${_money(salaryPosition?.guaranteed ?? ledger?.active ?? activeSalary)} guaranteed',
                       style: const TextStyle(color: _muted, fontSize: 10),
                     ),
                   ],
@@ -382,13 +385,23 @@ class _ProductTradeMachineCompleteScreenState
         ),
         const SizedBox(height: 6),
         for (final player in players)
-          _assetRow(
-            title: player.player,
-            subtitle: player.guaranteed == null
-                ? '2026-27 contract'
-                : 'Guaranteed ${_money(player.guaranteed!)}',
-            trailing: _money(player.salaryFor('2026-27')),
-            control: _routeMenu(player.id, team),
+          Builder(
+            builder: (_) {
+              final kicker =
+                  NbaTradeKickerReference202627.forPlayer(player.player);
+              return _assetRow(
+                title: player.player,
+                subtitle: player.guaranteed == null
+                    ? '2026-27 contract'
+                    : 'Guaranteed ${_money(player.guaranteed!)}',
+                trailing: _money(player.salaryFor('2026-27')),
+                badges: [
+                  if (kicker != null)
+                    _pill(_kickerLabel(kicker), _kickerColor(kicker)),
+                ],
+                control: _routeMenu(player.id, team),
+              );
+            },
           ),
       ],
     );
@@ -654,6 +667,10 @@ class _ProductTradeMachineCompleteScreenState
               metadata: {
                 'guaranteed_amount': player.guaranteed,
                 'source_status': player.sourceStatus,
+                'trade_kicker_percent':
+                    NbaTradeKickerReference202627.forPlayer(player.player)?.percent,
+                'trade_kicker_status':
+                    NbaTradeKickerReference202627.forPlayer(player.player)?.status.name,
               },
             ),
             destinationTeam: route.value,
@@ -699,10 +716,12 @@ class _ProductTradeMachineCompleteScreenState
         for (final team in teams)
           team: TeamCapContext(
             team: team,
-            teamSalary: NbaTeamCapReference202627.teamSalary(
-              team,
-              data.payroll(team, '2026-27'),
-            ),
+            teamSalary:
+                NbaTeamSalaryPosition202627.forTeam(team)?.totalSalary ??
+                    NbaTeamCapReference202627.teamSalary(
+                      team,
+                      data.payroll(team, '2026-27'),
+                    ),
             salaryCap: _cap,
             taxLine: _tax,
             firstApron: _first,
@@ -999,7 +1018,7 @@ class _ProductTradeMachineCompleteScreenState
           ),
           SizedBox(height: 7),
           Text(
-            'Player matching uses the supplied 2026-27 salary schedule. Team cap position uses the supplied team cap ledger. Draft rights cover both rounds for every team from 2027 through 2033, while conditional, protected, swap, frozen, and outgoing interests remain explicit. TPEs use source transaction, available balance, and expiration metadata. Signing exceptions are shown as acquisition context and are not counted as outgoing trade salary.',
+            'Player matching uses the supplied 2026-27 salary schedule. Team salary position uses the 2026-09-20 current salary commitments, while the detailed cap-ledger breakdown remains separately visible for reconciliation. Draft rights cover both rounds for every team from 2027 through 2033, while conditional, protected, swap, frozen, and outgoing interests remain explicit. TPEs use source transaction, available balance, and expiration metadata. Signing exceptions are shown as acquisition context and are not counted as outgoing trade salary.',
             style: TextStyle(color: _muted, height: 1.45),
           ),
         ],
@@ -1162,5 +1181,25 @@ String _exceptionRule(String key, double teamCap) {
     'tax_mle' => NbaMleRules202627.taxpayerRule,
     'bae' => 'Bi-Annual Exception remaining balance.',
     _ => 'Remaining signing-exception balance.',
+  };
+}
+
+
+String _kickerLabel(NbaTradeKickerRecord record) {
+  return switch (record.status) {
+    NbaTradeKickerStatus.active =>
+      'KICKER ${record.percent.toStringAsFixed(record.percent % 1 == 0 ? 0 : 2)}%',
+    NbaTradeKickerStatus.voidedAtMaxSalary => 'KICKER VOID @ MAX',
+    NbaTradeKickerStatus.futureExtension => 'FUTURE KICKER',
+    NbaTradeKickerStatus.waivedOnTrade => 'KICKER WAIVED',
+  };
+}
+
+Color _kickerColor(NbaTradeKickerRecord record) {
+  return switch (record.status) {
+    NbaTradeKickerStatus.active => _amber,
+    NbaTradeKickerStatus.voidedAtMaxSalary => _muted,
+    NbaTradeKickerStatus.futureExtension => _cyan,
+    NbaTradeKickerStatus.waivedOnTrade => _muted,
   };
 }
