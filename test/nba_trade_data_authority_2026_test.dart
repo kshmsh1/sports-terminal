@@ -11,7 +11,18 @@ void main() {
     );
     expect(
       NbaTeamSalaryPosition202627.forTeam('DET')!.totalSalary,
-      154139633,
+      145177073,
+    );
+  });
+
+  test('reconciled team sheet preserves dead-money detail', () {
+    expect(
+      NbaTeamSalaryPosition202627.forTeam('DAL')!.deadMoney,
+      3211216,
+    );
+    expect(
+      NbaTeamSalaryPosition202627.forTeam('MEM')!.deadMoney,
+      4164050,
     );
   });
 
