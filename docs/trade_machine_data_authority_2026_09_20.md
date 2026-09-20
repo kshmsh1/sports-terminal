@@ -151,3 +151,57 @@ The supplied tracker now gives a static 2026-27 tax snapshot with estimated tax,
 The supplied official 2026 offseason trade list has been normalized into `nba_transaction_history_2026.dart`. The transaction history now provides dated acquisition events that can be used to automate recently-acquired aggregation checks rather than relying only on manual review flags.
 
 The supplied all-30-team free-agency / extension / trade transaction log is retained as the next source for signing-date and extension-date normalization. It should be modeled separately from trade acquisition events because signing restrictions depend on the precise transaction type and date.
+
+
+## Two-way contracts, guarantee triggers, cash limits, extensions and draft status
+
+A further user-supplied 2026-09-20 pass materially closes the remaining roster/contract-status gaps.
+
+### Two-way contracts
+The current two-way roster has been normalized into `nba_two_way_contract_reference_2026.dart`, including team, player, position, contract length, signed date and G League affiliate where supplied. Open two-way slots are derived from a three-slot maximum.
+
+### Guarantee triggers and partially guaranteed contracts
+Early guarantee triggers have been normalized into `nba_contract_status_reference_2026.dart`, preserving:
+- trigger date;
+- guaranteed amount before and after the trigger;
+- whether the trigger had already resolved as of the source snapshot.
+
+This is kept separate from nominal salary because trade/cap treatment can depend on protected salary rather than headline salary.
+
+### January 15 trade restrictions
+The supplied list of Bird/Early Bird re-signings that cannot be traded until January 15, 2027 has been normalized, including the reported player veto flags.
+
+### League constants and trade cash
+Additional 2026-27 constants have been added:
+- maximum salaries by service tier;
+- two-way salary;
+- Early Bird maximum;
+- estimated average salary;
+- trade cash limit;
+- Exhibit 10 / two-way protection maximum;
+- expanded traded-player exception increment.
+
+Per-team remaining cash-send and cash-receive capacity is now stored separately, including Denver's current inability to send cash while above the second apron.
+
+### Frozen first-round picks and 2027 first-round status
+The frozen 2032/2033 pick information and the full 2027 first-round ownership/protection/swap summary have been normalized into `nba_draft_asset_status_2026.dart`. Complex multi-team conveyance pools remain represented as conditional summaries rather than incorrectly flattening them to a single owner.
+
+### Extensions
+The reported 2026-27 rookie-scale and veteran extension list has been normalized into `nba_extension_reference_2026.dart`, preserving option and trade-kicker details where supplied and explicitly marking projected max-contract values as cap-dependent.
+
+## Remaining gaps after this pass
+
+At this point, the broad data categories required for the Trade Machine are present. Remaining work is predominantly normalization and exact-rule implementation rather than new category discovery:
+
+1. one canonical active-contract ledger with every 2026-27 through future-year salary and option flag;
+2. exact current protected salary for every non-fully-guaranteed player as of the transaction date;
+3. December 15 eligibility dates for the broader free-agent-signing population, plus signing dates for all standard contracts;
+4. no-trade / consent rights beyond the January 15 list's explicit veto markers;
+5. poison-pill/BYC salary calculations for affected extensions;
+6. exact trade-kicker bonus calculation after max-salary and option-year rules;
+7. standard-roster counts and automatic post-trade roster validation using the now-separated two-way roster;
+8. final merge of the 2027 pick-status authority into the richer multi-year pick repository;
+9. transaction-date-aware hard-cap and exception consumption logic;
+10. exact tax-payroll recomputation after a hypothetical transaction.
+
+The data-discovery phase is therefore close to complete. The next engineering phase should focus on canonicalization and deterministic CBA logic.
