@@ -7,7 +7,7 @@ void main() {
     expect(NbaTeamSalaryPosition202627.positions.length, 30);
     expect(
       NbaTeamSalaryPosition202627.forTeam('OKC')!.totalSalary,
-      235297492,
+      214279492,
     );
     expect(
       NbaTeamSalaryPosition202627.forTeam('DET')!.totalSalary,
@@ -26,22 +26,22 @@ void main() {
     );
   });
 
-  test('active, max-voided, future and waived kickers remain distinct', () {
+  test('current trade kicker authority reflects 2026-27 team assignments', () {
     expect(
       NbaTradeKickerReference202627.forPlayer('OG Anunoby')!.affects202627,
       isTrue,
     );
     expect(
-      NbaTradeKickerReference202627.forPlayer('Stephen Curry')!.status,
-      NbaTradeKickerStatus.voidedAtMaxSalary,
+      NbaTradeKickerReference202627.forPlayer('Darius Garland')!.team,
+      'LAC',
     );
     expect(
-      NbaTradeKickerReference202627.forPlayer('Victor Wembanyama')!.status,
-      NbaTradeKickerStatus.futureExtension,
+      NbaTradeKickerReference202627.forPlayer('Victor Wembanyama')!.affects202627,
+      isTrue,
     );
     expect(
-      NbaTradeKickerReference202627.forPlayer('Kawhi Leonard')!.status,
-      NbaTradeKickerStatus.waivedOnTrade,
+      NbaTradeKickerReference202627.forPlayer('Kawhi Leonard')!.team,
+      'TOR',
     );
   });
 }
