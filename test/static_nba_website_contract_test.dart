@@ -92,6 +92,7 @@ void main() {
     expect(source, contains('enrich_static_nba_pdf_early_totals.py'));
     expect(source, contains('build_static_front_office_snapshot.py'));
     expect(source, contains('flutter run -d chrome'));
-    expect(source, contains('deliberately do not scrape, poll or'));\n    expect(source, isNot(contains('--refresh-live')));
+    expect(source, contains('deliberately do not scrape, poll or'));
+    expect(source, isNot(contains('--refresh-live')));
   });
 }
