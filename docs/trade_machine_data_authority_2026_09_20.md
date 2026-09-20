@@ -19,6 +19,15 @@ The previous Sports Terminal operating figures were projections and have been re
 A 30-team current salary commitment table supplied on 2026-09-20 has been normalized into `nba_team_salary_position_2026.dart`.
 It is kept separate from the detailed cap-ledger decomposition because "current salary commitments" and cap-accounting buckets are not necessarily identical.
 
+### Team-by-team salary sheets
+
+A second user-supplied data pass on 2026-09-20 provided detailed ShamSports salary sheets for:
+ATL, BOS, BRK, CHA, CHI, CLE, DAL, DEN, DET, GSW, HOU, IND, LAC, LAL, MEM and MIA.
+
+For those teams, Sports Terminal now treats the team-level sheet as the newer authority for current total salary and guaranteed salary. Dead-money figures visible on the sheet are also stored separately. The remaining 14 teams still use the earlier league-wide salary-position table until corresponding team sheets are supplied or independently reconciled.
+
+The team sheets also provide cap holds and available signing exceptions. Exception balances were cross-checked against the existing reference; Miami's remaining non-taxpayer MLE was corrected to $8,979,000. Where a source displays a room-MLE amount above the NBA's official maximum, Sports Terminal retains the official league maximum rather than an impossible higher balance.
+
 ### Trade kickers
 The user-supplied 2026-27 trade-kicker list has been normalized with four explicit states:
 - active in 2026-27;
