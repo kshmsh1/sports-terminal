@@ -44,9 +44,9 @@ class NbaTradeExceptionReference202627 {
   static const Map<String, Map<String, double>> signingExceptions = {
     'ATL': {'non_tax_mle': 944000, 'bae': 5477000},
     'BOS': {'non_tax_mle': 0, 'bae': 5477000},
-    'BRK': {'room_mle': 9369000},
+    'BRK': {'room_mle': 9366000},
     'CHA': {'non_tax_mle': 847026},
-    'CHI': {'room_mle': 9369000},
+    'CHI': {'room_mle': 9366000},
     'CLE': {'tax_mle': 6064000},
     'DAL': {'non_tax_mle': 12044000, 'bae': 278017},
     'DEN': {'tax_mle': 6064000},
