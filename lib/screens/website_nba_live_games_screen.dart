@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../services/nba_live_game_service.dart';
@@ -16,9 +14,6 @@ class _WebsiteNbaLiveGamesScreenState extends State<WebsiteNbaLiveGamesScreen> {
   final _service = NbaLiveGameService();
   late Future<NbaScheduleSnapshot> _scheduleFuture;
   String? _selectedDate;
-  Map<String, NbaLiveGameState> _live = const {};
-  Object? _liveError;
-  Timer? _timer;
 
   @override
   void initState() {
@@ -26,17 +21,10 @@ class _WebsiteNbaLiveGamesScreenState extends State<WebsiteNbaLiveGamesScreen> {
     _scheduleFuture = _loadSchedule();
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
   Future<NbaScheduleSnapshot> _loadSchedule() async {
     final schedule = await _service.schedule();
     if (schedule.dates.isNotEmpty) {
       _selectedDate ??= _initialDate(schedule.dates);
-      _restartPolling();
     }
     return schedule;
   }
@@ -49,42 +37,8 @@ class _WebsiteNbaLiveGamesScreenState extends State<WebsiteNbaLiveGamesScreen> {
     return dates.last;
   }
 
-  bool get _selectedIsToday => _selectedDate == _dateKey(DateTime.now());
-
-  void _restartPolling() {
-    _timer?.cancel();
-    if (!_selectedIsToday) {
-      if (mounted) setState(() => _live = const {});
-      return;
-    }
-    unawaited(_refreshLive());
-    _timer = Timer.periodic(
-      const Duration(seconds: 15),
-      (_) => unawaited(_refreshLive()),
-    );
-  }
-
-  Future<void> _refreshLive() async {
-    try {
-      final next = await _service.todayScoreboard();
-      if (!mounted) return;
-      setState(() {
-        _live = next;
-        _liveError = null;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _liveError = error);
-    }
-  }
-
   void _selectDate(String date) {
-    setState(() {
-      _selectedDate = date;
-      _live = const {};
-      _liveError = null;
-    });
-    _restartPolling();
+    setState(() => _selectedDate = date);
   }
 
   void _moveDate(NbaScheduleSnapshot schedule, int delta) {
@@ -132,7 +86,7 @@ class _WebsiteNbaLiveGamesScreenState extends State<WebsiteNbaLiveGamesScreen> {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
-              'Live Games',
+              'Schedule Snapshot',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.w900,
                     letterSpacing: -1,
@@ -142,16 +96,11 @@ class _WebsiteNbaLiveGamesScreenState extends State<WebsiteNbaLiveGamesScreen> {
               avatar: Icon(Icons.calendar_month_rounded, size: 17),
               label: Text('2026-27 schedule'),
             ),
-            if (_selectedIsToday)
-              const Chip(
-                avatar: Icon(Icons.circle, size: 10, color: Colors.redAccent),
-                label: Text('15s live refresh'),
-              ),
           ],
         ),
         const SizedBox(height: 8),
         Text(
-          'The season schedule is materialized locally from the official NBA schedule. Only genuinely live score state uses the NBA live-data feed.',
+          'The season schedule is a locally materialized snapshot. Sports Terminal does not make live score or box-score API calls at runtime.',
           style: TextStyle(color: colors.onSurfaceVariant),
         ),
         const SizedBox(height: 18),
@@ -199,11 +148,6 @@ class _WebsiteNbaLiveGamesScreenState extends State<WebsiteNbaLiveGamesScreen> {
                       : null,
                   icon: const Icon(Icons.chevron_right_rounded),
                 ),
-                OutlinedButton.icon(
-                  onPressed: _selectedIsToday ? _refreshLive : null,
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Refresh live'),
-                ),
                 Text(
                   '${games.length} game${games.length == 1 ? '' : 's'}',
                   style: TextStyle(
@@ -215,13 +159,6 @@ class _WebsiteNbaLiveGamesScreenState extends State<WebsiteNbaLiveGamesScreen> {
             ),
           ),
         ),
-        if (_liveError != null && _selectedIsToday) ...[
-          const SizedBox(height: 10),
-          Text(
-            'Live overlay unavailable right now: $_liveError. The official schedule remains available.',
-            style: TextStyle(color: colors.error),
-          ),
-        ],
         const SizedBox(height: 14),
         if (games.isEmpty)
           const Card(
@@ -248,7 +185,7 @@ class _WebsiteNbaLiveGamesScreenState extends State<WebsiteNbaLiveGamesScreen> {
                       width: width,
                       child: _GameCard(
                         game: game,
-                        live: _live[game.gameId],
+                        live: null,
                       ),
                     ),
                 ],

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/app_session.dart';
 import '../screens/product_community_v2_screen.dart';
 import '../screens/product_front_office_registry_screen.dart';
+import '../screens/product_platform_content_legal_screen.dart';
 import '../screens/product_profile_v3_screen.dart';
 import '../screens/product_trade_machine_screen.dart';
 import '../screens/website_nba_advanced_stats_screen.dart';
@@ -26,8 +27,8 @@ const _brandBlue = Color(0xFF6674C7);
 
 /// Sole customer-facing Sports Terminal shell.
 ///
-/// Historical NBA data is served from the local static corpus. Live scores and
-/// public social embeds are isolated to explicitly live product surfaces.
+/// Customer-facing sports data is served from the local static corpus.
+/// Remote sports/social/product API calls are disabled at runtime.
 class CanonicalProductShell extends StatefulWidget {
   const CanonicalProductShell({
     super.key,
@@ -94,7 +95,7 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
         ),
         const _Destination(
           id: 'live-games',
-          label: 'Live Games',
+          label: 'Schedule',
           icon: Icons.sports_score_rounded,
           builder: WebsiteNbaLiveGamesScreen.new,
         ),
@@ -106,7 +107,7 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
         ),
         const _Destination(
           id: 'media-feed',
-          label: 'Media Feed',
+          label: 'Media Sources',
           icon: Icons.dynamic_feed_rounded,
           builder: WebsiteNbaMediaFeedScreen.new,
         ),
@@ -163,6 +164,48 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
           label: 'Profile',
           icon: Icons.person_outline_rounded,
           builder: () => ProductProfileV3Screen(session: widget.session),
+        ),
+        const _Destination(
+          id: 'about',
+          label: 'About',
+          icon: Icons.info_outline_rounded,
+          builder: _AboutRoute.new,
+        ),
+        const _Destination(
+          id: 'contact',
+          label: 'Contact',
+          icon: Icons.mail_outline_rounded,
+          builder: _ContactRoute.new,
+        ),
+        const _Destination(
+          id: 'privacy',
+          label: 'Privacy',
+          icon: Icons.privacy_tip_outlined,
+          builder: _PrivacyRoute.new,
+        ),
+        const _Destination(
+          id: 'terms',
+          label: 'Terms',
+          icon: Icons.gavel_outlined,
+          builder: _TermsRoute.new,
+        ),
+        const _Destination(
+          id: 'sitemap',
+          label: 'Sitemap',
+          icon: Icons.account_tree_outlined,
+          builder: _SitemapRoute.new,
+        ),
+        const _Destination(
+          id: 'accessibility',
+          label: 'Accessibility',
+          icon: Icons.accessibility_new_rounded,
+          builder: _AccessibilityRoute.new,
+        ),
+        const _Destination(
+          id: 'data-policy',
+          label: 'Data & Methodology',
+          icon: Icons.dataset_outlined,
+          builder: _DataPolicyRoute.new,
         ),
       ];
 
@@ -253,7 +296,14 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1320),
-                      child: selected.builder!(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          selected.builder!(),
+                          const SizedBox(height: 56),
+                          _SiteFooter(onSelect: _select),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -264,6 +314,149 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
       ),
     );
   }
+}
+
+class _AboutRoute extends StatelessWidget {
+  const _AboutRoute();
+  @override
+  Widget build(BuildContext context) =>
+      const ProductPlatformLegalScreen(kind: 'about');
+}
+
+class _ContactRoute extends StatelessWidget {
+  const _ContactRoute();
+  @override
+  Widget build(BuildContext context) =>
+      const ProductPlatformLegalScreen(kind: 'contact');
+}
+
+class _PrivacyRoute extends StatelessWidget {
+  const _PrivacyRoute();
+  @override
+  Widget build(BuildContext context) =>
+      const ProductPlatformLegalScreen(kind: 'privacy');
+}
+
+class _TermsRoute extends StatelessWidget {
+  const _TermsRoute();
+  @override
+  Widget build(BuildContext context) =>
+      const ProductPlatformLegalScreen(kind: 'terms');
+}
+
+class _SitemapRoute extends StatelessWidget {
+  const _SitemapRoute();
+  @override
+  Widget build(BuildContext context) =>
+      const ProductPlatformLegalScreen(kind: 'sitemap');
+}
+
+class _AccessibilityRoute extends StatelessWidget {
+  const _AccessibilityRoute();
+  @override
+  Widget build(BuildContext context) =>
+      const ProductPlatformLegalScreen(kind: 'accessibility');
+}
+
+class _DataPolicyRoute extends StatelessWidget {
+  const _DataPolicyRoute();
+  @override
+  Widget build(BuildContext context) =>
+      const ProductPlatformLegalScreen(kind: 'data');
+}
+
+class _SiteFooter extends StatelessWidget {
+  const _SiteFooter({required this.onSelect});
+
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final divider = Theme.of(context).dividerColor;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(4, 28, 4, 12),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: divider)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final links = Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: [
+              _FooterLink('About', 'about', onSelect),
+              _FooterLink('Contact', 'contact', onSelect),
+              _FooterLink('Privacy Policy', 'privacy', onSelect),
+              _FooterLink('Terms & Conditions', 'terms', onSelect),
+              _FooterLink('Sitemap', 'sitemap', onSelect),
+              _FooterLink('Accessibility', 'accessibility', onSelect),
+              _FooterLink('Data & Methodology', 'data-policy', onSelect),
+            ],
+          );
+          final brand = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'SPORTS TERMINAL',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .5,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Static, source-aware sports intelligence and research tooling.',
+                style: TextStyle(
+                  color: colors.onSurfaceVariant,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '© 2026 Sports Terminal. Independent product; not affiliated with or endorsed by the NBA or other leagues unless expressly stated.',
+                style: TextStyle(
+                  color: colors.onSurfaceVariant,
+                  fontSize: 11,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          );
+          if (constraints.maxWidth < 760) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [brand, const SizedBox(height: 16), links],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: brand),
+              const SizedBox(width: 24),
+              Flexible(child: links),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FooterLink extends StatelessWidget {
+  const _FooterLink(this.label, this.id, this.onSelect);
+
+  final String label;
+  final String id;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) => TextButton(
+        onPressed: () => onSelect(id),
+        child: Text(label),
+      );
 }
 
 class _TopNav extends StatelessWidget {

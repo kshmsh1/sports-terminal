@@ -122,9 +122,6 @@ class NbaLiveGameService {
   NbaScheduleSnapshot? _schedule;
 
   static const schedulePath = 'data/nba_live/schedule_2026_27.json';
-  static const scoreboardUrl =
-      'https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json';
-
   Future<NbaScheduleSnapshot> schedule() async {
     final cached = _schedule;
     if (cached != null) return cached;
@@ -160,51 +157,16 @@ class NbaLiveGameService {
     return result;
   }
 
-  Future<Map<String, NbaLiveGameState>> todayScoreboard() async {
-    final response = await _client
-        .get(
-          Uri.parse(scoreboardUrl),
-          headers: const {
-            'Accept': 'application/json, text/plain, */*',
-            'Referer': 'https://www.nba.com/',
-          },
-        )
-        .timeout(const Duration(seconds: 8));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw NbaLiveGameException(
-        'NBA live scoreboard is unavailable (${response.statusCode}).',
-      );
-    }
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map) return const {};
-    final scoreboard = _map(decoded['scoreboard']);
-    final result = <String, NbaLiveGameState>{};
-    for (final item in _list(scoreboard['games'])) {
-      if (item is! Map) continue;
-      final state = NbaLiveGameState.fromMap(Map<String, dynamic>.from(item));
-      if (state.gameId.isNotEmpty) result[state.gameId] = state;
-    }
-    return result;
-  }
+  /// Live network access is deliberately disabled. Sports Terminal runtime data
+  /// is snapshot-only; callers receive no mutable scoreboard overlay.
+  Future<Map<String, NbaLiveGameState>> todayScoreboard() async => const {};
 
-  Future<Map<String, dynamic>> liveBoxScore(String gameId) async {
-    final response = await _client
-        .get(
-          Uri.parse(
-            'https://cdn.nba.com/static/json/liveData/boxscore/boxscore_$gameId.json',
-          ),
-          headers: const {
-            'Accept': 'application/json, text/plain, */*',
-            'Referer': 'https://www.nba.com/',
-          },
-        )
-        .timeout(const Duration(seconds: 8));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw NbaLiveGameException('Live box score is unavailable for $gameId.');
-    }
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map) return const {};
-    return Map<String, dynamic>.from(decoded);
+  /// Live box-score endpoints are deliberately disabled. Completed box scores
+  /// are served from the immutable historical/static corpus instead.
+  Future<Map<String, dynamic>> liveBoxScore(String gameId) {
+    throw const NbaLiveGameException(
+      'Live network box scores are disabled. Use the static Box Scores archive.',
+    );
   }
 }
 

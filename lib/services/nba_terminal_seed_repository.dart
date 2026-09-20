@@ -1,9 +1,7 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show FlutterError;
 import 'package:flutter/services.dart' show AssetManifest, rootBundle;
-import 'package:http/http.dart' as http;
 
 import 'product_local_store.dart';
 
@@ -106,78 +104,9 @@ class NbaTerminalSeedRepository {
     String seasonType = 'regular',
     bool includeGameLogs = true,
   }) async {
-    final normalizedSeason = season.trim();
-    if (normalizedSeason.isEmpty) {
-      throw const NbaTerminalSeedException('Historical season is required.');
-    }
-    final baseUrl = await _store.loadString(
-      ProductLocalStore.backendBaseUrlKey,
-      fallback: 'http://127.0.0.1:8000',
+    throw const NbaTerminalSeedException(
+      'Legacy backend historical seed loading is disabled. Customer historical pages use the static website corpus.',
     );
-    final normalizedBase = baseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
-    if (normalizedBase.isEmpty) {
-      throw const NbaTerminalSeedException('Sports Terminal backend URL is empty.');
-    }
-    final base = Uri.parse(normalizedBase);
-    final relative = '/v2/nba/history/seed/${Uri.encodeComponent(normalizedSeason)}';
-    final uri = base.replace(
-      path: '${base.path.replaceFirst(RegExp(r'/+$'), '')}$relative',
-      queryParameters: {
-        'league': league.trim().isEmpty ? 'NBA' : league.trim().toUpperCase(),
-        'season_type': seasonType,
-        'include_game_logs': includeGameLogs ? 'true' : 'false',
-      },
-    );
-    final token = await _store.loadString(ProductLocalStore.launchAuthTokenKey);
-    try {
-      final response = await http
-          .get(
-            uri,
-            headers: {
-              'Accept': 'application/json',
-              if (token.isNotEmpty) 'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(const Duration(seconds: 45));
-      Object? decoded;
-      if (response.body.trim().isNotEmpty) {
-        try {
-          decoded = jsonDecode(response.body);
-        } catch (_) {
-          throw NbaTerminalSeedException(
-            'Historical NBA snapshot returned non-JSON content (${response.statusCode}).',
-            statusCode: response.statusCode,
-          );
-        }
-      }
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        final detail = decoded is Map && decoded['detail'] != null
-            ? decoded['detail'].toString()
-            : 'Historical NBA snapshot request failed (${response.statusCode}).';
-        throw NbaTerminalSeedException(
-          detail,
-          statusCode: response.statusCode,
-        );
-      }
-      if (decoded is! Map) {
-        throw const NbaTerminalSeedException(
-          'Historical NBA snapshot returned an unexpected response shape.',
-        );
-      }
-      return NbaTerminalSeedSnapshot.fromMap(
-        decoded.map((key, value) => MapEntry(key.toString(), value)),
-      );
-    } on TimeoutException {
-      throw const NbaTerminalSeedException(
-        'Historical NBA snapshot timed out. Confirm the local backend is running.',
-      );
-    } on NbaTerminalSeedException {
-      rethrow;
-    } catch (error) {
-      throw NbaTerminalSeedException(
-        'Historical NBA snapshot unavailable: $error',
-      );
-    }
   }
 
   Future<Map<String, dynamic>> _loadConfig() async {

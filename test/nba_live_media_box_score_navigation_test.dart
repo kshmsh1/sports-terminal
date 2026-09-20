@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('canonical shell exposes NBA media, box scores and live games', () {
+  test('canonical shell exposes static NBA media, box scores and schedule', () {
     final shell = File('lib/widgets/canonical_product_shell.dart').readAsStringSync();
     final media = File(
       'lib/screens/website_nba_media_feed_screen.dart',
@@ -35,8 +35,9 @@ void main() {
     expect(media, contains('Shams Charania'));
     expect(media, contains('Chris Haynes'));
     expect(media, contains('Marc Stein'));
-    expect(media, contains('NbaXTimeline'));
-    expect(media, contains('Live X embed'));
+    expect(media, contains('Static directory'));
+    expect(media, contains('does not embed, poll, fetch, cache'));
+    expect(media, isNot(contains('NbaXTimeline')));
 
     expect(box, contains('Historical static archive'));
     expect(box, contains('Search box scores'));
@@ -45,18 +46,20 @@ void main() {
     expect(box, isNot(contains('/v2/nba/history')));
 
     expect(live, contains('2026-27 schedule'));
-    expect(live, contains('15s live refresh'));
-    expect(live, contains('Refresh live'));
+    expect(live, contains('locally materialized snapshot'));
+    expect(live, isNot(contains('Refresh live')));
     expect(live, contains('forDate('));
     expect(service, contains('schedule_2026_27.json'));
-    expect(service, contains('todaysScoreboard_00.json'));
-    expect(service, contains('boxscore_\$gameId.json'));
+    expect(service, contains('Live network access is deliberately disabled'));
+    expect(service, isNot(contains('todaysScoreboard_00.json')));
+    expect(service, isNot(contains('boxscore_\$gameId.json')));
 
     expect(scheduleTool, contains('scheduleLeagueV2_1.json'));
     expect(scheduleTool, contains('source_authority'));
     expect(scheduleTool, contains('runtime_api_required_for_schedule'));
     expect(boxTool, contains('network_requests'));
-    expect(launcher, contains('materialize_nba_2026_27_schedule.py'));
+    expect(launcher, isNot(contains('materialize_nba_2026_27_schedule.py')));
     expect(launcher, contains('materialize_static_nba_game_details.py'));
+    expect(launcher, isNot(contains('--refresh-live')));
   });
 }
