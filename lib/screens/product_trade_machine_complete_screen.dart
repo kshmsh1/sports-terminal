@@ -1104,7 +1104,7 @@ class _ProductTradeMachineCompleteScreenState
           ),
           SizedBox(height: 7),
           Text(
-            'Player matching uses the supplied 2026-27 salary schedule. Team salary position uses the 2026-09-20 current salary commitments, while the detailed cap-ledger breakdown remains separately visible for reconciliation. Draft rights cover both rounds for every team from 2027 through 2033, while conditional, protected, swap, frozen, and outgoing interests remain explicit. TPEs use source transaction, available balance, and expiration metadata. Signing exceptions are shown as acquisition context and are not counted as outgoing trade salary.',
+            'Sports Terminal uses the frozen 2026-27 front-office dataset as its transaction authority: salary sheets, guarantees, trade eligibility, kickers, draft rights, TPE/DPE balances, signing exceptions, hard-cap triggers, cash limits and tax context. The Trade Machine makes its determination from those static records and the selected transaction date; no live API calls are used.',
             style: TextStyle(color: _muted, height: 1.45),
           ),
         ],
@@ -1138,6 +1138,26 @@ class _ProductTradeMachineCompleteScreenState
           !validIds.contains(assetId) || !teams.contains(destination),
     );
     selectedTpeByTeam.removeWhere((team, _) => !teams.contains(team));
+    cashAmounts.removeWhere((team, _) => !teams.contains(team));
+    cashDestinations.removeWhere(
+      (team, destination) =>
+          !teams.contains(team) ||
+          !teams.contains(destination) ||
+          team == destination,
+    );
+  }
+
+  NbaTradeEligibilityRestriction? _tradeRestrictionFor(String player) {
+    for (final item in NbaContractStatusReference202627.january15) {
+      if (item.player == player) return item;
+    }
+    return null;
+  }
+
+  bool _isTradeRestricted(String player) {
+    final restriction = _tradeRestrictionFor(player);
+    if (restriction == null) return false;
+    return tradeDate.isBefore(DateTime.parse(restriction.eligibleDate));
   }
 }
 
