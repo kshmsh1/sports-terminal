@@ -76,7 +76,7 @@ void main() {
     await tester.tap(calendar);
     await tester.pumpAndSettle();
     expect(find.byType(DatePickerDialog), findsOneWidget);
-    await tester.tap(find.text('CANCEL'));
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
 
     final searchFields = find.byType(TextField);
