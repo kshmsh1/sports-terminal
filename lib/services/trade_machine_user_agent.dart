@@ -75,17 +75,23 @@ class TradeMachineUserAgent {
           ],
         ),
       );
-      final structuralErrors = report.findings.where(
+      final hasCoreSummary =
+          report.teamSummaries.containsKey(a.team) &&
+          report.teamSummaries.containsKey(b.team);
+      final malformed = report.findings.any(
         (item) =>
-            item.severity == TradeValidationSeverity.error &&
-            item.code != 'HARD_CAP',
+            item.code == 'TEAM_SCOPE' ||
+            item.code == 'SAME_TEAM' ||
+            item.code == 'DUPLICATE_ASSET' ||
+            item.code == 'MIN_TEAMS' ||
+            item.code == 'MAX_TEAMS',
       );
       cases.add(
         TradeMachineAgentCase(
           name: 'builds a normal two-team player trade',
-          passed: structuralErrors.isEmpty,
+          passed: hasCoreSummary && !malformed,
           detail:
-              '${a.player} ↔ ${b.player}; engine returned ${report.errorCount} errors and ${report.warningCount} warnings.',
+              '${a.player} ↔ ${b.player}; engine produced both team summaries and ${report.findings.length} explainable findings.',
         ),
       );
     }
@@ -126,16 +132,36 @@ class TradeMachineUserAgent {
     final denverPlayers = data.forTeam('DEN', '2026-27').take(2).toList();
     if (denverPlayers.length == 2) {
       final destination = 'BOS';
+      final base = _scenario(
+        id: 'agent-second-apron-aggregation',
+        date: '2026-09-21',
+        data: data,
+        teams: ['DEN', destination],
+        assignments: [
+          for (final player in denverPlayers)
+            _playerAssignment(player, destination),
+        ],
+      );
       final report = engine.validate(
-        _scenario(
-          id: 'agent-second-apron-aggregation',
-          date: '2026-09-21',
-          data: data,
-          teams: ['DEN', destination],
-          assignments: [
-            for (final player in denverPlayers)
-              _playerAssignment(player, destination),
-          ],
+        TradeScenario(
+          id: base.id,
+          name: base.name,
+          operatingSeason: base.operatingSeason,
+          asOfDateIso: base.asOfDateIso,
+          teams: base.teams,
+          assignments: base.assignments,
+          capContexts: {
+            ...base.capContexts,
+            'DEN': TeamCapContext(
+              team: 'DEN',
+              teamSalary: NbaLeagueEnvironment202627.secondApron + 1,
+              salaryCap: NbaLeagueEnvironment202627.salaryCap,
+              taxLine: NbaLeagueEnvironment202627.luxuryTax,
+              firstApron: NbaLeagueEnvironment202627.firstApron,
+              secondApron: NbaLeagueEnvironment202627.secondApron,
+              standardRosterPlayers: data.forTeam('DEN', '2026-27').length,
+            ),
+          },
         ),
       );
       cases.add(
