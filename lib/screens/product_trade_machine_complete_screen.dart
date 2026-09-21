@@ -961,9 +961,9 @@ class _ProductTradeMachineCompleteScreenState
         children: [
           _section('TRADE FLOW'),
           const SizedBox(height: 8),
-          if (routes.isEmpty)
+          if (!_hasTradeActivity)
             const Text(
-              'Route at least one player or draft right to begin.',
+              'Route a player or draft right, or add cash considerations, to begin.',
               style: TextStyle(color: _muted),
             )
           else
@@ -1114,6 +1114,8 @@ class _ProductTradeMachineCompleteScreenState
                     'BASE MAX IN',
                   ),
                   _mini(_money(entry.value.postTradeSalary), 'POST CAP'),
+                  if (entry.value.cashSent > 0)
+                    _mini(_money(entry.value.cashSent), 'CASH SENT'),
                   _mini('${entry.value.projectedRosterPlayers}', 'ROSTER'),
                   _mini(entry.value.apronStatus.toUpperCase(), 'STATUS'),
                 ],
@@ -1182,6 +1184,10 @@ class _ProductTradeMachineCompleteScreenState
           team == destination,
     );
   }
+
+  bool get _hasTradeActivity =>
+      routes.isNotEmpty ||
+      cashAmounts.values.any((amount) => amount > 0);
 
   NbaTradeEligibilityRestriction? _tradeRestrictionFor(String player) {
     for (final item in NbaContractStatusReference202627.january15) {
