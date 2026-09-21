@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../services/nba_complete_draft_asset_repository.dart';
+import '../services/nba_contract_status_reference_2026.dart';
+import '../services/nba_front_office_tracker_2026.dart';
+import '../services/nba_league_environment_2026.dart';
+import '../services/nba_transaction_history_2026.dart';
+import '../services/nba_two_way_contract_reference_2026.dart';
 import '../services/nba_future_draft_asset_repository.dart';
 import '../services/nba_team_cap_reference_2026.dart';
+import '../services/nba_team_salary_position_2026.dart';
 import '../services/nba_trade_contract_repository.dart';
 import '../services/nba_trade_exception_reference_2026.dart';
+import '../services/nba_trade_kicker_reference_2026.dart';
 import '../services/trade_machine_engine.dart';
 
 const _bg = Color(0xFF08111D);
@@ -19,10 +26,10 @@ const _green = Color(0xFF65D19E);
 const _amber = Color(0xFFF2C66D);
 const _red = Color(0xFFFF7C83);
 
-const _cap = 166000000.0;
-const _tax = 201690000.0;
-const _first = 210690000.0;
-const _second = 223690000.0;
+const _cap = 164961000.0;
+const _tax = 200428000.0;
+const _first = 209015000.0;
+const _second = 221686000.0;
 
 class ProductTradeMachineCompleteScreen extends StatefulWidget {
   const ProductTradeMachineCompleteScreen({super.key});
@@ -43,6 +50,8 @@ class _ProductTradeMachineCompleteScreenState
   final searches = <String, String>{};
   final tabs = <String, int>{};
   final selectedTpeByTeam = <String, String>{};
+  final cashAmounts = <String, double>{};
+  final cashDestinations = <String, String>{};
 
   List<String> teams = ['BOS', 'PHI'];
   DateTime tradeDate = DateTime(2026, 9, 11);
@@ -144,7 +153,7 @@ class _ProductTradeMachineCompleteScreenState
           ),
           const SizedBox(height: 5),
           const Text(
-            'Build two- through five-team 2026-27 transactions with player contracts, first- and second-round draft rights, live traded-player exceptions, signing-exception context, team cap ledgers, hard caps, and explainable CBA checks.',
+            'Build two- through five-team 2026-27 transactions with player contracts, first- and second-round draft rights, static traded-player exceptions, signing-exception context, team cap ledgers, hard caps, and explainable CBA checks.',
             style: TextStyle(color: _muted, height: 1.4),
           ),
           const SizedBox(height: 10),
@@ -201,6 +210,9 @@ class _ProductTradeMachineCompleteScreenState
                           setState(() {
                             teams.remove(team);
                             selectedTpeByTeam.remove(team);
+                            cashAmounts.remove(team);
+                            cashDestinations.remove(team);
+                            cashDestinations.removeWhere((_, destination) => destination == team);
                             routes.removeWhere(
                               (id, destination) =>
                                   destination == team ||
@@ -234,6 +246,8 @@ class _ProductTradeMachineCompleteScreenState
                   setState(() {
                     routes.clear();
                     selectedTpeByTeam.clear();
+                    cashAmounts.clear();
+                    cashDestinations.clear();
                     searches.clear();
                     routedOnly = false;
                   });
@@ -243,7 +257,7 @@ class _ProductTradeMachineCompleteScreenState
           ),
           const SizedBox(height: 8),
           const Text(
-            'Operating thresholds: \$166.0M salary cap · \$201.69M tax · \$210.69M first apron · \$223.69M second apron.',
+            'Operating thresholds: \$164.961M salary cap · \$200.428M tax · \$209.015M first apron · \$221.686M second apron.',
             style: TextStyle(color: _muted, fontSize: 10),
           ),
         ],
@@ -254,7 +268,8 @@ class _ProductTradeMachineCompleteScreenState
   Widget _teamBoard(NbaTradeContractSnapshot data, String team) {
     final activeSalary = data.payroll(team, '2026-27');
     final ledger = NbaTeamCapReference202627.forTeam(team);
-    final totalCap = ledger?.totalCap ?? activeSalary;
+    final salaryPosition = NbaTeamSalaryPosition202627.forTeam(team);
+    final totalCap = salaryPosition?.totalSalary ?? ledger?.totalCap ?? activeSalary;
     final tab = tabs[team] ?? 0;
 
     return _panelBox(
@@ -295,7 +310,7 @@ class _ProductTradeMachineCompleteScreenState
                       ),
                     ),
                     Text(
-                      '${_money(totalCap)} total cap · ${_money(ledger?.active ?? activeSalary)} active',
+                      '${_money(totalCap)} current salary · ${_money(salaryPosition?.guaranteed ?? ledger?.active ?? activeSalary)} guaranteed',
                       style: const TextStyle(color: _muted, fontSize: 10),
                     ),
                   ],
@@ -314,8 +329,12 @@ class _ProductTradeMachineCompleteScreenState
               _mini(_signed(_first - totalCap), '1ST APRON'),
               _mini(_signed(_second - totalCap), '2ND APRON'),
               _mini(
-                (NbaTeamCapReference202627.hardCap[team] ?? 'none').toUpperCase(),
+                (NbaFrontOfficeTracker202627.hardCaps[team]?.capLevel ?? 'none').toUpperCase(),
                 'HARD CAP',
+              ),
+              _mini(
+                '${NbaTwoWayContractReference202627.forTeam(team).length}/3',
+                'TWO-WAY',
               ),
             ],
           ),
@@ -382,13 +401,41 @@ class _ProductTradeMachineCompleteScreenState
         ),
         const SizedBox(height: 6),
         for (final player in players)
-          _assetRow(
-            title: player.player,
-            subtitle: player.guaranteed == null
-                ? '2026-27 contract'
-                : 'Guaranteed ${_money(player.guaranteed!)}',
-            trailing: _money(player.salaryFor('2026-27')),
-            control: _routeMenu(player.id, team),
+          Builder(
+            builder: (_) {
+              final kicker =
+                  NbaTradeKickerReference202627.forPlayer(player.player);
+              final restriction = _tradeRestrictionFor(player.player);
+              final partial =
+                  NbaContractStatusReference202627.partiallyGuaranteed[player.player];
+              final acquired =
+                  NbaTransactionHistory2026.mostRecentAcquisitionDate(player.player);
+              return _assetRow(
+                title: player.player,
+                subtitle: [
+                  if (partial != null)
+                    'Protected ${_money(partial)}'
+                  else if (player.guaranteed != null)
+                    'Guaranteed ${_money(player.guaranteed!)}'
+                  else
+                    '2026-27 contract',
+                  if (acquired != null) 'Acquired $acquired',
+                  if (restriction != null)
+                    'Trade eligible ${restriction.eligibleDate}',
+                ].join(' · '),
+                trailing: _money(player.salaryFor('2026-27')),
+                badges: [
+                  if (kicker != null)
+                    _pill(_kickerLabel(kicker), _kickerColor(kicker)),
+                  if (restriction != null &&
+                      tradeDate.isBefore(DateTime.parse(restriction.eligibleDate)))
+                    _pill('LOCKED', _red),
+                  if (restriction?.hasTradeVeto == true)
+                    _pill('CONSENT', _amber),
+                ],
+                control: _routeMenu(player.id, team),
+              );
+            },
           ),
       ],
     );
@@ -436,9 +483,51 @@ class _ProductTradeMachineCompleteScreenState
       asOfIso: _dateIso(tradeDate),
     );
 
+    final dpe = NbaFrontOfficeTracker202627.dpe[team];
+    final cash = NbaCashTradeReference202627.teams[team];
+    final hardCap = NbaFrontOfficeTracker202627.hardCaps[team];
+    final tax = NbaFrontOfficeTracker202627.luxuryTax[team];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Wrap(
+          spacing: 14,
+          runSpacing: 8,
+          children: [
+            if (cash != null)
+              _mini(_money(cash.availableToSend), 'CASH TO SEND'),
+            if (cash != null)
+              _mini(_money(cash.availableToReceive), 'CASH TO RECEIVE'),
+            if (tax != null)
+              _mini(
+                _money(tax.estimatedTax),
+                tax.repeater ? 'EST. TAX · REPEATER' : 'EST. TAX',
+              ),
+            if (hardCap != null)
+              _mini(hardCap.capLevel.toUpperCase(), 'HARD CAP'),
+          ],
+        ),
+        if (hardCap != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            [...hardCap.firstApronTriggers, ...hardCap.secondApronTriggers]
+                .join(' · '),
+            style: const TextStyle(color: _muted, fontSize: 9, height: 1.35),
+          ),
+        ],
+        if (dpe != null) ...[
+          const SizedBox(height: 8),
+          _assetRow(
+            title: 'Disabled Player Exception · ${dpe.player}',
+            subtitle: 'Available acquisition mechanism; not outgoing trade salary.',
+            trailing: _money(dpe.available),
+            badges: [_pill('DPE', _cyan)],
+          ),
+        ],
+        const SizedBox(height: 10),
+        _cashTradeControl(team, cash),
+        const SizedBox(height: 10),
         if (signing.isNotEmpty) ...[
           const Text(
             'SIGNING EXCEPTIONS',
@@ -600,7 +689,7 @@ class _ProductTradeMachineCompleteScreenState
           ],
           if (control != null) ...[
             const SizedBox(width: 8),
-            SizedBox(width: 132, child: control),
+            SizedBox(width: 156, child: control),
           ],
         ],
       ),
@@ -614,7 +703,11 @@ class _ProductTradeMachineCompleteScreenState
         : null;
     return DropdownButtonFormField<String>(
       value: current,
-      hint: const Text('Route to…'),
+      isExpanded: true,
+      hint: const Text(
+        'Route to…',
+        overflow: TextOverflow.ellipsis,
+      ),
       isDense: true,
       items: [
         for (final team in validDestinations)
@@ -653,7 +746,19 @@ class _ProductTradeMachineCompleteScreenState
               salary: player.salaryFor('2026-27'),
               metadata: {
                 'guaranteed_amount': player.guaranteed,
+                'protected_amount':
+                    NbaContractStatusReference202627.partiallyGuaranteed[player.player],
                 'source_status': player.sourceStatus,
+                'acquired_date':
+                    NbaTransactionHistory2026.mostRecentAcquisitionDate(player.player),
+                'trade_restricted': _isTradeRestricted(player.player),
+                'no_trade': _tradeRestrictionFor(player.player)?.hasTradeVeto == true,
+                'trade_kicker':
+                    NbaTradeKickerReference202627.forPlayer(player.player)?.percent,
+                'trade_kicker_percent':
+                    NbaTradeKickerReference202627.forPlayer(player.player)?.percent,
+                'trade_kicker_status':
+                    NbaTradeKickerReference202627.forPlayer(player.player)?.status.name,
               },
             ),
             destinationTeam: route.value,
@@ -688,6 +793,28 @@ class _ProductTradeMachineCompleteScreenState
       }
     }
 
+    for (final team in teams) {
+      final amount = cashAmounts[team] ?? 0;
+      final destination = cashDestinations[team];
+      if (amount > 0 &&
+          destination != null &&
+          destination != team &&
+          teams.contains(destination)) {
+        assignments.add(
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'cash:$team',
+              type: TradeAssetType.cash,
+              label: 'Cash considerations',
+              originTeam: team,
+              metadata: {'amount': amount},
+            ),
+            destinationTeam: destination,
+          ),
+        );
+      }
+    }
+
     return TradeScenario(
       id: 'sports-terminal-complete-2026-27',
       name: '2026-27 Trade',
@@ -699,20 +826,29 @@ class _ProductTradeMachineCompleteScreenState
         for (final team in teams)
           team: TeamCapContext(
             team: team,
-            teamSalary: NbaTeamCapReference202627.teamSalary(
-              team,
-              data.payroll(team, '2026-27'),
-            ),
+            teamSalary:
+                NbaTeamSalaryPosition202627.forTeam(team)?.totalSalary ??
+                    NbaTeamCapReference202627.teamSalary(
+                      team,
+                      data.payroll(team, '2026-27'),
+                    ),
             salaryCap: _cap,
             taxLine: _tax,
             firstApron: _first,
             secondApron: _second,
-            hardCappedAt: NbaTeamCapReference202627.hardCapAt(
-              team,
-              _first,
-              _second,
-            ),
+            hardCappedAt: switch (
+              NbaFrontOfficeTracker202627.hardCaps[team]?.capLevel
+            ) {
+              'first' => _first,
+              'second' => _second,
+              _ => null,
+            },
             standardRosterPlayers: data.forTeam(team, '2026-27').length,
+            cashSentThisSeason:
+                NbaCashTradeReference202627.limit -
+                (NbaCashTradeReference202627.teams[team]?.availableToSend ??
+                    NbaCashTradeReference202627.limit),
+            cashLimitThisSeason: NbaCashTradeReference202627.limit,
           ),
       },
     );
@@ -735,7 +871,7 @@ class _ProductTradeMachineCompleteScreenState
         findings.add(
           TradeValidationFinding(
             code: 'TPE_MISSING',
-            message: '$team selected a TPE that is not in the live ledger.',
+            message: '$team selected a TPE that is not in the static exception ledger.',
             severity: TradeValidationSeverity.error,
             team: team,
           ),
@@ -775,7 +911,8 @@ class _ProductTradeMachineCompleteScreenState
         continue;
       }
 
-      if (context.aboveSecondApron || tpe.unusableAboveSecondApron) {
+      if (context.aboveSecondApron ||
+          scenario.postTradeSalary(team) > context.secondApron) {
         findings.add(
           TradeValidationFinding(
             code: 'TPE_APRON',
@@ -831,9 +968,9 @@ class _ProductTradeMachineCompleteScreenState
         children: [
           _section('TRADE FLOW'),
           const SizedBox(height: 8),
-          if (routes.isEmpty)
+          if (!_hasTradeActivity)
             const Text(
-              'Route at least one player or draft right to begin.',
+              'Route a player or draft right, or add cash considerations, to begin.',
               style: TextStyle(color: _muted),
             )
           else
@@ -853,6 +990,17 @@ class _ProductTradeMachineCompleteScreenState
                       sent.add('${asset.label} → ${routes[asset.id]}');
                     }
                     if (routes[asset.id] == team) received.add(asset.label);
+                  }
+                  final cashOut = cashAmounts[team] ?? 0;
+                  final cashDestination = cashDestinations[team];
+                  if (cashOut > 0 && cashDestination != null) {
+                    sent.add('${_money(cashOut)} cash → $cashDestination');
+                  }
+                  for (final origin in teams) {
+                    if (cashDestinations[origin] == team &&
+                        (cashAmounts[origin] ?? 0) > 0) {
+                      received.add('${_money(cashAmounts[origin]!)} cash');
+                    }
                   }
                   if (sent.isEmpty && received.isEmpty) {
                     return const SizedBox.shrink();
@@ -973,6 +1121,8 @@ class _ProductTradeMachineCompleteScreenState
                     'BASE MAX IN',
                   ),
                   _mini(_money(entry.value.postTradeSalary), 'POST CAP'),
+                  if (entry.value.cashSent > 0)
+                    _mini(_money(entry.value.cashSent), 'CASH SENT'),
                   _mini('${entry.value.projectedRosterPlayers}', 'ROSTER'),
                   _mini(entry.value.apronStatus.toUpperCase(), 'STATUS'),
                 ],
@@ -999,7 +1149,7 @@ class _ProductTradeMachineCompleteScreenState
           ),
           SizedBox(height: 7),
           Text(
-            'Player matching uses the supplied 2026-27 salary schedule. Team cap position uses the supplied team cap ledger. Draft rights cover both rounds for every team from 2027 through 2033, while conditional, protected, swap, frozen, and outgoing interests remain explicit. TPEs use source transaction, available balance, and expiration metadata. Signing exceptions are shown as acquisition context and are not counted as outgoing trade salary.',
+            'Sports Terminal uses the frozen 2026-27 front-office dataset as its transaction authority: salary sheets, guarantees, trade eligibility, kickers, draft rights, TPE/DPE balances, signing exceptions, hard-cap triggers, cash limits and tax context. The Trade Machine makes its determination from those static records and the selected transaction date; no live API calls are used.',
             style: TextStyle(color: _muted, height: 1.45),
           ),
         ],
@@ -1033,6 +1183,110 @@ class _ProductTradeMachineCompleteScreenState
           !validIds.contains(assetId) || !teams.contains(destination),
     );
     selectedTpeByTeam.removeWhere((team, _) => !teams.contains(team));
+    cashAmounts.removeWhere((team, _) => !teams.contains(team));
+    cashDestinations.removeWhere(
+      (team, destination) =>
+          !teams.contains(team) ||
+          !teams.contains(destination) ||
+          team == destination,
+    );
+  }
+
+  bool get _hasTradeActivity =>
+      routes.isNotEmpty ||
+      cashAmounts.values.any((amount) => amount > 0);
+
+  NbaTradeEligibilityRestriction? _tradeRestrictionFor(String player) {
+    for (final item in NbaContractStatusReference202627.january15) {
+      if (item.player == player) return item;
+    }
+    return null;
+  }
+
+  bool _isTradeRestricted(String player) {
+    final restriction = _tradeRestrictionFor(player);
+    if (restriction == null) return false;
+    return tradeDate.isBefore(DateTime.parse(restriction.eligibleDate));
+  }
+
+  Widget _cashTradeControl(
+    String team,
+    NbaCashTradeAvailability? availability,
+  ) {
+    final available = availability?.availableToSend ?? 0;
+    final destination = cashDestinations[team];
+    final amount = (cashAmounts[team] ?? 0).clamp(0, available).toDouble();
+    final destinations = teams.where((item) => item != team).toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: _panel2,
+        border: Border.all(color: _line),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'CASH CONSIDERATIONS',
+            style: TextStyle(
+              color: _cyan,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: destinations.contains(destination) ? destination : null,
+                  hint: const Text('Send cash to…'),
+                  isDense: true,
+                  items: [
+                    for (final item in destinations)
+                      DropdownMenuItem(value: item, child: Text(item)),
+                  ],
+                  onChanged: (value) => setState(() {
+                    if (value == null) {
+                      cashDestinations.remove(team);
+                    } else {
+                      cashDestinations[team] = value;
+                    }
+                  }),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                _money(amount),
+                style: const TextStyle(
+                  color: _text,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: amount,
+            min: 0,
+            max: available <= 0 ? 1 : available,
+            divisions: available <= 0 ? null : 100,
+            label: _money(amount),
+            onChanged: available <= 0
+                ? null
+                : (value) => setState(() => cashAmounts[team] = value),
+          ),
+          Text(
+            availability?.sendRestrictedAboveSecondApron == true
+                ? 'Current source marks this team ineligible to send cash while above the second apron.'
+                : 'Remaining annual send capacity: ${_money(available)}.',
+            style: const TextStyle(color: _muted, fontSize: 9),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1162,5 +1416,25 @@ String _exceptionRule(String key, double teamCap) {
     'tax_mle' => NbaMleRules202627.taxpayerRule,
     'bae' => 'Bi-Annual Exception remaining balance.',
     _ => 'Remaining signing-exception balance.',
+  };
+}
+
+
+String _kickerLabel(NbaTradeKickerRecord record) {
+  return switch (record.status) {
+    NbaTradeKickerStatus.active =>
+      'KICKER ${record.percent.toStringAsFixed(record.percent % 1 == 0 ? 0 : 2)}%',
+    NbaTradeKickerStatus.voidedAtMaxSalary => 'KICKER VOID @ MAX',
+    NbaTradeKickerStatus.futureExtension => 'FUTURE KICKER',
+    NbaTradeKickerStatus.waivedOnTrade => 'KICKER WAIVED',
+  };
+}
+
+Color _kickerColor(NbaTradeKickerRecord record) {
+  return switch (record.status) {
+    NbaTradeKickerStatus.active => _amber,
+    NbaTradeKickerStatus.voidedAtMaxSalary => _muted,
+    NbaTradeKickerStatus.futureExtension => _cyan,
+    NbaTradeKickerStatus.waivedOnTrade => _muted,
   };
 }
