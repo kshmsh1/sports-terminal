@@ -153,7 +153,7 @@ class _ProductTradeMachineCompleteScreenState
           ),
           const SizedBox(height: 5),
           const Text(
-            'Build two- through five-team 2026-27 transactions with player contracts, first- and second-round draft rights, live traded-player exceptions, signing-exception context, team cap ledgers, hard caps, and explainable CBA checks.',
+            'Build two- through five-team 2026-27 transactions with player contracts, first- and second-round draft rights, static traded-player exceptions, signing-exception context, team cap ledgers, hard caps, and explainable CBA checks.',
             style: TextStyle(color: _muted, height: 1.4),
           ),
           const SizedBox(height: 10),
