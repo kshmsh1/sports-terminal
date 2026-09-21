@@ -57,7 +57,7 @@ class NbaTradeKickerReference202627 {
       team:'PHI',
       percent:7,
       status:NbaTradeKickerStatus.active,
-      note:'Source lists 7% / $7,000,000; exact bonus requires fixed-dollar cap treatment.',
+      note:'Source lists 7% / \$7,000,000; exact bonus requires fixed-dollar cap treatment.',
     ),
     NbaTradeKickerRecord(player:'Jayson Tatum', team:'BOS', percent:15, status:NbaTradeKickerStatus.active),
     NbaTradeKickerRecord(player:'Kawhi Leonard', team:'TOR', percent:15, status:NbaTradeKickerStatus.active),
