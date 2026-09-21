@@ -791,6 +791,374 @@ class TradeMachineUserAgent {
       'A transaction must contain at least one asset.',
     );
 
+    final minTeams = engine.validate(
+      TradeScenario(
+        id: 'min-teams',
+        name: 'min-teams',
+        operatingSeason: '2026-27',
+        asOfDateIso: '2026-09-21',
+        teams: const ['BOS'],
+        assignments: const [],
+        capContexts: {'BOS': TeamCapContext.nba2026_27(team: 'BOS', teamSalary: 190000000)},
+      ),
+    );
+    expectCode(
+      'requires at least two teams',
+      minTeams,
+      'MIN_TEAMS',
+      'A one-team scenario is rejected.',
+    );
+
+    final duplicateTeam = engine.validate(
+      TradeScenario(
+        id: 'duplicate-team',
+        name: 'duplicate-team',
+        operatingSeason: '2026-27',
+        asOfDateIso: '2026-09-21',
+        teams: const ['BOS', 'BOS'],
+        assignments: const [],
+        capContexts: {'BOS': TeamCapContext.nba2026_27(team: 'BOS', teamSalary: 190000000)},
+      ),
+    );
+    expectCode(
+      'rejects duplicate participating teams',
+      duplicateTeam,
+      'DUPLICATE_TEAM',
+      'The same franchise cannot occupy two participant slots.',
+    );
+
+    final teamScope = engine.validate(
+      _scenario(
+        id: 'team-scope',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'scope',
+              type: TradeAssetType.cash,
+              label: 'Out-of-scope cash',
+              originTeam: 'LAL',
+              metadata: {'amount': 1},
+            ),
+            destinationTeam: 'PHI',
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'rejects assets from non-participating teams',
+      teamScope,
+      'TEAM_SCOPE',
+      'An asset originating outside the selected teams is rejected.',
+    );
+
+    final restrictedAggregation = engine.validate(
+      _scenario(
+        id: 'restricted-aggregation',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'aggregate-a',
+              type: TradeAssetType.player,
+              label: 'Restricted Aggregation Player',
+              originTeam: 'BOS',
+              salary: 5000000,
+              metadata: {'cannot_aggregate': true},
+            ),
+            destinationTeam: 'PHI',
+          ),
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'aggregate-b',
+              type: TradeAssetType.player,
+              label: 'Second Player',
+              originTeam: 'BOS',
+              salary: 5000000,
+            ),
+            destinationTeam: 'PHI',
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'enforces player-specific aggregation restrictions',
+      restrictedAggregation,
+      'PLAYER_AGGREGATION_RESTRICTED',
+      'A player flagged as non-aggregatable is combined with another outgoing salary.',
+    );
+
+    final exceptionAmount = engine.validate(
+      _scenario(
+        id: 'exception-amount',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'zero-exception',
+              type: TradeAssetType.tradeException,
+              label: 'Zero TPE',
+              originTeam: 'BOS',
+            ),
+            destinationTeam: 'PHI',
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'requires a positive exception amount',
+      exceptionAmount,
+      'EXCEPTION_AMOUNT_REQUIRED',
+      'A zero-dollar exception cannot be used.',
+    );
+
+    final uncertainPick = engine.validate(
+      _scenario(
+        id: 'uncertain-pick',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: [
+          _draftAssignment(
+            'BOS',
+            'PHI',
+            'uncertain-pick',
+            'Conditional first',
+            2029,
+            1,
+            conveyanceUncertain: true,
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'preserves uncertain conveyance review',
+      uncertainPick,
+      'PICK_CONVEYANCE_UNCERTAIN',
+      'A conditional conveyance remains visibly unresolved.',
+    );
+
+    final distantPick = engine.validate(
+      _scenario(
+        id: 'distant-pick',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: [
+          _draftAssignment(
+            'BOS',
+            'PHI',
+            'distant-pick',
+            '2035 first',
+            2035,
+            1,
+            yearsOut: 9,
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'blocks picks beyond the modeled seven-season horizon',
+      distantPick,
+      'PICK_TOO_DISTANT',
+      'A first-round asset nine seasons out is rejected.',
+    );
+
+    final explicitStepien = engine.validate(
+      _scenario(
+        id: 'explicit-stepien',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: [
+          _draftAssignment(
+            'BOS',
+            'PHI',
+            'stepien-conflict',
+            'Blocked first',
+            2030,
+            1,
+            stepienConflict: true,
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'blocks explicit Stepien conflicts',
+      explicitStepien,
+      'STEPIEN_CONFLICT',
+      'A pick explicitly marked as creating a continuity gap is rejected.',
+    );
+
+    final datedReview = engine.validate(
+      TradeScenario(
+        id: 'dated-review',
+        name: 'dated-review',
+        operatingSeason: '2026-27',
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'dated-review-player',
+              type: TradeAssetType.player,
+              label: 'Recently signed player',
+              originTeam: 'BOS',
+              salary: 5000000,
+              metadata: {'recently_signed_until': '2026-12-15'},
+            ),
+            destinationTeam: 'PHI',
+          ),
+        ],
+        capContexts: const {
+          'BOS': TeamCapContext.nba2026_27(team: 'BOS', teamSalary: 190000000),
+          'PHI': TeamCapContext.nba2026_27(team: 'PHI', teamSalary: 190000000),
+        },
+      ),
+    );
+    expectCode(
+      'requires date review when timed restriction lacks scenario date',
+      datedReview,
+      'DATED_TRADE_RESTRICTION_REVIEW',
+      'A timed restriction cannot silently pass without an as-of date.',
+    );
+
+    final bycApplied = engine.validate(
+      _scenario(
+        id: 'byc-applied',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'byc-applied-player',
+              type: TradeAssetType.player,
+              label: 'BYC Applied Player',
+              originTeam: 'BOS',
+              salary: 20000000,
+              metadata: {
+                'base_year_compensation': true,
+                'outgoing_matching_salary': 10000000,
+              },
+            ),
+            destinationTeam: 'PHI',
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'uses explicit BYC outgoing matching salary',
+      bycApplied,
+      'BYC_APPLIED',
+      'The engine reports the authoritative sender-side BYC value.',
+    );
+
+    final poisonApplied = engine.validate(
+      _scenario(
+        id: 'poison-applied',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'poison-applied-player',
+              type: TradeAssetType.player,
+              label: 'Poison Pill Applied Player',
+              originTeam: 'BOS',
+              salary: 10000000,
+              metadata: {
+                'poison_pill': true,
+                'incoming_matching_salary': 18000000,
+              },
+            ),
+            destinationTeam: 'PHI',
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'uses explicit poison-pill receiving salary',
+      poisonApplied,
+      'POISON_PILL_APPLIED',
+      'The engine reports the authoritative receiving-team matching value.',
+    );
+
+    final rosterMax = engine.validate(
+      _scenario(
+        id: 'roster-max',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'roster-player',
+              type: TradeAssetType.player,
+              label: 'Roster Player',
+              originTeam: 'PHI',
+              salary: 1000000,
+            ),
+            destinationTeam: 'BOS',
+          ),
+        ],
+        overrides: const {
+          'BOS': TeamCapContext.nba2026_27(
+            team: 'BOS',
+            teamSalary: 190000000,
+            standardRosterPlayers: 15,
+          ),
+        },
+      ),
+    );
+    expectCode(
+      'warns when a trade creates more than 15 standard contracts',
+      rosterMax,
+      'ROSTER_MAX',
+      'A 15-man roster receives an additional standard player.',
+    );
+
+    final rosterMin = engine.validate(
+      _scenario(
+        id: 'roster-min',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'roster-out',
+              type: TradeAssetType.player,
+              label: 'Outgoing Player',
+              originTeam: 'BOS',
+              salary: 1000000,
+            ),
+            destinationTeam: 'PHI',
+          ),
+        ],
+        overrides: const {
+          'BOS': TeamCapContext.nba2026_27(
+            team: 'BOS',
+            teamSalary: 190000000,
+            standardRosterPlayers: 14,
+            minimumStandardRosterPlayers: 14,
+          ),
+        },
+      ),
+    );
+    expectCode(
+      'warns when standard roster falls below modeled minimum',
+      rosterMin,
+      'ROSTER_MIN',
+      'A 14-man roster sends a standard player without receiving one.',
+    );
+
     final fiveTeams = data.teams.take(5).toList();
     final fiveAssignments = <TradeAssignment>[];
     for (var index = 0; index < fiveTeams.length; index++) {
@@ -949,6 +1317,9 @@ class TradeMachineUserAgent {
     bool frozen = false,
     bool swapRight = false,
     String? protection,
+    bool conveyanceUncertain = false,
+    bool stepienConflict = false,
+    int? yearsOut,
   }) {
     return TradeAssignment(
       asset: TradeAsset(
@@ -962,6 +1333,9 @@ class TradeMachineUserAgent {
           if (frozen) 'frozen': true,
           if (swapRight) 'swap_right': true,
           if (protection != null) 'protection': protection,
+          if (conveyanceUncertain) 'conveyance_uncertain': true,
+          if (stepienConflict) 'stepien_conflict': true,
+          if (yearsOut != null) 'years_out': yearsOut,
         },
       ),
       destinationTeam: destination,
