@@ -249,7 +249,7 @@ class TradeMachineUserAgent {
       team: team,
       teamSalary: total,
       salaryCap: NbaLeagueEnvironment202627.salaryCap,
-      taxLine: NbaLeagueEnvironment202627.taxLine,
+      taxLine: NbaLeagueEnvironment202627.luxuryTax,
       firstApron: NbaLeagueEnvironment202627.firstApron,
       secondApron: NbaLeagueEnvironment202627.secondApron,
       hardCappedAt: hardCap,
