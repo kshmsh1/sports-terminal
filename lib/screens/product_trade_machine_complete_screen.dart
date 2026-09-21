@@ -405,15 +405,33 @@ class _ProductTradeMachineCompleteScreenState
             builder: (_) {
               final kicker =
                   NbaTradeKickerReference202627.forPlayer(player.player);
+              final restriction = _tradeRestrictionFor(player.player);
+              final partial =
+                  NbaContractStatusReference202627.partiallyGuaranteed[player.player];
+              final acquired =
+                  NbaTransactionHistory2026.mostRecentAcquisitionDate(player.player);
               return _assetRow(
                 title: player.player,
-                subtitle: player.guaranteed == null
-                    ? '2026-27 contract'
-                    : 'Guaranteed ${_money(player.guaranteed!)}',
+                subtitle: [
+                  if (partial != null)
+                    'Protected ${_money(partial)}'
+                  else if (player.guaranteed != null)
+                    'Guaranteed ${_money(player.guaranteed!)}'
+                  else
+                    '2026-27 contract',
+                  if (acquired != null) 'Acquired $acquired',
+                  if (restriction != null)
+                    'Trade eligible ${restriction.eligibleDate}',
+                ].join(' · '),
                 trailing: _money(player.salaryFor('2026-27')),
                 badges: [
                   if (kicker != null)
                     _pill(_kickerLabel(kicker), _kickerColor(kicker)),
+                  if (restriction != null &&
+                      tradeDate.isBefore(DateTime.parse(restriction.eligibleDate)))
+                    _pill('LOCKED', _red),
+                  if (restriction?.hasTradeVeto == true)
+                    _pill('CONSENT', _amber),
                 ],
                 control: _routeMenu(player.id, team),
               );
