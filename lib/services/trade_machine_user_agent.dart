@@ -1141,7 +1141,7 @@ class TradeMachineUserAgent {
             destinationTeam: 'PHI',
           ),
         ],
-        overrides: const {
+        overrides: {
           'BOS': TeamCapContext.nba2026_27(
             team: 'BOS',
             teamSalary: 190000000,
