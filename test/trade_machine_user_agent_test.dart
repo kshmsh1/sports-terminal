@@ -50,8 +50,6 @@ void main() {
     expect(find.text('Cap Table'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
-}
-
 
   testWidgets('Trade Machine supports core interactive user flows', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1600, 2200));
@@ -97,3 +95,4 @@ void main() {
     expect(find.text('Routed only'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
