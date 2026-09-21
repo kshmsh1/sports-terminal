@@ -1,5 +1,4 @@
 import 'nba_complete_draft_asset_repository.dart';
-import 'nba_contract_status_reference_2026.dart';
 import 'nba_front_office_tracker_2026.dart';
 import 'nba_league_environment_2026.dart';
 import 'nba_team_salary_position_2026.dart';
@@ -1015,7 +1014,7 @@ class TradeMachineUserAgent {
             destinationTeam: 'PHI',
           ),
         ],
-        capContexts: const {
+        capContexts: {
           'BOS': TeamCapContext.nba2026_27(team: 'BOS', teamSalary: 190000000),
           'PHI': TeamCapContext.nba2026_27(team: 'PHI', teamSalary: 190000000),
         },
@@ -1108,7 +1107,7 @@ class TradeMachineUserAgent {
             destinationTeam: 'BOS',
           ),
         ],
-        overrides: const {
+        overrides: {
           'BOS': TeamCapContext.nba2026_27(
             team: 'BOS',
             teamSalary: 190000000,
@@ -1321,22 +1320,24 @@ class TradeMachineUserAgent {
     bool stepienConflict = false,
     int? yearsOut,
   }) {
+    final metadata = <String, dynamic>{
+      'draft_year': year,
+      'round': '$round',
+    };
+    if (frozen) metadata['frozen'] = true;
+    if (swapRight) metadata['swap_right'] = true;
+    if (protection != null) metadata['protection'] = protection;
+    if (conveyanceUncertain) metadata['conveyance_uncertain'] = true;
+    if (stepienConflict) metadata['stepien_conflict'] = true;
+    if (yearsOut != null) metadata['years_out'] = yearsOut;
+
     return TradeAssignment(
       asset: TradeAsset(
         id: id,
         type: TradeAssetType.draftPick,
         label: label,
         originTeam: origin,
-        metadata: {
-          'draft_year': year,
-          'round': '$round',
-          if (frozen) 'frozen': true,
-          if (swapRight) 'swap_right': true,
-          if (protection != null) 'protection': protection,
-          if (conveyanceUncertain) 'conveyance_uncertain': true,
-          if (stepienConflict) 'stepien_conflict': true,
-          if (yearsOut != null) 'years_out': yearsOut,
-        },
+        metadata: metadata,
       ),
       destinationTeam: destination,
     );
