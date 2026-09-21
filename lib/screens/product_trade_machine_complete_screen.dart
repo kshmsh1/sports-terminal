@@ -749,6 +749,8 @@ class _ProductTradeMachineCompleteScreenState
                     NbaTransactionHistory2026.mostRecentAcquisitionDate(player.player),
                 'trade_restricted': _isTradeRestricted(player.player),
                 'no_trade': _tradeRestrictionFor(player.player)?.hasTradeVeto == true,
+                'trade_kicker':
+                    NbaTradeKickerReference202627.forPlayer(player.player)?.percent,
                 'trade_kicker_percent':
                     NbaTradeKickerReference202627.forPlayer(player.player)?.percent,
                 'trade_kicker_status':
@@ -865,7 +867,7 @@ class _ProductTradeMachineCompleteScreenState
         findings.add(
           TradeValidationFinding(
             code: 'TPE_MISSING',
-            message: '$team selected a TPE that is not in the live ledger.',
+            message: '$team selected a TPE that is not in the static exception ledger.',
             severity: TradeValidationSeverity.error,
             team: team,
           ),
@@ -905,7 +907,8 @@ class _ProductTradeMachineCompleteScreenState
         continue;
       }
 
-      if (context.aboveSecondApron || tpe.unusableAboveSecondApron) {
+      if (context.aboveSecondApron ||
+          scenario.postTradeSalary(team) > context.secondApron) {
         findings.add(
           TradeValidationFinding(
             code: 'TPE_APRON',
