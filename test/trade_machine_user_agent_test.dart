@@ -51,6 +51,75 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Trade Machine routes assets and survives stateful controls',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1700, 2600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: ProductTradeMachineCompleteScreen(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final calendar = find.byIcon(Icons.calendar_today_rounded);
+    expect(calendar, findsOneWidget);
+    await tester.ensureVisible(calendar);
+    await tester.tap(calendar);
+    await tester.pumpAndSettle();
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+    await tester.tap(find.text('CANCEL'));
+    await tester.pumpAndSettle();
+
+    final searchFields = find.byType(TextField);
+    expect(searchFields, findsWidgets);
+    await tester.enterText(searchFields.first, 'Jayson');
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    await tester.enterText(searchFields.first, '');
+    await tester.pumpAndSettle();
+
+    final routeHint = find.text('Route to…').first;
+    await tester.ensureVisible(routeHint);
+    await tester.tap(routeHint);
+    await tester.pumpAndSettle();
+    expect(find.text('PHI'), findsWidgets);
+    await tester.tap(find.text('PHI').last);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('→ PHI'), findsWidgets);
+    expect(tester.takeException(), isNull);
+
+    final moneyTab = find.text('Money / Exceptions').first;
+    await tester.ensureVisible(moneyTab);
+    await tester.tap(moneyTab);
+    await tester.pumpAndSettle();
+    expect(find.text('CASH CONSIDERATIONS'), findsWidgets);
+    expect(find.text('TRADED PLAYER EXCEPTIONS'), findsWidgets);
+
+    final tpeRadio = find.byType(Radio<String>).first;
+    await tester.ensureVisible(tpeRadio);
+    await tester.tap(tpeRadio);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Uses TPE:'), findsWidgets);
+    expect(tester.takeException(), isNull);
+
+    final reset = find.text('Reset');
+    await tester.ensureVisible(reset);
+    await tester.tap(reset);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Route a player or draft right'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Trade Machine supports core interactive user flows', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1600, 2200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
