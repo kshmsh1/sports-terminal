@@ -525,6 +525,9 @@ class _ProductTradeMachineCompleteScreenState
             badges: [_pill('DPE', _cyan)],
           ),
         ],
+        const SizedBox(height: 10),
+        _cashTradeControl(team, cash),
+        const SizedBox(height: 10),
         if (signing.isNotEmpty) ...[
           const Text(
             'SIGNING EXCEPTIONS',
@@ -784,6 +787,28 @@ class _ProductTradeMachineCompleteScreenState
       }
     }
 
+    for (final team in teams) {
+      final amount = cashAmounts[team] ?? 0;
+      final destination = cashDestinations[team];
+      if (amount > 0 &&
+          destination != null &&
+          destination != team &&
+          teams.contains(destination)) {
+        assignments.add(
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'cash:$team',
+              type: TradeAssetType.cash,
+              label: 'Cash considerations',
+              originTeam: team,
+              metadata: {'amount': amount},
+            ),
+            destinationTeam: destination,
+          ),
+        );
+      }
+    }
+
     return TradeScenario(
       id: 'sports-terminal-complete-2026-27',
       name: '2026-27 Trade',
@@ -958,6 +983,17 @@ class _ProductTradeMachineCompleteScreenState
                       sent.add('${asset.label} → ${routes[asset.id]}');
                     }
                     if (routes[asset.id] == team) received.add(asset.label);
+                  }
+                  final cashOut = cashAmounts[team] ?? 0;
+                  final cashDestination = cashDestinations[team];
+                  if (cashOut > 0 && cashDestination != null) {
+                    sent.add('${_money(cashOut)} cash → $cashDestination');
+                  }
+                  for (final origin in teams) {
+                    if (cashDestinations[origin] == team &&
+                        (cashAmounts[origin] ?? 0) > 0) {
+                      received.add('${_money(cashAmounts[origin]!)} cash');
+                    }
                   }
                   if (sent.isEmpty && received.isEmpty) {
                     return const SizedBox.shrink();
@@ -1158,6 +1194,86 @@ class _ProductTradeMachineCompleteScreenState
     final restriction = _tradeRestrictionFor(player);
     if (restriction == null) return false;
     return tradeDate.isBefore(DateTime.parse(restriction.eligibleDate));
+  }
+
+  Widget _cashTradeControl(
+    String team,
+    NbaCashTradeAvailability? availability,
+  ) {
+    final available = availability?.availableToSend ?? 0;
+    final destination = cashDestinations[team];
+    final amount = (cashAmounts[team] ?? 0).clamp(0, available).toDouble();
+    final destinations = teams.where((item) => item != team).toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: _panel2,
+        border: Border.all(color: _line),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'CASH CONSIDERATIONS',
+            style: TextStyle(
+              color: _cyan,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: destinations.contains(destination) ? destination : null,
+                  hint: const Text('Send cash to…'),
+                  isDense: true,
+                  items: [
+                    for (final item in destinations)
+                      DropdownMenuItem(value: item, child: Text(item)),
+                  ],
+                  onChanged: (value) => setState(() {
+                    if (value == null) {
+                      cashDestinations.remove(team);
+                    } else {
+                      cashDestinations[team] = value;
+                    }
+                  }),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                _money(amount),
+                style: const TextStyle(
+                  color: _text,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: amount,
+            min: 0,
+            max: available <= 0 ? 1 : available,
+            divisions: available <= 0 ? null : 100,
+            label: _money(amount),
+            onChanged: available <= 0
+                ? null
+                : (value) => setState(() => cashAmounts[team] = value),
+          ),
+          Text(
+            availability?.sendRestrictedAboveSecondApron == true
+                ? 'Current source marks this team ineligible to send cash while above the second apron.'
+                : 'Remaining annual send capacity: ${_money(available)}.',
+            style: const TextStyle(color: _muted, fontSize: 9),
+          ),
+        ],
+      ),
+    );
   }
 }
 
