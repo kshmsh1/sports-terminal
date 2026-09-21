@@ -15,7 +15,7 @@ void main() {
       );
     }
     expect(report.failedCount, 0);
-    expect(report.passedCount, greaterThanOrEqualTo(5));
+    expect(report.passedCount, greaterThanOrEqualTo(20));
   });
 
   testWidgets('Trade Machine UI renders as a usable front-office surface',
@@ -51,3 +51,49 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 }
+
+
+  testWidgets('Trade Machine supports core interactive user flows', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 2200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: ProductTradeMachineCompleteScreen(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('BOS'), findsWidgets);
+    expect(find.text('PHI'), findsWidgets);
+
+    await tester.tap(find.text('Add team'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ATL').last);
+    await tester.pumpAndSettle();
+    expect(find.text('ATL'), findsWidgets);
+
+    await tester.tap(find.text('Draft Picks').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('1st'), findsWidgets);
+
+    await tester.tap(find.text('Money / Exceptions').first);
+    await tester.pumpAndSettle();
+    expect(find.text('CASH CONSIDERATIONS'), findsWidgets);
+
+    await tester.tap(find.text('Routed only'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Reset'));
+    await tester.pumpAndSettle();
+    expect(find.text('Routed only'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
