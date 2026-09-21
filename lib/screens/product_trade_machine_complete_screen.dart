@@ -739,7 +739,13 @@ class _ProductTradeMachineCompleteScreenState
               salary: player.salaryFor('2026-27'),
               metadata: {
                 'guaranteed_amount': player.guaranteed,
+                'protected_amount':
+                    NbaContractStatusReference202627.partiallyGuaranteed[player.player],
                 'source_status': player.sourceStatus,
+                'acquired_date':
+                    NbaTransactionHistory2026.mostRecentAcquisitionDate(player.player),
+                'trade_restricted': _isTradeRestricted(player.player),
+                'no_trade': _tradeRestrictionFor(player.player)?.hasTradeVeto == true,
                 'trade_kicker_percent':
                     NbaTradeKickerReference202627.forPlayer(player.player)?.percent,
                 'trade_kicker_status':
@@ -799,12 +805,19 @@ class _ProductTradeMachineCompleteScreenState
             taxLine: _tax,
             firstApron: _first,
             secondApron: _second,
-            hardCappedAt: NbaTeamCapReference202627.hardCapAt(
-              team,
-              _first,
-              _second,
-            ),
+            hardCappedAt: switch (
+              NbaFrontOfficeTracker202627.hardCaps[team]?.capLevel
+            ) {
+              'first' => _first,
+              'second' => _second,
+              _ => null,
+            },
             standardRosterPlayers: data.forTeam(team, '2026-27').length,
+            cashSentThisSeason:
+                NbaCashTradeReference202627.limit -
+                (NbaCashTradeReference202627.teams[team]?.availableToSend ??
+                    NbaCashTradeReference202627.limit),
+            cashLimitThisSeason: NbaCashTradeReference202627.limit,
           ),
       },
     );
