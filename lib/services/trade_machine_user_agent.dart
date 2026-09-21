@@ -1,8 +1,10 @@
+import 'nba_complete_draft_asset_repository.dart';
 import 'nba_contract_status_reference_2026.dart';
 import 'nba_front_office_tracker_2026.dart';
 import 'nba_league_environment_2026.dart';
 import 'nba_team_salary_position_2026.dart';
 import 'nba_trade_contract_repository.dart';
+import 'nba_trade_exception_reference_2026.dart';
 import 'trade_machine_engine.dart';
 
 class TradeMachineAgentCase {
@@ -27,45 +29,79 @@ class TradeMachineAgentReport {
   int get failedCount => cases.length - passedCount;
 }
 
-/// Deterministic "real user" QA agent for the 2026-27 Trade Machine.
+/// Release-style deterministic QA agent for the 2026-27 Trade Machine.
 ///
-/// It uses only the product's frozen local authority set. No network access,
-/// APIs, randomness, or external state are involved, which makes failures
-/// reproducible in CI.
+/// This is intentionally more demanding than a unit smoke test. It acts like a
+/// power user trying normal trades, malformed trades, apron-sensitive trades,
+/// draft-pick structures, exceptions, cash, timing restrictions and special
+/// contract treatments. It uses only the app's frozen local data.
 class TradeMachineUserAgent {
   const TradeMachineUserAgent({
     this.engine = const TradeMachineEngine(),
     this.contracts = const NbaTradeContractRepository(),
+    this.drafts = const NbaCompleteDraftAssetRepository(),
   });
 
   final TradeMachineEngine engine;
   final NbaTradeContractRepository contracts;
+  final NbaCompleteDraftAssetRepository drafts;
 
   Future<TradeMachineAgentReport> play() async {
     final data = await contracts.load();
     final cases = <TradeMachineAgentCase>[];
 
+    void expectCode(
+      String name,
+      TradeValidationReport report,
+      String code,
+      String detail,
+    ) {
+      cases.add(
+        TradeMachineAgentCase(
+          name: name,
+          passed: report.findings.any((item) => item.code == code),
+          detail: detail,
+        ),
+      );
+    }
+
     cases.add(
       TradeMachineAgentCase(
-        name: 'loads the complete team universe',
-        passed: data.teams.length == 30,
-        detail: 'Loaded ${data.teams.length} NBA teams from the static contract ledger.',
+        name: 'loads complete static league authority',
+        passed:
+            data.teams.length == 30 &&
+            data.records.isNotEmpty &&
+            drafts.all().isNotEmpty,
+        detail:
+            'Loaded ${data.teams.length} teams, ${data.records.length} contracts and ${drafts.all().length} draft interests.',
+      ),
+    );
+
+    final teamsWithNoContracts =
+        data.teams.where((team) => data.forTeam(team, '2026-27').isEmpty).toList();
+    cases.add(
+      TradeMachineAgentCase(
+        name: 'every team has a usable 2026-27 standard roster ledger',
+        passed: teamsWithNoContracts.isEmpty,
+        detail: teamsWithNoContracts.isEmpty
+            ? 'All 30 teams have contract rows.'
+            : 'Missing contract rows: ${teamsWithNoContracts.join(', ')}',
       ),
     );
 
     final balanced = _findReasonablyMatchedPair(data);
     if (balanced == null) {
       cases.add(const TradeMachineAgentCase(
-        name: 'builds a normal two-team player trade',
+        name: 'normal two-team player trade evaluates',
         passed: false,
-        detail: 'Could not find a reasonably matched cross-team player pair.',
+        detail: 'Could not find a reasonably matched cross-team salary pair.',
       ));
     } else {
       final a = balanced.$1;
       final b = balanced.$2;
       final report = engine.validate(
         _scenario(
-          id: 'agent-balanced',
+          id: 'balanced',
           date: '2026-09-21',
           data: data,
           teams: [a.team, b.team],
@@ -75,36 +111,52 @@ class TradeMachineUserAgent {
           ],
         ),
       );
-      final hasCoreSummary =
-          report.teamSummaries.containsKey(a.team) &&
-          report.teamSummaries.containsKey(b.team);
-      final malformed = report.findings.any(
-        (item) =>
-            item.code == 'TEAM_SCOPE' ||
-            item.code == 'SAME_TEAM' ||
-            item.code == 'DUPLICATE_ASSET' ||
-            item.code == 'MIN_TEAMS' ||
-            item.code == 'MAX_TEAMS',
-      );
       cases.add(
         TradeMachineAgentCase(
-          name: 'builds a normal two-team player trade',
-          passed: hasCoreSummary && !malformed,
+          name: 'normal two-team player trade evaluates',
+          passed:
+              report.teamSummaries.length == 2 &&
+              !report.findings.any((item) =>
+                  item.code == 'TEAM_SCOPE' ||
+                  item.code == 'SAME_TEAM' ||
+                  item.code == 'DUPLICATE_ASSET'),
           detail:
-              '${a.player} ↔ ${b.player}; engine produced both team summaries and ${report.findings.length} explainable findings.',
+              '${a.player} ↔ ${b.player} produced both team summaries and ${report.findings.length} explainable findings.',
         ),
       );
     }
 
+    final low = data.records
+        .where((p) => p.salaryFor('2026-27') > 0)
+        .reduce((a, b) => a.salaryFor('2026-27') < b.salaryFor('2026-27') ? a : b);
+    final high = data.records
+        .where((p) => p.team != low.team)
+        .reduce((a, b) => a.salaryFor('2026-27') > b.salaryFor('2026-27') ? a : b);
+    final mismatch = engine.validate(
+      _scenario(
+        id: 'salary-mismatch',
+        date: '2026-09-21',
+        data: data,
+        teams: [low.team, high.team],
+        assignments: [
+          _playerAssignment(low, high.team),
+          _playerAssignment(high, low.team),
+        ],
+      ),
+    );
+    expectCode(
+      'blocks clearly illegal salary matching',
+      mismatch,
+      'SALARY_MATCH',
+      'A minimum/low salary was swapped against one of the largest salaries in the ledger.',
+    );
+
     final reaves = _player(data, 'Austin Reaves');
     if (reaves != null) {
-      final restriction = NbaContractStatusReference202627.january15
-          .where((item) => item.player == 'Austin Reaves')
-          .firstOrNull;
       final destination = data.teams.firstWhere((team) => team != reaves.team);
-      final report = engine.validate(
+      final before = engine.validate(
         _scenario(
-          id: 'agent-locked-player',
+          id: 'jan15-before',
           date: '2026-12-20',
           data: data,
           teams: [reaves.team, destination],
@@ -112,101 +164,632 @@ class TradeMachineUserAgent {
             _playerAssignment(
               reaves,
               destination,
-              metadata: {
-                'trade_restricted': restriction != null,
+              metadata: const {
+                'trade_restricted': true,
+                'trade_restricted_until': '2027-01-15',
               },
             ),
           ],
         ),
       );
-      cases.add(
-        TradeMachineAgentCase(
-          name: 'blocks a date-locked player',
-          passed: report.findings.any((item) => item.code == 'TRADE_RESTRICTED'),
-          detail:
-              'Austin Reaves before Jan. 15 produced the expected trade-restriction result.',
-        ),
+      expectCode(
+        'blocks known January 15 player before eligibility date',
+        before,
+        'DATED_TRADE_RESTRICTION',
+        'Austin Reaves is tested before January 15, 2027.',
       );
-    }
 
-    final denverPlayers = data.forTeam('DEN', '2026-27').take(2).toList();
-    if (denverPlayers.length == 2) {
-      final destination = 'BOS';
-      final base = _scenario(
-        id: 'agent-second-apron-aggregation',
-        date: '2026-09-21',
-        data: data,
-        teams: ['DEN', destination],
-        assignments: [
-          for (final player in denverPlayers)
-            _playerAssignment(player, destination),
-        ],
-      );
-      final report = engine.validate(
-        TradeScenario(
-          id: base.id,
-          name: base.name,
-          operatingSeason: base.operatingSeason,
-          asOfDateIso: base.asOfDateIso,
-          teams: base.teams,
-          assignments: base.assignments,
-          capContexts: {
-            ...base.capContexts,
-            'DEN': TeamCapContext(
-              team: 'DEN',
-              teamSalary: NbaLeagueEnvironment202627.secondApron + 1,
-              salaryCap: NbaLeagueEnvironment202627.salaryCap,
-              taxLine: NbaLeagueEnvironment202627.luxuryTax,
-              firstApron: NbaLeagueEnvironment202627.firstApron,
-              secondApron: NbaLeagueEnvironment202627.secondApron,
-              standardRosterPlayers: data.forTeam('DEN', '2026-27').length,
-            ),
-          },
-        ),
-      );
-      cases.add(
-        TradeMachineAgentCase(
-          name: 'rejects second-apron aggregation',
-          passed: report.findings
-              .any((item) => item.code == 'SECOND_APRON_AGGREGATION'),
-          detail:
-              'Denver sending two players triggered the second-apron aggregation guard.',
-        ),
-      );
-    }
-
-    final cleCash = NbaCashTradeReference202627.teams['CLE'];
-    if (cleCash != null) {
-      final amount = cleCash.availableToSend + 1;
-      final report = engine.validate(
+      final after = engine.validate(
         _scenario(
-          id: 'agent-cash-limit',
-          date: '2026-09-21',
+          id: 'jan15-after',
+          date: '2027-01-16',
           data: data,
-          teams: const ['CLE', 'BOS'],
+          teams: [reaves.team, destination],
           assignments: [
-            TradeAssignment(
-              asset: TradeAsset(
-                id: 'agent-cash-cle',
-                type: TradeAssetType.cash,
-                label: 'Cash considerations',
-                originTeam: 'CLE',
-                metadata: {'amount': amount},
-              ),
-              destinationTeam: 'BOS',
+            _playerAssignment(
+              reaves,
+              destination,
+              metadata: const {'trade_restricted_until': '2027-01-15'},
             ),
           ],
         ),
       );
       cases.add(
         TradeMachineAgentCase(
-          name: 'enforces annual trade-cash capacity',
-          passed: report.findings.any((item) => item.code == 'CASH_LIMIT'),
-          detail:
-              'Cleveland attempting to exceed remaining cash capacity was blocked.',
+          name: 'date restriction expires when eligibility date passes',
+          passed: !after.findings.any(
+            (item) => item.code == 'DATED_TRADE_RESTRICTION',
+          ),
+          detail: 'The same player is retested on January 16, 2027.',
         ),
       );
     }
+
+    final consent = data.forTeam('DEN', '2026-27').first;
+    final consentReport = engine.validate(
+      _scenario(
+        id: 'consent',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['DEN', 'BOS'],
+        assignments: [
+          _playerAssignment(consent, 'BOS', metadata: const {'no_trade': true}),
+        ],
+      ),
+    );
+    expectCode(
+      'surfaces player consent/no-trade rights',
+      consentReport,
+      'NO_TRADE_CLAUSE',
+      'A player marked with trade-consent rights requires approval.',
+    );
+
+    final kickerReport = engine.validate(
+      _scenario(
+        id: 'kicker',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['DEN', 'BOS'],
+        assignments: [
+          _playerAssignment(
+            consent,
+            'BOS',
+            metadata: const {'trade_kicker': 3},
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'surfaces trade kicker treatment',
+      kickerReport,
+      'TRADE_BONUS',
+      'A player carrying a modeled trade kicker is flagged for matching treatment.',
+    );
+
+    final denverPlayers = data.forTeam('DEN', '2026-27').take(2).toList();
+    if (denverPlayers.length == 2) {
+      final base = _scenario(
+        id: 'second-apron-aggregation',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['DEN', 'BOS'],
+        assignments: [
+          for (final player in denverPlayers)
+            _playerAssignment(player, 'BOS'),
+          _playerAssignment(data.forTeam('BOS', '2026-27').first, 'DEN'),
+        ],
+      );
+      final report = engine.validate(
+        _replaceContext(
+          base,
+          'DEN',
+          _syntheticContext(
+            'DEN',
+            NbaLeagueEnvironment202627.secondApron + 1,
+            data,
+          ),
+        ),
+      );
+      expectCode(
+        'blocks second-apron salary aggregation',
+        report,
+        'SECOND_APRON_AGGREGATION',
+        'A synthetic above-second-apron Denver sends two standard players.',
+      );
+    }
+
+    final secondApronCash = engine.validate(
+      _scenario(
+        id: 'second-apron-cash',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['DEN', 'BOS'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'cash-second-apron',
+              type: TradeAssetType.cash,
+              label: 'Cash considerations',
+              originTeam: 'DEN',
+              metadata: {'amount': 1},
+            ),
+            destinationTeam: 'BOS',
+          ),
+        ],
+        overrides: {
+          'DEN': TeamCapContext(
+            team: 'DEN',
+            teamSalary: 221686001,
+            salaryCap: 164961000,
+            taxLine: 200428000,
+            firstApron: 209015000,
+            secondApron: 221686000,
+            cashLimitThisSeason: 8495000,
+          ),
+        },
+      ),
+    );
+    expectCode(
+      'blocks second-apron team from sending cash',
+      secondApronCash,
+      'SECOND_APRON_CASH',
+      'An above-second-apron team attempts to include cash.',
+    );
+
+    final cleCash = NbaCashTradeReference202627.teams['CLE']!;
+    final cashLimit = engine.validate(
+      _scenario(
+        id: 'cash-limit',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['CLE', 'BOS'],
+        assignments: [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'cash-cle',
+              type: TradeAssetType.cash,
+              label: 'Cash considerations',
+              originTeam: 'CLE',
+              metadata: {'amount': cleCash.availableToSend + 1},
+            ),
+            destinationTeam: 'BOS',
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'enforces remaining annual trade-cash capacity',
+      cashLimit,
+      'CASH_LIMIT',
+      'Cleveland attempts to send one dollar more than its remaining authority.',
+    );
+
+    final zeroCash = engine.validate(
+      _scenario(
+        id: 'cash-zero',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'cash-zero',
+              type: TradeAssetType.cash,
+              label: 'Cash considerations',
+              originTeam: 'BOS',
+              metadata: {'amount': 0},
+            ),
+            destinationTeam: 'PHI',
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'rejects empty cash consideration',
+      zeroCash,
+      'CASH_AMOUNT_REQUIRED',
+      'A cash asset must have a positive amount.',
+    );
+
+    final hardCapReport = engine.validate(
+      _scenario(
+        id: 'hard-cap',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'hard-cap-player',
+              type: TradeAssetType.player,
+              label: 'Synthetic incoming salary',
+              originTeam: 'PHI',
+              salary: 5000000,
+            ),
+            destinationTeam: 'BOS',
+          ),
+        ],
+        overrides: {
+          'BOS': TeamCapContext(
+            team: 'BOS',
+            teamSalary: 208000000,
+            salaryCap: 164961000,
+            taxLine: 200428000,
+            firstApron: 209015000,
+            secondApron: 221686000,
+            hardCappedAt: 209015000,
+            standardRosterPlayers: 14,
+          ),
+        },
+      ),
+    );
+    expectCode(
+      'enforces hard-cap ceiling',
+      hardCapReport,
+      'HARD_CAP',
+      'Boston is modeled just below its hard cap and receives enough salary to cross it.',
+    );
+
+    final tpe = NbaTradeExceptionReference202627.tpes
+        .firstWhere((item) => !item.exhausted);
+    final tpeReport = engine.validate(
+      _scenario(
+        id: 'valid-tpe',
+        date: '2026-09-21',
+        data: data,
+        teams: [tpe.team, data.teams.firstWhere((team) => team != tpe.team)],
+        assignments: [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: tpe.id,
+              type: TradeAssetType.tradeException,
+              label: 'TPE · ${tpe.sourceTransaction}',
+              originTeam: tpe.team,
+              salary: tpe.available,
+              metadata: {
+                'amount': tpe.available,
+                'expires_at': tpe.expires,
+              },
+            ),
+            destinationTeam:
+                data.teams.firstWhere((team) => team != tpe.team),
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'recognizes live traded-player exception usage',
+      tpeReport,
+      'EXCEPTION_REVIEW',
+      'A current non-exhausted TPE is routed through the engine.',
+    );
+
+    final expiredTpe = engine.validate(
+      _scenario(
+        id: 'expired-tpe',
+        date: '2028-01-01',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'expired-tpe',
+              type: TradeAssetType.tradeException,
+              label: 'Expired TPE',
+              originTeam: 'BOS',
+              salary: 1000000,
+              metadata: {
+                'amount': 1000000,
+                'expires_at': '2027-01-01',
+              },
+            ),
+            destinationTeam: 'PHI',
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'rejects expired exception',
+      expiredTpe,
+      'EXPIRED_EXCEPTION',
+      'An exception is tested after its expiration date.',
+    );
+
+    final frozen = drafts.all().firstWhere((item) => item.frozen);
+    final frozenReport = engine.validate(
+      _scenario(
+        id: 'frozen-pick',
+        date: '2026-09-21',
+        data: data,
+        teams: [frozen.team, data.teams.firstWhere((t) => t != frozen.team)],
+        assignments: [
+          _draftAssignment(
+            frozen.team,
+            data.teams.firstWhere((t) => t != frozen.team),
+            frozen.id,
+            frozen.label,
+            frozen.year,
+            frozen.round,
+            frozen: true,
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'blocks frozen first-round pick',
+      frozenReport,
+      'FROZEN_PICK',
+      'The static draft repository contains a frozen pick and it is rejected.',
+    );
+
+    final protected = drafts.all().firstWhere(
+      (item) => item.protection != null && item.protection!.isNotEmpty,
+    );
+    final protectedReport = engine.validate(
+      _scenario(
+        id: 'protected-pick',
+        date: '2026-09-21',
+        data: data,
+        teams: [
+          protected.team,
+          data.teams.firstWhere((t) => t != protected.team),
+        ],
+        assignments: [
+          _draftAssignment(
+            protected.team,
+            data.teams.firstWhere((t) => t != protected.team),
+            protected.id,
+            protected.label,
+            protected.year,
+            protected.round,
+            protection: protected.protection,
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'preserves pick protection semantics',
+      protectedReport,
+      'PICK_PROTECTION',
+      'A real protected draft interest retains its protection metadata.',
+    );
+
+    final swap = drafts.all().firstWhere((item) => item.swapRight);
+    final swapReport = engine.validate(
+      _scenario(
+        id: 'swap-pick',
+        date: '2026-09-21',
+        data: data,
+        teams: [swap.team, data.teams.firstWhere((t) => t != swap.team)],
+        assignments: [
+          _draftAssignment(
+            swap.team,
+            data.teams.firstWhere((t) => t != swap.team),
+            swap.id,
+            swap.label,
+            swap.year,
+            swap.round,
+            swapRight: true,
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'preserves pick-swap semantics',
+      swapReport,
+      'PICK_SWAP',
+      'A real swap interest is recognized as a swap rather than a plain pick.',
+    );
+
+    final stepien = engine.validate(
+      _scenario(
+        id: 'stepien',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['CHI', 'BOS'],
+        assignments: [
+          _draftAssignment('CHI', 'BOS', 'chi-2028', '2028 CHI 1st', 2028, 1),
+          _draftAssignment('CHI', 'BOS', 'chi-2029', '2029 CHI 1st', 2029, 1),
+        ],
+      ),
+    );
+    expectCode(
+      'flags consecutive outgoing first-round interests for Stepien review',
+      stepien,
+      'STEPIEN_REVIEW',
+      'Chicago sends first-round interests in consecutive draft years.',
+    );
+
+    final twoWay = engine.validate(
+      _scenario(
+        id: 'two-way',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'two-way-player',
+              type: TradeAssetType.player,
+              label: 'Two-Way Player',
+              originTeam: 'BOS',
+              salary: 678882,
+              metadata: {'two_way': true},
+            ),
+            destinationTeam: 'PHI',
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'recognizes two-way contract treatment',
+      twoWay,
+      'TWO_WAY_CONTRACT',
+      'Two-way salary is excluded from normal matching and standard-roster counts.',
+    );
+    cases.add(
+      TradeMachineAgentCase(
+        name: 'two-way salary is excluded from matching totals',
+        passed: twoWay.teamSummaries['BOS']?.outgoingSalary == 0,
+        detail:
+            'Boston outgoing matching salary is ${twoWay.teamSummaries['BOS']?.outgoingSalary}.',
+      ),
+    );
+
+    final bycRequired = engine.validate(
+      _scenario(
+        id: 'byc-required',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'byc-required-player',
+              type: TradeAssetType.player,
+              label: 'BYC Player',
+              originTeam: 'BOS',
+              salary: 20000000,
+              metadata: {'base_year_compensation': true},
+            ),
+            destinationTeam: 'PHI',
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'requires authoritative BYC matching value',
+      bycRequired,
+      'BYC_VALUE_REQUIRED',
+      'Nominal salary alone cannot validate a BYC player.',
+    );
+
+    final poisonRequired = engine.validate(
+      _scenario(
+        id: 'poison-required',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'poison-required-player',
+              type: TradeAssetType.player,
+              label: 'Poison Pill Player',
+              originTeam: 'BOS',
+              salary: 10000000,
+              metadata: {'poison_pill': true},
+            ),
+            destinationTeam: 'PHI',
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'requires authoritative poison-pill receiving value',
+      poisonRequired,
+      'POISON_PILL_VALUE_REQUIRED',
+      'A poison-pill player cannot use nominal salary for the receiving team.',
+    );
+
+    final signAndTrade = engine.validate(
+      _scenario(
+        id: 'sign-and-trade',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'sat-player',
+              type: TradeAssetType.player,
+              label: 'Sign-and-Trade Player',
+              originTeam: 'PHI',
+              salary: 1000000,
+              metadata: {'sign_and_trade': true},
+            ),
+            destinationTeam: 'BOS',
+          ),
+        ],
+        overrides: {
+          'BOS': TeamCapContext(
+            team: 'BOS',
+            teamSalary: 209000000,
+            salaryCap: 164961000,
+            taxLine: 200428000,
+            firstApron: 209015000,
+            secondApron: 221686000,
+            standardRosterPlayers: 14,
+          ),
+        },
+      ),
+    );
+    expectCode(
+      'blocks sign-and-trade acquisition above first apron',
+      signAndTrade,
+      'SIGN_AND_TRADE_FIRST_APRON',
+      'The receiving team would finish above the first apron.',
+    );
+
+    final duplicate = engine.validate(
+      _scenario(
+        id: 'duplicate',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'dup',
+              type: TradeAssetType.cash,
+              label: 'Cash A',
+              originTeam: 'BOS',
+              metadata: {'amount': 1},
+            ),
+            destinationTeam: 'PHI',
+          ),
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'dup',
+              type: TradeAssetType.cash,
+              label: 'Cash B',
+              originTeam: 'BOS',
+              metadata: {'amount': 1},
+            ),
+            destinationTeam: 'PHI',
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'rejects duplicate asset routing',
+      duplicate,
+      'DUPLICATE_ASSET',
+      'The same asset ID cannot be routed twice.',
+    );
+
+    final sameTeam = engine.validate(
+      _scenario(
+        id: 'same-team',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(
+            asset: TradeAsset(
+              id: 'same',
+              type: TradeAssetType.cash,
+              label: 'Cash',
+              originTeam: 'BOS',
+              metadata: {'amount': 1},
+            ),
+            destinationTeam: 'BOS',
+          ),
+        ],
+      ),
+    );
+    expectCode(
+      'rejects routing an asset back to its origin team',
+      sameTeam,
+      'SAME_TEAM',
+      'Origin and destination cannot be identical.',
+    );
+
+    final empty = engine.validate(
+      _scenario(
+        id: 'empty',
+        date: '2026-09-21',
+        data: data,
+        teams: const ['BOS', 'PHI'],
+        assignments: const [],
+      ),
+    );
+    expectCode(
+      'rejects empty trade scenario',
+      empty,
+      'EMPTY_SCENARIO',
+      'A transaction must contain at least one asset.',
+    );
 
     final fiveTeams = data.teams.take(5).toList();
     final fiveAssignments = <TradeAssignment>[];
@@ -220,7 +803,7 @@ class TradeMachineUserAgent {
     }
     final fiveReport = engine.validate(
       _scenario(
-        id: 'agent-five-team',
+        id: 'five-team',
         date: '2026-09-21',
         data: data,
         teams: fiveTeams,
@@ -229,11 +812,27 @@ class TradeMachineUserAgent {
     );
     cases.add(
       TradeMachineAgentCase(
-        name: 'handles a five-team transaction without crashing',
+        name: 'supports the product maximum of five teams',
         passed: !fiveReport.findings.any((item) => item.code == 'MAX_TEAMS'),
         detail:
             'Five-team scenario evaluated with ${fiveReport.findings.length} explainable findings.',
       ),
+    );
+
+    final sixReport = engine.validate(
+      _scenario(
+        id: 'six-team',
+        date: '2026-09-21',
+        data: data,
+        teams: data.teams.take(6).toList(),
+        assignments: const [],
+      ),
+    );
+    expectCode(
+      'rejects more than five participating teams',
+      sixReport,
+      'MAX_TEAMS',
+      'Six teams exceeds the product transaction limit.',
     );
 
     return TradeMachineAgentReport(List.unmodifiable(cases));
@@ -245,6 +844,7 @@ class TradeMachineUserAgent {
     required NbaTradeContractSnapshot data,
     required List<String> teams,
     required List<TradeAssignment> assignments,
+    Map<String, TeamCapContext> overrides = const {},
   }) {
     return TradeScenario(
       id: id,
@@ -254,8 +854,25 @@ class TradeMachineUserAgent {
       teams: teams,
       assignments: assignments,
       capContexts: {
-        for (final team in teams) team: _context(team, data),
+        for (final team in teams)
+          team: overrides[team] ?? _context(team, data),
       },
+    );
+  }
+
+  TradeScenario _replaceContext(
+    TradeScenario scenario,
+    String team,
+    TeamCapContext context,
+  ) {
+    return TradeScenario(
+      id: scenario.id,
+      name: scenario.name,
+      operatingSeason: scenario.operatingSeason,
+      asOfDateIso: scenario.asOfDateIso,
+      teams: scenario.teams,
+      assignments: scenario.assignments,
+      capContexts: {...scenario.capContexts, team: context},
     );
   }
 
@@ -287,6 +904,23 @@ class TradeMachineUserAgent {
     );
   }
 
+  TeamCapContext _syntheticContext(
+    String team,
+    double salary,
+    NbaTradeContractSnapshot data,
+  ) {
+    return TeamCapContext(
+      team: team,
+      teamSalary: salary,
+      salaryCap: NbaLeagueEnvironment202627.salaryCap,
+      taxLine: NbaLeagueEnvironment202627.luxuryTax,
+      firstApron: NbaLeagueEnvironment202627.firstApron,
+      secondApron: NbaLeagueEnvironment202627.secondApron,
+      standardRosterPlayers: data.forTeam(team, '2026-27').length,
+      cashLimitThisSeason: NbaCashTradeReference202627.limit,
+    );
+  }
+
   TradeAssignment _playerAssignment(
     NbaTradeContract player,
     String destination, {
@@ -305,10 +939,36 @@ class TradeMachineUserAgent {
     );
   }
 
-  NbaTradeContract? _player(
-    NbaTradeContractSnapshot data,
-    String name,
-  ) {
+  TradeAssignment _draftAssignment(
+    String origin,
+    String destination,
+    String id,
+    String label,
+    int year,
+    int round, {
+    bool frozen = false,
+    bool swapRight = false,
+    String? protection,
+  }) {
+    return TradeAssignment(
+      asset: TradeAsset(
+        id: id,
+        type: TradeAssetType.draftPick,
+        label: label,
+        originTeam: origin,
+        metadata: {
+          'draft_year': year,
+          'round': '$round',
+          if (frozen) 'frozen': true,
+          if (swapRight) 'swap_right': true,
+          if (protection != null) 'protection': protection,
+        },
+      ),
+      destinationTeam: destination,
+    );
+  }
+
+  NbaTradeContract? _player(NbaTradeContractSnapshot data, String name) {
     for (final item in data.records) {
       if (item.player == name) return item;
     }
