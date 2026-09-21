@@ -483,9 +483,48 @@ class _ProductTradeMachineCompleteScreenState
       asOfIso: _dateIso(tradeDate),
     );
 
+    final dpe = NbaFrontOfficeTracker202627.dpe[team];
+    final cash = NbaCashTradeReference202627.teams[team];
+    final hardCap = NbaFrontOfficeTracker202627.hardCaps[team];
+    final tax = NbaFrontOfficeTracker202627.luxuryTax[team];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Wrap(
+          spacing: 14,
+          runSpacing: 8,
+          children: [
+            if (cash != null)
+              _mini(_money(cash.availableToSend), 'CASH TO SEND'),
+            if (cash != null)
+              _mini(_money(cash.availableToReceive), 'CASH TO RECEIVE'),
+            if (tax != null)
+              _mini(
+                _money(tax.estimatedTax),
+                tax.repeater ? 'EST. TAX · REPEATER' : 'EST. TAX',
+              ),
+            if (hardCap != null)
+              _mini(hardCap.capLevel.toUpperCase(), 'HARD CAP'),
+          ],
+        ),
+        if (hardCap != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            [...hardCap.firstApronTriggers, ...hardCap.secondApronTriggers]
+                .join(' · '),
+            style: const TextStyle(color: _muted, fontSize: 9, height: 1.35),
+          ),
+        ],
+        if (dpe != null) ...[
+          const SizedBox(height: 8),
+          _assetRow(
+            title: 'Disabled Player Exception · ${dpe.player}',
+            subtitle: 'Available acquisition mechanism; not outgoing trade salary.',
+            trailing: _money(dpe.available),
+            badges: [_pill('DPE', _cyan)],
+          ),
+        ],
         if (signing.isNotEmpty) ...[
           const Text(
             'SIGNING EXCEPTIONS',
