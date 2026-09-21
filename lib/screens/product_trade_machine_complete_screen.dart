@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../services/nba_complete_draft_asset_repository.dart';
+import '../services/nba_contract_status_reference_2026.dart';
+import '../services/nba_front_office_tracker_2026.dart';
+import '../services/nba_league_environment_2026.dart';
+import '../services/nba_transaction_history_2026.dart';
+import '../services/nba_two_way_contract_reference_2026.dart';
 import '../services/nba_future_draft_asset_repository.dart';
 import '../services/nba_team_cap_reference_2026.dart';
 import '../services/nba_team_salary_position_2026.dart';
@@ -45,6 +50,8 @@ class _ProductTradeMachineCompleteScreenState
   final searches = <String, String>{};
   final tabs = <String, int>{};
   final selectedTpeByTeam = <String, String>{};
+  final cashAmounts = <String, double>{};
+  final cashDestinations = <String, String>{};
 
   List<String> teams = ['BOS', 'PHI'];
   DateTime tradeDate = DateTime(2026, 9, 11);
@@ -203,6 +210,9 @@ class _ProductTradeMachineCompleteScreenState
                           setState(() {
                             teams.remove(team);
                             selectedTpeByTeam.remove(team);
+                            cashAmounts.remove(team);
+                            cashDestinations.remove(team);
+                            cashDestinations.removeWhere((_, destination) => destination == team);
                             routes.removeWhere(
                               (id, destination) =>
                                   destination == team ||
@@ -236,6 +246,8 @@ class _ProductTradeMachineCompleteScreenState
                   setState(() {
                     routes.clear();
                     selectedTpeByTeam.clear();
+                    cashAmounts.clear();
+                    cashDestinations.clear();
                     searches.clear();
                     routedOnly = false;
                   });
@@ -317,7 +329,7 @@ class _ProductTradeMachineCompleteScreenState
               _mini(_signed(_first - totalCap), '1ST APRON'),
               _mini(_signed(_second - totalCap), '2ND APRON'),
               _mini(
-                (NbaTeamCapReference202627.hardCap[team] ?? 'none').toUpperCase(),
+                (NbaFrontOfficeTracker202627.hardCaps[team]?.capLevel ?? 'none').toUpperCase(),
                 'HARD CAP',
               ),
             ],
