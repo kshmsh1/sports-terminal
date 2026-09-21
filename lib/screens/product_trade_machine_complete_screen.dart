@@ -332,6 +332,10 @@ class _ProductTradeMachineCompleteScreenState
                 (NbaFrontOfficeTracker202627.hardCaps[team]?.capLevel ?? 'none').toUpperCase(),
                 'HARD CAP',
               ),
+              _mini(
+                '${NbaTwoWayContractReference202627.forTeam(team).length}/3',
+                'TWO-WAY',
+              ),
             ],
           ),
           const SizedBox(height: 10),
