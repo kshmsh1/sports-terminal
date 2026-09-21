@@ -689,7 +689,7 @@ class _ProductTradeMachineCompleteScreenState
           ],
           if (control != null) ...[
             const SizedBox(width: 8),
-            SizedBox(width: 132, child: control),
+            SizedBox(width: 156, child: control),
           ],
         ],
       ),
@@ -703,7 +703,11 @@ class _ProductTradeMachineCompleteScreenState
         : null;
     return DropdownButtonFormField<String>(
       value: current,
-      hint: const Text('Route to…'),
+      isExpanded: true,
+      hint: const Text(
+        'Route to…',
+        overflow: TextOverflow.ellipsis,
+      ),
       isDense: true,
       items: [
         for (final team in validDestinations)
