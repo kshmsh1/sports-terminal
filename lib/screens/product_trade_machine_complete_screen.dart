@@ -55,7 +55,6 @@ class _ProductTradeMachineCompleteScreenState
 
   List<String> teams = ['BOS', 'PHI'];
   DateTime tradeDate = DateTime(2026, 9, 11);
-  bool routedOnly = false;
 
   @override
   Widget build(BuildContext context) {
@@ -88,10 +87,8 @@ class _ProductTradeMachineCompleteScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _hero(data, allDraftAssets),
-              const SizedBox(height: 12),
-              _setup(data),
-              const SizedBox(height: 12),
+              _topBar(data),
+              const SizedBox(height: 14),
               LayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.maxWidth >= 1120
@@ -102,19 +99,13 @@ class _ProductTradeMachineCompleteScreenState
                     runSpacing: 12,
                     children: [
                       for (final team in teams)
-                        SizedBox(width: width, child: _teamBoard(data, team)),
+                        SizedBox(width: width, child: _teamBoard(data, team, report)),
                     ],
                   );
                 },
               ),
-              const SizedBox(height: 12),
-              _tradeFlow(data, allDraftAssets),
-              const SizedBox(height: 12),
-              _validation(report),
-              const SizedBox(height: 12),
-              _financials(report),
-              const SizedBox(height: 12),
-              _sourceNotes(),
+              const SizedBox(height: 14),
+              _tradeResult(report),
             ],
           ),
         );
