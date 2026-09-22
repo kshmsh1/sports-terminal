@@ -293,9 +293,14 @@ class _ProductTradeMachineCompleteScreenState
             hintText: 'Search roster',
           ),
         ),
-        const SizedBox(height: 6),
-        for (final player in players)
-          Builder(
+        const SizedBox(height: 8),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 430),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                for (final player in players)
+                  Builder(
             builder: (_) {
               final kicker =
                   NbaTradeKickerReference202627.forPlayer(player.player);
@@ -348,8 +353,12 @@ class _ProductTradeMachineCompleteScreenState
                   ),
                 ),
               );
-            },
+                  },
+                ),
+              ],
+            ),
           ),
+        ),
       ],
     );
   }
@@ -357,9 +366,12 @@ class _ProductTradeMachineCompleteScreenState
   Widget _draftTab(String team) {
     var assets = draftRepository.forTeam(team);
 
-    return Column(
-      children: [
-        for (final asset in assets)
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 430),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            for (final asset in assets)
           _assetRow(
             title: '${asset.year} · ${asset.round == 1 ? '1st' : '2nd'}',
             subtitle: asset.description,
@@ -390,15 +402,17 @@ class _ProductTradeMachineCompleteScreenState
                   )
                 : null,
           ),
-        if (assets.isEmpty)
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'No draft rights under the current filter.',
-              style: TextStyle(color: _muted),
-            ),
-          ),
-      ],
+            if (assets.isEmpty)
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'No draft rights under the current filter.',
+                  style: TextStyle(color: _muted),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1096,110 +1110,6 @@ class _ProductTradeMachineCompleteScreenState
       ),
     );
   }
-  Widget _validation(TradeValidationReport report) {
-    return _panelBox(
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(child: _section('CBA / STRUCTURAL VALIDATION')),
-              _pill(
-                report.isValid ? 'PASS' : '${report.errorCount} ERRORS',
-                report.isValid ? _green : _red,
-              ),
-              const SizedBox(width: 6),
-              _pill(
-                '${report.warningCount} WARNINGS',
-                report.warningCount == 0 ? _green : _amber,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          for (final finding in report.findings)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Text(
-                '${finding.code}: ${finding.message}',
-                style: TextStyle(
-                  color: finding.severity == TradeValidationSeverity.error
-                      ? _red
-                      : finding.severity == TradeValidationSeverity.warning
-                          ? _amber
-                          : _muted,
-                  height: 1.3,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _financials(TradeValidationReport report) {
-    return _panelBox(
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _section('POST-TRADE FINANCIALS'),
-          const SizedBox(height: 8),
-          for (final entry in report.teamSummaries.entries)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 7),
-              padding: const EdgeInsets.all(9),
-              decoration: BoxDecoration(
-                color: _panel2,
-                border: Border.all(color: _line),
-              ),
-              child: Wrap(
-                spacing: 20,
-                runSpacing: 8,
-                children: [
-                  _mini(entry.key, 'TEAM'),
-                  _mini(_money(entry.value.outgoingSalary), 'MATCH OUT'),
-                  _mini(_money(entry.value.incomingSalary), 'MATCH IN'),
-                  _mini(
-                    _money(entry.value.maximumIncomingSalary),
-                    'BASE MAX IN',
-                  ),
-                  _mini(_money(entry.value.postTradeSalary), 'POST CAP'),
-                  if (entry.value.cashSent > 0)
-                    _mini(_money(entry.value.cashSent), 'CASH SENT'),
-                  _mini('${entry.value.projectedRosterPlayers}', 'ROSTER'),
-                  _mini(entry.value.apronStatus.toUpperCase(), 'STATUS'),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sourceNotes() {
-    return _panelBox(
-      const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'SOURCE / ACCOUNTING NOTES',
-            style: TextStyle(
-              color: _cyan,
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              letterSpacing: .9,
-            ),
-          ),
-          SizedBox(height: 7),
-          Text(
-            'Sports Terminal uses the frozen 2026-27 front-office dataset as its transaction authority: salary sheets, guarantees, trade eligibility, kickers, draft rights, TPE/DPE balances, signing exceptions, hard-cap triggers, cash limits and tax context. The Trade Machine makes its determination from those static records and the selected transaction date; no live API calls are used.',
-            style: TextStyle(color: _muted, height: 1.45),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _repairTeams(List<String> allTeams) {
     final valid = teams.where(allTeams.contains).toList();
     for (final fallback in const ['BOS', 'PHI']) {
