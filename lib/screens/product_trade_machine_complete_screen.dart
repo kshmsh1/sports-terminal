@@ -113,6 +113,69 @@ class _ProductTradeMachineCompleteScreenState
     );
   }
 
+  Widget _topBar(NbaTradeContractSnapshot data) {
+    final available = data.teams.where((team) => !teams.contains(team)).toList();
+    return Row(
+      children: [
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'NBA Trade Machine',
+                style: TextStyle(color: _text, fontSize: 30, fontWeight: FontWeight.w900),
+              ),
+              SizedBox(height: 3),
+              Text(
+                'Build the deal first. The cap rules update as you go.',
+                style: TextStyle(color: _muted, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        ActionChip(
+          avatar: const Icon(Icons.calendar_today_rounded, size: 15),
+          label: Text(_displayDate(tradeDate)),
+          onPressed: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: tradeDate,
+              firstDate: DateTime(2026, 7, 1),
+              lastDate: DateTime(2033, 6, 30),
+            );
+            if (picked != null && mounted) setState(() => tradeDate = picked);
+          },
+        ),
+        const SizedBox(width: 8),
+        if (teams.length < 5)
+          PopupMenuButton<String>(
+            onSelected: (team) => setState(() => teams = [...teams, team]),
+            itemBuilder: (_) => [
+              for (final team in available)
+                PopupMenuItem(value: team, child: Text(team)),
+            ],
+            child: const Chip(
+              avatar: Icon(Icons.add_rounded, size: 15),
+              label: Text('Add team'),
+            ),
+          ),
+        const SizedBox(width: 8),
+        ActionChip(
+          avatar: const Icon(Icons.restart_alt_rounded, size: 15),
+          label: const Text('Reset'),
+          onPressed: () {
+            setState(() {
+              routes.clear();
+              selectedTpeByTeam.clear();
+              cashAmounts.clear();
+              cashDestinations.clear();
+              searches.clear();
+            });
+          },
+        ),
+      ],
+    );
+  }
   Widget _hero(
     NbaTradeContractSnapshot data,
     List<NbaFutureDraftAsset> draftAssets,
@@ -1044,6 +1107,68 @@ class _ProductTradeMachineCompleteScreenState
     );
   }
 
+  Widget _tradeResult(TradeValidationReport report) {
+    if (!_hasTradeActivity) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _panel,
+          border: Border.all(color: _line),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.swap_horiz_rounded, color: _cyan),
+            SizedBox(width: 10),
+            Text(
+              'Select assets above to start building a trade.',
+              style: TextStyle(color: _text, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+      );
+    }
+    final errors = report.findings.where((finding) => finding.severity == TradeValidationSeverity.error).toList();
+    final warnings = report.findings.where((finding) => finding.severity == TradeValidationSeverity.warning).toList();
+    final ok = errors.isEmpty;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: (ok ? _green : _red).withValues(alpha: .08),
+        border: Border.all(color: (ok ? _green : _red).withValues(alpha: .6)),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(ok ? Icons.check_circle_rounded : Icons.cancel_rounded, color: ok ? _green : _red),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ok ? 'Trade works' : 'Trade does not work',
+                  style: TextStyle(color: ok ? _green : _red, fontSize: 18, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  ok
+                      ? (warnings.isEmpty
+                          ? 'Salary matching and modeled CBA checks pass.'
+                          : 'The trade passes with ' + warnings.length.toString() + ' item(s) to review.')
+                      : errors.first.message,
+                  style: const TextStyle(color: _text, fontSize: 11, height: 1.35),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   Widget _validation(TradeValidationReport report) {
     return _panelBox(
       Column(
