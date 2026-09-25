@@ -419,7 +419,7 @@ class _ProductTradeMachineCompleteScreenState
   Widget _packagePanel(
     List<NbaTradeContract> players,
     List<NbaFutureDraftAsset> picks,
-    TradeTeamSummary? summary,
+    TeamTradeSummary? summary,
     String team,
   ) {
     final cash = cashAmounts[team] ?? 0;
@@ -466,7 +466,7 @@ class _ProductTradeMachineCompleteScreenState
             Icon(matchingOk ? Icons.check_circle_rounded : Icons.cancel_rounded, size: 16, color: matchingOk ? _green : _red),
             const SizedBox(width: 6),
             Expanded(child: Text(
-              !_hasTradeActivity ? 'Add assets to begin salary matching.' : matchingOk ? 'Salary matching works for this team.' : _money(difference) + ' too much incoming salary.',
+              !_hasTradeActivity ? 'Add assets to begin salary matching.' : matchingOk ? 'Salary matching works for this team.' : '${_money(difference)} too much incoming salary.',
               style: TextStyle(color: matchingOk ? _green : _red, fontSize: 10, fontWeight: FontWeight.w800),
             )),
           ]),
@@ -1099,7 +1099,7 @@ class _ProductTradeMachineCompleteScreenState
                   ok
                       ? (warnings.isEmpty
                           ? 'Salary matching and modeled CBA checks pass.'
-                          : 'The trade passes with ' + warnings.length.toString() + ' item(s) to review.')
+                          : 'The trade passes with ${warnings.length} item(s) to review.')
                       : errors.first.message,
                   style: const TextStyle(color: _text, fontSize: 11, height: 1.35),
                 ),
