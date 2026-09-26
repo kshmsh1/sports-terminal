@@ -517,9 +517,11 @@ def main() -> int:
     parser.add_argument("--surface", action="append", default=[])
     parser.add_argument("--variant", action="append", default=[])
     parser.add_argument("--transport", choices=("auto", "chrome", "curl"), default="auto")
-    parser.add_argument("--delay", type=float, default=1.25)
-    parser.add_argument("--timeout", type=int, default=30)
-    parser.add_argument("--retries", type=int, default=2)
+    parser.add_argument("--delay", type=float, default=2.5)
+    parser.add_argument("--timeout", type=int, default=45)
+    parser.add_argument("--retries", type=int, default=3)
+    parser.add_argument("--recovery-retries", type=int, default=3, help="Fresh-session recovery cycles after a scope exhausts normal retries.")
+    parser.add_argument("--recovery-cooldown", type=float, default=30.0, help="Base seconds to cool down before rebuilding the NBA.com session.")
     parser.add_argument("--abort-after", type=int, default=5)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--oldest-first", action="store_true")
@@ -584,7 +586,32 @@ def main() -> int:
                         time.sleep(max(0.0, args.delay) - elapsed)
                     try:
                         last_request_at = time.monotonic()
-                        raw, payload = fetch_json(url, args.timeout, max(0, args.retries), transport=args.transport, chrome_session=chrome_session)
+                        recovery_cycle = 0
+                        while True:
+                            try:
+                                raw, payload = fetch_json(url, args.timeout, max(0, args.retries), transport=args.transport, chrome_session=chrome_session)
+                                break
+                            except ScopeUnavailable:
+                                raise
+                            except Exception as exc:
+                                if recovery_cycle >= max(0, args.recovery_retries):
+                                    raise
+                                recovery_cycle += 1
+                                cooldown = max(0.0, args.recovery_cooldown) * (2 ** (recovery_cycle - 1))
+                                print(
+                                    f"  transient transport failure: {exc}\n"
+                                    f"  cooling down {cooldown:.0f}s, rebuilding session, then retrying "
+                                    f"(recovery {recovery_cycle}/{args.recovery_retries})"
+                                )
+                                time.sleep(cooldown)
+                                if args.transport in {"auto", "chrome"} and chrome_requests is not None:
+                                    try:
+                                        if chrome_session is not None:
+                                            chrome_session.close()
+                                    except Exception:
+                                        pass
+                                    chrome_session = build_chrome_session(args.timeout)
+                                last_request_at = time.monotonic()
                         metadata = write_capture(output=output, surface=surface, variant=variant, season=season, season_type=season_type, url=url, raw=raw, payload=payload)
                         status = str(metadata["validation_status"])
                         counters[status] = counters.get(status, 0) + 1
