@@ -86,6 +86,15 @@ fi
 # already-normalized local captures. This script performs no network requests.
 "$PYTHON_BIN" "$ROOT/tools/nba_com_static_enrichment.py" \
   --output "$ROOT/web/data/nba_static"
+
+# Part 1 NBA.com captures are acquired separately and remain local. When they
+# are installed, preserve every normalized surface as same-origin static data
+# and join player-season metrics into the regular/playoff season shards.
+"$PYTHON_BIN" "$ROOT/tools/materialize_nba_com_static_data.py" \
+  --output "$ROOT/web/data/nba_static"
+"$PYTHON_BIN" "$ROOT/tools/nba_com_capture_enrichment.py" \
+  --output "$ROOT/web/data/nba_static"
+
 "$PYTHON_BIN" "$ROOT/tools/rebuild_static_nba_dashboards.py" \
   --output "$ROOT/web/data/nba_static"
 

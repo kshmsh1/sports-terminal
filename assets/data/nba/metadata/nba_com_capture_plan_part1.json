@@ -1,0 +1,917 @@
+{
+  "version": 1,
+  "contract": "sports-terminal-nba-com-capture-plan-v1",
+  "source_capture": "NBA Stats Scrape Part 1",
+  "season_range": {
+    "from": "1946-47",
+    "to": "2025-26",
+    "order": "newest-first"
+  },
+  "season_types": [
+    "Regular Season",
+    "Playoffs"
+  ],
+  "principles": [
+    "Attempt every configured surface/variant for every NBA season from 2025-26 back through 1946-47; availability is discovered from the response rather than assumed from a hard-coded first season.",
+    "Regular Season and Playoffs are separate immutable scopes.",
+    "Raw responses, normalized tables, request parameters, schemas, row counts, source hashes and validation status are persisted locally before static materialization.",
+    "User-supplied row ceilings are sanity bounds, not expected row counts.",
+    "Empty historical responses are recorded as unavailable/empty and are not fabricated.",
+    "Sports Terminal browser/runtime never calls stats.nba.com; collection is a one-time/local acquisition step and the website reads generated static files."
+  ],
+  "surfaces": [
+    {
+      "key": "players_boxscores_traditional",
+      "endpoint": "leaguegamelog",
+      "resource": "leaguegamelog",
+      "result_set": "LeagueGameLog",
+      "grain": "player_game",
+      "season_parameter": "Season",
+      "params": {
+        "Counter": "1000",
+        "DateFrom": "",
+        "DateTo": "",
+        "Direction": "DESC",
+        "ISTRound": "",
+        "LeagueID": "00",
+        "PlayerOrTeam": "P",
+        "Sorter": "DATE"
+      },
+      "variants": [
+        {
+          "key": "default",
+          "params": {}
+        }
+      ],
+      "row_ceiling": {
+        "regular": 40000,
+        "playoffs": 20000
+      }
+    },
+    {
+      "key": "players_shot_locations",
+      "endpoint": "leaguedashplayershotlocations",
+      "resource": "leaguedashplayershotlocations",
+      "result_set": "ShotLocations",
+      "grain": "player_season",
+      "season_parameter": "Season",
+      "grouped_headers": true,
+      "params": {
+        "College": "",
+        "Conference": "",
+        "Country": "",
+        "DateFrom": "",
+        "DateTo": "",
+        "Division": "",
+        "DraftPick": "",
+        "DraftYear": "",
+        "GameScope": "",
+        "GameSegment": "",
+        "Height": "",
+        "ISTRound": "",
+        "LastNGames": "0",
+        "Location": "",
+        "Month": "0",
+        "OpponentTeamID": "0",
+        "Outcome": "",
+        "PORound": "0",
+        "PaceAdjust": "N",
+        "PerMode": "Totals",
+        "Period": "0",
+        "PlayerExperience": "",
+        "PlayerPosition": "",
+        "PlusMinus": "N",
+        "Rank": "N",
+        "SeasonSegment": "",
+        "ShotClockRange": "",
+        "StarterBench": "",
+        "TeamID": "0",
+        "VsConference": "",
+        "VsDivision": "",
+        "Weight": ""
+      },
+      "variants": [
+        {
+          "key": "base_5ft",
+          "params": {
+            "MeasureType": "Base",
+            "DistanceRange": "5ft Range"
+          }
+        },
+        {
+          "key": "base_8ft",
+          "params": {
+            "MeasureType": "Base",
+            "DistanceRange": "8ft Range"
+          }
+        },
+        {
+          "key": "base_by_zone",
+          "params": {
+            "MeasureType": "Base",
+            "DistanceRange": "By Zone"
+          }
+        },
+        {
+          "key": "opponent_5ft",
+          "params": {
+            "MeasureType": "Opponent",
+            "DistanceRange": "5ft Range"
+          }
+        },
+        {
+          "key": "opponent_8ft",
+          "params": {
+            "MeasureType": "Opponent",
+            "DistanceRange": "8ft Range"
+          }
+        },
+        {
+          "key": "opponent_by_zone",
+          "params": {
+            "MeasureType": "Opponent",
+            "DistanceRange": "By Zone"
+          }
+        }
+      ],
+      "row_ceiling": {
+        "regular": 800,
+        "playoffs": 500
+      }
+    },
+    {
+      "key": "players_clutch",
+      "endpoint": "leaguedashplayerclutch",
+      "resource": "leaguedashplayerclutch",
+      "result_set": "LeagueDashPlayerClutch",
+      "grain": "player_season",
+      "season_parameter": "Season",
+      "params": {
+        "AheadBehind": "Ahead or Behind",
+        "ClutchTime": "Last 5 Minutes",
+        "College": "",
+        "Conference": "",
+        "Country": "",
+        "DateFrom": "",
+        "DateTo": "",
+        "Division": "",
+        "DraftPick": "",
+        "DraftYear": "",
+        "GameScope": "",
+        "GameSegment": "",
+        "Height": "",
+        "ISTRound": "",
+        "LastNGames": "0",
+        "LeagueID": "00",
+        "Location": "",
+        "Month": "0",
+        "OpponentTeamID": "0",
+        "Outcome": "",
+        "PORound": "0",
+        "PaceAdjust": "N",
+        "PerMode": "Totals",
+        "Period": "0",
+        "PlayerExperience": "",
+        "PlayerPosition": "",
+        "PlusMinus": "N",
+        "PointDiff": "5",
+        "Rank": "N",
+        "SeasonSegment": "",
+        "ShotClockRange": "",
+        "StarterBench": "",
+        "TeamID": "0",
+        "VsConference": "",
+        "VsDivision": "",
+        "Weight": ""
+      },
+      "variants": [
+        {
+          "key": "base",
+          "params": {
+            "MeasureType": "Base"
+          }
+        },
+        {
+          "key": "advanced",
+          "params": {
+            "MeasureType": "Advanced"
+          }
+        },
+        {
+          "key": "misc",
+          "params": {
+            "MeasureType": "Misc"
+          }
+        },
+        {
+          "key": "scoring",
+          "params": {
+            "MeasureType": "Scoring"
+          }
+        },
+        {
+          "key": "usage",
+          "params": {
+            "MeasureType": "Usage"
+          }
+        }
+      ],
+      "row_ceiling": {
+        "regular": 800,
+        "playoffs": 400
+      }
+    },
+    {
+      "key": "players_synergy",
+      "endpoint": "synergyplaytypes",
+      "resource": "synergyplaytype",
+      "result_set": "SynergyPlayType",
+      "grain": "player_season",
+      "season_parameter": "SeasonYear",
+      "params": {
+        "LeagueID": "00",
+        "PerMode": "Totals",
+        "PlayerOrTeam": "P"
+      },
+      "variants": [
+        {
+          "key": "isolation_offensive",
+          "params": {
+            "PlayType": "Isolation",
+            "TypeGrouping": "offensive"
+          }
+        },
+        {
+          "key": "isolation_defensive",
+          "params": {
+            "PlayType": "Isolation",
+            "TypeGrouping": "defensive"
+          }
+        },
+        {
+          "key": "transition_offensive",
+          "params": {
+            "PlayType": "Transition",
+            "TypeGrouping": "offensive"
+          }
+        },
+        {
+          "key": "transition_defensive",
+          "params": {
+            "PlayType": "Transition",
+            "TypeGrouping": "defensive"
+          }
+        },
+        {
+          "key": "prballhandler_offensive",
+          "params": {
+            "PlayType": "PRBallHandler",
+            "TypeGrouping": "offensive"
+          }
+        },
+        {
+          "key": "prballhandler_defensive",
+          "params": {
+            "PlayType": "PRBallHandler",
+            "TypeGrouping": "defensive"
+          }
+        },
+        {
+          "key": "prrollman_offensive",
+          "params": {
+            "PlayType": "PRRollman",
+            "TypeGrouping": "offensive"
+          }
+        },
+        {
+          "key": "prrollman_defensive",
+          "params": {
+            "PlayType": "PRRollman",
+            "TypeGrouping": "defensive"
+          }
+        },
+        {
+          "key": "postup_offensive",
+          "params": {
+            "PlayType": "Postup",
+            "TypeGrouping": "offensive"
+          }
+        },
+        {
+          "key": "postup_defensive",
+          "params": {
+            "PlayType": "Postup",
+            "TypeGrouping": "defensive"
+          }
+        },
+        {
+          "key": "spotup_offensive",
+          "params": {
+            "PlayType": "Spotup",
+            "TypeGrouping": "offensive"
+          }
+        },
+        {
+          "key": "spotup_defensive",
+          "params": {
+            "PlayType": "Spotup",
+            "TypeGrouping": "defensive"
+          }
+        },
+        {
+          "key": "handoff_offensive",
+          "params": {
+            "PlayType": "Handoff",
+            "TypeGrouping": "offensive"
+          }
+        },
+        {
+          "key": "handoff_defensive",
+          "params": {
+            "PlayType": "Handoff",
+            "TypeGrouping": "defensive"
+          }
+        },
+        {
+          "key": "cut_offensive",
+          "params": {
+            "PlayType": "Cut",
+            "TypeGrouping": "offensive"
+          }
+        },
+        {
+          "key": "cut_defensive",
+          "params": {
+            "PlayType": "Cut",
+            "TypeGrouping": "defensive"
+          }
+        },
+        {
+          "key": "offscreen_offensive",
+          "params": {
+            "PlayType": "OffScreen",
+            "TypeGrouping": "offensive"
+          }
+        },
+        {
+          "key": "offscreen_defensive",
+          "params": {
+            "PlayType": "OffScreen",
+            "TypeGrouping": "defensive"
+          }
+        },
+        {
+          "key": "offrebound_offensive",
+          "params": {
+            "PlayType": "OffRebound",
+            "TypeGrouping": "offensive"
+          }
+        },
+        {
+          "key": "offrebound_defensive",
+          "params": {
+            "PlayType": "OffRebound",
+            "TypeGrouping": "defensive"
+          }
+        },
+        {
+          "key": "misc_offensive",
+          "params": {
+            "PlayType": "Misc",
+            "TypeGrouping": "offensive"
+          }
+        },
+        {
+          "key": "misc_defensive",
+          "params": {
+            "PlayType": "Misc",
+            "TypeGrouping": "defensive"
+          }
+        }
+      ],
+      "row_ceiling": {
+        "regular": 800,
+        "playoffs": 400
+      }
+    },
+    {
+      "key": "players_tracking",
+      "endpoint": "leaguedashptstats",
+      "resource": "leaguedashptstats",
+      "result_set": "LeagueDashPtStats",
+      "grain": "player_season",
+      "season_parameter": "Season",
+      "params": {
+        "College": "",
+        "Conference": "",
+        "Country": "",
+        "DateFrom": "",
+        "DateTo": "",
+        "Division": "",
+        "DraftPick": "",
+        "DraftYear": "",
+        "GameScope": "",
+        "Height": "",
+        "ISTRound": "",
+        "LastNGames": "0",
+        "LeagueID": "00",
+        "Location": "",
+        "Month": "0",
+        "OpponentTeamID": "0",
+        "Outcome": "",
+        "PORound": "0",
+        "PerMode": "Totals",
+        "PlayerExperience": "",
+        "PlayerOrTeam": "Player",
+        "PlayerPosition": "",
+        "SeasonSegment": "",
+        "StarterBench": "",
+        "TeamID": "0",
+        "VsConference": "",
+        "VsDivision": "",
+        "Weight": ""
+      },
+      "variants": [
+        {
+          "key": "drives",
+          "params": {
+            "PtMeasureType": "Drives"
+          }
+        },
+        {
+          "key": "defense",
+          "params": {
+            "PtMeasureType": "Defense"
+          }
+        },
+        {
+          "key": "catchshoot",
+          "params": {
+            "PtMeasureType": "CatchShoot"
+          }
+        },
+        {
+          "key": "passing",
+          "params": {
+            "PtMeasureType": "Passing"
+          }
+        },
+        {
+          "key": "possessions",
+          "params": {
+            "PtMeasureType": "Possessions"
+          }
+        },
+        {
+          "key": "pullupshot",
+          "params": {
+            "PtMeasureType": "PullUpShot"
+          }
+        },
+        {
+          "key": "rebounding",
+          "params": {
+            "PtMeasureType": "Rebounding"
+          }
+        },
+        {
+          "key": "efficiency",
+          "params": {
+            "PtMeasureType": "Efficiency"
+          }
+        },
+        {
+          "key": "speeddistance",
+          "params": {
+            "PtMeasureType": "SpeedDistance"
+          }
+        },
+        {
+          "key": "elbowtouch",
+          "params": {
+            "PtMeasureType": "ElbowTouch"
+          }
+        },
+        {
+          "key": "posttouch",
+          "params": {
+            "PtMeasureType": "PostTouch"
+          }
+        },
+        {
+          "key": "painttouch",
+          "params": {
+            "PtMeasureType": "PaintTouch"
+          }
+        }
+      ],
+      "row_ceiling": {
+        "regular": 800,
+        "playoffs": 400
+      }
+    },
+    {
+      "key": "players_defense_dashboard",
+      "endpoint": "leaguedashptdefend",
+      "resource": "leaguedashptdefend",
+      "result_set": "LeagueDashPTDefend",
+      "grain": "player_season",
+      "season_parameter": "Season",
+      "params": {
+        "College": "",
+        "Conference": "",
+        "Country": "",
+        "DateFrom": "",
+        "DateTo": "",
+        "Division": "",
+        "DraftPick": "",
+        "DraftYear": "",
+        "GameSegment": "",
+        "Height": "",
+        "ISTRound": "",
+        "LastNGames": "0",
+        "LeagueID": "00",
+        "Location": "",
+        "Month": "0",
+        "OpponentTeamID": "0",
+        "Outcome": "",
+        "PORound": "0",
+        "PerMode": "Totals",
+        "Period": "0",
+        "PlayerExperience": "",
+        "PlayerPosition": "",
+        "SeasonSegment": "",
+        "StarterBench": "",
+        "TeamID": "0",
+        "VsConference": "",
+        "VsDivision": "",
+        "Weight": ""
+      },
+      "variants": [
+        {
+          "key": "overall",
+          "params": {
+            "DefenseCategory": "Overall"
+          }
+        },
+        {
+          "key": "3_pointers",
+          "params": {
+            "DefenseCategory": "3 Pointers"
+          }
+        },
+        {
+          "key": "2_pointers",
+          "params": {
+            "DefenseCategory": "2 Pointers"
+          }
+        },
+        {
+          "key": "less_than_6ft",
+          "params": {
+            "DefenseCategory": "Less Than 6Ft"
+          }
+        },
+        {
+          "key": "less_than_10ft",
+          "params": {
+            "DefenseCategory": "Less Than 10Ft"
+          }
+        },
+        {
+          "key": "greater_than_15ft",
+          "params": {
+            "DefenseCategory": "Greater Than 15Ft"
+          }
+        }
+      ],
+      "row_ceiling": {
+        "regular": 800,
+        "playoffs": 400
+      }
+    },
+    {
+      "key": "players_shot_dashboard",
+      "endpoint": "leaguedashplayerptshot",
+      "resource": "leaguedashplayerptshot",
+      "result_set": "LeagueDashPTShots",
+      "grain": "player_season",
+      "season_parameter": "Season",
+      "params": {
+        "College": "",
+        "Conference": "",
+        "Country": "",
+        "DateFrom": "",
+        "DateTo": "",
+        "Division": "",
+        "DraftPick": "",
+        "DraftYear": "",
+        "GameScope": "",
+        "GameSegment": "",
+        "Height": "",
+        "ISTRound": "",
+        "LastNGames": "0",
+        "LeagueID": "00",
+        "Location": "",
+        "Month": "0",
+        "OpponentTeamID": "0",
+        "Outcome": "",
+        "PORound": "0",
+        "PaceAdjust": "N",
+        "PerMode": "Totals",
+        "Period": "0",
+        "PlayerExperience": "",
+        "PlayerPosition": "",
+        "PlusMinus": "N",
+        "Rank": "N",
+        "SeasonSegment": "",
+        "StarterBench": "",
+        "TeamID": "0",
+        "VsConference": "",
+        "VsDivision": "",
+        "Weight": ""
+      },
+      "variants": [
+        {
+          "key": "general_overall",
+          "params": {
+            "GeneralRange": "Overall"
+          }
+        },
+        {
+          "key": "general_catch_and_shoot",
+          "params": {
+            "GeneralRange": "Catch and Shoot"
+          }
+        },
+        {
+          "key": "general_pullups",
+          "params": {
+            "GeneralRange": "Pullups"
+          }
+        },
+        {
+          "key": "general_less_than_10_ft",
+          "params": {
+            "GeneralRange": "Less Than 10 ft"
+          }
+        },
+        {
+          "key": "shot_clock_24_22",
+          "params": {
+            "ShotClockRange": "24-22"
+          }
+        },
+        {
+          "key": "shot_clock_22_18_very_early",
+          "params": {
+            "ShotClockRange": "22-18 Very Early"
+          }
+        },
+        {
+          "key": "shot_clock_18_15_early",
+          "params": {
+            "ShotClockRange": "18-15 Early"
+          }
+        },
+        {
+          "key": "shot_clock_15_7_average",
+          "params": {
+            "ShotClockRange": "15-7 Average"
+          }
+        },
+        {
+          "key": "shot_clock_7_4_late",
+          "params": {
+            "ShotClockRange": "7-4 Late"
+          }
+        },
+        {
+          "key": "shot_clock_4_0_very_late",
+          "params": {
+            "ShotClockRange": "4-0 Very Late"
+          }
+        },
+        {
+          "key": "dribbles_0_dribbles",
+          "params": {
+            "DribbleRange": "0 Dribbles"
+          }
+        },
+        {
+          "key": "dribbles_1_dribble",
+          "params": {
+            "DribbleRange": "1 Dribble"
+          }
+        },
+        {
+          "key": "dribbles_2_dribbles",
+          "params": {
+            "DribbleRange": "2 Dribbles"
+          }
+        },
+        {
+          "key": "dribbles_3_6_dribbles",
+          "params": {
+            "DribbleRange": "3-6 Dribbles"
+          }
+        },
+        {
+          "key": "dribbles_7_dribbles",
+          "params": {
+            "DribbleRange": "7+ Dribbles"
+          }
+        },
+        {
+          "key": "touch_time_touch_2_seconds",
+          "params": {
+            "TouchTimeRange": "Touch < 2 Seconds"
+          }
+        },
+        {
+          "key": "touch_time_touch_2_6_seconds",
+          "params": {
+            "TouchTimeRange": "Touch 2-6 Seconds"
+          }
+        },
+        {
+          "key": "touch_time_touch_6_seconds",
+          "params": {
+            "TouchTimeRange": "Touch 6+ Seconds"
+          }
+        },
+        {
+          "key": "closest_defender_0_2_feet_very_tight",
+          "params": {
+            "CloseDefDistRange": "0-2 Feet - Very Tight"
+          }
+        },
+        {
+          "key": "closest_defender_10plus_0_2_feet_very_tight",
+          "params": {
+            "CloseDefDistRange": "0-2 Feet - Very Tight",
+            "ShotDistRange": ">=10.0"
+          }
+        },
+        {
+          "key": "closest_defender_2_4_feet_tight",
+          "params": {
+            "CloseDefDistRange": "2-4 Feet - Tight"
+          }
+        },
+        {
+          "key": "closest_defender_10plus_2_4_feet_tight",
+          "params": {
+            "CloseDefDistRange": "2-4 Feet - Tight",
+            "ShotDistRange": ">=10.0"
+          }
+        },
+        {
+          "key": "closest_defender_4_6_feet_open",
+          "params": {
+            "CloseDefDistRange": "4-6 Feet - Open"
+          }
+        },
+        {
+          "key": "closest_defender_10plus_4_6_feet_open",
+          "params": {
+            "CloseDefDistRange": "4-6 Feet - Open",
+            "ShotDistRange": ">=10.0"
+          }
+        },
+        {
+          "key": "closest_defender_6_feet_wide_open",
+          "params": {
+            "CloseDefDistRange": "6+ Feet - Wide Open"
+          }
+        },
+        {
+          "key": "closest_defender_10plus_6_feet_wide_open",
+          "params": {
+            "CloseDefDistRange": "6+ Feet - Wide Open",
+            "ShotDistRange": ">=10.0"
+          }
+        }
+      ],
+      "row_ceiling": {
+        "regular": 800,
+        "playoffs": 400
+      }
+    },
+    {
+      "key": "players_game_logs",
+      "endpoint": "playergamelogs",
+      "resource": "gamelogs",
+      "result_set": "PlayerGameLogs",
+      "grain": "player_game",
+      "season_parameter": "Season",
+      "params": {
+        "DateFrom": "",
+        "DateTo": "",
+        "GameSegment": "",
+        "ISTRound": "",
+        "LastNGames": "0",
+        "LeagueID": "00",
+        "Location": "",
+        "Month": "0",
+        "OpponentTeamID": "0",
+        "Outcome": "",
+        "PORound": "0",
+        "PaceAdjust": "N",
+        "PerMode": "Totals",
+        "Period": "0",
+        "PlusMinus": "N",
+        "Rank": "N",
+        "SeasonSegment": "",
+        "ShotClockRange": "",
+        "VsConference": "",
+        "VsDivision": ""
+      },
+      "variants": [
+        {
+          "key": "base",
+          "params": {
+            "MeasureType": "Base"
+          }
+        },
+        {
+          "key": "advanced",
+          "params": {
+            "MeasureType": "Advanced"
+          }
+        },
+        {
+          "key": "misc",
+          "params": {
+            "MeasureType": "Misc"
+          }
+        },
+        {
+          "key": "scoring",
+          "params": {
+            "MeasureType": "Scoring"
+          }
+        },
+        {
+          "key": "usage",
+          "params": {
+            "MeasureType": "Usage"
+          }
+        }
+      ],
+      "row_ceiling": {
+        "regular": 40000,
+        "playoffs": 10000
+      }
+    },
+    {
+      "key": "players_hustle",
+      "endpoint": "leaguehustlestatsplayer",
+      "resource": "leaguehustlestatsplayer",
+      "result_set": "HustleStatsPlayer",
+      "grain": "player_season",
+      "season_parameter": "Season",
+      "params": {
+        "College": "",
+        "Conference": "",
+        "Country": "",
+        "DateFrom": "",
+        "DateTo": "",
+        "Division": "",
+        "DraftPick": "",
+        "DraftYear": "",
+        "GameScope": "",
+        "Height": "",
+        "ISTRound": "",
+        "LastNGames": "0",
+        "LeagueID": "00",
+        "Location": "",
+        "Month": "0",
+        "OpponentTeamID": "0",
+        "Outcome": "",
+        "PORound": "0",
+        "PaceAdjust": "N",
+        "PerMode": "Totals",
+        "PlayerExperience": "",
+        "PlayerPosition": "",
+        "PlusMinus": "N",
+        "Rank": "N",
+        "SeasonSegment": "",
+        "TeamID": "0",
+        "VsConference": "",
+        "VsDivision": "",
+        "Weight": ""
+      },
+      "variants": [
+        {
+          "key": "default",
+          "params": {}
+        }
+      ],
+      "row_ceiling": {
+        "regular": 800,
+        "playoffs": 400
+      }
+    }
+  ]
+}
