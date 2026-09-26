@@ -113,6 +113,21 @@ def publish_ratio(target: dict[str, Any], key: str, numerator: Any, denominator:
         publish(target, key, a / b)
 
 
+def publish_sum_ratio(
+    target: dict[str, Any],
+    key: str,
+    numerators: Iterable[Any],
+    denominators: Iterable[Any],
+) -> None:
+    top = [number(value) for value in numerators]
+    bottom = [number(value) for value in denominators]
+    if any(value is None for value in top + bottom):
+        return
+    denominator = sum(value or 0 for value in bottom)
+    if denominator:
+        publish(target, key, sum(value or 0 for value in top) / denominator)
+
+
 def publish_per_game(target: dict[str, Any], key: str, source: dict[str, Any], field: str) -> None:
     gp = number(first(source, ("GP", "G")))
     value = number(source.get(field))
@@ -172,6 +187,13 @@ def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: di
                 "potential_apg": "POTENTIAL_AST", "ft_apg": "FT_AST",
             }.items():
                 publish_per_game(target, key, source, field)
+            # NBA's adjusted assist-to-pass percentage already includes its
+            # adjusted-assist definition (direct, FT and secondary creation).
+            publish(
+                target,
+                "adjusted_assist_ratio",
+                source.get("AST_TO_PASS_PCT_ADJ"),
+            )
         elif variant == "possessions":
             publish_per_game(target, "touches_pg", source, "TOUCHES")
             publish(target, "time_per_touch", source.get("AVG_SEC_PER_TOUCH"))
@@ -200,20 +222,30 @@ def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: di
         }.get(variant)
         if metric:
             publish(target, metric, source.get("D_FG_PCT"))
+        if variant == "overall":
+            publish(target, "dfgm", source.get("D_FGM"))
+            publish(target, "dfga", source.get("D_FGA"))
 
     if surface == "players_shot_dashboard":
         if variant == "general_catch_and_shoot":
-            publish(target, "catch_shoot_three_frequency", source.get("FG3A_FREQUENCY"))
+            # FGA_FREQUENCY is the share of all shots that are catch-and-shoot;
+            # FG3A_FREQUENCY is the three share inside that selected bucket.
+            bucket = number(source.get("FGA_FREQUENCY"))
+            three_share = number(source.get("FG3A_FREQUENCY"))
+            if bucket is not None and three_share is not None:
+                publish(target, "catch_shoot_three_frequency", bucket * three_share)
             publish(target, "catch_shoot_three_pct", source.get("FG3_PCT"))
         elif variant == "general_pullups":
-            publish(target, "pull_up_three_frequency", source.get("FG3A_FREQUENCY"))
+            bucket = number(source.get("FGA_FREQUENCY"))
+            three_share = number(source.get("FG3A_FREQUENCY"))
+            if bucket is not None and three_share is not None:
+                publish(target, "pull_up_three_frequency", bucket * three_share)
             publish(target, "pull_up_three_pct", source.get("FG3_PCT"))
 
     if surface == "players_shot_locations" and variant == "base_by_zone":
         fga, _ = canonical_totals(target)
         zone_map = {
             "Restricted Area": ("rim_frequency", "rim_fg_pct"),
-            "In The Paint (Non-RA)": ("paint_frequency", "paint_fg_pct"),
             "Mid-Range": ("midrange_frequency", "midrange_fg_pct"),
             "Left Corner 3": ("left_corner_three_frequency", "left_corner_three_pct"),
             "Right Corner 3": ("right_corner_three_frequency", "right_corner_three_pct"),
@@ -225,6 +257,26 @@ def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: di
             publish_ratio(target, freq_key, attempts, fga)
             publish(target, pct_key, pct)
 
+        # "Paint" in the catalog means the whole painted area, so combine the
+        # Restricted Area and non-RA paint buckets instead of silently treating
+        # only the latter as paint.
+        restricted_fga = source.get("Restricted Area__FGA")
+        non_ra_fga = source.get("In The Paint (Non-RA)__FGA")
+        restricted_fgm = source.get("Restricted Area__FGM")
+        non_ra_fgm = source.get("In The Paint (Non-RA)__FGM")
+        paint_attempts = sum(
+            value or 0
+            for value in (number(restricted_fga), number(non_ra_fga))
+        )
+        if fga not in (None, 0) and paint_attempts:
+            publish(target, "paint_frequency", paint_attempts / fga)
+        publish_sum_ratio(
+            target,
+            "paint_fg_pct",
+            (restricted_fgm, non_ra_fgm),
+            (restricted_fga, non_ra_fga),
+        )
+
     if surface == "players_hustle":
         for key, field in {
             "deflections_pg": "DEFLECTIONS", "charges_drawn_pg": "CHARGES_DRAWN",
@@ -232,7 +284,9 @@ def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: di
             "screen_apg": "SCREEN_ASSISTS",
         }.items():
             publish_per_game(target, key, source, field)
-        publish(target, "box_out_pct", source.get("PCT_BOX_OUTS_REB"))
+        # Keep every box-out field in the nested source row, but do not map
+        # PCT_BOX_OUTS_REB onto the catalog's broader "box-out opportunity"
+        # definition until that semantic equivalence is explicitly validated.
 
 
 def clear_previous(row: dict[str, Any]) -> None:
