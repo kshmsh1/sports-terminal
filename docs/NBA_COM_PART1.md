@@ -90,3 +90,17 @@ The repository also contains a sharded full-corpus workflow. A capture launch ex
 The workflow artifacts contain normalized source-backed NBA.com rows plus metadata; CI artifacts intentionally omit duplicate `source.json` wire-format copies to control artifact size. A final `sports-terminal-nba-com-part1` artifact materializes the full capture into the same-origin static layout consumed by Sports Terminal.
 
 Normal PR CI never runs the network scrape. A full capture is launched explicitly through workflow dispatch or by a branch push whose commit message contains `[capture]`.
+
+
+## Network execution note
+
+A GitHub-hosted Actions probe was attempted on 2026-09-26 using the same Chrome-like transport. NBA.com returned no bytes and the request timed out after 10 seconds from GitHub's hosted runner egress. The repository therefore does not pretend that Actions has collected data it could not reach, and it does not add a proxy or other bypass.
+
+Run the acquisition command from a machine/network on which the supplied NBA.com DevTools cURL requests are reachable:
+
+```bash
+bash scripts/fetch_nba_com_historical_stats.sh
+bash scripts/open_terminal.sh --rebuild-static
+```
+
+The first command resumes until all configured scopes have been attempted. The second command materializes the installed captures into Sports Terminal's same-origin static corpus and enriches the Stats / Advanced Stats season shards. Unsupported historical endpoint/season combinations remain explicitly empty or unavailable rather than being synthesized.
