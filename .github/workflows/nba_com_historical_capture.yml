@@ -16,7 +16,7 @@ permissions:
 
 concurrency:
   group: nba-com-historical-capture-part1
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   plan:
@@ -35,7 +35,7 @@ jobs:
         run: |
           seasons="$(python - <<'PY'
           import json
-          print(json.dumps([f"{year}-{(year + 1) % 100:02d}" for year in range(1946, 2026)], separators=(",", ":")))
+          print(json.dumps([f"{year}-{(year + 1) % 100:02d}" for year in range(2025, 1945, -1)], separators=(",", ":")))
           PY
           )"
           echo "seasons=$seasons" >> "$GITHUB_OUTPUT"
