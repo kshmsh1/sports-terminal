@@ -81,3 +81,12 @@ python backend/scripts/nba_com_historical_collection_contract_test.py
 ```
 
 CI tests the collector and materializer with fixtures only. CI never downloads NBA.com statistics.
+
+
+## GitHub Actions full capture
+
+The repository also contains a sharded full-corpus workflow. A capture launch expands to one job per NBA season (80 jobs, at most four running simultaneously), records all 168 configured Regular Season/Playoffs scopes for that season, and assembles the result only if all 13,440 planned scopes have a terminal status of `success`, `empty`, or `unavailable`.
+
+The workflow artifacts contain normalized source-backed NBA.com rows plus metadata; CI artifacts intentionally omit duplicate `source.json` wire-format copies to control artifact size. A final `sports-terminal-nba-com-part1` artifact materializes the full capture into the same-origin static layout consumed by Sports Terminal.
+
+Normal PR CI never runs the network scrape. A full capture is launched explicitly through workflow dispatch or by a branch push whose commit message contains `[capture]`.
