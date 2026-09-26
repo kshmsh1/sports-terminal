@@ -1,5 +1,7 @@
 name: NBA.com Historical Capture
 
+# NBA.com currently does not respond to GitHub-hosted runner egress. This
+# workflow remains an explicit/manual capture contract and is not part of CI.
 on:
   workflow_dispatch:
   push:
