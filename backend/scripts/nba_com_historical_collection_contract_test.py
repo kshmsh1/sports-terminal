@@ -107,8 +107,8 @@ def main() -> None:
         passing = next(item for item in tracking.variants if item.key == "passing")
         passing_payload = result_payload(
             "LeagueDashPtStats",
-            ["PLAYER_ID", "PLAYER_NAME", "GP", "PASSES_MADE", "FT_AST", "SECONDARY_AST", "POTENTIAL_AST"],
-            [[1, "Fixture Star", 10, 500, 6, 12, 70]],
+            ["PLAYER_ID", "PLAYER_NAME", "GP", "PASSES_MADE", "FT_AST", "SECONDARY_AST", "POTENTIAL_AST", "AST_TO_PASS_PCT_ADJ"],
+            [[1, "Fixture Star", 10, 500, 6, 12, 70, 0.04]],
             resource="leaguedashptstats",
         )
         fetcher.write_capture(
@@ -139,6 +139,7 @@ def main() -> None:
         assert abs(row["passes_pg"] - 50.0) < 1e-9, row
         assert abs(row["secondary_apg"] - 1.2) < 1e-9, row
         assert abs(row["potential_apg"] - 7.0) < 1e-9, row
+        assert abs(row["adjusted_assist_ratio"] - 0.04) < 1e-9, row
         assert abs(row["isolation_ppp"] - 1.11) < 1e-9, row
         assert "players_tracking/passing" in row["nba_com_part1_sources"]
         assert row["nba_com_part1"]["players_synergy"]["isolation_offensive"]["PPP"] == 1.11
