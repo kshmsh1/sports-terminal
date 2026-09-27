@@ -782,35 +782,121 @@ def create_play_by_play_view(db: sqlite3.Connection) -> bool:
 def build_player_games(db: sqlite3.Connection, player_ids: dict[tuple[str, str], str], player_names: dict[str, str], team_ids: dict[tuple[str, str], str], team_abbrs: dict[str, str]) -> int:
     del team_ids
     inventory = source_tables(db, "gonzalo_all_time")
-    game_lookup = {str(row[0]): str(row[1]) for row in db.execute("SELECT nba_game_id,game_key FROM canon_dim_game WHERE nba_game_id IS NOT NULL")}
+    game_lookup = {str(row[0]): (str(row[1]), str(row[2]), str(row[3]) if row[3] is not None else None)
+                   for row in db.execute("SELECT nba_game_id,game_key,season_type,game_date FROM canon_dim_game WHERE nba_game_id IS NOT NULL")}
     inserted = 0
     insert_sql = "INSERT OR REPLACE INTO canon_fact_player_game VALUES (" + ",".join("?" for _ in range(31)) + ")"
+
+    # Gonzalo's per-season box-score exports use game_reference (for example,
+    # 201710170GSW) rather than game_id/date.  The basic table contains the
+    # counting stats, while the advanced table contains rate/advanced metrics.
+    # Both tables also contain period-level rows, so canonical player-game facts
+    # must keep only period='game'.
+    inventory_by_table = {str(item["source_table"]): item for item in inventory}
+
     for item in inventory:
         source_table = str(item["source_table"])
         match = LEAGUE_SEASON_TABLE_RE.match(source_table)
         if not match or match.group("kind").lower() != "advanced":
             continue
+
         table = str(item["warehouse_table"])
-        cols = {safe(column) for column in table_columns(db, table)}
-        if not (cols & {"player", "player_name", "player_id", "name"} and cols & {"game_id", "gameid", "date", "game_date", "game_date_est"} and cols & {"pts", "points", "mp", "minutes", "ts_percent", "ts_pct", "bpm"}):
+        basic_source_table = re.sub(r"(?i)_advanced$", "_basic", source_table)
+        basic_item = inventory_by_table.get(basic_source_table)
+        if not basic_item:
             continue
+        basic_table = str(basic_item["warehouse_table"])
+
+        advanced_cols = {safe(column) for column in table_columns(db, table)}
+        basic_cols = {safe(column) for column in table_columns(db, basic_table)}
+        required_identity = {"player", "player_name", "player_id", "name"}
+        if not (
+            advanced_cols & required_identity
+            and basic_cols & required_identity
+            and "game_reference" in advanced_cols
+            and "game_reference" in basic_cols
+            and "period" in advanced_cols
+            and "period" in basic_cols
+        ):
+            continue
+
         season_id = f"{match.group('start')}-{match.group('end')[-2:]}"
         league = match.group("league").upper()
         ensure_season(db, season_id, int(match.group("start")), int(match.group("end")))
+
+        basic_game_rows: dict[tuple[str, str, str], dict[str, Any]] = {}
+        for basic_row in rows(db, basic_table):
+            if text(first(basic_row, ("period",))).lower() != "game":
+                continue
+            game_reference = text(first(basic_row, ("game_reference",)))
+            player_reference = text(first(basic_row, ("player_reference", "player_id")))
+            team_abbr = text(first(basic_row, ("team", "tm", "team_abbreviation"))).upper()
+            if game_reference and (player_reference or first(basic_row, ("player_name", "player", "name"))):
+                player_token = player_reference or norm_name(first(basic_row, ("player_name", "player", "name")))
+                basic_game_rows[(game_reference, player_token, team_abbr)] = basic_row
+
         batch: list[tuple[Any, ...]] = []
         for row in rows(db, table):
+            if text(first(row, ("period",))).lower() != "game":
+                continue
+
+            game_reference = text(first(row, ("game_reference",)))
+            player_reference = text(first(row, ("player_reference", "player_id")))
             player_name = text(first(row, ("player", "player_name", "name")))
-            player_key = resolve_player("gonzalo_all_time", row, player_ids, player_names) or player_names.get(norm_name(player_name))
             team_abbr = text(first(row, ("team", "tm", "team_abbreviation"))).upper()
-            opp_abbr = text(first(row, ("opp", "opponent", "opponent_team", "opponent_abbreviation"))).upper()
-            source_game_id = text(first(row, ("game_id", "gameid")))
+            player_token = player_reference or norm_name(player_name)
+            basic_row = basic_game_rows.get((game_reference, player_token, team_abbr), {})
+
+            player_key = (
+                resolve_player("gonzalo_all_time", row, player_ids, player_names)
+                or resolve_player("gonzalo_all_time", basic_row, player_ids, player_names)
+                or player_names.get(norm_name(player_name))
+            )
             source_row = integer(first(row, ("__source_row",)))
+            canonical_game = game_lookup.get(game_reference)
+            game_key = canonical_game[0] if canonical_game else None
+            season_type = canonical_game[1] if canonical_game else infer_season_type(row)
+            game_date = canonical_game[2] if canonical_game else None
+
             fact_key = f"gonzalo|{safe(source_table)}|{source_row or inserted + 1}"
-            batch.append((fact_key, game_lookup.get(source_game_id) if source_game_id else None, source_game_id or None, player_key, player_name or "Unknown", team_abbrs.get(team_abbr), team_abbr or None, team_abbrs.get(opp_abbr), opp_abbr or None, season_id, league, infer_season_type(row), text(first(row, ("date", "game_date", "game_date_est"))) or None, number(first(row, ("mp", "minutes", "min"))), number(first(row, ("pts", "points"))), number(first(row, ("trb", "reb", "rebounds"))), number(first(row, ("ast", "assists"))), number(first(row, ("stl", "steals"))), number(first(row, ("blk", "blocks"))), number(first(row, ("tov", "turnovers"))), number(first(row, ("pf", "personal_fouls"))), number(first(row, ("ts_percent", "ts_pct"))), number(first(row, ("efg_percent", "efg_pct"))), number(first(row, ("usg_percent", "usg_pct"))), number(first(row, ("off_rtg", "ortg"))), number(first(row, ("def_rtg", "drtg"))), number(first(row, ("bpm",))), "gonzalo_all_time", source_table, source_row, json.dumps({"all": "gonzalo_all_time"})))
+            batch.append((
+                fact_key,
+                game_key,
+                game_reference or None,
+                player_key,
+                player_name or text(first(basic_row, ("player", "player_name", "name"))) or "Unknown",
+                team_abbrs.get(team_abbr),
+                team_abbr or None,
+                None,
+                None,
+                season_id,
+                league,
+                season_type,
+                game_date,
+                number(first(row, ("mp", "minutes", "min"))) or number(first(basic_row, ("mp", "minutes", "min"))),
+                number(first(basic_row, ("pts", "points"))),
+                number(first(basic_row, ("trb", "reb", "rebounds"))),
+                number(first(basic_row, ("ast", "assists"))),
+                number(first(basic_row, ("stl", "steals"))),
+                number(first(basic_row, ("blk", "blocks"))),
+                number(first(basic_row, ("tov", "turnovers"))),
+                number(first(basic_row, ("pf", "personal_fouls"))),
+                number(first(row, ("ts", "ts_percent", "ts_pct"))),
+                number(first(row, ("efg", "efg_percent", "efg_pct"))),
+                number(first(row, ("usg", "usg_percent", "usg_pct"))),
+                number(first(row, ("off_rtg", "ortg"))),
+                number(first(row, ("def_rtg", "drtg"))),
+                number(first(row, ("bpm",))),
+                "gonzalo_all_time",
+                source_table,
+                source_row,
+                json.dumps({"basic": basic_source_table, "advanced": source_table, "game_reference": game_reference}),
+            ))
             if len(batch) >= 10000:
                 db.executemany(insert_sql, batch)
                 inserted += len(batch)
                 batch.clear()
+
         if batch:
             db.executemany(insert_sql, batch)
             inserted += len(batch)
