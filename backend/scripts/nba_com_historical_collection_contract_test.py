@@ -173,6 +173,10 @@ def main() -> None:
 
         enriched = enricher.enrich_corpus(static, roots=[raw], force=True)
         assert enriched["matched_source_rows"] == 2, enriched
+        snapshot = json.loads((season_dir / "regular.json").read_text())
+        enrichment_meta = snapshot["nba_com_part1_enrichment"]
+        assert enrichment_meta["unmatched_rows"] == 0, enrichment_meta
+        assert enrichment_meta["unmatched_reasons"] == {}, enrichment_meta
         row = json.loads((season_dir / "regular.json").read_text())["player_season_totals"][0]
         assert abs(row["passes_pg"] - 50.0) < 1e-9, row
         assert abs(row["secondary_apg"] - 1.2) < 1e-9, row
