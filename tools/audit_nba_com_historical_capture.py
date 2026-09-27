@@ -22,7 +22,7 @@ def load_fetcher():
     return module
 
 
-def expected_scopes(plan_path: Path) -> set[str]:
+def expected_scopes(plan_path: Path) -> tuple[Any, list[Any], set[str]]:
     fetcher = load_fetcher()
     payload, surfaces = fetcher.load_plan(plan_path)
     bounds = payload.get("season_range") or {}
@@ -31,13 +31,14 @@ def expected_scopes(plan_path: Path) -> set[str]:
         str(bounds.get("to") or "2025-26"),
     )
     season_types = list(payload.get("season_types") or ["Regular Season", "Playoffs"])
-    return {
+    expected = {
         fetcher.coverage_key(surface, variant, season, season_type)
         for season in seasons
         for surface in surfaces
         for variant in surface.variants
         for season_type in season_types
     }
+    return fetcher, surfaces, expected
 
 
 def actual_scopes(root: Path) -> dict[str, dict[str, Any]]:
@@ -61,10 +62,24 @@ def actual_scopes(root: Path) -> dict[str, dict[str, Any]]:
     return result
 
 
-def summarize(plan_path: Path, root: Path) -> dict[str, Any]:
-    expected = expected_scopes(plan_path)
+def summarize(plan_path: Path, root: Path, *, cutoff_empty_seasons: int = 2) -> dict[str, Any]:
+    fetcher, surfaces, expected = expected_scopes(plan_path)
     actual = actual_scopes(root)
-    missing = sorted(expected - set(actual))
+    inferred_cutoffs = fetcher.infer_earliest_supported_by_variant(
+        scopes=actual,
+        surfaces=surfaces,
+        min_empty_seasons=max(1, cutoff_empty_seasons),
+    )
+    inferred_skips: set[str] = set()
+    for key in expected - set(actual):
+        parts = key.split("/")
+        if len(parts) != 4:
+            continue
+        surface_key, variant_key, season, _season_type = parts
+        cutoff_year = inferred_cutoffs.get((surface_key, variant_key))
+        if cutoff_year is not None and fetcher.season_start(season) < cutoff_year:
+            inferred_skips.add(key)
+    missing = sorted(expected - set(actual) - inferred_skips)
     unexpected = sorted(set(actual) - expected)
     statuses: dict[str, int] = {}
     rows = 0
@@ -89,11 +104,19 @@ def summarize(plan_path: Path, root: Path) -> dict[str, Any]:
         "root": str(root),
         "expected_scopes": len(expected),
         "recorded_scopes": len(expected & set(actual)),
+        "inferred_cutoff_scopes": len(inferred_skips),
+        "inferred_cutoff_variants": len(inferred_cutoffs),
+        "cutoff_empty_seasons": max(1, cutoff_empty_seasons),
         "missing_scopes": len(missing),
         "unexpected_scopes": len(unexpected),
         "status_counts": statuses,
         "row_count": rows,
-        "complete": not missing and not bad,
+        "complete": not missing and not bad and not unexpected,
+        "inferred_cutoff_examples": sorted(inferred_skips)[:50],
+        "inferred_cutoffs": {
+            f"{surface}/{variant}": fetcher.season_label(year)
+            for (surface, variant), year in sorted(inferred_cutoffs.items())
+        },
         "missing_examples": missing[:50],
         "unexpected_examples": unexpected[:50],
         "bad_examples": bad[:50],
@@ -105,10 +128,15 @@ def main() -> int:
     parser.add_argument("--plan", type=Path, default=PLAN)
     parser.add_argument("--root", type=Path, default=ROOT / "raw/nba_com_stats")
     parser.add_argument("--require-complete", action="store_true")
+    parser.add_argument("--cutoff-empty-seasons", type=int, default=2, help="Consecutive fully-empty seasons required to accept an inferred historical cutoff.")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
-    summary = summarize(args.plan.expanduser().resolve(), args.root.expanduser().resolve())
+    summary = summarize(
+        args.plan.expanduser().resolve(),
+        args.root.expanduser().resolve(),
+        cutoff_empty_seasons=args.cutoff_empty_seasons,
+    )
     rendered = json.dumps(summary, indent=2, sort_keys=True)
     print(rendered)
     if args.output:
