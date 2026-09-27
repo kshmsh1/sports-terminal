@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 FETCH = ROOT / "tools/fetch_nba_com_historical_stats.py"
 MATERIALIZE = ROOT / "tools/materialize_nba_com_static_data.py"
 ENRICH = ROOT / "tools/nba_com_capture_enrichment.py"
+GAME_DETAILS = ROOT / "tools/materialize_static_nba_game_details.py"
 AUDIT = ROOT / "tools/audit_nba_com_historical_capture.py"
 PLAN = ROOT / "assets/data/nba/metadata/nba_com_capture_plan_part1.json"
 
@@ -26,6 +27,7 @@ def load(name: str, path: Path):
 fetcher = load("sports_terminal_nba_com_fetcher", FETCH)
 materializer = load("sports_terminal_nba_com_materializer", MATERIALIZE)
 enricher = load("sports_terminal_nba_com_enricher", ENRICH)
+game_details = load("sports_terminal_nba_game_details", GAME_DETAILS)
 auditor = load("sports_terminal_nba_com_auditor", AUDIT)
 
 
@@ -73,7 +75,16 @@ def main() -> None:
     ], table["headers"]
     assert table["rows"][0]["Restricted Area__FGA"] == 4
 
-    payload = result_payload("LeagueGameLog", ["PLAYER_ID", "GAME_ID"], [[1, "g1"]], resource="leaguegamelog")
+    payload = result_payload(
+        "LeagueGameLog",
+        [
+            "PLAYER_ID", "PLAYER_NAME", "TEAM_ID", "TEAM_ABBREVIATION",
+            "GAME_ID", "GAME_DATE", "MIN", "FGM", "FGA", "FG3M", "FG3A",
+            "FTM", "FTA", "REB", "AST", "STL", "BLK", "TOV", "PF", "PTS",
+        ],
+        [[1, "Fixture Star", 10, "FIX", "g1", "2025-10-01", 30, 8, 15, 3, 7, 3, 4, 6, 5, 2, 1, 2, 3, 22]],
+        resource="leaguegamelog",
+    )
     validation = fetcher.validate_capture(league, "Regular Season", payload, fetcher.normalize_payload(payload))
     assert validation["status"] == "success", validation
     empty = result_payload("LeagueGameLog", ["PLAYER_ID", "GAME_ID"], [], resource="leaguegamelog")
@@ -134,6 +145,31 @@ def main() -> None:
         game_index = static / "nba_com/player_game_logs/2025-26/regular/index.json"
         assert game_index.is_file(), game_index
         assert json.loads(game_index.read_text())[0]["game_count"] == 1
+
+        # The Box Scores materializer consumes the same already-captured
+        # traditional player-game surface. It must fill shooting columns that
+        # the canonical historical player-game table does not carry.
+        box_lookup = game_details._NbaComTraditionalLookup(static)
+        box_rows = box_lookup.rows_for("2025-26", "Regular Season", "g1")
+        assert len(box_rows) == 1, box_rows
+        merged_box = game_details._merge_player_rows(
+            [{
+                "player_name": "Fixture Star",
+                "team_abbreviation": "FIX",
+                "pts": 20,
+                "reb": 6,
+            }],
+            box_rows,
+        )
+        assert len(merged_box) == 1, merged_box
+        assert merged_box[0]["pts"] == 20, merged_box[0]
+        assert merged_box[0]["fgm"] == 8, merged_box[0]
+        assert merged_box[0]["fga"] == 15, merged_box[0]
+        assert merged_box[0]["three_pm"] == 3, merged_box[0]
+        assert merged_box[0]["three_pa"] == 7, merged_box[0]
+        assert merged_box[0]["ftm"] == 3, merged_box[0]
+        assert merged_box[0]["fta"] == 4, merged_box[0]
+        assert merged_box[0]["nba_com_box_score"] is True, merged_box[0]
 
         enriched = enricher.enrich_corpus(static, roots=[raw], force=True)
         assert enriched["matched_source_rows"] == 2, enriched
