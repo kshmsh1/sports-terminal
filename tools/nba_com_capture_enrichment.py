@@ -284,9 +284,10 @@ def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: di
             "screen_apg": "SCREEN_ASSISTS",
         }.items():
             publish_per_game(target, key, source, field)
-        # Keep every box-out field in the nested source row, but do not map
-        # PCT_BOX_OUTS_REB onto the catalog's broader "box-out opportunity"
-        # definition until that semantic equivalence is explicitly validated.
+        # NBA exposes PCT_BOX_OUTS_REB as the share of a player's box outs that
+        # result in a team rebound. Publish that native percentage so the UI
+        # renders the available NBA.com box-out statistic instead of a blank.
+        publish(target, "box_out_pct", source.get("PCT_BOX_OUTS_REB"))
 
 
 def clear_previous(row: dict[str, Any]) -> None:
