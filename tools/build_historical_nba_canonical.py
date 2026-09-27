@@ -1134,6 +1134,248 @@ def build_player_games(
     return inserted
 
 
+
+def build_playoff_player_seasons_from_games(db: sqlite3.Connection) -> int:
+    """Fill missing playoff player-season facts from canonically matched player games.
+
+    Existing source-native playoff season facts always win. Derived rows intentionally
+    populate only metrics that can be summed safely from the canonical player-game grain.
+    Rate and shooting fields that are not represented at game grain remain NULL rather
+    than being approximated.
+    """
+    existing = {
+        (str(player_key), str(season_id), str(league_id))
+        for player_key, season_id, league_id in db.execute(
+            "SELECT DISTINCT player_key,season_id,league_id FROM canon_fact_player_season "
+            "WHERE season_type='playoffs'"
+        )
+    }
+
+    regular_context: dict[tuple[str, str, str], tuple[Any, Any]] = {}
+    for player_key, season_id, league_id, position, age, games in db.execute(
+        "SELECT player_key,season_id,league_id,position,age,games "
+        "FROM canon_fact_player_season WHERE season_type='regular' "
+        "ORDER BY COALESCE(games,0) DESC"
+    ):
+        regular_context.setdefault(
+            (str(player_key), str(season_id), str(league_id)),
+            (position, age),
+        )
+
+    groups = db.execute(
+        """
+        SELECT
+            player_key,
+            season_id,
+            league_id,
+            MAX(team_key) AS team_key,
+            MAX(team_abbreviation) AS team_abbreviation,
+            COUNT(DISTINCT game_key) AS games,
+            SUM(minutes) AS minutes,
+            SUM(pts) AS pts,
+            SUM(reb) AS reb,
+            SUM(ast) AS ast,
+            SUM(stl) AS stl,
+            SUM(blk) AS blk,
+            SUM(tov) AS tov,
+            SUM(pf) AS pf
+        FROM canon_fact_player_game
+        WHERE season_type='playoffs'
+          AND game_key IS NOT NULL
+          AND player_key IS NOT NULL
+        GROUP BY player_key,season_id,league_id
+        ORDER BY season_id,player_key
+        """
+    ).fetchall()
+
+    fields = [
+        "player_key", "season_id", "league_id", "season_type",
+        "team_key", "team_abbreviation", "position", "age",
+        *PLAYER_METRICS.keys(),
+    ]
+    inserted = 0
+    for row in groups:
+        player_key = str(row[0])
+        season_id = str(row[1])
+        league_id = str(row[2])
+        identity = (player_key, season_id, league_id)
+        if identity in existing:
+            continue
+
+        position, age = regular_context.get(identity, (None, None))
+        payload: dict[str, Any] = {field: None for field in fields}
+        payload.update({
+            "player_key": player_key,
+            "season_id": season_id,
+            "league_id": league_id,
+            "season_type": "playoffs",
+            "team_key": row[3],
+            "team_abbreviation": row[4],
+            "position": position,
+            "age": age,
+            "games": number(row[5]),
+            "minutes": number(row[6]),
+            "pts": number(row[7]),
+            "reb": number(row[8]),
+            "ast": number(row[9]),
+            "stl": number(row[10]),
+            "blk": number(row[11]),
+            "tov": number(row[12]),
+            "pf": number(row[13]),
+        })
+        fact_key = f"derived_player_game|{player_key}|{season_id}|{league_id}|playoffs"
+        provenance = {
+            "derived_from": "canon_fact_player_game",
+            "source": "gonzalo_all_time",
+            "matched_games_only": True,
+        }
+        placeholders = ",".join("?" for _ in range(4 + len(fields)))
+        db.execute(
+            f"INSERT INTO canon_fact_player_season("
+            f"fact_key,{','.join(q(field) for field in fields)},primary_source,source_count,provenance_json"
+            f") VALUES ({placeholders})",
+            (
+                fact_key,
+                *[payload.get(field) for field in fields],
+                "gonzalo_all_time",
+                1,
+                json.dumps(provenance, sort_keys=True),
+            ),
+        )
+        for field in ("games", "minutes", "pts", "reb", "ast", "stl", "blk", "tov", "pf"):
+            value = payload.get(field)
+            if value is None:
+                continue
+            db.execute(
+                "INSERT OR IGNORE INTO canon_field_provenance "
+                "VALUES ('player_season',?,?,?,?,NULL,?,1,?)",
+                (
+                    fact_key,
+                    field,
+                    "gonzalo_all_time",
+                    "canon_fact_player_game",
+                    text(value),
+                    json.dumps({"derived": True, "season_type": "playoffs"}),
+                ),
+            )
+        inserted += 1
+
+    db.commit()
+    return inserted
+
+
+def build_playoff_team_seasons_from_games(db: sqlite3.Connection) -> int:
+    """Fill missing playoff team-season facts from canonical team-game facts."""
+    existing = {
+        (str(team_key), str(season_id), str(league_id))
+        for team_key, season_id, league_id in db.execute(
+            "SELECT DISTINCT team_key,season_id,league_id FROM canon_fact_team_season "
+            "WHERE season_type='playoffs' AND team_key IS NOT NULL"
+        )
+    }
+
+    groups = db.execute(
+        """
+        SELECT
+            tg.team_key,
+            g.season_id,
+            g.league_id,
+            t.abbreviation,
+            t.canonical_name,
+            COUNT(DISTINCT tg.game_key) AS games,
+            SUM(CASE WHEN tg.result='W' THEN 1 ELSE 0 END) AS wins,
+            SUM(CASE WHEN tg.result='L' THEN 1 ELSE 0 END) AS losses,
+            SUM(tg.points) AS pts,
+            SUM(tg.opponent_points) AS opp_pts,
+            SUM(tg.fgm) AS fgm,
+            SUM(tg.fga) AS fga,
+            SUM(tg.three_pm) AS three_pm,
+            SUM(tg.three_pa) AS three_pa,
+            SUM(tg.ftm) AS ftm,
+            SUM(tg.fta) AS fta,
+            SUM(tg.orb) AS orb,
+            SUM(tg.drb) AS drb,
+            SUM(tg.reb) AS reb,
+            SUM(tg.ast) AS ast,
+            SUM(tg.stl) AS stl,
+            SUM(tg.blk) AS blk,
+            SUM(tg.tov) AS tov,
+            SUM(tg.pf) AS pf
+        FROM canon_fact_team_game tg
+        JOIN canon_dim_game g ON g.game_key=tg.game_key
+        LEFT JOIN canon_dim_team t ON t.team_key=tg.team_key
+        WHERE g.season_type='playoffs'
+          AND tg.team_key IS NOT NULL
+        GROUP BY tg.team_key,g.season_id,g.league_id
+        ORDER BY g.season_id,tg.team_key
+        """
+    ).fetchall()
+
+    fields = [
+        "team_key", "team_abbreviation", "team_name", "season_id",
+        "league_id", "season_type", *TEAM_METRICS.keys(),
+    ]
+    inserted = 0
+    for row in groups:
+        team_key = str(row[0])
+        season_id = str(row[1])
+        league_id = str(row[2])
+        identity = (team_key, season_id, league_id)
+        if identity in existing:
+            continue
+
+        payload: dict[str, Any] = {field: None for field in fields}
+        payload.update({
+            "team_key": team_key,
+            "team_abbreviation": row[3],
+            "team_name": row[4],
+            "season_id": season_id,
+            "league_id": league_id,
+            "season_type": "playoffs",
+            "games": number(row[5]),
+            "wins": number(row[6]),
+            "losses": number(row[7]),
+            "pts": number(row[8]),
+            "opp_pts": number(row[9]),
+            "fgm": number(row[10]),
+            "fga": number(row[11]),
+            "three_pm": number(row[12]),
+            "three_pa": number(row[13]),
+            "ftm": number(row[14]),
+            "fta": number(row[15]),
+            "orb": number(row[16]),
+            "drb": number(row[17]),
+            "reb": number(row[18]),
+            "ast": number(row[19]),
+            "stl": number(row[20]),
+            "blk": number(row[21]),
+            "tov": number(row[22]),
+            "pf": number(row[23]),
+        })
+        fact_key = f"derived_team_game|{team_key}|{season_id}|{league_id}|playoffs"
+        placeholders = ",".join("?" for _ in range(4 + len(fields)))
+        db.execute(
+            f"INSERT INTO canon_fact_team_season("
+            f"fact_key,{','.join(q(field) for field in fields)},primary_source,source_count,provenance_json"
+            f") VALUES ({placeholders})",
+            (
+                fact_key,
+                *[payload.get(field) for field in fields],
+                "wyatt_nbadb",
+                1,
+                json.dumps({
+                    "derived_from": "canon_fact_team_game",
+                    "source": "wyatt_nbadb",
+                    "season_type": "playoffs",
+                }, sort_keys=True),
+            ),
+        )
+        inserted += 1
+
+    db.commit()
+    return inserted
+
+
 def build_events_awards_draft(db: sqlite3.Connection, player_ids: dict[tuple[str, str], str], player_names: dict[str, str], team_ids: dict[tuple[str, str], str], team_abbrs: dict[str, str]) -> tuple[int, int, int]:
     del team_ids
     award_count = all_star_count = draft_count = 0
