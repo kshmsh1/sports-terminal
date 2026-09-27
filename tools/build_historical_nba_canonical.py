@@ -500,44 +500,131 @@ def team_candidates(db: sqlite3.Connection) -> list[dict[str, Any]]:
 def build_teams(db: sqlite3.Connection, policy: dict[str, Any]) -> tuple[dict[tuple[str, str], str], dict[str, str], int]:
     candidates = team_candidates(db)
     aliases = {str(key).upper(): str(value) for key, value in policy.get("modernFranchiseAliases", {}).items()}
+
+    # Stable Wyatt NBA team IDs are authoritative franchise identities. Build bridges
+    # from every observed Wyatt abbreviation (current and historical) to that stable ID,
+    # then use the policy's franchise aliases to bridge BRef-only abbreviations too.
+    wyatt_abbr_to_id: dict[str, str] = {}
+    family_to_wyatt_ids: dict[str, set[str]] = defaultdict(set)
+    current_wyatt_by_id: dict[str, dict[str, Any]] = {}
+    for item in candidates:
+        if item["source_key"] != "wyatt_nbadb" or not item["source_id"]:
+            continue
+        if item["abbreviation"]:
+            wyatt_abbr_to_id[item["abbreviation"]] = item["source_id"]
+            family = aliases.get(item["abbreviation"])
+            if family:
+                family_to_wyatt_ids[family].add(item["source_id"])
+        if item["source_table"].lower() == "team":
+            current_wyatt_by_id[item["source_id"]] = item
+
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
-    # Wyatt exposes stable NBA team IDs alongside abbreviations in both the team and
-    # game tables. Use that bridge to prevent ID-only team_history rows from forming a
-    # second group that later overwrites the richer canonical team row.
-    wyatt_id_to_abbr: dict[str, str] = {}
     for item in candidates:
-        if item["source_key"] == "wyatt_nbadb" and item["source_id"] and item["abbreviation"]:
-            wyatt_id_to_abbr[item["source_id"]] = item["abbreviation"]
-    for item in candidates:
-        # Abbreviation is the cross-source historical identity key. Stable NBA IDs are
-        # retained and preferred for the canonical key once the source records are grouped.
-        bridged_abbr = item["abbreviation"] or wyatt_id_to_abbr.get(item["source_id"], "")
-        token = bridged_abbr or (f"id:{item['source_id']}" if item["source_id"] else norm_name(item["name"]))
+        stable_id = ""
+        if item["source_key"] == "wyatt_nbadb" and item["source_id"]:
+            stable_id = item["source_id"]
+        elif item["abbreviation"] in wyatt_abbr_to_id:
+            stable_id = wyatt_abbr_to_id[item["abbreviation"]]
+        else:
+            family = aliases.get(item["abbreviation"])
+            family_ids = family_to_wyatt_ids.get(family or "", set())
+            if len(family_ids) == 1:
+                stable_id = next(iter(family_ids))
+
+        token = (
+            f"id:{stable_id}"
+            if stable_id
+            else item["abbreviation"] or norm_name(item["name"]) or f"id:{item['source_id']}"
+        )
         grouped[(item["league"], token)].append(item)
+
     id_lookup: dict[tuple[str, str], str] = {}
     abbr_lookup: dict[str, str] = {}
     franchises: dict[str, dict[str, Any]] = {}
+
     for (league, token), group in grouped.items():
-        ordered = sorted(group, key=lambda item: source_rank(policy, "identity", item["source_key"]))
-        source_id = next((item["source_id"] for item in ordered if item["source_id"] and item["source_key"] == "wyatt_nbadb"), "")
-        abbreviation = next((item["abbreviation"] for item in ordered if item["abbreviation"]), "")
-        name = next((item["name"] for item in ordered if item["name"]), abbreviation or token)
-        franchise_key = f"fr_{safe(aliases.get(abbreviation) or norm_name(name) or safe(token))}"
+        stable_ids = [
+            item["source_id"]
+            for item in group
+            if item["source_key"] == "wyatt_nbadb" and item["source_id"]
+        ]
+        source_id = stable_ids[0] if stable_ids else ""
+
+        current = current_wyatt_by_id.get(source_id)
+        ordered = sorted(
+            group,
+            key=lambda item: (
+                0 if current is item else 1,
+                0 if item["source_key"] == "wyatt_nbadb" and item["source_table"].lower() == "team" else 1,
+                source_rank(policy, "identity", item["source_key"]),
+            ),
+        )
+        abbreviation = (
+            current["abbreviation"]
+            if current and current.get("abbreviation")
+            else next((item["abbreviation"] for item in ordered if item["abbreviation"]), "")
+        )
+        name = (
+            current["name"]
+            if current and current.get("name")
+            else next((item["name"] for item in ordered if item["name"]), abbreviation or token)
+        )
+        family = aliases.get(abbreviation) or norm_name(name) or safe(token)
+        franchise_key = f"fr_{safe(family)}"
         team_key = f"nba_team_{source_id}" if source_id else f"team_{safe(league)}_{safe(abbreviation or token)}"
         sources = sorted({item["source_key"] for item in group})
-        db.execute("INSERT OR REPLACE INTO canon_dim_team(team_key,franchise_key,canonical_name,abbreviation,league_id,nba_team_id,source_count,provenance_json) VALUES (?,?,?,?,?,?,?,?)", (team_key, franchise_key, name, abbreviation or None, league, source_id or None, len(sources), json.dumps({"name": ordered[0]["source_key"], "abbreviation": next((x["source_key"] for x in ordered if x["abbreviation"]), None)})))
-        franchises.setdefault(franchise_key, {"name": name, "abbr": abbreviation, "sources": set()})["sources"].update(sources)
+
+        db.execute(
+            "INSERT OR REPLACE INTO canon_dim_team(team_key,franchise_key,canonical_name,abbreviation,league_id,nba_team_id,source_count,provenance_json) VALUES (?,?,?,?,?,?,?,?)",
+            (
+                team_key,
+                franchise_key,
+                name,
+                abbreviation or None,
+                league,
+                source_id or None,
+                len(sources),
+                json.dumps({
+                    "name": current["source_key"] if current else ordered[0]["source_key"],
+                    "abbreviation": current["source_key"] if current else next((x["source_key"] for x in ordered if x["abbreviation"]), None),
+                }),
+            ),
+        )
+        franchises.setdefault(
+            franchise_key,
+            {"name": name, "abbr": abbreviation, "sources": set()},
+        )["sources"].update(sources)
+
         for item in group:
-            db.execute("INSERT OR REPLACE INTO canon_team_source_xref VALUES (?,?,?,?,?,?,?,?,?)", (item["source_key"], item["source_table"], item["source_id"], item["name"], item["abbreviation"], team_key, "stable_id" if item["source_id"] and source_id == item["source_id"] else "league_abbreviation", 1.0 if item["source_id"] and source_id == item["source_id"] else 0.93, json.dumps({"league": item["league"]})))
+            db.execute(
+                "INSERT OR REPLACE INTO canon_team_source_xref VALUES (?,?,?,?,?,?,?,?,?)",
+                (
+                    item["source_key"],
+                    item["source_table"],
+                    item["source_id"],
+                    item["name"],
+                    item["abbreviation"],
+                    team_key,
+                    "stable_id" if source_id and item["source_id"] == source_id else "franchise_alias",
+                    1.0 if source_id and item["source_id"] == source_id else 0.95,
+                    json.dumps({"league": item["league"]}),
+                ),
+            )
             if item["source_id"]:
                 id_lookup[(item["source_key"], item["source_id"])] = team_key
+            if item["abbreviation"]:
+                abbr_lookup[item["abbreviation"]] = team_key
+
         if abbreviation:
             abbr_lookup[abbreviation] = team_key
+
     for franchise_key, item in franchises.items():
-        db.execute("INSERT OR REPLACE INTO canon_dim_franchise VALUES (?,?,?,?)", (franchise_key, item["name"], item["abbr"] or None, len(item["sources"])))
+        db.execute(
+            "INSERT OR REPLACE INTO canon_dim_franchise VALUES (?,?,?,?)",
+            (franchise_key, item["name"], item["abbr"] or None, len(item["sources"])),
+        )
     db.commit()
     return id_lookup, abbr_lookup, len(grouped)
-
 
 def resolve_player(source_key: str, row: dict[str, Any], id_lookup: dict[tuple[str, str], str], name_lookup: dict[str, str]) -> str | None:
     source_id = text(first(row, ("person_id", "player_id", "playerid", "id")))
