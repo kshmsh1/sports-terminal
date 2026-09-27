@@ -160,6 +160,33 @@ def main() -> None:
         assert row["two_point_attempts"] == 109, row
         assert row["two_pa"] == 109, row
 
+        # Native defensive-dashboard schemas use FG3_PCT and LT_06_PCT rather
+        # than the overall D_FG_PCT field. Preserve those exact source fields.
+        enricher.apply_metrics(
+            row,
+            "players_defense_dashboard",
+            "3_pointers",
+            {"FG3_PCT": 0.351},
+        )
+        assert abs(row["three_dfg_pct"] - 0.351) < 1e-9, row
+        enricher.apply_metrics(
+            row,
+            "players_defense_dashboard",
+            "less_than_6ft",
+            {"LT_06_PCT": 0.612},
+        )
+        assert abs(row["rim_dfg_pct"] - 0.612) < 1e-9, row
+
+        # Hustle box-out percentage should publish the native player-rebound
+        # percentage when available.
+        enricher.apply_metrics(
+            row,
+            "players_hustle",
+            "default",
+            {"G": 10, "PCT_BOX_OUTS_REB": 0.73},
+        )
+        assert abs(row["box_out_pct"] - 0.73) < 1e-9, row
+
         assert "players_tracking/passing" in row["nba_com_part1_sources"]
         assert row["nba_com_part1"]["players_synergy"]["isolation_offensive"]["PPP"] == 1.11
 
