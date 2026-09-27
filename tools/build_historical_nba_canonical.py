@@ -797,12 +797,21 @@ def create_play_by_play_view(db: sqlite3.Connection) -> bool:
 def build_player_games(db: sqlite3.Connection, player_ids: dict[tuple[str, str], str], player_names: dict[str, str], team_ids: dict[tuple[str, str], str], team_abbrs: dict[str, str]) -> int:
     del team_ids
     inventory = source_tables(db, "gonzalo_all_time")
-    game_lookup: dict[str, tuple[str, str, str | None]] = {}
-    games_by_date: dict[str, list[tuple[str, str, str | None]]] = defaultdict(list)
+    game_lookup: dict[str, tuple[str, str, str | None, str]] = {}
+    games_by_date: dict[str, list[tuple[str, str, str | None, str]]] = defaultdict(list)
+    wyatt_game_table = table_for_source(db, "wyatt_nbadb", "game")
+    wyatt_home_abbr_by_game: dict[str, str] = {}
+    if wyatt_game_table:
+        for source_game in rows(db, wyatt_game_table):
+            source_game_id = text(first(source_game, ("game_id", "id")))
+            source_home_abbr = text(first(source_game, ("team_abbreviation_home", "home_team_abbreviation"))).upper()
+            if source_game_id and source_home_abbr:
+                wyatt_home_abbr_by_game[source_game_id] = source_home_abbr
     for game_key, game_date, season_type, nba_game_id in db.execute(
         "SELECT game_key,game_date,season_type,nba_game_id FROM canon_dim_game"
     ):
-        payload = (str(game_key), str(season_type), None if game_date is None else str(game_date))
+        nba_game_id_text = "" if nba_game_id is None else str(nba_game_id)
+        payload = (str(game_key), str(season_type), None if game_date is None else str(game_date), wyatt_home_abbr_by_game.get(nba_game_id_text, ""))
         if nba_game_id is not None:
             game_lookup[str(nba_game_id)] = payload
         if game_date:
@@ -889,13 +898,11 @@ def build_player_games(db: sqlite3.Connection, player_ids: dict[tuple[str, str],
                 elif candidates:
                     home_abbr = game_reference[-3:]
                     for candidate in candidates:
-                        home = db.execute(
-                            "SELECT t.abbreviation FROM canon_dim_game g "
-                            "LEFT JOIN canon_dim_team t ON t.team_key=g.home_team_key "
-                            "WHERE g.game_key=?",
-                            (candidate[0],),
-                        ).fetchone()
-                        if home and text(home[0]).upper() == home_abbr:
+                        # Compare against Wyatt's abbreviation for this specific game,
+                        # not canon_dim_team's all-time franchise abbreviation. This is
+                        # required for historical identities such as PHI/SYR and other
+                        # relocations or renames.
+                        if candidate[3] == home_abbr:
                             canonical_game = candidate
                             break
             game_key = canonical_game[0] if canonical_game else None
