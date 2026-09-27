@@ -227,7 +227,32 @@ def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: di
             publish(target, "dfga", source.get("D_FGA"))
 
     if surface == "players_shot_dashboard":
-        if variant == "general_catch_and_shoot":
+        if variant == "general_overall":
+            # The canonical historical warehouse can contain made threes while
+            # lacking 3PA/3P% for some source rows. NBA.com's overall shot
+            # dashboard carries the exact season totals, so fill only missing
+            # canonical shooting fields from that source-backed row.
+            for key, field in {
+                "three_pointers_made": "FG3M",
+                "three_point_attempts": "FG3A",
+                "three_point_percentage": "FG3_PCT",
+                "two_pointers_made": "FG2M",
+                "two_point_attempts": "FG2A",
+                "two_point_percentage": "FG2_PCT",
+            }.items():
+                publish(target, key, source.get(field), overwrite=False)
+            # Keep the short canonical aliases synchronized because the
+            # workstation engine consumes these keys directly.
+            for key, field in {
+                "three_pm": "FG3M",
+                "three_pa": "FG3A",
+                "three_pct": "FG3_PCT",
+                "two_pm": "FG2M",
+                "two_pa": "FG2A",
+                "two_pct": "FG2_PCT",
+            }.items():
+                publish(target, key, source.get(field), overwrite=False)
+        elif variant == "general_catch_and_shoot":
             # FGA_FREQUENCY is the share of all shots that are catch-and-shoot;
             # FG3A_FREQUENCY is the three share inside that selected bucket.
             bucket = number(source.get("FGA_FREQUENCY"))
@@ -284,9 +309,9 @@ def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: di
             "screen_apg": "SCREEN_ASSISTS",
         }.items():
             publish_per_game(target, key, source, field)
-        # NBA exposes PCT_BOX_OUTS_REB as the share of a player's box outs that
-        # result in a team rebound. Publish that native percentage so the UI
-        # renders the available NBA.com box-out statistic instead of a blank.
+        # NBA exposes PCT_BOX_OUTS_REB as BOX_OUT_PLAYER_REBS / BOX_OUTS:
+        # the share of the player's box outs on which that player secures the
+        # rebound. Preserve that native percentage rather than inventing a rate.
         publish(target, "box_out_pct", source.get("PCT_BOX_OUTS_REB"))
 
 
