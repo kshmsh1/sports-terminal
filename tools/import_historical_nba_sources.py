@@ -331,21 +331,48 @@ def find_season_column(columns: Iterable[str]) -> str | None:
     return None
 
 
+def normalize_inventory_season(value: Any) -> str | None:
+    raw = "" if value is None else str(value).strip().replace("–", "-")
+    if not raw:
+        return None
+    match = re.search(r"(?P<start>19\\d{2}|20\\d{2})[-_](?P<end>\\d{2}|19\\d{2}|20\\d{2})", raw)
+    if match:
+        start = int(match.group("start"))
+        end_raw = match.group("end")
+        end = int(end_raw) if len(end_raw) == 4 else (start // 100) * 100 + int(end_raw)
+        if end <= start:
+            end += 100
+        return f"{start}-{str(end)[-2:]}"
+    digits = re.sub(r"\\D", "", raw)
+    if len(digits) == 4:
+        year = int(digits)
+        if 1946 <= year <= 2100:
+            return str(year)
+    if len(digits) == 5 and digits[0] in {"1", "2", "3", "4", "5"}:
+        start = int(digits[1:])
+        return f"{start}-{str(start + 1)[-2:]}"
+    return raw
+
+
 def season_bounds(db: sqlite3.Connection, table: str, season_column: str | None) -> tuple[str | None, str | None]:
     if not season_column:
         return None, None
     q_table = quote_identifier(table)
     q_column = quote_identifier(season_column)
     try:
-        row = db.execute(
-            f"SELECT MIN(CAST({q_column} AS TEXT)), MAX(CAST({q_column} AS TEXT)) "
-            f"FROM {q_table} WHERE {q_column} IS NOT NULL AND TRIM(CAST({q_column} AS TEXT)) <> ''"
-        ).fetchone()
+        values = [
+            row[0]
+            for row in db.execute(
+                f"SELECT DISTINCT CAST({q_column} AS TEXT) FROM {q_table} "
+                f"WHERE {q_column} IS NOT NULL AND TRIM(CAST({q_column} AS TEXT)) <> ''"
+            ).fetchall()
+        ]
     except sqlite3.Error:
         return None, None
-    if not row:
+    normalized = [value for value in (normalize_inventory_season(item) for item in values) if value]
+    if not normalized:
         return None, None
-    return (None if row[0] is None else str(row[0]), None if row[1] is None else str(row[1]))
+    return min(normalized), max(normalized)
 
 
 def record_table(
