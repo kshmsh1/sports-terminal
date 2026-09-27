@@ -467,8 +467,8 @@ class _MinimumDropdown extends StatelessWidget {
 class _VisibleMetric { const _VisibleMetric(this.metric,this.child); final _Metric metric; final bool child; }
 class _Category { const _Category(this.name,this.description,this.metrics); final String name; final String description; final List<_Metric> metrics; }
 class _Metric {
-  const _Metric(this.key,this.label,this.glossary,{this.totalLabel,this.rateAbbreviation,this.rateSensitive=false,this.percent=false,this.signed=false,this.integer=false,this.children=const []});
-  final String key; final String label; final String glossary; final String? totalLabel; final String? rateAbbreviation; final bool rateSensitive; final bool percent; final bool signed; final bool integer; final List<_Metric> children;
+  const _Metric(this.key,this.label,this.glossary,{this.totalLabel,this.rateAbbreviation,this.rateSensitive=false,this.percent=false,this.signed=false,this.integer=false,this.decimals=1,this.children=const []});
+  final String key; final String label; final String glossary; final String? totalLabel; final String? rateAbbreviation; final bool rateSensitive; final bool percent; final bool signed; final bool integer; final int decimals; final List<_Metric> children;
   String displayLabel(NbaStatsBasis basis) { if (!rateSensitive) return label; final stem = rateAbbreviation ?? label.replaceAll(' PG','').replaceAll('PG',''); switch (basis) { case NbaStatsBasis.perGame: return label; case NbaStatsBasis.totals: return totalLabel ?? stem; case NbaStatsBasis.per36: return '$stem/36'; case NbaStatsBasis.per48: return '$stem/48'; case NbaStatsBasis.per75: return '$stem/75'; case NbaStatsBasis.per100: return '$stem/100'; } }
 }
 
@@ -502,6 +502,7 @@ _Metric _catalogMetric(String key) {
     percent: metric.format == NbaTerminalMetricFormat.percent,
     signed: metric.format == NbaTerminalMetricFormat.signed,
     integer: metric.format == NbaTerminalMetricFormat.integer,
+    decimals: metric.decimals,
     children: children,
   );
 }
@@ -531,6 +532,7 @@ _Metric _catalogMetricWithExpansion(String key, List<String>? overrideChildren) 
     percent: base.percent,
     signed: base.signed,
     integer: base.integer,
+    decimals: base.decimals,
     children: [for (final childKey in overrideChildren) _catalogMetric(childKey)],
   );
 }
@@ -626,6 +628,6 @@ double? _metricValue(NbaStatsRow row,String key,NbaStatsBasis basis){
   return _resolver.value(row, key) ?? row.value(key);
 }
 
-String _formatMetric(double? value,_Metric metric,NbaStatsBasis basis){if(value==null||value.isNaN||value.isInfinite)return '—';if(metric.percent)return '${(value*100).toStringAsFixed(1)}%';if(metric.integer)return value.round().toString();if(metric.signed)return '${value>=0?'+':''}${value.toStringAsFixed(1)}';return value.toStringAsFixed(1);}
+String _formatMetric(double? value,_Metric metric,NbaStatsBasis basis){if(value==null||value.isNaN||value.isInfinite)return '—';if(metric.percent)return '${(value*100).toStringAsFixed(metric.decimals)}%';if(metric.integer)return value.round().toString();if(metric.signed)return '${value>=0?'+':''}${value.toStringAsFixed(metric.decimals)}';return value.toStringAsFixed(metric.decimals);}
 String _basisDescription(NbaStatsBasis basis)=>switch(basis){NbaStatsBasis.perGame=>'Per-game values.',NbaStatsBasis.totals=>'Season totals.',NbaStatsBasis.per36=>'Per 36 minutes.',NbaStatsBasis.per48=>'Per 48 minutes.',NbaStatsBasis.per75=>'Per 75 possessions.',NbaStatsBasis.per100=>'Per 100 possessions.'};
 String _csvLine(List<Object?> values)=>values.map((value){final text=value?.toString()??'';return '"${text.replaceAll('"','""')}"';}).join(',');
