@@ -376,25 +376,56 @@ def enrich_payload(payload: dict[str, Any], *, season: str, season_type: str, ro
 
     surface_summaries: list[dict[str, Any]] = []
     total_matched = total_unmatched = 0
+    unmatched_reasons: dict[str, int] = {}
+    unmatched_examples: list[dict[str, Any]] = []
+
     for surface, variant, path in capture_inventory(roots, season, season_type):
         source_rows = rows_for(path)
         matched = unmatched = 0
+        reason_counts: dict[str, int] = {}
         for source in source_rows:
             target: dict[str, Any] | None = None
+            reason = ""
             nba_id = first(source, PLAYER_ID_KEYS)
             if nba_id not in (None, ""):
                 canonical_id = canonical_by_nba_id.get(str(nba_id))
-                candidates = by_id.get(canonical_id or "", [])
-                if len(candidates) == 1:
-                    target = candidates[0]
+                if canonical_id is None:
+                    reason = "nba_id_not_in_static_profiles"
+                else:
+                    candidates = by_id.get(canonical_id or "", [])
+                    if len(candidates) == 1:
+                        target = candidates[0]
+                    elif len(candidates) == 0:
+                        reason = "canonical_id_not_in_season_totals"
+                    else:
+                        reason = "canonical_id_ambiguous_in_season_totals"
             if target is None:
                 token = name_token(first(source, PLAYER_NAME_KEYS))
                 candidates = by_name.get(token, []) if token else []
                 if len(candidates) == 1:
                     target = candidates[0]
+                elif len(candidates) == 0:
+                    reason = reason or ("missing_player_name" if not token else "name_not_in_season_totals")
+                else:
+                    reason = "name_ambiguous_in_season_totals"
             if target is None:
                 unmatched += 1
+                reason = reason or "unclassified"
+                reason_counts[reason] = reason_counts.get(reason, 0) + 1
+                unmatched_reasons[reason] = unmatched_reasons.get(reason, 0) + 1
+                if len(unmatched_examples) < 200:
+                    unmatched_examples.append({
+                        "season": season,
+                        "season_type": season_type,
+                        "surface": surface,
+                        "variant": variant,
+                        "reason": reason,
+                        "player_id": nba_id,
+                        "player_name": first(source, PLAYER_NAME_KEYS),
+                        "team": first(source, ("TEAM_ABBREVIATION", "PLAYER_LAST_TEAM_ABBREVIATION")),
+                    })
                 continue
+
             nested = target.setdefault("nba_com_part1", {})
             if isinstance(nested, dict):
                 surface_bucket = nested.setdefault(surface, {})
@@ -406,6 +437,7 @@ def enrich_payload(payload: dict[str, Any], *, season: str, season_type: str, ro
                 sources.append(source_label)
             apply_metrics(target, surface, variant, source)
             matched += 1
+
         metadata = metadata_for(path)
         surface_summaries.append({
             "surface": surface,
@@ -413,6 +445,7 @@ def enrich_payload(payload: dict[str, Any], *, season: str, season_type: str, ro
             "rows": len(source_rows),
             "matched": matched,
             "unmatched": unmatched,
+            "unmatched_reasons": reason_counts,
             "source_sha256": metadata.get("source_sha256"),
             "schema_sha256": metadata.get("schema_sha256"),
         })
@@ -426,6 +459,8 @@ def enrich_payload(payload: dict[str, Any], *, season: str, season_type: str, ro
         "surfaces": surface_summaries,
         "matched_rows": total_matched,
         "unmatched_rows": total_unmatched,
+        "unmatched_reasons": unmatched_reasons,
+        "unmatched_examples": unmatched_examples,
         "enriched_players": sum(1 for row in targets if row.get("nba_com_part1_sources")),
         "unmatched_policy": "reported-not-fabricated",
     }
