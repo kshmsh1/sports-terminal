@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 FETCH = ROOT / "tools/fetch_nba_com_historical_stats.py"
 MATERIALIZE = ROOT / "tools/materialize_nba_com_static_data.py"
 ENRICH = ROOT / "tools/nba_com_capture_enrichment.py"
+AUDIT = ROOT / "tools/audit_nba_com_historical_capture.py"
 PLAN = ROOT / "assets/data/nba/metadata/nba_com_capture_plan_part1.json"
 
 
@@ -25,6 +26,7 @@ def load(name: str, path: Path):
 fetcher = load("sports_terminal_nba_com_fetcher", FETCH)
 materializer = load("sports_terminal_nba_com_materializer", MATERIALIZE)
 enricher = load("sports_terminal_nba_com_enricher", ENRICH)
+auditor = load("sports_terminal_nba_com_auditor", AUDIT)
 
 
 def result_payload(name: str, headers, rows, *, resource: str = "fixture"):
@@ -143,6 +145,29 @@ def main() -> None:
         assert abs(row["isolation_ppp"] - 1.11) < 1e-9, row
         assert "players_tracking/passing" in row["nba_com_part1_sources"]
         assert row["nba_com_part1"]["players_synergy"]["isolation_offensive"]["PPP"] == 1.11
+
+        # Audit completeness accepts older, unqueried scopes only when the same
+        # evidence-based historical cutoff inference proves they precede support.
+        clutch = by_key["players_clutch"]
+        clutch_base = next(item for item in clutch.variants if item.key == "base")
+        for season, status in [("1997-98", "success"), ("1996-97", "empty"), ("1995-96", "empty")]:
+            for season_type in ("Regular Season", "Playoffs"):
+                folder = fetcher.capture_dir(raw, clutch, clutch_base, season, season_type)
+                folder.mkdir(parents=True, exist_ok=True)
+                (folder / "metadata.json").write_text(json.dumps({
+                    "surface": clutch.key,
+                    "variant": clutch_base.key,
+                    "season": season,
+                    "season_type": season_type,
+                    "validation_status": status,
+                    "row_count": 1 if status == "success" else 0,
+                }), encoding="utf-8")
+        inferred = fetcher.infer_earliest_supported_by_variant(
+            scopes=auditor.actual_scopes(raw),
+            surfaces=[clutch],
+            min_empty_seasons=2,
+        )
+        assert inferred[(clutch.key, clutch_base.key)] == 1997, inferred
 
     print(summary)
     print("NBA.com Part 1 historical capture/static materialization contract passed.")
