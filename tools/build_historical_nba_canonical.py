@@ -881,40 +881,98 @@ def create_play_by_play_view(db: sqlite3.Connection) -> bool:
     return True
 
 
-def build_player_games(db: sqlite3.Connection, player_ids: dict[tuple[str, str], str], player_names: dict[str, str], team_ids: dict[tuple[str, str], str], team_abbrs: dict[str, str]) -> int:
+def build_player_games(
+    db: sqlite3.Connection,
+    player_ids: dict[tuple[str, str], str],
+    player_names: dict[str, str],
+    team_ids: dict[tuple[str, str], str],
+    team_abbrs: dict[str, str],
+    policy: dict[str, Any] | None = None,
+) -> int:
     del team_ids
     inventory = source_tables(db, "gonzalo_all_time")
-    game_lookup: dict[str, tuple[str, str, str | None, str]] = {}
-    games_by_date: dict[str, list[tuple[str, str, str | None, str]]] = defaultdict(list)
+    aliases = {str(key).upper(): str(value) for key, value in (policy or {}).get("modernFranchiseAliases", {}).items()}
+
+    # Collect every canonical/source abbreviation bridge. This lets BRef abbreviations
+    # such as PHO/BRK/CHO resolve to the same stable franchise as Wyatt's PHX/BKN/CHA.
+    abbr_team_lookup = dict(team_abbrs)
+    for source_abbr, team_key in db.execute(
+        "SELECT source_abbreviation,team_key FROM canon_team_source_xref WHERE source_abbreviation<>''"
+    ):
+        abbr_team_lookup[str(source_abbr).upper()] = str(team_key)
+    for abbreviation, team_key in db.execute(
+        "SELECT abbreviation,team_key FROM canon_dim_team WHERE abbreviation IS NOT NULL"
+    ):
+        abbr_team_lookup[str(abbreviation).upper()] = str(team_key)
+
+    family_team_keys: dict[str, set[str]] = defaultdict(set)
+    for abbreviation, team_key in abbr_team_lookup.items():
+        family = aliases.get(abbreviation)
+        if family:
+            family_team_keys[family].add(team_key)
+
+    def team_key_for_abbr(abbreviation: str) -> str | None:
+        abbreviation = abbreviation.upper()
+        direct = abbr_team_lookup.get(abbreviation)
+        if direct:
+            return direct
+        family = aliases.get(abbreviation)
+        candidates = family_team_keys.get(family or "", set())
+        return next(iter(candidates)) if len(candidates) == 1 else None
+
+    def same_team(left: str, right: str, *, right_key: str | None = None) -> bool:
+        left = left.upper()
+        right = right.upper()
+        if left and right and left == right:
+            return True
+        left_key = team_key_for_abbr(left) if left else None
+        resolved_right_key = right_key or (team_key_for_abbr(right) if right else None)
+        if left_key and resolved_right_key and left_key == resolved_right_key:
+            return True
+        left_family = aliases.get(left)
+        right_family = aliases.get(right)
+        return bool(left_family and right_family and left_family == right_family)
+
+    game_lookup: dict[str, dict[str, Any]] = {}
+    games_by_date: dict[str, list[dict[str, Any]]] = defaultdict(list)
+
     wyatt_game_table = table_for_source(db, "wyatt_nbadb", "game")
-    wyatt_home_abbr_by_game: dict[str, str] = {}
+    wyatt_meta_by_game: dict[str, tuple[str, str]] = {}
     if wyatt_game_table:
         for source_game in rows(db, wyatt_game_table):
             source_game_id = text(first(source_game, ("game_id", "id")))
-            source_home_abbr = text(first(source_game, ("team_abbreviation_home", "home_team_abbreviation"))).upper()
-            if source_game_id and source_home_abbr:
-                wyatt_home_abbr_by_game[source_game_id] = source_home_abbr
-    for game_key, game_date, season_type, nba_game_id in db.execute(
-        "SELECT game_key,game_date,season_type,nba_game_id FROM canon_dim_game"
+            if not source_game_id:
+                continue
+            home_abbr = text(first(source_game, ("team_abbreviation_home", "home_team_abbreviation"))).upper()
+            away_abbr = text(first(source_game, ("team_abbreviation_away", "away_team_abbreviation", "visitor_team_abbreviation"))).upper()
+            wyatt_meta_by_game[source_game_id] = (home_abbr, away_abbr)
+
+    for game_key, game_date, season_type, nba_game_id, home_team_key, away_team_key in db.execute(
+        "SELECT game_key,game_date,season_type,nba_game_id,home_team_key,away_team_key FROM canon_dim_game"
     ):
         nba_game_id_text = "" if nba_game_id is None else str(nba_game_id)
-        payload = (str(game_key), str(season_type), None if game_date is None else str(game_date), wyatt_home_abbr_by_game.get(nba_game_id_text, ""))
-        if nba_game_id is not None:
-            game_lookup[str(nba_game_id)] = payload
+        home_abbr, away_abbr = wyatt_meta_by_game.get(nba_game_id_text, ("", ""))
+        normalized_date = None
         if game_date:
-            raw_game_date = str(game_date).strip()
-            date_match = re.search(r"(19\d{2}|20\d{2})[-/]?(\d{2})[-/]?(\d{2})", raw_game_date)
+            date_match = re.search(r"(19\d{2}|20\d{2})[-/]?(\d{2})[-/]?(\d{2})", str(game_date).strip())
             if date_match:
-                normalized_game_date = f"{date_match.group(1)}-{date_match.group(2)}-{date_match.group(3)}"
-                games_by_date[normalized_game_date].append(payload)
+                normalized_date = f"{date_match.group(1)}-{date_match.group(2)}-{date_match.group(3)}"
+        payload = {
+            "game_key": str(game_key),
+            "season_type": str(season_type),
+            "game_date": normalized_date or (None if game_date is None else str(game_date)),
+            "home_abbr": home_abbr,
+            "away_abbr": away_abbr,
+            "home_team_key": None if home_team_key is None else str(home_team_key),
+            "away_team_key": None if away_team_key is None else str(away_team_key),
+        }
+        if nba_game_id is not None:
+            game_lookup[nba_game_id_text] = payload
+        if normalized_date:
+            games_by_date[normalized_date].append(payload)
+
     inserted = 0
     insert_sql = "INSERT OR REPLACE INTO canon_fact_player_game VALUES (" + ",".join("?" for _ in range(31)) + ")"
-
-    # Gonzalo's per-season box-score exports use game_reference (for example,
-    # 201710170GSW) rather than game_id/date.  The basic table contains the
-    # counting stats, while the advanced table contains rate/advanced metrics.
-    # Both tables also contain period-level rows, so canonical player-game facts
-    # must keep only period='game'.
     inventory_by_table = {str(item["source_table"]): item for item in inventory}
 
     for item in inventory:
@@ -976,29 +1034,54 @@ def build_player_games(db: sqlite3.Connection, player_ids: dict[tuple[str, str],
                 or player_names.get(norm_name(player_name))
             )
             source_row = integer(first(row, ("__source_row",)))
+
             canonical_game = game_lookup.get(game_reference)
-            if not canonical_game and re.fullmatch(r"\d{9}[A-Z]{3}", game_reference):
+            reference_date = None
+            if re.fullmatch(r"\d{9}[A-Z]{3}", game_reference):
                 reference_date = f"{game_reference[:4]}-{game_reference[4:6]}-{game_reference[6:8]}"
-                candidates = games_by_date.get(reference_date, [])
-                if len(candidates) == 1:
-                    canonical_game = candidates[0]
-                elif candidates:
-                    home_abbr = game_reference[-3:]
-                    for candidate in candidates:
-                        # Compare against Wyatt's abbreviation for this specific game,
-                        # not canon_dim_team's all-time franchise abbreviation. This is
-                        # required for historical identities such as PHI/SYR and other
-                        # relocations or renames.
-                        if candidate[3] == home_abbr:
-                            canonical_game = candidate
-                            break
-            game_key = canonical_game[0] if canonical_game else None
-            season_type = canonical_game[1] if canonical_game else infer_season_type(row)
-            game_date = canonical_game[2] if canonical_game else (
-                f"{game_reference[:4]}-{game_reference[4:6]}-{game_reference[6:8]}"
-                if re.fullmatch(r"\d{9}[A-Z]{3}", game_reference)
-                else None
-            )
+                if not canonical_game:
+                    candidates = games_by_date.get(reference_date, [])
+                    if len(candidates) == 1:
+                        canonical_game = candidates[0]
+                    elif candidates:
+                        reference_home_abbr = game_reference[-3:]
+                        exact = [candidate for candidate in candidates if candidate["home_abbr"] == reference_home_abbr]
+                        if len(exact) == 1:
+                            canonical_game = exact[0]
+                        else:
+                            equivalent = [
+                                candidate
+                                for candidate in candidates
+                                if same_team(
+                                    reference_home_abbr,
+                                    candidate["home_abbr"],
+                                    right_key=candidate["home_team_key"],
+                                )
+                            ]
+                            if len(equivalent) == 1:
+                                canonical_game = equivalent[0]
+
+            game_key = canonical_game["game_key"] if canonical_game else None
+            if canonical_game:
+                season_type = canonical_game["season_type"]
+            else:
+                explicit_type = text(first(row, ("season_type", "season_segment", "type", "game_type")))
+                season_type = infer_season_type(row) if explicit_type else "unclassified"
+            game_date = canonical_game["game_date"] if canonical_game else reference_date
+
+            source_team_key = team_key_for_abbr(team_abbr)
+            resolved_team_key = source_team_key
+            opponent_team_key = None
+            opponent_abbr = None
+            if canonical_game:
+                if same_team(team_abbr, canonical_game["home_abbr"], right_key=canonical_game["home_team_key"]):
+                    resolved_team_key = canonical_game["home_team_key"] or source_team_key
+                    opponent_team_key = canonical_game["away_team_key"]
+                    opponent_abbr = canonical_game["away_abbr"] or None
+                elif same_team(team_abbr, canonical_game["away_abbr"], right_key=canonical_game["away_team_key"]):
+                    resolved_team_key = canonical_game["away_team_key"] or source_team_key
+                    opponent_team_key = canonical_game["home_team_key"]
+                    opponent_abbr = canonical_game["home_abbr"] or None
 
             fact_key = f"gonzalo|{safe(source_table)}|{source_row or inserted + 1}"
             batch.append((
@@ -1007,10 +1090,10 @@ def build_player_games(db: sqlite3.Connection, player_ids: dict[tuple[str, str],
                 game_reference or None,
                 player_key,
                 player_name or text(first(basic_row, ("player", "player_name", "name"))) or "Unknown",
-                team_abbrs.get(team_abbr),
+                resolved_team_key,
                 team_abbr or None,
-                None,
-                None,
+                opponent_team_key,
+                opponent_abbr,
                 season_id,
                 league,
                 season_type,
@@ -1032,7 +1115,12 @@ def build_player_games(db: sqlite3.Connection, player_ids: dict[tuple[str, str],
                 "gonzalo_all_time",
                 source_table,
                 source_row,
-                json.dumps({"basic": basic_source_table, "advanced": source_table, "game_reference": game_reference}),
+                json.dumps({
+                    "basic": basic_source_table,
+                    "advanced": source_table,
+                    "game_reference": game_reference,
+                    "canonical_game_match": bool(canonical_game),
+                }),
             ))
             if len(batch) >= 10000:
                 db.executemany(insert_sql, batch)
