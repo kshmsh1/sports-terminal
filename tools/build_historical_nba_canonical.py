@@ -501,10 +501,18 @@ def build_teams(db: sqlite3.Connection, policy: dict[str, Any]) -> tuple[dict[tu
     candidates = team_candidates(db)
     aliases = {str(key).upper(): str(value) for key, value in policy.get("modernFranchiseAliases", {}).items()}
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    # Wyatt exposes stable NBA team IDs alongside abbreviations in both the team and
+    # game tables. Use that bridge to prevent ID-only team_history rows from forming a
+    # second group that later overwrites the richer canonical team row.
+    wyatt_id_to_abbr: dict[str, str] = {}
+    for item in candidates:
+        if item["source_key"] == "wyatt_nbadb" and item["source_id"] and item["abbreviation"]:
+            wyatt_id_to_abbr[item["source_id"]] = item["abbreviation"]
     for item in candidates:
         # Abbreviation is the cross-source historical identity key. Stable NBA IDs are
         # retained and preferred for the canonical key once the source records are grouped.
-        token = item["abbreviation"] or (f"id:{item['source_id']}" if item["source_id"] else norm_name(item["name"]))
+        bridged_abbr = item["abbreviation"] or wyatt_id_to_abbr.get(item["source_id"], "")
+        token = bridged_abbr or (f"id:{item['source_id']}" if item["source_id"] else norm_name(item["name"]))
         grouped[(item["league"], token)].append(item)
     id_lookup: dict[tuple[str, str], str] = {}
     abbr_lookup: dict[str, str] = {}
