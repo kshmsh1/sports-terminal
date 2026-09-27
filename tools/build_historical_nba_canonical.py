@@ -782,8 +782,21 @@ def create_play_by_play_view(db: sqlite3.Connection) -> bool:
 def build_player_games(db: sqlite3.Connection, player_ids: dict[tuple[str, str], str], player_names: dict[str, str], team_ids: dict[tuple[str, str], str], team_abbrs: dict[str, str]) -> int:
     del team_ids
     inventory = source_tables(db, "gonzalo_all_time")
-    game_lookup = {str(row[0]): (str(row[1]), str(row[2]), str(row[3]) if row[3] is not None else None)
-                   for row in db.execute("SELECT nba_game_id,game_key,season_type,game_date FROM canon_dim_game WHERE nba_game_id IS NOT NULL")}
+    game_lookup: dict[str, tuple[str, str, str | None]] = {}
+    game_date_home_lookup: dict[tuple[str, str], tuple[str, str, str | None]] = {}
+    for game_key, game_date, season_type, nba_game_id, home_team_key in db.execute(
+        "SELECT game_key,game_date,season_type,nba_game_id,home_team_key FROM canon_dim_game"
+    ):
+        payload = (str(game_key), str(season_type), None if game_date is None else str(game_date))
+        if nba_game_id is not None:
+            game_lookup[str(nba_game_id)] = payload
+        if game_date and home_team_key:
+            home_abbr_row = db.execute(
+                "SELECT abbreviation FROM canon_dim_team WHERE team_key=?",
+                (home_team_key,),
+            ).fetchone()
+            if home_abbr_row and home_abbr_row[0]:
+                game_date_home_lookup[(str(game_date)[:10], str(home_abbr_row[0]).upper())] = payload
     inserted = 0
     insert_sql = "INSERT OR REPLACE INTO canon_fact_player_game VALUES (" + ",".join("?" for _ in range(31)) + ")"
 
@@ -854,9 +867,17 @@ def build_player_games(db: sqlite3.Connection, player_ids: dict[tuple[str, str],
             )
             source_row = integer(first(row, ("__source_row",)))
             canonical_game = game_lookup.get(game_reference)
+            if not canonical_game and re.fullmatch(r"\\d{9}[A-Z]{3}", game_reference):
+                reference_date = f"{game_reference[:4]}-{game_reference[4:6]}-{game_reference[6:8]}"
+                home_abbr = game_reference[-3:]
+                canonical_game = game_date_home_lookup.get((reference_date, home_abbr))
             game_key = canonical_game[0] if canonical_game else None
             season_type = canonical_game[1] if canonical_game else infer_season_type(row)
-            game_date = canonical_game[2] if canonical_game else None
+            game_date = canonical_game[2] if canonical_game else (
+                f"{game_reference[:4]}-{game_reference[4:6]}-{game_reference[6:8]}"
+                if re.fullmatch(r"\\d{9}[A-Z]{3}", game_reference)
+                else None
+            )
 
             fact_key = f"gonzalo|{safe(source_table)}|{source_row or inserted + 1}"
             batch.append((
