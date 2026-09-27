@@ -568,7 +568,7 @@ def main() -> int:
     parser.add_argument("--recovery-cooldown", type=float, default=30.0, help="Base seconds to cool down before rebuilding the NBA.com session.")
     parser.add_argument("--abort-after", type=int, default=5)
     parser.add_argument("--infer-historical-cutoffs", action=argparse.BooleanOptionalAction, default=True, help="Skip older scopes once local coverage proves a variant has crossed into a sustained empty/unavailable era.")
-    parser.add_argument("--cutoff-empty-seasons", type=int, default=3, help="Consecutive fully-empty seasons required before inferring a historical cutoff.")
+    parser.add_argument("--cutoff-empty-seasons", type=int, default=2, help="Consecutive fully-empty seasons required before inferring a historical cutoff.")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--oldest-first", action="store_true")
     parser.add_argument("--probe-only", action="store_true")
