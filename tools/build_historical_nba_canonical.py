@@ -1478,14 +1478,64 @@ def main() -> int:
         team_seasons = build_team_seasons(db, policy, team_ids, team_abbrs)
         games, team_games = build_games(db, policy, team_ids, team_abbrs)
         pbp_view = create_play_by_play_view(db)
-        player_games = 0 if args.skip_player_games else build_player_games(db, player_ids, player_names, team_ids, team_abbrs)
+        player_games = 0 if args.skip_player_games else build_player_games(
+            db, player_ids, player_names, team_ids, team_abbrs, policy
+        )
+        derived_playoff_player_seasons = (
+            0 if args.skip_player_games else build_playoff_player_seasons_from_games(db)
+        )
+        derived_playoff_team_seasons = build_playoff_team_seasons_from_games(db)
+        player_seasons += derived_playoff_player_seasons
+        team_seasons += derived_playoff_team_seasons
+
+        player_game_match = db.execute(
+            "SELECT COUNT(*),"
+            "SUM(CASE WHEN game_key IS NOT NULL THEN 1 ELSE 0 END),"
+            "SUM(CASE WHEN game_key IS NULL THEN 1 ELSE 0 END) "
+            "FROM canon_fact_player_game"
+        ).fetchone()
+        player_game_total = int(player_game_match[0] or 0)
+        player_game_matched = int(player_game_match[1] or 0)
+        player_game_unmatched = int(player_game_match[2] or 0)
+        player_game_match_pct = round(
+            100.0 * player_game_matched / player_game_total, 2
+        ) if player_game_total else 0.0
+        player_game_season_types = {
+            str(season_type): int(row_count)
+            for season_type, row_count in db.execute(
+                "SELECT season_type,COUNT(*) FROM canon_fact_player_game "
+                "GROUP BY season_type ORDER BY season_type"
+            )
+        }
+
         awards, all_stars, drafts = build_events_awards_draft(db, player_ids, player_names, team_ids, team_abbrs)
         coverage_rows = build_coverage(db)
         update_league_bounds(db)
         conflicts = int(db.execute("SELECT COUNT(*) FROM canon_conflicts").fetchone()[0])
         provenance = int(db.execute("SELECT COUNT(*) FROM canon_field_provenance").fetchone()[0])
         source_summary = db.execute("SELECT COUNT(*),COALESCE(SUM(row_count),0),COALESCE(SUM(table_count),0) FROM historical_source_registry").fetchone()
-        counts = {"players": players, "teams": teams, "playerSeasons": player_seasons, "teamSeasons": team_seasons, "games": games, "teamGames": team_games, "playerGames": player_games, "awards": awards, "allStars": all_stars, "draftPicks": drafts, "conflicts": conflicts, "fieldProvenance": provenance, "coverageRows": coverage_rows, "playByPlayView": pbp_view}
+        counts = {
+            "players": players,
+            "teams": teams,
+            "playerSeasons": player_seasons,
+            "teamSeasons": team_seasons,
+            "games": games,
+            "teamGames": team_games,
+            "playerGames": player_games,
+            "playerGameMatched": player_game_matched,
+            "playerGameUnmatched": player_game_unmatched,
+            "playerGameMatchPct": player_game_match_pct,
+            "playerGameSeasonTypes": player_game_season_types,
+            "derivedPlayoffPlayerSeasons": derived_playoff_player_seasons,
+            "derivedPlayoffTeamSeasons": derived_playoff_team_seasons,
+            "awards": awards,
+            "allStars": all_stars,
+            "draftPicks": drafts,
+            "conflicts": conflicts,
+            "fieldProvenance": provenance,
+            "coverageRows": coverage_rows,
+            "playByPlayView": pbp_view,
+        }
         build_id = datetime.now(timezone.utc).strftime("canon-%Y%m%dT%H%M%S%fZ")
         db.execute("INSERT INTO canon_build_manifest VALUES (?,?,?,?,?,?,?,?)", (build_id, str(policy.get("canonicalSchemaVersion", "1")), now_iso(), int(source_summary[1]), int(source_summary[2]), int(source_summary[0]), json.dumps(counts, sort_keys=True), json.dumps([])))
         db.commit()
