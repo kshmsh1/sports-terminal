@@ -1034,6 +1034,7 @@ def build_player_games(
                 or player_names.get(norm_name(player_name))
             )
             source_row = integer(first(row, ("__source_row",)))
+            source_team_key = team_key_for_abbr(team_abbr)
 
             canonical_game = game_lookup.get(game_reference)
             reference_date = None
@@ -1061,6 +1062,34 @@ def build_player_games(
                             if len(equivalent) == 1:
                                 canonical_game = equivalent[0]
 
+                        # Final deterministic fallback: the player's team must be one
+                        # of the two teams in the game. This resolves remaining
+                        # cross-source abbreviation differences on multi-game dates.
+                        if not canonical_game:
+                            participant_matches = [
+                                candidate
+                                for candidate in candidates
+                                if (
+                                    source_team_key
+                                    and source_team_key in {
+                                        candidate["home_team_key"],
+                                        candidate["away_team_key"],
+                                    }
+                                )
+                                or same_team(
+                                    team_abbr,
+                                    candidate["home_abbr"],
+                                    right_key=candidate["home_team_key"],
+                                )
+                                or same_team(
+                                    team_abbr,
+                                    candidate["away_abbr"],
+                                    right_key=candidate["away_team_key"],
+                                )
+                            ]
+                            if len(participant_matches) == 1:
+                                canonical_game = participant_matches[0]
+
             game_key = canonical_game["game_key"] if canonical_game else None
             if canonical_game:
                 season_type = canonical_game["season_type"]
@@ -1069,7 +1098,6 @@ def build_player_games(
                 season_type = infer_season_type(row) if explicit_type else "unclassified"
             game_date = canonical_game["game_date"] if canonical_game else reference_date
 
-            source_team_key = team_key_for_abbr(team_abbr)
             resolved_team_key = source_team_key
             opponent_team_key = None
             opponent_abbr = None
