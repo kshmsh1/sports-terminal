@@ -280,8 +280,7 @@ class _GameRow extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final homeScore = _num(game['home_score']);
     final awayScore = _num(game['away_score']);
-    final available = game['box_score_available'] == true ||
-        _text(game['file']).isNotEmpty;
+    final available = game['box_score_available'] == true;
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
