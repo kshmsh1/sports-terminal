@@ -143,6 +143,23 @@ def main() -> None:
         assert abs(row["potential_apg"] - 7.0) < 1e-9, row
         assert abs(row["adjusted_assist_ratio"] - 0.04) < 1e-9, row
         assert abs(row["isolation_ppp"] - 1.11) < 1e-9, row
+
+        # Missing canonical shooting fields are repaired from NBA.com's
+        # source-backed overall shot-dashboard totals without overwriting an
+        # existing canonical value.
+        shooting_fixture = {
+            "FG3M": 33, "FG3A": 91, "FG3_PCT": 33 / 91,
+            "FG2M": 67, "FG2A": 109, "FG2_PCT": 67 / 109,
+        }
+        row["three_pointers_made"] = 32
+        enricher.apply_metrics(row, "players_shot_dashboard", "general_overall", shooting_fixture)
+        assert row["three_pointers_made"] == 32, row
+        assert row["three_point_attempts"] == 91, row
+        assert row["three_pa"] == 91, row
+        assert abs(row["three_point_percentage"] - (33 / 91)) < 1e-9, row
+        assert row["two_point_attempts"] == 109, row
+        assert row["two_pa"] == 109, row
+
         assert "players_tracking/passing" in row["nba_com_part1_sources"]
         assert row["nba_com_part1"]["players_synergy"]["isolation_offensive"]["PPP"] == 1.11
 
