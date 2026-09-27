@@ -17,6 +17,17 @@ from .historical_nba_api import (
 router = APIRouter(prefix="/v2/nba/history", tags=["nba-history-compat"])
 
 
+def _season_filter_sql(alias: str, season_type: str) -> tuple[str, list[Any]]:
+    """Map the public season-type vocabulary onto historical warehouse aliases."""
+    if season_type == "combined":
+        return "", []
+    if season_type == "playoffs":
+        return f" AND lower({alias}.season_type) IN ('playoffs','postseason','playoff')", []
+    if season_type == "all_star":
+        return f" AND lower({alias}.season_type) IN ('all_star','all-star','all star')", []
+    return f" AND lower({alias}.season_type)=?", [season_type.lower()]
+
+
 def _player_seed_row(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "player_id": row.get("player_key"),
@@ -259,9 +270,9 @@ def historical_seed_snapshot(
           WHERE ps.season_id=? AND ps.league_id=?
         """
         player_params: list[Any] = [season, league]
-        if season_type != "combined":
-            player_sql += " AND ps.season_type=?"
-            player_params.append(season_type)
+        player_clause, player_season_params = _season_filter_sql("ps", season_type)
+        player_sql += player_clause
+        player_params.extend(player_season_params)
         player_source_rows = _rows(db.execute(player_sql, player_params).fetchall())
         collapsed = _collapse_player_season_rows(
             player_source_rows,
@@ -278,9 +289,9 @@ def historical_seed_snapshot(
           WHERE ts.season_id=? AND ts.league_id=?
         """
         team_params: list[Any] = [season, league]
-        if season_type != "combined":
-            team_sql += " AND ts.season_type=?"
-            team_params.append(season_type)
+        team_clause, team_season_params = _season_filter_sql("ts", season_type)
+        team_sql += team_clause
+        team_params.extend(team_season_params)
         team_source_rows = _rows(db.execute(team_sql, team_params).fetchall())
         team_records = [_team_record(row) for row in team_source_rows]
 
@@ -293,9 +304,9 @@ def historical_seed_snapshot(
           WHERE g.season_id=? AND g.league_id=?
         """
         game_params: list[Any] = [season, league]
-        if season_type != "combined":
-            game_sql += " AND g.season_type=?"
-            game_params.append(season_type)
+        game_clause, game_season_params = _season_filter_sql("g", season_type)
+        game_sql += game_clause
+        game_params.extend(game_season_params)
         game_sql += " ORDER BY g.game_date,g.game_key"
         game_source_rows = _rows(db.execute(game_sql, game_params).fetchall())
         games = [_game_row(row) for row in game_source_rows]
