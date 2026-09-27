@@ -160,6 +160,7 @@ def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: di
             "isolation_offensive": "isolation_ppp",
             "transition_offensive": "transition_offense_ppp",
             "transition_defensive": "transition_defense_ppp",
+            "transition_defence": "transition_defense_ppp",
             "prballhandler_offensive": "pnr_ball_handler_ppp",
             "prrollman_offensive": "pnr_roll_man_ppp",
             "postup_offensive": "post_up_ppp",
@@ -215,16 +216,14 @@ def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: di
             publish(target, "average_speed", source.get("AVG_SPEED"))
 
     if surface == "players_defense_dashboard":
-        metric = {
-            "overall": "dfg_pct",
-            "3_pointers": "three_dfg_pct",
-            "less_than_6ft": "rim_dfg_pct",
-        }.get(variant)
-        if metric:
-            publish(target, metric, source.get("D_FG_PCT"))
         if variant == "overall":
-            publish(target, "dfgm", source.get("D_FGM"))
-            publish(target, "dfga", source.get("D_FGA"))
+            publish(target, "dfg_pct", first(source, ("D_FG_PCT", "FG_PCT")))
+            publish(target, "dfgm", first(source, ("D_FGM", "FGM")))
+            publish(target, "dfga", first(source, ("D_FGA", "FGA")))
+        elif variant == "3_pointers":
+            publish(target, "three_dfg_pct", first(source, ("FG3_PCT", "D_FG_PCT")))
+        elif variant == "less_than_6ft":
+            publish(target, "rim_dfg_pct", first(source, ("LT_06_PCT", "D_FG_PCT")))
 
     if surface == "players_shot_dashboard":
         if variant == "general_overall":
@@ -312,7 +311,8 @@ def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: di
         # NBA exposes PCT_BOX_OUTS_REB as BOX_OUT_PLAYER_REBS / BOX_OUTS:
         # the share of the player's box outs on which that player secures the
         # rebound. Preserve that native percentage rather than inventing a rate.
-        publish(target, "box_out_pct", source.get("PCT_BOX_OUTS_REB"))
+        box_out_pct = first(source, ("PCT_BOX_OUTS_REB", "PCT_BOX_OUTS_TEAM_REB"))
+        publish(target, "box_out_pct", box_out_pct)
 
 
 def clear_previous(row: dict[str, Any]) -> None:
