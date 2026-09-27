@@ -363,6 +363,50 @@ def existing_valid(folder: Path) -> bool:
         return False
     return payload.get("validation_status") in {"success", "empty", "unavailable"}
 
+def infer_earliest_supported_by_variant(*, scopes: dict[str, Any], surfaces: list[Surface], min_empty_seasons: int = 3) -> dict[tuple[str, str], int]:
+    """Infer earliest useful season from completed local coverage."""
+    by_variant: dict[tuple[str, str], dict[int, dict[str, str]]] = {}
+    for item in scopes.values():
+        if not isinstance(item, dict):
+            continue
+        surface_key = str(item.get("surface") or "")
+        variant_key = str(item.get("variant") or "")
+        season = str(item.get("season") or "")
+        season_type = season_type_key(str(item.get("season_type") or ""))
+        status = str(item.get("validation_status") or "")
+        if not surface_key or not variant_key or not season:
+            continue
+        try:
+            year = season_start(season)
+        except ValueError:
+            continue
+        by_variant.setdefault((surface_key, variant_key), {}).setdefault(year, {})[season_type] = status
+
+    boundaries: dict[tuple[str, str], int] = {}
+    known_variants = {(surface.key, variant.key) for surface in surfaces for variant in surface.variants}
+    for key in known_variants:
+        season_map = by_variant.get(key, {})
+        success_years = sorted(year for year, statuses in season_map.items() if "success" in statuses.values())
+        if not success_years:
+            continue
+        oldest_success = success_years[0]
+        empty_run = 0
+        year = oldest_success - 1
+        while True:
+            statuses = season_map.get(year, {})
+            if not statuses:
+                break
+            regular = statuses.get("regular")
+            playoffs = statuses.get("playoffs")
+            if regular in {"empty", "unavailable"} and playoffs in {"empty", "unavailable"}:
+                empty_run += 1
+                year -= 1
+                continue
+            break
+        if empty_run >= max(1, min_empty_seasons):
+            boundaries[key] = oldest_success
+    return boundaries
+
 
 def write_capture(*, output: Path, surface: Surface, variant: Variant, season: str, season_type: str, url: str, raw: bytes, payload: dict[str, Any]) -> dict[str, Any]:
     folder = capture_dir(output, surface, variant, season, season_type)
@@ -523,6 +567,8 @@ def main() -> int:
     parser.add_argument("--recovery-retries", type=int, default=3, help="Fresh-session recovery cycles after a scope exhausts normal retries.")
     parser.add_argument("--recovery-cooldown", type=float, default=30.0, help="Base seconds to cool down before rebuilding the NBA.com session.")
     parser.add_argument("--abort-after", type=int, default=5)
+    parser.add_argument("--infer-historical-cutoffs", action=argparse.BooleanOptionalAction, default=True, help="Skip older scopes once local coverage proves a variant has crossed into a sustained empty/unavailable era.")
+    parser.add_argument("--cutoff-empty-seasons", type=int, default=3, help="Consecutive fully-empty seasons required before inferring a historical cutoff.")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--oldest-first", action="store_true")
     parser.add_argument("--probe-only", action="store_true")
@@ -559,7 +605,18 @@ def main() -> int:
     coverage_path = output / "coverage.json"
     coverage = load_coverage(coverage_path)
     scopes = coverage.setdefault("scopes", {})
-    counters = {"attempted": 0, "success": 0, "empty": 0, "unavailable": 0, "invalid": 0, "failure": 0, "skipped": 0, "rows": 0}
+    inferred_cutoffs = (
+        infer_earliest_supported_by_variant(
+            scopes=scopes,
+            surfaces=surfaces,
+            min_empty_seasons=max(1, args.cutoff_empty_seasons),
+        )
+        if args.infer_historical_cutoffs
+        else {}
+    )
+    if inferred_cutoffs:
+        print(f"==> Inferred historical cutoffs for {len(inferred_cutoffs)} variants from local coverage")
+    counters = {"attempted": 0, "success": 0, "empty": 0, "unavailable": 0, "invalid": 0, "failure": 0, "skipped": 0, "cutoff_skipped": 0, "rows": 0}
     consecutive_failures = 0
     last_request_at = 0.0
     stop = False
@@ -572,6 +629,11 @@ def main() -> int:
                 for season_type in season_types:
                     folder = capture_dir(output, surface, variant, season, season_type)
                     key = coverage_key(surface, variant, season, season_type)
+                    cutoff_year = inferred_cutoffs.get((surface.key, variant.key))
+                    if not args.force and cutoff_year is not None and season_start(season) < cutoff_year:
+                        counters["skipped"] += 1
+                        counters["cutoff_skipped"] += 1
+                        continue
                     if not args.force and existing_valid(folder):
                         counters["skipped"] += 1
                         metadata = json.loads((folder / "metadata.json").read_text(encoding="utf-8"))
