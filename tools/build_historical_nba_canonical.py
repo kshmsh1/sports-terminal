@@ -15,7 +15,7 @@ DEFAULT_DATABASE = "data/warehouse/nba_history.sqlite"
 DEFAULT_POLICY = "assets/data/nba/metadata/historical_canonical_policy.json"
 DEFAULT_REPORT = "data/warehouse/nba_canonical_build_report.json"
 
-SEASON_RE = re.compile(r"(?P<start>19\d{2}|20\d{2})[-_–](?P<end>\d{2}|19\d{2}|20\d{2})")
+SEASON_RE = re.compile(r"(?P<start>19\d{2}|20\d{2})[-_–](?P<end>19\d{2}|20\d{2}|\d{2})")
 LEAGUE_SEASON_TABLE_RE = re.compile(
     r"^(?P<league>NBA|ABA|BAA)[_-](?P<start>\d{4})[-_](?P<end>\d{4})[_-](?P<kind>basic|advanced)$",
     re.I,
@@ -791,7 +791,11 @@ def build_player_games(db: sqlite3.Connection, player_ids: dict[tuple[str, str],
         if nba_game_id is not None:
             game_lookup[str(nba_game_id)] = payload
         if game_date:
-            games_by_date[str(game_date)[:10]].append(payload)
+            raw_game_date = str(game_date).strip()
+            date_match = re.search(r"(19\d{2}|20\d{2})[-/]?(\d{2})[-/]?(\d{2})", raw_game_date)
+            if date_match:
+                normalized_game_date = f"{date_match.group(1)}-{date_match.group(2)}-{date_match.group(3)}"
+                games_by_date[normalized_game_date].append(payload)
     inserted = 0
     insert_sql = "INSERT OR REPLACE INTO canon_fact_player_game VALUES (" + ",".join("?" for _ in range(31)) + ")"
 
