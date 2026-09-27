@@ -866,7 +866,7 @@ def build_player_games(db: sqlite3.Connection, player_ids: dict[tuple[str, str],
             )
             source_row = integer(first(row, ("__source_row",)))
             canonical_game = game_lookup.get(game_reference)
-            if not canonical_game and re.fullmatch(r"\\d{9}[A-Z]{3}", game_reference):
+            if not canonical_game and re.fullmatch(r"\d{9}[A-Z]{3}", game_reference):
                 reference_date = f"{game_reference[:4]}-{game_reference[4:6]}-{game_reference[6:8]}"
                 candidates = games_by_date.get(reference_date, [])
                 if len(candidates) == 1:
@@ -887,7 +887,7 @@ def build_player_games(db: sqlite3.Connection, player_ids: dict[tuple[str, str],
             season_type = canonical_game[1] if canonical_game else infer_season_type(row)
             game_date = canonical_game[2] if canonical_game else (
                 f"{game_reference[:4]}-{game_reference[4:6]}-{game_reference[6:8]}"
-                if re.fullmatch(r"\\d{9}[A-Z]{3}", game_reference)
+                if re.fullmatch(r"\d{9}[A-Z]{3}", game_reference)
                 else None
             )
 
