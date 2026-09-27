@@ -1456,6 +1456,80 @@ def build_events_awards_draft(db: sqlite3.Connection, player_ids: dict[tuple[str
     return award_count, all_star_count, draft_count
 
 
+
+def validate_canonical_integrity(db: sqlite3.Connection) -> dict[str, int]:
+    """Enforce invariants that previously required manual SQL diagnostics."""
+    malformed_seasons = int(db.execute(
+        """
+        SELECT COUNT(*)
+        FROM canon_fact_player_season
+        WHERE season_id GLOB '[12][0-9][0-9][0-9]-20'
+          AND season_id <> '2019-20'
+        """
+    ).fetchone()[0])
+
+    matched_segment_mismatches = int(db.execute(
+        """
+        SELECT COUNT(*)
+        FROM canon_fact_player_game pg
+        JOIN canon_dim_game g ON g.game_key=pg.game_key
+        WHERE pg.season_type<>g.season_type
+           OR pg.season_id<>g.season_id
+        """
+    ).fetchone()[0])
+
+    unmatched_classified = int(db.execute(
+        """
+        SELECT COUNT(*)
+        FROM canon_fact_player_game
+        WHERE game_key IS NULL
+          AND season_type<>'unclassified'
+        """
+    ).fetchone()[0])
+
+    playoff_player_games = int(db.execute(
+        "SELECT COUNT(*) FROM canon_fact_player_game WHERE game_key IS NOT NULL AND season_type='playoffs'"
+    ).fetchone()[0])
+    playoff_player_seasons = int(db.execute(
+        "SELECT COUNT(*) FROM canon_fact_player_season WHERE season_type='playoffs'"
+    ).fetchone()[0])
+    playoff_team_games = int(db.execute(
+        """
+        SELECT COUNT(*)
+        FROM canon_fact_team_game tg
+        JOIN canon_dim_game g ON g.game_key=tg.game_key
+        WHERE g.season_type='playoffs'
+        """
+    ).fetchone()[0])
+    playoff_team_seasons = int(db.execute(
+        "SELECT COUNT(*) FROM canon_fact_team_season WHERE season_type='playoffs'"
+    ).fetchone()[0])
+
+    problems: list[str] = []
+    if malformed_seasons:
+        problems.append(f"{malformed_seasons} malformed player-season IDs remain")
+    if matched_segment_mismatches:
+        problems.append(f"{matched_segment_mismatches} matched player-games disagree with canon_dim_game")
+    if unmatched_classified:
+        problems.append(f"{unmatched_classified} unmatched player-games are still classified as real season segments")
+    if playoff_player_games and not playoff_player_seasons:
+        problems.append("matched playoff player-games exist but no playoff player-season facts were produced")
+    if playoff_team_games and not playoff_team_seasons:
+        problems.append("playoff team-games exist but no playoff team-season facts were produced")
+    if problems:
+        raise RuntimeError("Canonical integrity validation failed: " + "; ".join(problems))
+
+    return {
+        "malformedSeasonIds": malformed_seasons,
+        "matchedSegmentMismatches": matched_segment_mismatches,
+        "unmatchedClassified": unmatched_classified,
+        "playoffPlayerGames": playoff_player_games,
+        "playoffPlayerSeasons": playoff_player_seasons,
+        "playoffTeamGames": playoff_team_games,
+        "playoffTeamSeasons": playoff_team_seasons,
+    }
+
+
 def build_coverage(db: sqlite3.Connection) -> int:
     db.execute("DELETE FROM canon_coverage")
     domains = [("player_season", "canon_fact_player_season", "league_id", "season_id", "primary_source"), ("team_season", "canon_fact_team_season", "league_id", "season_id", "primary_source"), ("player_game", "canon_fact_player_game", "league_id", "season_id", "source_key"), ("game", "canon_dim_game", "league_id", "season_id", None), ("award", "canon_fact_award", "league_id", "season_id", "source_key"), ("all_star", "canon_fact_all_star", "league_id", "season_id", "source_key")]
@@ -1537,6 +1611,7 @@ def main() -> int:
         }
 
         awards, all_stars, drafts = build_events_awards_draft(db, player_ids, player_names, team_ids, team_abbrs)
+        integrity_validation = validate_canonical_integrity(db)
         coverage_rows = build_coverage(db)
         update_league_bounds(db)
         conflicts = int(db.execute("SELECT COUNT(*) FROM canon_conflicts").fetchone()[0])
@@ -1556,6 +1631,7 @@ def main() -> int:
             "playerGameSeasonTypes": player_game_season_types,
             "derivedPlayoffPlayerSeasons": derived_playoff_player_seasons,
             "derivedPlayoffTeamSeasons": derived_playoff_team_seasons,
+            "integrityValidation": integrity_validation,
             "awards": awards,
             "allStars": all_stars,
             "draftPicks": drafts,
