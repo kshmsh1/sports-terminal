@@ -466,7 +466,7 @@ def build_players(db: sqlite3.Connection, policy: dict[str, Any]) -> tuple[dict[
 
 
 def team_candidates(db: sqlite3.Connection) -> list[dict[str, Any]]:
-    configured = [("wyatt_nbadb", "team"), ("wyatt_nbadb", "team_history"), ("sumitro_bref_history", "Team Abbrev"), ("sumitro_bref_history", "Team Summaries"), ("gonzalo_all_time", "all_time_teams"), ("gonzalo_all_time", "current_teams")]
+    configured = [("wyatt_nbadb", "team"), ("wyatt_nbadb", "team_history"), ("wyatt_nbadb", "game"), ("sumitro_bref_history", "Team Abbrev"), ("sumitro_bref_history", "Team Summaries"), ("gonzalo_all_time", "all_time_teams"), ("gonzalo_all_time", "current_teams")]
     candidates: list[dict[str, Any]] = []
     seen: set[tuple[str, str, str, str]] = set()
     for source_key, source_table in configured:
@@ -474,19 +474,26 @@ def team_candidates(db: sqlite3.Connection) -> list[dict[str, Any]]:
         if not table:
             continue
         for row in rows(db, table):
-            source_id = text(first(row, ("team_id", "id", "teamid")))
-            abbreviation = text(first(row, ("team_abbreviation", "abbreviation", "abbr", "tm", "team"))).upper()
-            name = text(first(row, ("team_name", "full_name", "name", "franchise", "team")))
-            if name == abbreviation:
-                name = ""
-            if not (source_id or abbreviation or name):
-                continue
-            league = infer_league(row, source_table)
-            signature = (source_key, source_id, abbreviation, norm_name(name))
-            if signature in seen:
-                continue
-            seen.add(signature)
-            candidates.append({"source_key": source_key, "source_table": source_table, "source_id": source_id, "abbreviation": abbreviation, "name": name, "league": league})
+            variants = [row]
+            if source_key == "wyatt_nbadb" and source_table == "game":
+                variants = [
+                    {"team_id": row.get("team_id_home"), "team_abbreviation": row.get("team_abbreviation_home"), "team_name": row.get("team_name_home")},
+                    {"team_id": row.get("team_id_away"), "team_abbreviation": row.get("team_abbreviation_away"), "team_name": row.get("team_name_away")},
+                ]
+            for variant in variants:
+                source_id = text(first(variant, ("team_id", "id", "teamid")))
+                abbreviation = text(first(variant, ("team_abbreviation", "abbreviation", "abbr", "tm", "team"))).upper()
+                name = text(first(variant, ("team_name", "full_name", "name", "franchise", "team")))
+                if name == abbreviation:
+                    name = ""
+                if not (source_id or abbreviation or name):
+                    continue
+                league = infer_league(row, source_table)
+                signature = (source_key, source_id, abbreviation, norm_name(name))
+                if signature in seen:
+                    continue
+                seen.add(signature)
+                candidates.append({"source_key": source_key, "source_table": source_table, "source_id": source_id, "abbreviation": abbreviation, "name": name, "league": league})
     return candidates
 
 
