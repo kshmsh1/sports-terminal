@@ -296,6 +296,9 @@ def main() -> int:
 
     written = 0
     unavailable = 0
+    unavailable_examples: list[dict[str, Any]] = []
+    unavailable_by_season: dict[str, int] = {}
+    unavailable_by_reason: dict[str, int] = {}
     nba_augmented_games = 0
     nba_only_games = 0
     nba_player_rows = 0
@@ -345,6 +348,26 @@ def main() -> int:
                 game["box_score_available"] = False
                 game["box_score_source"] = "unavailable"
                 unavailable += 1
+                season_key = str(game.get("season_id") or "unknown")
+                unavailable_by_season[season_key] = unavailable_by_season.get(season_key, 0) + 1
+                if not season:
+                    reason = "missing_season_id"
+                elif game.get("nba_game_id") in (None, ""):
+                    reason = "missing_nba_game_id_and_no_canonical_detail"
+                else:
+                    reason = "no_canonical_detail_and_no_nba_com_match"
+                unavailable_by_reason[reason] = unavailable_by_reason.get(reason, 0) + 1
+                if len(unavailable_examples) < 200:
+                    unavailable_examples.append({
+                        "game_key": game_key,
+                        "nba_game_id": game.get("nba_game_id"),
+                        "game_date": game.get("game_date"),
+                        "season_id": season,
+                        "season_type": season_type,
+                        "away_team": game.get("away_team_abbreviation") or game.get("away_team_name"),
+                        "home_team": game.get("home_team_abbreviation") or game.get("home_team_name"),
+                        "reason": reason,
+                    })
                 continue
 
             player_rows = _rows(
@@ -424,6 +447,9 @@ def main() -> int:
         "nba_com_fingerprint": nba_com_fingerprint,
         "game_details": written,
         "unavailable_games": unavailable,
+        "unavailable_by_season": dict(sorted(unavailable_by_season.items())),
+        "unavailable_by_reason": dict(sorted(unavailable_by_reason.items())),
+        "unavailable_examples": unavailable_examples,
         "nba_com_augmented_games": nba_augmented_games,
         "nba_com_only_games": nba_only_games,
         "nba_com_player_rows": nba_player_rows,
