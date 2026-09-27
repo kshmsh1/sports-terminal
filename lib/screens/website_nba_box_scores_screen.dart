@@ -148,8 +148,9 @@ class _WebsiteNbaBoxScoresScreenState extends State<WebsiteNbaBoxScoresScreen> {
                   ),
                 ),
                 SizedBox(
-                  width: 150,
+                  width: 168,
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: _season,
                     decoration: const InputDecoration(
                       labelText: 'Season',
@@ -173,8 +174,9 @@ class _WebsiteNbaBoxScoresScreenState extends State<WebsiteNbaBoxScoresScreen> {
                   ),
                 ),
                 SizedBox(
-                  width: 165,
+                  width: 190,
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: _segment,
                     decoration: const InputDecoration(
                       labelText: 'Segment',
