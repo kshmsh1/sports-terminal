@@ -192,6 +192,7 @@ def main() -> None:
             "FG2M": 67, "FG2A": 109, "FG2_PCT": 67 / 109,
         }
         row["three_pointers_made"] = 32
+        row["three_point_attempts"] = None
         enricher.apply_metrics(row, "players_shot_dashboard", "general_overall", shooting_fixture)
         assert row["three_pointers_made"] == 32, row
         assert row["three_point_attempts"] == 91, row
