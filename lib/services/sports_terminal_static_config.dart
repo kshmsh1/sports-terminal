@@ -4,9 +4,7 @@ import 'dart:convert';
 ///
 /// Local development intentionally defaults to a path relative to the Flutter
 /// application, preserving the existing localhost behavior. Public deployments
-/// can point at object storage/CDN with:
-///
-///   --dart-define=SPORTS_TERMINAL_NBA_STATIC_BASE=https://data.example.com/nba_static
+/// may override this path, while the GitHub Pages deployment uses bundled mode.
 const String sportsTerminalNbaStaticBase = String.fromEnvironment(
   'SPORTS_TERMINAL_NBA_STATIC_BASE',
   defaultValue: 'data/nba_static',
@@ -20,7 +18,6 @@ String sportsTerminalStaticPath([String suffix = '']) {
   final relative = suffix.trim().replaceAll(RegExp(r'^/+'), '');
   return relative.isEmpty ? base : '$base/$relative';
 }
-
 
 /// Public GitHub Pages builds set this to true. Local development leaves it
 /// false and continues reading the existing loose JSON corpus.
