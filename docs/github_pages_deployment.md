@@ -1,82 +1,60 @@
-# GitHub Pages + object-storage deployment
+# GitHub Pages deployment
 
-Sports Terminal's public web deployment is split into two layers:
+Sports Terminal is published at:
 
-- **GitHub Pages:** the lightweight compiled Flutter application at
-  `https://kshmsh1.github.io/sports-terminal/`.
-- **S3-compatible object storage/CDN:** the generated browser-safe
-  `web/data/nba_static` corpus.
+`https://kshmsh1.github.io/sports-terminal/`
 
-This is necessary because the generated historical corpus is larger than a
-comfortable GitHub Pages deployment. It also keeps the raw canonical warehouse
-off GitHub.
+The public deployment uses GitHub only. It does **not** require Cloudflare,
+AWS, object storage, a credit card, or a billing account.
+
+## Why the public data is bundled
+
+The normal generated `web/data/nba_static` corpus is more than 1.6 GiB and
+contains tens of thousands of JSON files. GitHub Pages currently limits a
+published site to 1 GiB.
+
+The deployment therefore converts those JSON files into 512 deterministic
+gzip-compressed bundles. JSON paths are assigned with FNV-1a. The Flutter web
+repository calculates the same bucket number when a document is requested,
+downloads that bundle, decompresses it in the browser, and returns the same
+JSON object the application would have read from the loose local file.
+
+This changes the transport used by the public website, not the canonical data
+or the application's logical data paths.
 
 ## Local development is unchanged
 
-`scripts/open_terminal.sh` still works exactly as before. When no build-time
-override is supplied, the application reads `data/nba_static` relative to the
-local web origin.
+Continue using:
 
-The public build alone receives
-`SPORTS_TERMINAL_NBA_STATIC_BASE` through a Flutter `--dart-define`.
+```bash
+bash scripts/open_terminal.sh
+```
 
-The following remain local and are never uploaded by this deployer:
+Local builds do not enable bundled mode. They continue reading
+`web/data/nba_static` exactly as before.
+
+The following are not changed or uploaded by the Pages deployment:
 
 - `nba_history.sqlite`
 - raw source exports/captures
-- Python environments
-- source credentials
+- historical ingestion/build logic
+- local Python environments
+- the existing personal-site files at the root of `kshmsh1.github.io`
 
-Only the generated browser-safe static corpus is uploaded to object storage.
-
-## Recommended storage: Cloudflare R2
-
-Create one R2 bucket for the public static corpus. Enable a public URL (an
-`r2.dev` development URL is sufficient initially, or use a custom domain)
-and configure CORS to allow browser GET/HEAD requests from:
-
-`https://kshmsh1.github.io`
-
-Create an R2 API token scoped to that bucket with object read/write access.
-Keep the credentials only in your shell/password manager; do not commit them.
-
-R2 exposes an S3-compatible endpoint, so the deployment script uses the AWS
-CLI rather than adding Cloudflare-specific application code.
-
-## One-time Mac setup
-
-Install the AWS CLI if needed:
-
-```bash
-brew install awscli
-```
-
-Set the deployment environment variables. Replace the placeholders with the
-values from the R2 dashboard:
-
-```bash
-export AWS_ACCESS_KEY_ID="<R2 access key ID>"
-export AWS_SECRET_ACCESS_KEY="<R2 secret access key>"
-export AWS_DEFAULT_REGION="auto"
-
-export SPORTS_TERMINAL_STATIC_S3_ENDPOINT="https://<ACCOUNT_ID>.r2.cloudflarestorage.com"
-export SPORTS_TERMINAL_STATIC_S3_URI="s3://<BUCKET_NAME>/nba_static"
-export SPORTS_TERMINAL_STATIC_PUBLIC_BASE="https://<PUBLIC_R2_OR_CUSTOM_DOMAIN>/nba_static"
-```
-
-Do not put the secret values in this repository.
-
-## Validate without uploading
+## Validate
 
 ```bash
 bash scripts/deploy_github_pages.sh --dry-run
 ```
 
-Dry-run rebuilds/checks the corpus and compiles the lightweight Pages shell,
-but does not upload data and does not touch `kshmsh1.github.io`.
+The dry run rebuilds/checks the browser-safe corpus, creates all 512 compressed
+bundles, builds Flutter for `/sports-terminal/`, removes the loose 1.6+ GiB
+copy from `build/web`, and reports the final published-site size.
 
-If no public base is configured, dry-run uses a deliberately non-routable
-placeholder so the shell-size check can still run.
+It does not push anything.
+
+The deployer refuses to publish if the compressed site is above 950,000 KiB,
+leaving margin below GitHub Pages' 1 GiB published-site limit.
 
 ## Publish
 
@@ -84,23 +62,20 @@ placeholder so the shell-size check can still run.
 bash scripts/deploy_github_pages.sh
 ```
 
-The deployment performs these operations in order:
+The script:
 
-1. finds the existing local canonical NBA warehouse;
-2. builds/fingerprint-checks the browser-safe static corpus;
+1. finds the same local canonical warehouse used by the normal launcher;
+2. builds/fingerprint-checks the normal browser-safe static corpus;
 3. runs the existing normalization/enrichment/materialization passes;
-4. synchronizes only `web/data/nba_static/` to the configured S3-compatible
-   bucket prefix;
-5. compiles Flutter with `--base-href /sports-terminal/` and the public
-   static-data URL;
-6. removes the copied local corpus from `build/web`, leaving a lightweight
-   application shell;
-7. verifies the public `manifest.json` is reachable;
+4. generates 512 deterministic gzip bundles in `web/data/nba_bundles`;
+5. builds Flutter with bundled public-data mode enabled;
+6. removes only the loose `build/web/data/nba_static` copy;
+7. checks individual-file and complete-site size limits;
 8. clones `kshmsh1/kshmsh1.github.io` into a temporary directory;
-9. synchronizes only the `sports-terminal/` subdirectory;
-10. commits and pushes that subdirectory.
+9. synchronizes only its `sports-terminal/` directory;
+10. commits and pushes the compiled site.
 
-The root of the existing personal website is not replaced or deleted.
+The existing personal homepage at `https://kshmsh1.github.io/` is preserved.
 
 ## Force a fresh static compile
 
@@ -108,12 +83,13 @@ The root of the existing personal website is not replaced or deleted.
 bash scripts/deploy_github_pages.sh --force-static
 ```
 
-## Updating the public site later
+## Updating the site later
 
-After Sports Terminal changes, pull the latest `main` and run the same
-deployment command. `aws s3 sync` uploads changed/new static objects and
-removes stale objects under the configured `nba_static` prefix; GitHub Pages
-receives the newly compiled Flutter shell.
+Pull the latest Sports Terminal `main` and run the same deployment command.
+The generated bundles are deterministic, so unchanged bundles remain identical
+and Git only records bundles whose underlying JSON changed.
 
-Because `--delete` is scoped to the configured bucket prefix, use a dedicated
-bucket or dedicated `nba_static` prefix for Sports Terminal.
+The Pages repository will accumulate binary history as bundles change over
+time. If that eventually becomes material, compacting deployment history can
+be handled separately without changing Sports Terminal's source repository or
+local data workflow.
