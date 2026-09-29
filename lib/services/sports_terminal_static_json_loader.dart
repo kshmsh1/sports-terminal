@@ -16,6 +16,8 @@ class SportsTerminalStaticJsonLoader {
   static const int _maxCachedBundles = 8;
 
   Future<Object?> load(String basePath, String relative) async {
+    final logicalRelative = _logicalRelative(basePath, relative);
+
     if (!sportsTerminalNbaStaticBundled) {
       final uri = Uri.base.resolve('${_normalize(basePath)}/$relative');
       final response = await client.get(uri);
@@ -25,7 +27,7 @@ class SportsTerminalStaticJsonLoader {
       return jsonDecode(response.body);
     }
 
-    final bucket = sportsTerminalStaticBundleBucket(relative);
+    final bucket = sportsTerminalStaticBundleBucket(logicalRelative);
     var payload = _bundleCache[bucket];
     if (payload == null) {
       final bundleName = 'bundle_${bucket.toString().padLeft(3, '0')}.json.gz';
@@ -47,12 +49,12 @@ class SportsTerminalStaticJsonLoader {
       _touch(bucket);
     }
 
-    if (!payload.containsKey(relative)) {
+    if (!payload.containsKey(logicalRelative)) {
       throw FormatException(
-        'Sports Terminal bundle is missing $relative (bucket $bucket)',
+        'Sports Terminal bundle is missing $logicalRelative (bucket $bucket)',
       );
     }
-    return payload[relative];
+    return payload[logicalRelative];
   }
 
   void _remember(int bucket, Map<String, dynamic> payload) {
@@ -69,7 +71,29 @@ class SportsTerminalStaticJsonLoader {
     _bundleLru.add(bucket);
   }
 
-  String _normalize(String value) => value.replaceAll(RegExp(r'^/+|/+$'), '');
+  String _normalize(String value) => value.replaceAll(RegExp(r'^/+|/+
+
+class StaticJsonLoadException implements Exception {
+  const StaticJsonLoadException(this.statusCode, this.relative);
+  final int statusCode;
+  final String relative;
+}
+), '');
+
+  String _logicalRelative(String basePath, String relative) {
+    final normalizedBase = _normalize(basePath);
+    final normalizedStaticBase = _normalize(sportsTerminalNbaStaticBase);
+    final normalizedRelative = relative.replaceAll(RegExp(r'^/+'), '');
+
+    if (normalizedBase == normalizedStaticBase) {
+      return normalizedRelative;
+    }
+    if (normalizedBase.startsWith('$normalizedStaticBase/')) {
+      final prefix = normalizedBase.substring(normalizedStaticBase.length + 1);
+      return '$prefix/$normalizedRelative';
+    }
+    return normalizedRelative;
+  }
 }
 
 class StaticJsonLoadException implements Exception {
