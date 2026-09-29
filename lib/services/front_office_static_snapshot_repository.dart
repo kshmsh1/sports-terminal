@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
 import 'sports_terminal_static_config.dart';
+import 'sports_terminal_static_json_loader.dart';
 
 class FrontOfficeStaticSnapshot {
   const FrontOfficeStaticSnapshot({
@@ -31,9 +31,12 @@ class FrontOfficeStaticSnapshotRepository {
     http.Client? client,
     String? basePath,
   }) : basePath = basePath ?? sportsTerminalStaticPath('front_office'),
-        _client = client ?? http.Client();
+        _client = client ?? http.Client() {
+    _loader = SportsTerminalStaticJsonLoader(_client);
+  }
 
   final http.Client _client;
+  late final SportsTerminalStaticJsonLoader _loader;
   final String basePath;
   FrontOfficeStaticSnapshot? _cache;
 
@@ -54,25 +57,18 @@ class FrontOfficeStaticSnapshotRepository {
   }
 
   Future<List<Map<String, dynamic>>> _listOrEmpty(String relative) async {
-    final uri = Uri.base.resolve('${_normalizedBase()}/$relative');
     try {
-      final response = await _client.get(uri).timeout(const Duration(seconds: 3));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return const [];
-      }
-      final decoded = jsonDecode(response.body);
+      final decoded = await _loader
+          .load(basePath, relative)
+          .timeout(const Duration(seconds: 12));
       if (decoded is! List) return const [];
       return [
         for (final item in decoded)
           if (item is Map)
             item.map((key, value) => MapEntry(key.toString(), value)),
       ];
-    } on TimeoutException {
-      return const [];
     } catch (_) {
       return const [];
     }
   }
-
-  String _normalizedBase() => basePath.replaceAll(RegExp(r'^/+|/+$'), '');
 }
