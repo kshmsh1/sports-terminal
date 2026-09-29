@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'sports_terminal_static_config.dart';
+
 class FrontOfficeStaticSnapshot {
   const FrontOfficeStaticSnapshot({
     required this.contracts,
@@ -27,8 +29,9 @@ class FrontOfficeStaticSnapshot {
 class FrontOfficeStaticSnapshotRepository {
   FrontOfficeStaticSnapshotRepository({
     http.Client? client,
-    this.basePath = 'data/nba_static/front_office',
-  }) : _client = client ?? http.Client();
+    String? basePath,
+  })  : basePath = basePath ?? sportsTerminalStaticPath('front_office'),
+        _client = client ?? http.Client();
 
   final http.Client _client;
   final String basePath;
