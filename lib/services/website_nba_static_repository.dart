@@ -39,7 +39,6 @@ class WebsiteNbaStaticSeason {
 class WebsiteNbaStaticRepository {
   WebsiteNbaStaticRepository({http.Client? client, String? basePath})
       : basePath = basePath ?? sportsTerminalStaticPath(),
-
         _client = client ?? http.Client();
 
   final http.Client _client;
