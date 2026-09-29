@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'nba_terminal_seed_repository.dart';
+import 'sports_terminal_static_config.dart';
 
 class WebsiteNbaStaticSeason {
   const WebsiteNbaStaticSeason({
@@ -36,8 +37,9 @@ class WebsiteNbaStaticSeason {
 }
 
 class WebsiteNbaStaticRepository {
-  WebsiteNbaStaticRepository({http.Client? client, this.basePath = 'data/nba_static'})
-      : _client = client ?? http.Client();
+  WebsiteNbaStaticRepository({http.Client? client, String? basePath})
+      : basePath = basePath ?? sportsTerminalStaticPath(),
+        _client = client ?? http.Client();
 
   final http.Client _client;
   final String basePath;
