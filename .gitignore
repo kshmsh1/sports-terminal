@@ -49,6 +49,7 @@ __pycache__/
 # Generated immutable website corpus. It is compiled from the local canonical
 # historical warehouse before launch rather than checked in as source code.
 /web/data/nba_static/
+/web/data/nba_bundles/
 
 # Generated NBA API schema coverage reports
 /artifacts/nba_api_metric_coverage.json
