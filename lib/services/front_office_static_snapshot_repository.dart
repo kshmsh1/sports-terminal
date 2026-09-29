@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:http/http.dart' as http;
 
 import 'sports_terminal_static_config.dart';
