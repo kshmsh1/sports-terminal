@@ -9,9 +9,6 @@ TARGET_BRANCH="${SPORTS_TERMINAL_PAGES_BRANCH:-main}"
 PUBLIC_SUBDIR="${SPORTS_TERMINAL_PAGES_SUBDIR:-sports-terminal}"
 PUBLIC_SUBDIR="${PUBLIC_SUBDIR#/}"
 PUBLIC_SUBDIR="${PUBLIC_SUBDIR%/}"
-STATIC_PUBLIC_BASE="${SPORTS_TERMINAL_STATIC_PUBLIC_BASE:-}"
-STATIC_S3_URI="${SPORTS_TERMINAL_STATIC_S3_URI:-}"
-STATIC_S3_ENDPOINT="${SPORTS_TERMINAL_STATIC_S3_ENDPOINT:-}"
 FORCE_STATIC=0
 DRY_RUN=0
 
@@ -32,18 +29,6 @@ for arg in "$@"; do
       ;;
   esac
 done
-
-if [[ -z "$STATIC_PUBLIC_BASE" ]]; then
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    STATIC_PUBLIC_BASE="https://static.example.invalid/nba_static"
-    echo "No SPORTS_TERMINAL_STATIC_PUBLIC_BASE set; using a non-routable placeholder for dry-run."
-  else
-    echo "SPORTS_TERMINAL_STATIC_PUBLIC_BASE is required for public deployment." >&2
-    echo "Example: https://data.example.com/nba_static" >&2
-    exit 2
-  fi
-fi
-STATIC_PUBLIC_BASE="${STATIC_PUBLIC_BASE%/}"
 
 find_history_db() {
   local candidates=(
@@ -113,31 +98,26 @@ for required in   "$STATIC_DIR/manifest.json"   "$STATIC_DIR/seasons.json"   "$S
 done
 
 corpus_kib="$(du -sk "$STATIC_DIR" | awk '{print $1}')"
-echo "Static corpus size: ${corpus_kib} KiB"
+echo "Loose local static corpus size: ${corpus_kib} KiB"
 
-if [[ "$DRY_RUN" -eq 0 ]]; then
-  if [[ -z "$STATIC_S3_URI" ]]; then
-    echo "SPORTS_TERMINAL_STATIC_S3_URI is required for public deployment." >&2
-    echo "Example: s3://sports-terminal-static/nba_static" >&2
-    exit 2
-  fi
-  if ! command -v aws >/dev/null 2>&1; then
-    echo "AWS CLI is required to synchronize the static corpus to S3-compatible object storage." >&2
-    echo "On macOS with Homebrew: brew install awscli" >&2
-    exit 2
-  fi
+BUNDLE_DIR="$ROOT/web/data/nba_bundles"
+echo "Compressing static corpus into deterministic GitHub Pages bundles..."
+"$PYTHON_BIN" "$ROOT/tools/bundle_static_nba_for_pages.py" \
+  --input "$STATIC_DIR" \
+  --output "$BUNDLE_DIR" \
+  --buckets 512
 
-  AWS_SYNC=(aws s3 sync "$STATIC_DIR/" "${STATIC_S3_URI%/}/" --delete --only-show-errors)
-  if [[ -n "$STATIC_S3_ENDPOINT" ]]; then
-    AWS_SYNC+=(--endpoint-url "$STATIC_S3_ENDPOINT")
-  fi
-  echo "Synchronizing browser-safe NBA corpus to object storage..."
-  "${AWS_SYNC[@]}"
+if [[ ! -s "$BUNDLE_DIR/bundle_manifest.json" ]]; then
+  echo "Static bundle build did not produce bundle_manifest.json" >&2
+  exit 1
 fi
 
-echo "Building lightweight Flutter shell for GitHub Pages at $BASE_HREF ..."
+echo "Building bundled Flutter release for GitHub Pages at $BASE_HREF ..."
 flutter pub get
-flutter build web --release   --base-href "$BASE_HREF"   --dart-define="SPORTS_TERMINAL_NBA_STATIC_BASE=$STATIC_PUBLIC_BASE"
+flutter build web --release \
+  --base-href "$BASE_HREF" \
+  --dart-define="SPORTS_TERMINAL_NBA_STATIC_BUNDLED=true" \
+  --dart-define="SPORTS_TERMINAL_NBA_BUNDLE_BASE=data/nba_bundles"
 
 BUILD_DIR="$ROOT/build/web"
 if [[ ! -s "$BUILD_DIR/index.html" ]]; then
@@ -145,8 +125,8 @@ if [[ ! -s "$BUILD_DIR/index.html" ]]; then
   exit 1
 fi
 
-# Flutter copies web/ verbatim. The generated NBA corpus belongs in object
-# storage, so explicitly remove that copy from the Pages artifact.
+# Flutter copies web/ verbatim. Keep the compressed bundle directory but remove
+# the 1.6+ GiB loose corpus from the public artifact.
 rm -rf "$BUILD_DIR/data/nba_static"
 
 oversized="$(find "$BUILD_DIR" -type f -size +95M -print -quit)"
@@ -157,29 +137,20 @@ fi
 
 site_kib="$(du -sk "$BUILD_DIR" | awk '{print $1}')"
 if (( site_kib > 950000 )); then
-  echo "Pages shell is unexpectedly large: ${site_kib} KiB" >&2
+  echo "Compressed Pages site is still too large: ${site_kib} KiB" >&2
+  echo "GitHub Pages has a 1 GiB published-site limit; deployment stopped safely." >&2
   exit 1
 fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
   echo
   echo "Dry run complete."
-  echo "Static corpus: ${corpus_kib} KiB (object storage; not uploaded in dry-run)"
-  echo "GitHub Pages shell: ${site_kib} KiB"
-  echo "Production static base: $STATIC_PUBLIC_BASE"
+  echo "Loose local corpus: ${corpus_kib} KiB"
+  echo "Complete compressed GitHub Pages site: ${site_kib} KiB"
   echo "Would publish only to /$PUBLIC_SUBDIR/ in $TARGET_REPO_URL"
+  echo "No billing account or external storage is required."
   echo "Local localhost behavior remains unchanged."
   exit 0
-fi
-
-# Verify that the public origin is reachable before publishing a frontend that
-# depends on it. The bucket/CDN must also allow browser GET requests from the
-# GitHub Pages origin through its CORS policy.
-echo "Verifying public static corpus..."
-if ! curl --fail --silent --show-error --location   "$STATIC_PUBLIC_BASE/manifest.json" >/dev/null; then
-  echo "Static corpus is not publicly reachable at $STATIC_PUBLIC_BASE/manifest.json" >&2
-  echo "Enable public access/custom domain and CORS on the object-storage bucket, then retry." >&2
-  exit 1
 fi
 
 PUBLISH_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/sports-terminal-pages.XXXXXX")"
@@ -201,7 +172,7 @@ cat > "$PUBLISH_DIR/deployment.json" <<EOF
   "source_repository": "kshmsh1/sports-terminal",
   "source_commit": "$SOURCE_COMMIT",
   "base_href": "$BASE_HREF",
-  "static_data_base": "$STATIC_PUBLIC_BASE"
+  "static_data_mode": "bundled-gzip-v1"
 }
 EOF
 
@@ -218,6 +189,5 @@ git -C "$PUBLISH_ROOT/site" push origin "$TARGET_BRANCH"
 echo
 echo "Sports Terminal deployment pushed successfully."
 echo "Public URL: https://kshmsh1.github.io/$PUBLIC_SUBDIR/"
-echo "Static data: $STATIC_PUBLIC_BASE/"
 echo "Local development is unchanged; continue using:"
 echo "  bash scripts/open_terminal.sh"
