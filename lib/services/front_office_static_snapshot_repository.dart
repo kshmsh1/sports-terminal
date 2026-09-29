@@ -30,7 +30,7 @@ class FrontOfficeStaticSnapshotRepository {
   FrontOfficeStaticSnapshotRepository({
     http.Client? client,
     String? basePath,
-  })  : basePath = basePath ?? sportsTerminalStaticPath('front_office'),
+  }) : basePath = basePath ?? sportsTerminalStaticPath('front_office'),
         _client = client ?? http.Client();
 
   final http.Client _client;
