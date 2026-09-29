@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
-
 import 'package:http/http.dart' as http;
 
 import 'nba_terminal_seed_repository.dart';
 import 'sports_terminal_static_config.dart';
+import 'sports_terminal_static_json_loader.dart';
 
 class WebsiteNbaStaticSeason {
   const WebsiteNbaStaticSeason({
@@ -39,9 +38,12 @@ class WebsiteNbaStaticSeason {
 class WebsiteNbaStaticRepository {
   WebsiteNbaStaticRepository({http.Client? client, String? basePath})
       : basePath = basePath ?? sportsTerminalStaticPath(),
-        _client = client ?? http.Client();
+        _client = client ?? http.Client() {
+    _loader = SportsTerminalStaticJsonLoader(_client);
+  }
 
   final http.Client _client;
+  late final SportsTerminalStaticJsonLoader _loader;
   final String basePath;
   Map<String, dynamic>? _manifest;
   Map<String, dynamic>? _dataFoundation;
@@ -244,23 +246,24 @@ class WebsiteNbaStaticRepository {
   }
 
   Future<Object?> _json(String relative) async {
-    final uri = Uri.base.resolve('${_normalizedBase()}/$relative');
     try {
-      final response = await _client.get(uri).timeout(const Duration(seconds: 8));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw WebsiteNbaStaticException('Static NBA data is unavailable (${response.statusCode}): $relative');
-      }
-      return jsonDecode(response.body);
+      return await _loader
+          .load(basePath, relative)
+          .timeout(const Duration(seconds: 12));
     } on TimeoutException {
       throw WebsiteNbaStaticException('Static NBA file timed out: $relative');
+    } on StaticJsonLoadException catch (error) {
+      throw WebsiteNbaStaticException(
+        'Static NBA data is unavailable (${error.statusCode}): $relative',
+      );
     } on WebsiteNbaStaticException {
       rethrow;
     } catch (error) {
-      throw WebsiteNbaStaticException('Unable to read static NBA data $relative: $error');
+      throw WebsiteNbaStaticException(
+        'Unable to read static NBA data $relative: $error',
+      );
     }
   }
-
-  String _normalizedBase() => basePath.replaceAll(RegExp(r'^/+|/+$'), '');
 }
 
 class WebsiteNbaStaticException implements Exception {
