@@ -56,8 +56,8 @@ Sports Terminal could not find the local canonical NBA historical warehouse.
 Set SPORTS_TERMINAL_NBA_HISTORY_DB or keep nba_history.sqlite at one of the
 same locations supported by scripts/open_terminal.sh.
 
-The raw warehouse is never uploaded. Only the browser-safe generated static
-corpus is synchronized to the configured object-storage bucket.
+The raw warehouse is never uploaded. The public deployer only publishes the
+browser-safe compressed corpus generated from it.
 EOF
     exit 1
   fi
