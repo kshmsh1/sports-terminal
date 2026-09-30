@@ -71,14 +71,8 @@ class SportsTerminalStaticJsonLoader {
     _bundleLru.add(bucket);
   }
 
-  String _normalize(String value) => value.replaceAll(RegExp(r'^/+|/+
-
-class StaticJsonLoadException implements Exception {
-  const StaticJsonLoadException(this.statusCode, this.relative);
-  final int statusCode;
-  final String relative;
-}
-), '');
+  String _normalize(String value) =>
+      value.replaceAll(RegExp(r'^/+|/+$'), '');
 
   String _logicalRelative(String basePath, String relative) {
     final normalizedBase = _normalize(basePath);
