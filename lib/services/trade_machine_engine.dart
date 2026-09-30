@@ -701,6 +701,22 @@ class TradeMachineEngine {
           ),
         );
       }
+      final reacquireTeams = _stringSet(metadata['cannot_reacquire_teams']);
+      if (reacquireTeams.contains(assignment.destinationTeam)) {
+        final eligible = '${metadata['reacquire_eligible_date'] ?? ''}'.trim();
+        findings.add(
+          TradeValidationFinding(
+            code: 'CANNOT_REACQUIRE',
+            message: eligible.isEmpty
+                ? '${assignment.destinationTeam} cannot reacquire ${asset.label} under the modeled same-season reacquisition restriction.'
+                : '${assignment.destinationTeam} cannot reacquire ${asset.label} before $eligible under the modeled same-season reacquisition restriction.',
+            severity: TradeValidationSeverity.error,
+            team: assignment.destinationTeam,
+            assetId: asset.id,
+          ),
+        );
+      }
+
     }
 
     if (asset.type == TradeAssetType.draftPick) {
@@ -907,6 +923,19 @@ class TradeMachineEngine {
     ].reduce((a, b) => a > b ? a : b);
     return expanded;
   }
+}
+
+Set<String> _stringSet(Object? value) {
+  if (value is Iterable) {
+    return value.map((item) => '$item'.trim()).where((item) => item.isNotEmpty).toSet();
+  }
+  final text = '${value ?? ''}'.trim();
+  if (text.isEmpty) return <String>{};
+  return text
+      .split(RegExp(r'[,|]'))
+      .map((item) => item.trim())
+      .where((item) => item.isNotEmpty)
+      .toSet();
 }
 
 double? _number(Object? value) {

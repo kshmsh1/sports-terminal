@@ -3,6 +3,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sports_terminal/screens/product_trade_machine_complete_screen.dart';
 import 'package:sports_terminal/services/trade_machine_user_agent.dart';
 
+Future<void> _openBuilder(WidgetTester tester) async {
+  await tester.tap(find.text('Boston Celtics'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Philadelphia 76ers'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Build Trade'));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   test('Trade Machine user agent plays deterministic scenarios', () async {
     final report = await const TradeMachineUserAgent().play();
@@ -18,41 +27,150 @@ void main() {
     expect(report.passedCount, greaterThanOrEqualTo(20));
   });
 
-  testWidgets('Trade Machine UI renders as a usable front-office surface',
+  testWidgets('Trade Machine opens with the video-directed team picker',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1600, 1800));
+    await tester.binding.setSurfaceSize(const Size(1700, 2200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: ProductTradeMachineCompleteScreen(),
-            ),
+            child: ProductTradeMachineCompleteScreen(),
           ),
         ),
       ),
     );
-
     await tester.pumpAndSettle();
 
     expect(find.text('NBA Trade Machine'), findsOneWidget);
-    expect(find.text('TRADE SETUP'), findsOneWidget);
-    expect(find.text('CBA / STRUCTURAL VALIDATION'), findsOneWidget);
-    expect(find.text('POST-TRADE FINANCIALS'), findsOneWidget);
-    expect(find.text('BOS'), findsWidgets);
-    expect(find.text('PHI'), findsWidgets);
-    expect(find.text('Players'), findsWidgets);
-    expect(find.text('Draft Picks'), findsWidgets);
-    expect(find.text('Money / Exceptions'), findsWidgets);
-    expect(find.text('Cap Table'), findsWidgets);
+    expect(find.text('BUILD A TRADE'), findsOneWidget);
+    expect(find.text('Build a Trade'), findsOneWidget);
+    expect(find.text('Recent Trades'), findsOneWidget);
+    expect(find.text('All teams'), findsOneWidget);
+    expect(find.text('East'), findsOneWidget);
+    expect(find.text('West'), findsOneWidget);
+    expect(find.text('Boston Celtics'), findsOneWidget);
+    expect(find.text('Philadelphia 76ers'), findsOneWidget);
+    expect(find.text('Minnesota Timberwolves'), findsOneWidget);
+
+    final build = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Build Trade'),
+    );
+    expect(build.onPressed, isNull);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Trade Machine routes assets and survives stateful controls',
+  testWidgets('Trade Machine builds BOS-PHI with all requested asset tabs',
       (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1700, 3000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: ProductTradeMachineCompleteScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _openBuilder(tester);
+
+    expect(find.text('Active Roster'), findsOneWidget);
+    expect(find.text('Draft Picks'), findsOneWidget);
+    expect(find.text('Draft Rights'), findsOneWidget);
+    expect(find.text('Cash'), findsOneWidget);
+    expect(find.text('Free Agents'), findsOneWidget);
+    expect(find.text('Restrictions On'), findsOneWidget);
+    expect(find.text('Restrictions Off'), findsOneWidget);
+    expect(find.text('Deadline Trade'), findsOneWidget);
+    expect(find.text('TEAM ACQUIRE'), findsOneWidget);
+    expect(find.textContaining('CBA / STRUCTURAL VALIDATION'), findsOneWidget);
+    expect(find.text('POST-TRADE FINANCIALS'), findsOneWidget);
+    expect(find.text('Jayson Tatum'), findsOneWidget);
+    expect(find.text('Paul George'), findsOneWidget);
+    expect(find.textContaining('PHI CANNOT REACQUIRE'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Trade Machine routes players and marks one-sided flow incomplete',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1700, 3200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: ProductTradeMachineCompleteScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _openBuilder(tester);
+
+    final route = find.text('Route to…').first;
+    await tester.ensureVisible(route);
+    await tester.tap(route);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('PHI').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('INCOMPLETE TRADE'), findsOneWidget);
+    expect(find.text('INCOMPLETE'), findsWidgets);
+    expect(find.textContaining('Jayson Tatum'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Trade Machine supports cash, free-agent S&T, and third teams',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1800, 3600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: ProductTradeMachineCompleteScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _openBuilder(tester);
+
+    await tester.tap(find.text('Free Agents'));
+    await tester.pumpAndSettle();
+    expect(find.text('Kyle Lowry'), findsOneWidget);
+    expect(find.textContaining('UFA · Early Bird'), findsOneWidget);
+    expect(find.textContaining(r'$5.50M'), findsWidgets);
+    expect(find.text('Renounce all holds'), findsOneWidget);
+
+    await tester.tap(find.text('Cash'));
+    await tester.pumpAndSettle();
+    expect(find.text('CASH CONSIDERATIONS'), findsOneWidget);
+    expect(find.text('TRADED PLAYER EXCEPTIONS'), findsOneWidget);
+
+    await tester.tap(find.text('Add team'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Minnesota Timberwolves'));
+    await tester.pumpAndSettle();
+    expect(find.text('Minnesota Timberwolves'), findsOneWidget);
+    expect(find.textContaining('Timberwolves Acquire'), findsOneWidget);
+
+    await tester.tap(find.text('Restrictions Off'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Restriction mode is OFF for exploration'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Recent Trades can seed a multi-team scenario', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1700, 2600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -60,108 +178,24 @@ void main() {
       const MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: ProductTradeMachineCompleteScreen(),
-            ),
+            child: ProductTradeMachineCompleteScreen(),
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    final calendar = find.byIcon(Icons.calendar_today_rounded);
-    expect(calendar, findsOneWidget);
-    await tester.ensureVisible(calendar);
-    await tester.tap(calendar);
+    await tester.tap(find.text('Recent Trades'));
     await tester.pumpAndSettle();
-    expect(find.byType(DatePickerDialog), findsOneWidget);
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
+    expect(find.text('Recent NBA Trades'), findsOneWidget);
+    expect(find.textContaining('BOS/PHI'), findsWidgets);
 
-    final searchFields = find.byType(TextField);
-    expect(searchFields, findsWidgets);
-    await tester.enterText(searchFields.first, 'Jayson');
+    final loadButtons = find.text('Load teams');
+    expect(loadButtons, findsWidgets);
+    await tester.tap(loadButtons.first);
     await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-
-    await tester.enterText(searchFields.first, '');
-    await tester.pumpAndSettle();
-
-    final routeHint = find.text('Route to…').first;
-    await tester.ensureVisible(routeHint);
-    await tester.tap(routeHint);
-    await tester.pumpAndSettle();
-    expect(find.text('PHI'), findsWidgets);
-    await tester.tap(find.text('PHI').last);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('→ PHI'), findsWidgets);
-    expect(tester.takeException(), isNull);
-
-    final moneyTab = find.text('Money / Exceptions').first;
-    await tester.ensureVisible(moneyTab);
-    await tester.tap(moneyTab);
-    await tester.pumpAndSettle();
-    expect(find.text('CASH CONSIDERATIONS'), findsWidgets);
-    expect(find.text('TRADED PLAYER EXCEPTIONS'), findsWidgets);
-
-    final tpeRadio = find.byType(Radio<String>).first;
-    await tester.ensureVisible(tpeRadio);
-    await tester.tap(tpeRadio);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Uses TPE:'), findsWidgets);
-    expect(tester.takeException(), isNull);
-
-    final reset = find.text('Reset');
-    await tester.ensureVisible(reset);
-    await tester.tap(reset);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Route a player or draft right'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('Trade Machine supports core interactive user flows', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1600, 2200));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: ProductTradeMachineCompleteScreen(),
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('BOS'), findsWidgets);
-    expect(find.text('PHI'), findsWidgets);
-
-    await tester.tap(find.text('Add team'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('ATL').last);
-    await tester.pumpAndSettle();
-    expect(find.text('ATL'), findsWidgets);
-
-    await tester.tap(find.text('Draft Picks').first);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('1st'), findsWidgets);
-
-    await tester.tap(find.text('Money / Exceptions').first);
-    await tester.pumpAndSettle();
-    expect(find.text('CASH CONSIDERATIONS'), findsWidgets);
-
-    await tester.tap(find.text('Routed only'));
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-
-    await tester.tap(find.text('Reset'));
-    await tester.pumpAndSettle();
-    expect(find.text('Routed only'), findsOneWidget);
+    expect(find.text('Active Roster'), findsOneWidget);
+    expect(find.text('TEAM ACQUIRE'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
