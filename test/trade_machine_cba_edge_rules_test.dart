@@ -138,6 +138,48 @@ void main() {
     expect(report.isValid, isFalse);
   });
 
+  test('same-season reacquisition restriction blocks the barred destination', () {
+    const player = TradeAsset(
+      id: 'recent-trade-player',
+      type: TradeAssetType.player,
+      label: 'Recently Traded Player',
+      originTeam: 'BOS',
+      salary: 20000000,
+      metadata: {
+        'cannot_reacquire_teams': ['PHI'],
+        'reacquire_eligible_date': '2027-07-01',
+      },
+    );
+    final report = engine.validate(
+      TradeScenario(
+        id: 'reacquire',
+        name: 'Reacquisition restriction',
+        operatingSeason: '2026-27',
+        asOfDateIso: '2026-09-30',
+        teams: const ['BOS', 'PHI'],
+        assignments: const [
+          TradeAssignment(asset: player, destinationTeam: 'PHI'),
+        ],
+        capContexts: {
+          'BOS': TeamCapContext.nba2026_27(
+            team: 'BOS',
+            teamSalary: 180000000,
+          ),
+          'PHI': TeamCapContext.nba2026_27(
+            team: 'PHI',
+            teamSalary: 180000000,
+          ),
+        },
+      ),
+    );
+
+    expect(
+      report.findings.map((item) => item.code),
+      contains('CANNOT_REACQUIRE'),
+    );
+    expect(report.isValid, isFalse);
+  });
+
   test('sign-and-trade hard-cap check rejects first-apron finish', () {
     const player = TradeAsset(
       id: 'sat-player',
