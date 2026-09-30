@@ -347,8 +347,8 @@ final List<NbaTerminalMetric> nbaTerminalMetrics = [
 
   _m('per', 'Player Efficiency Rating', 'PER', 'Aggregate', 'Minute-adjusted box-score productivity metric standardized around league average.', raw: ['per', 'player_efficiency_rating'], providerNative: true),
   _m('bpm', 'Box Plus/Minus', 'BPM', 'Aggregate', 'Box-score estimate of points per 100 possessions above league average.', engineKey: 'bpm', raw: ['bpm', 'box_plus_minus'], children: ['obpm', 'dbpm'], format: NbaTerminalMetricFormat.signed),
-  _m('obpm', 'Offensive Box Plus/Minus', 'OBPM', 'Aggregate', 'Offensive component of Box Plus/Minus.', raw: ['obpm', 'offensive_box_plus_minus'], format: NbaTerminalMetricFormat.signed, providerNative: true),
-  _m('dbpm', 'Defensive Box Plus/Minus', 'DBPM', 'Aggregate', 'Defensive component of Box Plus/Minus.', raw: ['dbpm', 'defensive_box_plus_minus'], format: NbaTerminalMetricFormat.signed, providerNative: true),
+  _m('obpm', 'Offensive Box Plus/Minus', 'Offensive BPM', 'Aggregate', 'Offensive component of Box Plus/Minus.', raw: ['obpm', 'offensive_box_plus_minus'], format: NbaTerminalMetricFormat.signed, providerNative: true),
+  _m('dbpm', 'Defensive Box Plus/Minus', 'Defensive BPM', 'Aggregate', 'Defensive component of Box Plus/Minus.', raw: ['dbpm', 'defensive_box_plus_minus'], format: NbaTerminalMetricFormat.signed, providerNative: true),
   _m('vorp', 'Value Over Replacement Player', 'VORP', 'Aggregate', 'BPM-based estimate of total value above a replacement-level player.', raw: ['vorp', 'value_over_replacement_player'], providerNative: true),
   _m('ws', 'Win Shares', 'WS', 'Aggregate', 'Estimate of wins contributed using offensive and defensive box-score components.', raw: ['ws', 'win_shares'], children: ['ows', 'dws'], providerNative: true),
   _m('ows', 'Offensive Win Shares', 'Offensive WS', 'Aggregate', 'Offensive component of Win Shares.', raw: ['ows', 'offensive_win_shares'], providerNative: true),
