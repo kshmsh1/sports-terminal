@@ -706,7 +706,12 @@ def enrich_corpus(output: Path, *, roots: list[Path], force: bool = False) -> di
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     fp = fingerprint(roots)
     previous = manifest.get("nba_com_part1_enrichment") if isinstance(manifest, dict) else None
-    if not force and isinstance(previous, dict) and previous.get("fingerprint") == fp:
+    if (
+        not force
+        and isinstance(previous, dict)
+        and previous.get("contract") == CONTRACT
+        and previous.get("fingerprint") == fp
+    ):
         return previous
 
     player_index_path = output / "players/index.json"
