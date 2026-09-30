@@ -91,8 +91,20 @@ def seed_sources(db: sqlite3.Connection) -> None:
 
         CREATE TABLE g_totals(player TEXT,season INTEGER,tm TEXT,g REAL,mp REAL,pts REAL,trb REAL,ast REAL);
         INSERT INTO g_totals VALUES ('Example Star',2024,'EXC',80,2800,2300,500,600);
-        CREATE TABLE g_adv_game(__source_row INTEGER,player TEXT,date TEXT,game_id TEXT,team TEXT,opponent TEXT,mp REAL,pts REAL,trb REAL,ast REAL,ts_percent REAL,bpm REAL);
-        INSERT INTO g_adv_game VALUES (1,'Example Star','2024-01-03','G001','EXC','OTH',35,32,8,9,.650,8.0);
+        CREATE TABLE g_basic_game(
+          __source_row INTEGER,player_name TEXT,player_reference TEXT,game_reference TEXT,
+          team TEXT,period TEXT,starter TEXT,mp REAL,pts REAL,trb REAL,ast REAL,
+          stl REAL,blk REAL,tov REAL,pf REAL
+        );
+        INSERT INTO g_basic_game VALUES
+          (1,'Example Star','exampl01','202401030EXC','EXC','game','Y',35,32,8,9,2,1,3,2);
+        CREATE TABLE g_adv_game(
+          __source_row INTEGER,player_name TEXT,player_reference TEXT,game_reference TEXT,
+          team TEXT,period TEXT,starter TEXT,mp REAL,ts_percent REAL,efg_percent REAL,
+          usg_percent REAL,off_rtg REAL,def_rtg REAL,bpm REAL
+        );
+        INSERT INTO g_adv_game VALUES
+          (1,'Example Star','exampl01','202401030EXC','EXC','game','Y',35,.650,.610,.31,125,110,8.0);
         """
     )
     mapping = [
@@ -114,6 +126,7 @@ def seed_sources(db: sqlite3.Connection) -> None:
         ("sumitro_bref_history", "All-Star Selections", "s_allstar"),
         ("sumitro_bref_history", "Draft Pick History", "s_draft"),
         ("gonzalo_all_time", "totals_stats", "g_totals"),
+        ("gonzalo_all_time", "NBA_2023-2024_basic", "g_basic_game"),
         ("gonzalo_all_time", "NBA_2023-2024_advanced", "g_adv_game"),
     ]
     for item in mapping:
