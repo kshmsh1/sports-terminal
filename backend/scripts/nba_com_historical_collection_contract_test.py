@@ -116,6 +116,34 @@ def main() -> None:
         )
         assert metadata["validation_status"] == "success"
 
+        # A recent postseason can exist in the captured NBA.com game-log
+        # surfaces even when the historical canonical player-season source has
+        # not yet produced a playoff season row. The enrichment pass must
+        # synthesize a source-backed playoff season aggregate from those games.
+        game_logs = by_key["players_game_logs"]
+        game_logs_base = next(item for item in game_logs.variants if item.key == "base")
+        playoff_payload = result_payload(
+            "PlayerGameLogs",
+            [
+                "PLAYER_ID", "PLAYER_NAME", "TEAM_ID", "TEAM_ABBREVIATION",
+                "GAME_ID", "GAME_DATE", "MIN", "FGM", "FGA", "FG3M", "FG3A",
+                "FTM", "FTA", "OREB", "DREB", "REB", "AST", "STL", "BLK",
+                "TOV", "PF", "PTS", "PLUS_MINUS",
+            ],
+            [
+                [1, "Fixture Star", 10, "FIX", "p1", "2026-04-20", 36, 9, 18, 3, 7, 4, 5, 2, 6, 8, 7, 2, 1, 3, 2, 25, 8],
+                [1, "Fixture Star", 10, "FIX", "p2", "2026-04-22", 40, 10, 20, 4, 8, 5, 6, 1, 7, 8, 6, 1, 2, 2, 4, 29, 5],
+            ],
+            resource="playergamelogs",
+        )
+        playoff_meta = fetcher.write_capture(
+            output=raw, surface=game_logs, variant=game_logs_base,
+            season="2025-26", season_type="Playoffs",
+            url="https://stats.nba.com/playoff-gamelogs",
+            raw=json.dumps(playoff_payload).encode(), payload=playoff_payload,
+        )
+        assert playoff_meta["validation_status"] == "success", playoff_meta
+
         tracking = by_key["players_tracking"]
         passing = next(item for item in tracking.variants if item.key == "passing")
         passing_payload = result_payload(
@@ -139,7 +167,7 @@ def main() -> None:
         )
 
         manifest = materializer.materialize(raw, static)
-        assert manifest["success_scopes"] == 3, manifest
+        assert manifest["success_scopes"] == 4, manifest
         surface_file = static / "nba_com/surfaces/players_boxscores_traditional/default/2025-26/regular.json"
         assert surface_file.is_file(), surface_file
         game_index = static / "nba_com/player_game_logs/2025-26/regular/index.json"
@@ -184,6 +212,22 @@ def main() -> None:
         assert abs(row["adjusted_assist_ratio"] - 0.04) < 1e-9, row
         assert abs(row["isolation_ppp"] - 1.11) < 1e-9, row
 
+        playoff_snapshot = json.loads((season_dir / "playoffs.json").read_text())
+        playoff_rows = playoff_snapshot["player_season_totals"]
+        assert len(playoff_rows) == 1, playoff_rows
+        playoff_row = playoff_rows[0]
+        assert playoff_row["season_type"] == "playoffs", playoff_row
+        assert playoff_row["games"] == 2, playoff_row
+        assert abs(playoff_row["minutes"] - 76.0) < 1e-9, playoff_row
+        assert abs(playoff_row["points"] - 54.0) < 1e-9, playoff_row
+        assert abs(playoff_row["assists"] - 13.0) < 1e-9, playoff_row
+        assert abs(playoff_row["three_pointers_made"] - 7.0) < 1e-9, playoff_row
+        assert abs(playoff_row["three_point_attempts"] - 15.0) < 1e-9, playoff_row
+        playoff_info = playoff_snapshot["nba_com_part1_enrichment"]
+        assert playoff_info["synthesized_player_rows"] == 1, playoff_info
+        assert playoff_info["synthesized_source"] == "players_game_logs/base", playoff_info
+        assert enriched["synthesized_player_rows"] == 1, enriched
+
         # Missing canonical shooting fields are repaired from NBA.com's
         # source-backed overall shot-dashboard totals without overwriting an
         # existing canonical value.
@@ -207,16 +251,20 @@ def main() -> None:
             row,
             "players_defense_dashboard",
             "3_pointers",
-            {"FG3_PCT": 0.351},
+            {"FG3_PCT": 0.351, "FG3M": 21, "FG3A": 60},
         )
         assert abs(row["three_dfg_pct"] - 0.351) < 1e-9, row
+        assert row["three_dfgm"] == 21, row
+        assert row["three_dfga"] == 60, row
         enricher.apply_metrics(
             row,
             "players_defense_dashboard",
             "less_than_6ft",
-            {"LT_06_PCT": 0.612},
+            {"LT_06_PCT": 0.612, "FGM_LT_06": 30, "FGA_LT_06": 49},
         )
         assert abs(row["rim_dfg_pct"] - 0.612) < 1e-9, row
+        assert row["rim_dfgm"] == 30, row
+        assert row["rim_dfga"] == 49, row
 
         # Hustle box-out percentage should publish the native player-rebound
         # percentage when available.
@@ -224,9 +272,10 @@ def main() -> None:
             row,
             "players_hustle",
             "default",
-            {"G": 10, "PCT_BOX_OUTS_REB": 0.73},
+            {"G": 10, "BOX_OUTS": 25, "PCT_BOX_OUTS_REB": 0.73},
         )
         assert abs(row["box_out_pct"] - 0.73) < 1e-9, row
+        assert abs(row["box_outs_pg"] - 2.5) < 1e-9, row
 
         assert "players_tracking/passing" in row["nba_com_part1_sources"]
         assert row["nba_com_part1"]["players_synergy"]["isolation_offensive"]["PPP"] == 1.11
