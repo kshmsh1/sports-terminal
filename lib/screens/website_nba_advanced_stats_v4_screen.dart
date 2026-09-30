@@ -612,7 +612,7 @@ double _metricColumnWidth(_Metric metric, NbaStatsBasis basis, {required bool ch
   final label = metric.displayLabel(basis);
   final arrowAllowance = metric.children.isEmpty ? 0.0 : 32.0;
   final estimated = label.length * 7.8 + 26 + arrowAllowance;
-  return math.max(child ? 72.0 : 78.0, math.min(estimated, 220.0));
+  return math.max(child ? 72.0 : 78.0, math.min(estimated, 320.0));
 }
 
 class _StatGlossary extends StatelessWidget {
