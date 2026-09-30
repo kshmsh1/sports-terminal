@@ -83,6 +83,21 @@ void main() {
     );
   });
 
+  test('expanded stats expose requested component columns', () {
+    expect(nbaTerminalMetricByKey['two_pct']?.children, ['two_pm', 'two_pa']);
+    expect(nbaTerminalMetricByKey['ws']?.children, ['ows', 'dws']);
+    expect(nbaTerminalMetricByKey['bpm']?.children, ['obpm', 'dbpm']);
+    expect(nbaTerminalMetricByKey['rim_dfg_pct']?.children, ['rim_dfgm', 'rim_dfga']);
+    expect(nbaTerminalMetricByKey['three_dfg_pct']?.children, ['three_dfgm', 'three_dfga']);
+    expect(nbaTerminalMetricByKey['box_outs_pg']?.children, ['box_out_pct']);
+    expect(nbaTerminalMetricByKey['clutch_fg_pct']?.children, ['clutch_fgm', 'clutch_fga']);
+    expect(
+      nbaTerminalMetricByKey['clutch_three_pct']?.children,
+      ['clutch_three_pm', 'clutch_three_pa'],
+    );
+    expect(nbaTerminalMetricByKey['clutch_ft_pct']?.children, ['clutch_ftm', 'clutch_fta']);
+  });
+
   test('advanced catalog includes requested source-gated models and tracking', () {
     expect(
       nbaTerminalMetricByKey.keys,
