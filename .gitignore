@@ -44,6 +44,7 @@ __pycache__/
 /raw/*.json
 /raw/basketball_reference/
 /raw/historical/
+/raw/nba_com_stats/
 !/raw/README.md
 
 # Generated immutable website corpus. It is compiled from the local canonical

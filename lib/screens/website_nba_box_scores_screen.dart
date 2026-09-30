@@ -148,8 +148,9 @@ class _WebsiteNbaBoxScoresScreenState extends State<WebsiteNbaBoxScoresScreen> {
                   ),
                 ),
                 SizedBox(
-                  width: 150,
+                  width: 168,
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: _season,
                     decoration: const InputDecoration(
                       labelText: 'Season',
@@ -173,8 +174,9 @@ class _WebsiteNbaBoxScoresScreenState extends State<WebsiteNbaBoxScoresScreen> {
                   ),
                 ),
                 SizedBox(
-                  width: 165,
+                  width: 190,
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: _segment,
                     decoration: const InputDecoration(
                       labelText: 'Segment',
@@ -280,8 +282,7 @@ class _GameRow extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final homeScore = _num(game['home_score']);
     final awayScore = _num(game['away_score']);
-    final available = game['box_score_available'] == true ||
-        _text(game['file']).isNotEmpty;
+    final available = game['box_score_available'] == true;
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(14),

@@ -54,6 +54,9 @@ jobs:
       - name: Test modern NBA API archive and materialization contract
         run: python backend/scripts/nba_api_modern_collection_contract_test.py
 
+      - name: Test NBA.com historical capture and static materialization contract
+        run: python backend/scripts/nba_com_historical_collection_contract_test.py
+
       - name: Retain NBA API coverage report
         uses: actions/upload-artifact@v4
         with:

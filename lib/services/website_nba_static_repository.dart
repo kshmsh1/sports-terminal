@@ -233,6 +233,68 @@ class WebsiteNbaStaticRepository {
   Future<List<Map<String, dynamic>>> draft() => _list('history/draft.json');
   Future<List<Map<String, dynamic>>> coverage() => _list('history/coverage.json');
 
+  Future<Map<String, dynamic>> nbaComManifest() =>
+      _object('nba_com/manifest.json');
+
+  Future<Map<String, dynamic>> nbaComSurface({
+    required String surface,
+    required String variant,
+    required String season,
+    String seasonType = 'regular',
+  }) {
+    final type =
+        seasonType.toLowerCase().contains('play') ? 'playoffs' : 'regular';
+    return _object(
+      'nba_com/surfaces/${_pathSegment(surface)}/${_pathSegment(variant)}/'
+      '${_pathSegment(season)}/$type.json',
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> nbaComPlayerGameLogIndex(
+    String season, {
+    String seasonType = 'regular',
+  }) {
+    final type =
+        seasonType.toLowerCase().contains('play') ? 'playoffs' : 'regular';
+    return _list(
+      'nba_com/player_game_logs/${_pathSegment(season)}/$type/index.json',
+    );
+  }
+
+  Future<Map<String, dynamic>> nbaComPlayerGameLogs(
+    String season,
+    String playerId, {
+    String seasonType = 'regular',
+  }) async {
+    final type =
+        seasonType.toLowerCase().contains('play') ? 'playoffs' : 'regular';
+    final index = await nbaComPlayerGameLogIndex(
+      season,
+      seasonType: seasonType,
+    );
+    Map<String, dynamic>? match;
+    for (final row in index) {
+      if (row['player_id']?.toString() == playerId) {
+        match = row;
+        break;
+      }
+    }
+    if (match == null) {
+      throw WebsiteNbaStaticException(
+        'NBA.com player game log not found: $season $type $playerId',
+      );
+    }
+    final file = match['file']?.toString() ?? '';
+    if (file.isEmpty) {
+      throw WebsiteNbaStaticException(
+        'NBA.com player game-log index is missing its file: $playerId',
+      );
+    }
+    return _object(
+      'nba_com/player_game_logs/${_pathSegment(season)}/$type/$file',
+    );
+  }
+
   Future<Map<String, dynamic>> _object(String relative) async {
     final decoded = await _json(relative);
     if (decoded is! Map) throw WebsiteNbaStaticException('Static NBA document has an invalid shape: $relative');
@@ -279,6 +341,17 @@ List<Map<String, dynamic>> _mapList(Object? value) {
 }
 
 String _teamToken(String value) => value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+String _pathSegment(String value) {
+  final normalized = value.trim();
+  if (normalized.isEmpty ||
+      normalized.contains('/') ||
+      normalized.contains('\\') ||
+      normalized.contains('..')) {
+    throw WebsiteNbaStaticException('Invalid static NBA path segment: $value');
+  }
+  return normalized;
+}
 
 int? _int(Object? value) {
   if (value is int) return value;
