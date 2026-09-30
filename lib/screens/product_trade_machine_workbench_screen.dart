@@ -668,7 +668,7 @@ class _ProductTradeMachineWorkbenchScreenState
                               team,
                         ),
                         selected: team == active,
-                        onPressed: () => setState(() => activeTeam = team),
+                        onSelected: (_) => setState(() => activeTeam = team),
                         onDeleted: teams.length > 2
                             ? () => setState(() => _removeTeam(team))
                             : null,
