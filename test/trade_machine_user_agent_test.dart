@@ -18,8 +18,7 @@ void main() {
     expect(report.passedCount, greaterThanOrEqualTo(20));
   });
 
-  testWidgets('Trade Machine UI renders as a usable front-office surface',
-      (tester) async {
+  testWidgets('Trade Machine renders a deal-first workspace', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1600, 1800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -39,21 +38,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('NBA Trade Machine'), findsOneWidget);
-    expect(find.text('TRADE SETUP'), findsOneWidget);
-    expect(find.text('CBA / STRUCTURAL VALIDATION'), findsOneWidget);
-    expect(find.text('POST-TRADE FINANCIALS'), findsOneWidget);
+    expect(
+      find.text('Build the deal first. The cap rules update as you go.'),
+      findsOneWidget,
+    );
+    expect(find.text('OUTGOING PACKAGE'), findsNWidgets(2));
     expect(find.text('BOS'), findsWidgets);
     expect(find.text('PHI'), findsWidgets);
     expect(find.text('Players'), findsWidgets);
-    expect(find.text('Draft Picks'), findsWidgets);
-    expect(find.text('Money / Exceptions'), findsWidgets);
-    expect(find.text('Cap Table'), findsWidgets);
+    expect(find.text('Picks'), findsWidgets);
+    expect(find.text('Cash / Exceptions'), findsWidgets);
+    expect(find.text('Cap'), findsWidgets);
+    expect(find.text('Select assets above to start building a trade.'),
+        findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Trade Machine routes assets and survives stateful controls',
-      (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1700, 2600));
+  testWidgets('Trade Machine supports one-click asset selection', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1700, 2200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
@@ -70,57 +72,34 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final calendar = find.byIcon(Icons.calendar_today_rounded);
-    expect(calendar, findsOneWidget);
-    await tester.ensureVisible(calendar);
-    await tester.tap(calendar);
-    await tester.pumpAndSettle();
-    expect(find.byType(DatePickerDialog), findsOneWidget);
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
-
     final searchFields = find.byType(TextField);
     expect(searchFields, findsWidgets);
     await tester.enterText(searchFields.first, 'Jayson');
     await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
+    expect(find.text('Jayson Tatum'), findsOneWidget);
 
-    await tester.enterText(searchFields.first, '');
+    final addButtons = find.byTooltip('Add to trade');
+    expect(addButtons, findsWidgets);
+    await tester.ensureVisible(addButtons.first);
+    await tester.tap(addButtons.first);
     await tester.pumpAndSettle();
 
-    final routeHint = find.text('Route to…').first;
-    await tester.ensureVisible(routeHint);
-    await tester.tap(routeHint);
-    await tester.pumpAndSettle();
-    expect(find.text('PHI'), findsWidgets);
-    await tester.tap(find.text('PHI').last);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('→ PHI'), findsWidgets);
-    expect(tester.takeException(), isNull);
-
-    final moneyTab = find.text('Money / Exceptions').first;
-    await tester.ensureVisible(moneyTab);
-    await tester.tap(moneyTab);
-    await tester.pumpAndSettle();
-    expect(find.text('CASH CONSIDERATIONS'), findsWidgets);
-    expect(find.text('TRADED PLAYER EXCEPTIONS'), findsWidgets);
-
-    final tpeRadio = find.byType(Radio<String>).first;
-    await tester.ensureVisible(tpeRadio);
-    await tester.tap(tpeRadio);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Uses TPE:'), findsWidgets);
+    expect(find.text('Jayson Tatum'), findsWidgets);
+    expect(find.byTooltip('Remove from trade'), findsWidgets);
+    expect(find.text('Trade does not work'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     final reset = find.text('Reset');
     await tester.ensureVisible(reset);
     await tester.tap(reset);
     await tester.pumpAndSettle();
-    expect(find.textContaining('Route a player or draft right'), findsOneWidget);
+    expect(find.text('Select assets above to start building a trade.'),
+        findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Trade Machine supports core interactive user flows', (tester) async {
+  testWidgets('Trade Machine supports team, pick, and exception flows',
+      (tester) async {
     await tester.binding.setSurfaceSize(const Size(1600, 2200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -138,30 +117,20 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('BOS'), findsWidgets);
-    expect(find.text('PHI'), findsWidgets);
-
     await tester.tap(find.text('Add team'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('ATL').last);
     await tester.pumpAndSettle();
     expect(find.text('ATL'), findsWidgets);
 
-    await tester.tap(find.text('Draft Picks').first);
+    await tester.tap(find.text('Picks').first);
     await tester.pumpAndSettle();
     expect(find.textContaining('1st'), findsWidgets);
 
-    await tester.tap(find.text('Money / Exceptions').first);
+    await tester.tap(find.text('Cash / Exceptions').first);
     await tester.pumpAndSettle();
     expect(find.text('CASH CONSIDERATIONS'), findsWidgets);
-
-    await tester.tap(find.text('Routed only'));
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-
-    await tester.tap(find.text('Reset'));
-    await tester.pumpAndSettle();
-    expect(find.text('Routed only'), findsOneWidget);
+    expect(find.text('TRADED PLAYER EXCEPTIONS'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 }

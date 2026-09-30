@@ -5,7 +5,6 @@ import '../services/nba_contract_status_reference_2026.dart';
 import '../services/nba_front_office_tracker_2026.dart';
 import '../services/nba_league_environment_2026.dart';
 import '../services/nba_transaction_history_2026.dart';
-import '../services/nba_two_way_contract_reference_2026.dart';
 import '../services/nba_future_draft_asset_repository.dart';
 import '../services/nba_team_cap_reference_2026.dart';
 import '../services/nba_team_salary_position_2026.dart';
@@ -55,7 +54,6 @@ class _ProductTradeMachineCompleteScreenState
 
   List<String> teams = ['BOS', 'PHI'];
   DateTime tradeDate = DateTime(2026, 9, 11);
-  bool routedOnly = false;
 
   @override
   Widget build(BuildContext context) {
@@ -88,10 +86,8 @@ class _ProductTradeMachineCompleteScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _hero(data, allDraftAssets),
-              const SizedBox(height: 12),
-              _setup(data),
-              const SizedBox(height: 12),
+              _topBar(data),
+              const SizedBox(height: 14),
               LayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.maxWidth >= 1120
@@ -102,19 +98,13 @@ class _ProductTradeMachineCompleteScreenState
                     runSpacing: 12,
                     children: [
                       for (final team in teams)
-                        SizedBox(width: width, child: _teamBoard(data, team)),
+                        SizedBox(width: width, child: _teamBoard(data, team, report)),
                     ],
                   );
                 },
               ),
-              const SizedBox(height: 12),
-              _tradeFlow(data, allDraftAssets),
-              const SizedBox(height: 12),
-              _validation(report),
-              const SizedBox(height: 12),
-              _financials(report),
-              const SizedBox(height: 12),
-              _sourceNotes(),
+              const SizedBox(height: 14),
+              _tradeResult(report),
             ],
           ),
         );
@@ -122,155 +112,78 @@ class _ProductTradeMachineCompleteScreenState
     );
   }
 
-  Widget _hero(
-    NbaTradeContractSnapshot data,
-    List<NbaFutureDraftAsset> draftAssets,
-  ) {
-    final liveTpeCount = NbaTradeExceptionReference202627.tpes
-        .where((record) => !record.exhausted)
-        .length;
-    return _panelBox(
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'SPORTS TERMINAL / FRONT OFFICE',
-            style: TextStyle(
-              color: _cyan,
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.1,
-            ),
-          ),
-          const SizedBox(height: 7),
-          const Text(
-            'NBA Trade Machine',
-            style: TextStyle(
-              color: _text,
-              fontSize: 30,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 5),
-          const Text(
-            'Build two- through five-team 2026-27 transactions with player contracts, first- and second-round draft rights, static traded-player exceptions, signing-exception context, team cap ledgers, hard caps, and explainable CBA checks.',
-            style: TextStyle(color: _muted, height: 1.4),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _pill('2026-27', _blue),
-              _pill('${data.records.length} CONTRACTS', _green),
-              _pill('${draftAssets.length} DRAFT RIGHTS', _cyan),
-              _pill('$liveTpeCount TPE RECORDS', _amber),
-              _pill('${teams.length} TEAMS', _cyan),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _setup(NbaTradeContractSnapshot data) {
+  Widget _topBar(NbaTradeContractSnapshot data) {
     final available = data.teams.where((team) => !teams.contains(team)).toList();
-    return _panelBox(
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _section('TRADE SETUP'),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
+    return Row(
+      children: [
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ActionChip(
-                avatar: const Icon(Icons.calendar_today_rounded, size: 15),
-                label: Text(_displayDate(tradeDate)),
-                onPressed: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: tradeDate,
-                    firstDate: DateTime(2026, 7, 1),
-                    lastDate: DateTime(2033, 6, 30),
-                  );
-                  if (picked != null && mounted) {
-                    setState(() => tradeDate = picked);
-                  }
-                },
+              Text(
+                'NBA Trade Machine',
+                style: TextStyle(color: _text, fontSize: 30, fontWeight: FontWeight.w900),
               ),
-              for (final team in teams)
-                InputChip(
-                  label: Text(team),
-                  onDeleted: teams.length <= 2
-                      ? null
-                      : () {
-                          setState(() {
-                            teams.remove(team);
-                            selectedTpeByTeam.remove(team);
-                            cashAmounts.remove(team);
-                            cashDestinations.remove(team);
-                            cashDestinations.removeWhere((_, destination) => destination == team);
-                            routes.removeWhere(
-                              (id, destination) =>
-                                  destination == team ||
-                                  id.startsWith('$team:') ||
-                                  id.startsWith('$team-'),
-                            );
-                          });
-                        },
-                ),
-              if (teams.length < 5)
-                PopupMenuButton<String>(
-                  onSelected: (team) => setState(() => teams = [...teams, team]),
-                  itemBuilder: (_) => [
-                    for (final team in available)
-                      PopupMenuItem(value: team, child: Text(team)),
-                  ],
-                  child: const Chip(
-                    avatar: Icon(Icons.add_rounded, size: 15),
-                    label: Text('Add team'),
-                  ),
-                ),
-              FilterChip(
-                label: const Text('Routed only'),
-                selected: routedOnly,
-                onSelected: (value) => setState(() => routedOnly = value),
-              ),
-              ActionChip(
-                avatar: const Icon(Icons.restart_alt_rounded, size: 15),
-                label: const Text('Reset'),
-                onPressed: () {
-                  setState(() {
-                    routes.clear();
-                    selectedTpeByTeam.clear();
-                    cashAmounts.clear();
-                    cashDestinations.clear();
-                    searches.clear();
-                    routedOnly = false;
-                  });
-                },
+              SizedBox(height: 3),
+              Text(
+                'Build the deal first. The cap rules update as you go.',
+                style: TextStyle(color: _muted, fontSize: 12),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Operating thresholds: \$164.961M salary cap · \$200.428M tax · \$209.015M first apron · \$221.686M second apron.',
-            style: TextStyle(color: _muted, fontSize: 10),
+        ),
+        ActionChip(
+          avatar: const Icon(Icons.calendar_today_rounded, size: 15),
+          label: Text(_displayDate(tradeDate)),
+          onPressed: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: tradeDate,
+              firstDate: DateTime(2026, 7, 1),
+              lastDate: DateTime(2033, 6, 30),
+            );
+            if (picked != null && mounted) setState(() => tradeDate = picked);
+          },
+        ),
+        const SizedBox(width: 8),
+        if (teams.length < 5)
+          PopupMenuButton<String>(
+            onSelected: (team) => setState(() => teams = [...teams, team]),
+            itemBuilder: (_) => [
+              for (final team in available)
+                PopupMenuItem(value: team, child: Text(team)),
+            ],
+            child: const Chip(
+              avatar: Icon(Icons.add_rounded, size: 15),
+              label: Text('Add team'),
+            ),
           ),
-        ],
-      ),
+        const SizedBox(width: 8),
+        ActionChip(
+          avatar: const Icon(Icons.restart_alt_rounded, size: 15),
+          label: const Text('Reset'),
+          onPressed: () {
+            setState(() {
+              routes.clear();
+              selectedTpeByTeam.clear();
+              cashAmounts.clear();
+              cashDestinations.clear();
+              searches.clear();
+            });
+          },
+        ),
+      ],
     );
   }
-
-  Widget _teamBoard(NbaTradeContractSnapshot data, String team) {
+  Widget _teamBoard(NbaTradeContractSnapshot data, String team, TradeValidationReport report) {
     final activeSalary = data.payroll(team, '2026-27');
     final ledger = NbaTeamCapReference202627.forTeam(team);
     final salaryPosition = NbaTeamSalaryPosition202627.forTeam(team);
     final totalCap = salaryPosition?.totalSalary ?? ledger?.totalCap ?? activeSalary;
     final tab = tabs[team] ?? 0;
+    final summary = report.teamSummaries[team];
+    final outgoingPlayers = data.records.where((player) => player.team == team && routes[player.id] != null).toList();
+    final outgoingPicks = draftRepository.forTeam(team).where((asset) => routes[asset.id] != null).toList();
 
     return _panelBox(
       Column(
@@ -319,25 +232,8 @@ class _ProductTradeMachineCompleteScreenState
               _pill(_tier(totalCap), _tierColor(totalCap)),
             ],
           ),
-          const SizedBox(height: 9),
-          Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            children: [
-              _mini(_signed(_cap - totalCap), 'CAP ROOM'),
-              _mini(_signed(_tax - totalCap), 'TAX ROOM'),
-              _mini(_signed(_first - totalCap), '1ST APRON'),
-              _mini(_signed(_second - totalCap), '2ND APRON'),
-              _mini(
-                (NbaFrontOfficeTracker202627.hardCaps[team]?.capLevel ?? 'none').toUpperCase(),
-                'HARD CAP',
-              ),
-              _mini(
-                '${NbaTwoWayContractReference202627.forTeam(team).length}/3',
-                'TWO-WAY',
-              ),
-            ],
-          ),
+          const SizedBox(height: 10),
+          _packagePanel(outgoingPlayers, outgoingPicks, summary, team),
           const SizedBox(height: 10),
           SegmentedButton<int>(
             segments: const [
@@ -348,17 +244,17 @@ class _ProductTradeMachineCompleteScreenState
               ),
               ButtonSegment(
                 value: 1,
-                label: Text('Draft Picks'),
+                label: Text('Picks'),
                 icon: Icon(Icons.sports_basketball_rounded, size: 15),
               ),
               ButtonSegment(
                 value: 2,
-                label: Text('Money / Exceptions'),
+                label: Text('Cash / Exceptions'),
                 icon: Icon(Icons.account_balance_wallet_rounded, size: 15),
               ),
               ButtonSegment(
                 value: 3,
-                label: Text('Cap Table'),
+                label: Text('Cap'),
                 icon: Icon(Icons.table_chart_rounded, size: 15),
               ),
             ],
@@ -383,9 +279,6 @@ class _ProductTradeMachineCompleteScreenState
     var players = data.forTeam(team, '2026-27').where(
           (player) => query.isEmpty || player.player.toLowerCase().contains(query),
         );
-    if (routedOnly) {
-      players = players.where((player) => routes.containsKey(player.id));
-    }
 
     return Column(
       children: [
@@ -399,9 +292,14 @@ class _ProductTradeMachineCompleteScreenState
             hintText: 'Search roster',
           ),
         ),
-        const SizedBox(height: 6),
-        for (final player in players)
-          Builder(
+        const SizedBox(height: 8),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 430),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                for (final player in players)
+                  Builder(
             builder: (_) {
               final kicker =
                   NbaTradeKickerReference202627.forPlayer(player.player);
@@ -433,23 +331,46 @@ class _ProductTradeMachineCompleteScreenState
                   if (restriction?.hasTradeVeto == true)
                     _pill('CONSENT', _amber),
                 ],
-                control: _routeMenu(player.id, team),
+                control: IconButton(
+                  tooltip: routes[player.id] != null ? 'Remove from trade' : 'Add to trade',
+                  onPressed: restriction != null &&
+                          tradeDate.isBefore(DateTime.parse(restriction.eligibleDate))
+                      ? null
+                      : () => setState(() {
+                            if (routes[player.id] != null) {
+                              routes.remove(player.id);
+                            } else {
+                              final destination = _defaultDestination(team);
+                              if (destination != null) routes[player.id] = destination;
+                            }
+                          }),
+                  icon: Icon(
+                    routes[player.id] != null
+                        ? Icons.check_circle_rounded
+                        : Icons.add_circle_outline_rounded,
+                    color: routes[player.id] != null ? _green : _cyan,
+                  ),
+                ),
               );
-            },
+                  },
+                ),
+              ],
+            ),
           ),
+        ),
       ],
     );
   }
 
   Widget _draftTab(String team) {
     var assets = draftRepository.forTeam(team);
-    if (routedOnly) {
-      assets = assets.where((asset) => routes.containsKey(asset.id)).toList();
-    }
 
-    return Column(
-      children: [
-        for (final asset in assets)
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 430),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            for (final asset in assets)
           _assetRow(
             title: '${asset.year} · ${asset.round == 1 ? '1st' : '2nd'}',
             subtitle: asset.description,
@@ -460,20 +381,122 @@ class _ProductTradeMachineCompleteScreenState
               if (asset.swapRight) _pill('SWAP', _cyan),
               if (asset.conditional) _pill('CONDITIONAL', _amber),
             ],
-            control: asset.tradable ? _routeMenu(asset.id, team) : null,
+            control: asset.tradable
+                ? IconButton(
+                    tooltip: routes[asset.id] != null ? 'Remove from trade' : 'Add to trade',
+                    onPressed: () => setState(() {
+                      if (routes[asset.id] != null) {
+                        routes.remove(asset.id);
+                      } else {
+                        final destination = _defaultDestination(team);
+                        if (destination != null) routes[asset.id] = destination;
+                      }
+                    }),
+                    icon: Icon(
+                      routes[asset.id] != null
+                          ? Icons.check_circle_rounded
+                          : Icons.add_circle_outline_rounded,
+                      color: routes[asset.id] != null ? _green : _cyan,
+                    ),
+                  )
+                : null,
           ),
-        if (assets.isEmpty)
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'No draft rights under the current filter.',
-              style: TextStyle(color: _muted),
-            ),
-          ),
-      ],
+            if (assets.isEmpty)
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'No draft rights under the current filter.',
+                  style: TextStyle(color: _muted),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
+  Widget _packagePanel(
+    List<NbaTradeContract> players,
+    List<NbaFutureDraftAsset> picks,
+    TeamTradeSummary? summary,
+    String team,
+  ) {
+    final cash = cashAmounts[team] ?? 0;
+    final hasAssets = players.isNotEmpty || picks.isNotEmpty || cash > 0;
+    final incoming = summary?.incomingSalary ?? 0;
+    final outgoing = summary?.outgoingSalary ?? 0;
+    final maxIncoming = summary?.maximumIncomingSalary ?? 0;
+    final difference = incoming - maxIncoming;
+    final matchingOk = !_hasTradeActivity || difference <= 1;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _panel2,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('OUTGOING PACKAGE', style: TextStyle(color: _muted, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: .8)),
+          const SizedBox(height: 8),
+          if (!hasAssets)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Text('Select players or picks below.', style: TextStyle(color: _muted, fontSize: 11)),
+            ),
+          for (final player in players)
+            _selectedAsset(player.player, _money(player.salaryFor('2026-27')), () => setState(() => routes.remove(player.id))),
+          for (final pick in picks)
+            _selectedAsset(pick.label, 'Draft asset', () => setState(() => routes.remove(pick.id))),
+          if (cash > 0)
+            _selectedAsset('Cash considerations', _money(cash), () => setState(() { cashAmounts.remove(team); cashDestinations.remove(team); })),
+          const SizedBox(height: 8),
+          const Divider(height: 1, color: _line),
+          const SizedBox(height: 9),
+          Row(children: [
+            Expanded(child: _metric('Sending', _money(outgoing))),
+            Expanded(child: _metric('Receiving', _money(incoming))),
+            Expanded(child: _metric('Max incoming', _money(maxIncoming))),
+          ]),
+          const SizedBox(height: 9),
+          Row(children: [
+            Icon(matchingOk ? Icons.check_circle_rounded : Icons.cancel_rounded, size: 16, color: matchingOk ? _green : _red),
+            const SizedBox(width: 6),
+            Expanded(child: Text(
+              !_hasTradeActivity ? 'Add assets to begin salary matching.' : matchingOk ? 'Salary matching works for this team.' : '${_money(difference)} too much incoming salary.',
+              style: TextStyle(color: matchingOk ? _green : _red, fontSize: 10, fontWeight: FontWeight.w800),
+            )),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _selectedAsset(String label, String trailing, VoidCallback remove) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+      decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(9), border: Border.all(color: _line)),
+      child: Row(children: [
+        const Icon(Icons.swap_horiz_rounded, color: _cyan, size: 16),
+        const SizedBox(width: 7),
+        Expanded(child: Text(label, style: const TextStyle(color: _text, fontWeight: FontWeight.w800))),
+        Text(trailing, style: const TextStyle(color: _muted, fontSize: 9, fontWeight: FontWeight.w800)),
+        IconButton(visualDensity: VisualDensity.compact, tooltip: 'Remove', onPressed: remove, icon: const Icon(Icons.close_rounded, size: 16)),
+      ]),
+    );
+  }
+
+  Widget _metric(String label, String value) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(value, style: const TextStyle(color: _text, fontWeight: FontWeight.w900, fontSize: 12)),
+      Text(label, style: const TextStyle(color: _muted, fontSize: 8, fontWeight: FontWeight.w800)),
+    ]);
+  }
+
+  String? _defaultDestination(String originTeam) => teams.where((team) => team != originTeam).firstOrNull;
   Widget _exceptionsTab(String team, double totalCap) {
     final signing =
         NbaTradeExceptionReference202627.signingExceptions[team] ??
@@ -693,35 +716,6 @@ class _ProductTradeMachineCompleteScreenState
           ],
         ],
       ),
-    );
-  }
-
-  Widget _routeMenu(String assetId, String originTeam) {
-    final validDestinations = teams.where((team) => team != originTeam).toList();
-    final current = validDestinations.contains(routes[assetId])
-        ? routes[assetId]
-        : null;
-    return DropdownButtonFormField<String>(
-      value: current,
-      isExpanded: true,
-      hint: const Text(
-        'Route to…',
-        overflow: TextOverflow.ellipsis,
-      ),
-      isDense: true,
-      items: [
-        for (final team in validDestinations)
-          DropdownMenuItem(value: team, child: Text(team)),
-      ],
-      onChanged: (value) {
-        setState(() {
-          if (value == null) {
-            routes.remove(assetId);
-          } else {
-            routes[assetId] = value;
-          }
-        });
-      },
     );
   }
 
@@ -1053,110 +1047,68 @@ class _ProductTradeMachineCompleteScreenState
     );
   }
 
-  Widget _validation(TradeValidationReport report) {
-    return _panelBox(
-      Column(
+  Widget _tradeResult(TradeValidationReport report) {
+    if (!_hasTradeActivity) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _panel,
+          border: Border.all(color: _line),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.swap_horiz_rounded, color: _cyan),
+            SizedBox(width: 10),
+            Text(
+              'Select assets above to start building a trade.',
+              style: TextStyle(color: _text, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+      );
+    }
+    final errors = report.findings.where((finding) => finding.severity == TradeValidationSeverity.error).toList();
+    final warnings = report.findings.where((finding) => finding.severity == TradeValidationSeverity.warning).toList();
+    final ok = errors.isEmpty;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: (ok ? _green : _red).withValues(alpha: .08),
+        border: Border.all(color: (ok ? _green : _red).withValues(alpha: .6)),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(child: _section('CBA / STRUCTURAL VALIDATION')),
-              _pill(
-                report.isValid ? 'PASS' : '${report.errorCount} ERRORS',
-                report.isValid ? _green : _red,
-              ),
-              const SizedBox(width: 6),
-              _pill(
-                '${report.warningCount} WARNINGS',
-                report.warningCount == 0 ? _green : _amber,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          for (final finding in report.findings)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Text(
-                '${finding.code}: ${finding.message}',
-                style: TextStyle(
-                  color: finding.severity == TradeValidationSeverity.error
-                      ? _red
-                      : finding.severity == TradeValidationSeverity.warning
-                          ? _amber
-                          : _muted,
-                  height: 1.3,
+          Icon(ok ? Icons.check_circle_rounded : Icons.cancel_rounded, color: ok ? _green : _red),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ok ? 'Trade works' : 'Trade does not work',
+                  style: TextStyle(color: ok ? _green : _red, fontSize: 18, fontWeight: FontWeight.w900),
                 ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _financials(TradeValidationReport report) {
-    return _panelBox(
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _section('POST-TRADE FINANCIALS'),
-          const SizedBox(height: 8),
-          for (final entry in report.teamSummaries.entries)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 7),
-              padding: const EdgeInsets.all(9),
-              decoration: BoxDecoration(
-                color: _panel2,
-                border: Border.all(color: _line),
-              ),
-              child: Wrap(
-                spacing: 20,
-                runSpacing: 8,
-                children: [
-                  _mini(entry.key, 'TEAM'),
-                  _mini(_money(entry.value.outgoingSalary), 'MATCH OUT'),
-                  _mini(_money(entry.value.incomingSalary), 'MATCH IN'),
-                  _mini(
-                    _money(entry.value.maximumIncomingSalary),
-                    'BASE MAX IN',
-                  ),
-                  _mini(_money(entry.value.postTradeSalary), 'POST CAP'),
-                  if (entry.value.cashSent > 0)
-                    _mini(_money(entry.value.cashSent), 'CASH SENT'),
-                  _mini('${entry.value.projectedRosterPlayers}', 'ROSTER'),
-                  _mini(entry.value.apronStatus.toUpperCase(), 'STATUS'),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sourceNotes() {
-    return _panelBox(
-      const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'SOURCE / ACCOUNTING NOTES',
-            style: TextStyle(
-              color: _cyan,
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              letterSpacing: .9,
+                const SizedBox(height: 4),
+                Text(
+                  ok
+                      ? (warnings.isEmpty
+                          ? 'Salary matching and modeled CBA checks pass.'
+                          : 'The trade passes with ${warnings.length} item(s) to review.')
+                      : errors.first.message,
+                  style: const TextStyle(color: _text, fontSize: 11, height: 1.35),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: 7),
-          Text(
-            'Sports Terminal uses the frozen 2026-27 front-office dataset as its transaction authority: salary sheets, guarantees, trade eligibility, kickers, draft rights, TPE/DPE balances, signing exceptions, hard-cap triggers, cash limits and tax context. The Trade Machine makes its determination from those static records and the selected transaction date; no live API calls are used.',
-            style: TextStyle(color: _muted, height: 1.45),
-          ),
         ],
       ),
     );
   }
-
   void _repairTeams(List<String> allTeams) {
     final valid = teams.where(allTeams.contains).toList();
     for (final fallback in const ['BOS', 'PHI']) {
