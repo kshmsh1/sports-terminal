@@ -68,6 +68,8 @@ def _player_seed_row(row: dict[str, Any]) -> dict[str, Any]:
         "effective_field_goal_percentage": row.get("efg_pct"),
         "per": row.get("per"),
         "win_shares": row.get("ws"),
+        "offensive_win_shares": row.get("ows"),
+        "defensive_win_shares": row.get("dws"),
         "win_shares_per_48": row.get("ws48"),
         "offensive_bpm": row.get("obpm"),
         "defensive_bpm": row.get("dbpm"),
