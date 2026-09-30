@@ -11,7 +11,7 @@ from typing import Any, Iterable
 ROOT = Path(__file__).resolve().parents[1] if Path(__file__).resolve().parent.name == "tools" else Path.cwd()
 DEFAULT_RAW_ROOTS = (ROOT / "raw/nba_com_stats", ROOT.parent / "raw/nba_com_stats")
 DEFAULT_OUTPUT = ROOT / "web/data/nba_static"
-CONTRACT = "sports-terminal-nba-com-part1-season-enrichment-v1"
+CONTRACT = "sports-terminal-nba-com-part1-season-enrichment-v2"
 
 PLAYER_ID_KEYS = ("PLAYER_ID", "CLOSE_DEF_PERSON_ID", "PERSON_ID", "playerId", "personId")
 PLAYER_NAME_KEYS = ("PLAYER_NAME", "PLAYER", "playerName")
@@ -141,15 +141,198 @@ def canonical_totals(target: dict[str, Any]) -> tuple[float | None, float | None
     return fga, three_a
 
 
+
+def _ratio(numerator: Any, denominator: Any) -> float | None:
+    top, bottom = number(numerator), number(denominator)
+    if top is None or bottom in (None, 0):
+        return None
+    return top / bottom
+
+
+def _sum(rows: list[dict[str, Any]], field: str) -> float:
+    return sum(number(row.get(field)) or 0.0 for row in rows)
+
+
+def _synthesized_player_profiles(
+    global_profiles: list[dict[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    by_nba_id: dict[str, dict[str, Any]] = {}
+    by_name: dict[str, dict[str, Any]] = {}
+    duplicate_names: set[str] = set()
+    for profile in global_profiles:
+        nba_id = profile.get("nba_id")
+        if nba_id not in (None, ""):
+            by_nba_id[str(nba_id)] = profile
+        token = name_token(profile.get("canonical_name") or profile.get("player_name"))
+        if token:
+            if token in by_name:
+                duplicate_names.add(token)
+            else:
+                by_name[token] = profile
+    for token in duplicate_names:
+        by_name.pop(token, None)
+    return by_nba_id, by_name
+
+
+def synthesize_player_season_totals(
+    *,
+    roots: list[Path],
+    season: str,
+    season_type: str,
+    global_profiles: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], str]:
+    """Build a source-backed season table when the canonical playoff shard is empty.
+
+    Recent playoff seasons can exist in NBA.com captures before they exist in the
+    historical Basketball-Reference-style canonical source. Aggregate the
+    already-captured NBA.com player game log rows rather than leaving Stats and
+    Advanced Stats empty. No network request is performed here.
+    """
+    source_path: Path | None = None
+    source_label = ""
+    for surface, variant in (
+        ("players_game_logs", "base"),
+        ("players_boxscores_traditional", "default"),
+    ):
+        candidate = capture_path(roots, surface, variant, season, season_type)
+        if candidate is not None:
+            metadata = metadata_for(candidate)
+            if str(metadata.get("validation_status") or "") == "success":
+                source_path = candidate
+                source_label = f"{surface}/{variant}"
+                break
+    if source_path is None:
+        return [], [], ""
+
+    raw_rows = rows_for(source_path)
+    if not raw_rows:
+        return [], [], source_label
+
+    profile_by_id, profile_by_name = _synthesized_player_profiles(global_profiles)
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    seen_games: set[tuple[str, str]] = set()
+    for row in raw_rows:
+        nba_id = first(row, PLAYER_ID_KEYS)
+        player_name = first(row, PLAYER_NAME_KEYS)
+        token = str(nba_id or "").strip() or name_token(player_name)
+        if not token:
+            continue
+        game_id = str(first(row, ("GAME_ID", "gameId", "game_id")) or "").strip()
+        dedupe = (token, game_id)
+        if game_id and dedupe in seen_games:
+            continue
+        if game_id:
+            seen_games.add(dedupe)
+        grouped.setdefault(token, []).append(row)
+
+    season_rows: list[dict[str, Any]] = []
+    profile_rows: dict[str, dict[str, Any]] = {}
+    normalized_type = "playoffs" if "play" in season_type.lower() else "regular"
+
+    for token, player_rows in grouped.items():
+        first_row = player_rows[0]
+        nba_id = first(first_row, PLAYER_ID_KEYS)
+        player_name = str(first(first_row, PLAYER_NAME_KEYS) or "").strip()
+        profile = (
+            profile_by_id.get(str(nba_id))
+            if nba_id not in (None, "")
+            else None
+        ) or profile_by_name.get(name_token(player_name))
+
+        canonical_id = str(
+            (profile or {}).get("player_key")
+            or (profile or {}).get("player_id")
+            or (f"nba_{nba_id}" if nba_id not in (None, "") else f"nba_name_{name_token(player_name)}")
+        )
+        canonical_name = str((profile or {}).get("canonical_name") or player_name)
+        position = str((profile or {}).get("primary_position") or "")
+        teams = sorted({
+            str(first(row, ("TEAM_ABBREVIATION", "TEAM_ABBR", "TEAM")) or "").strip()
+            for row in player_rows
+            if str(first(row, ("TEAM_ABBREVIATION", "TEAM_ABBR", "TEAM")) or "").strip()
+        })
+
+        games = len(player_rows)
+        fgm = _sum(player_rows, "FGM")
+        fga = _sum(player_rows, "FGA")
+        three_pm = _sum(player_rows, "FG3M")
+        three_pa = _sum(player_rows, "FG3A")
+        ftm = _sum(player_rows, "FTM")
+        fta = _sum(player_rows, "FTA")
+        two_pm = max(0.0, fgm - three_pm)
+        two_pa = max(0.0, fga - three_pa)
+        points = _sum(player_rows, "PTS")
+
+        season_rows.append({
+            "player_id": canonical_id,
+            "id": canonical_id,
+            "nba_id": nba_id,
+            "player_label": canonical_name,
+            "player_name": canonical_name,
+            "team_ids": ",".join(teams),
+            "position": position,
+            "season_type": normalized_type,
+            "games": games,
+            "minutes": _sum(player_rows, "MIN"),
+            "points": points,
+            "rebounds": _sum(player_rows, "REB"),
+            "offensive_rebounds": _sum(player_rows, "OREB"),
+            "defensive_rebounds": _sum(player_rows, "DREB"),
+            "assists": _sum(player_rows, "AST"),
+            "steals": _sum(player_rows, "STL"),
+            "blocks": _sum(player_rows, "BLK"),
+            "turnovers": _sum(player_rows, "TOV"),
+            "personal_fouls": _sum(player_rows, "PF"),
+            "field_goals_made": fgm,
+            "field_goal_attempts": fga,
+            "field_goal_percentage": _ratio(fgm, fga),
+            "two_pointers_made": two_pm,
+            "two_point_attempts": two_pa,
+            "two_point_percentage": _ratio(two_pm, two_pa),
+            "three_pointers_made": three_pm,
+            "three_point_attempts": three_pa,
+            "three_point_percentage": _ratio(three_pm, three_pa),
+            "free_throws_made": ftm,
+            "free_throw_attempts": fta,
+            "free_throw_percentage": _ratio(ftm, fta),
+            "effective_field_goal_percentage": _ratio(fgm + 0.5 * three_pm, fga),
+            "true_shooting_percentage": _ratio(points, 2 * (fga + 0.44 * fta)),
+            "plus_minus": _sum(player_rows, "PLUS_MINUS"),
+            "primary_source": f"nba_com/{source_label}",
+            "source_count": 1,
+            "synthetic_aggregate": True,
+            "nba_com_synthesized_season_row": True,
+        })
+        profile_rows[canonical_id] = {
+            "player_id": canonical_id,
+            "id": canonical_id,
+            "player_name": canonical_name,
+            "display_name": canonical_name,
+            "position": position,
+            "nba_id": nba_id,
+        }
+
+    season_rows.sort(key=lambda row: str(row.get("player_name") or ""))
+    return season_rows, list(profile_rows.values()), source_label
+
+
 def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: dict[str, Any]) -> None:
     if surface == "players_clutch":
         if variant == "base":
             for key, field in {
-                "clutch_ppg": "PTS", "clutch_rpg": "REB", "clutch_apg": "AST",
-                "clutch_spg": "STL", "clutch_bpg": "BLK",
+                "clutch_mpg": "MIN", "clutch_ppg": "PTS", "clutch_rpg": "REB",
+                "clutch_apg": "AST", "clutch_spg": "STL", "clutch_bpg": "BLK",
+                "clutch_tpg": "TOV", "clutch_pf_pg": "PF",
+                "clutch_fgm": "FGM", "clutch_fga": "FGA",
+                "clutch_three_pm": "FG3M", "clutch_three_pa": "FG3A",
+                "clutch_ftm": "FTM", "clutch_fta": "FTA",
             }.items():
                 publish_per_game(target, key, source, field)
-            for key, field in {"clutch_fg_pct": "FG_PCT", "clutch_three_pct": "FG3_PCT", "clutch_ft_pct": "FT_PCT"}.items():
+            for key, field in {
+                "clutch_fg_pct": "FG_PCT",
+                "clutch_three_pct": "FG3_PCT",
+                "clutch_ft_pct": "FT_PCT",
+            }.items():
                 publish(target, key, source.get(field))
         elif variant == "advanced":
             publish(target, "clutch_net_rating", source.get("NET_RATING"))
@@ -212,7 +395,7 @@ def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: di
             }.items():
                 publish_per_game(target, key, source, field)
         elif variant == "speeddistance":
-            publish(target, "distance_traveled", source.get("DIST_MILES"))
+            publish_per_game(target, "distance_traveled", source, "DIST_MILES")
             publish(target, "average_speed", source.get("AVG_SPEED"))
 
     if surface == "players_defense_dashboard":
@@ -222,8 +405,12 @@ def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: di
             publish(target, "dfga", first(source, ("D_FGA", "FGA")))
         elif variant == "3_pointers":
             publish(target, "three_dfg_pct", first(source, ("FG3_PCT", "D_FG_PCT")))
+            publish(target, "three_dfgm", first(source, ("FG3M", "D_FGM", "FGM")))
+            publish(target, "three_dfga", first(source, ("FG3A", "D_FGA", "FGA")))
         elif variant == "less_than_6ft":
             publish(target, "rim_dfg_pct", first(source, ("LT_06_PCT", "D_FG_PCT")))
+            publish(target, "rim_dfgm", first(source, ("FGM_LT_06", "D_FGM", "FGM")))
+            publish(target, "rim_dfga", first(source, ("FGA_LT_06", "D_FGA", "FGA")))
 
     if surface == "players_shot_dashboard":
         if variant == "general_overall":
@@ -280,6 +467,10 @@ def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: di
             pct = source.get(f"{zone}__FG_PCT")
             publish_ratio(target, freq_key, attempts, fga)
             publish(target, pct_key, pct)
+        publish(target, "rim_fgm", source.get("Restricted Area__FGM"))
+        publish(target, "rim_fga", source.get("Restricted Area__FGA"))
+        publish(target, "midrange_fgm", source.get("Mid-Range__FGM"))
+        publish(target, "midrange_fga", source.get("Mid-Range__FGA"))
 
         # "Paint" in the catalog means the whole painted area, so combine the
         # Restricted Area and non-RA paint buckets instead of silently treating
@@ -305,7 +496,7 @@ def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: di
         for key, field in {
             "deflections_pg": "DEFLECTIONS", "charges_drawn_pg": "CHARGES_DRAWN",
             "contested_shots_pg": "CONTESTED_SHOTS", "loose_balls_recovered_pg": "LOOSE_BALLS_RECOVERED",
-            "screen_apg": "SCREEN_ASSISTS",
+            "screen_apg": "SCREEN_ASSISTS", "box_outs_pg": "BOX_OUTS",
         }.items():
             publish_per_game(target, key, source, field)
         # NBA exposes PCT_BOX_OUTS_REB as BOX_OUT_PLAYER_REBS / BOX_OUTS:
@@ -346,11 +537,33 @@ def capture_inventory(roots: list[Path], season: str, season_type: str) -> list[
     return [(surface, variant, path) for (surface, variant), path in sorted(found.items())]
 
 
-def enrich_payload(payload: dict[str, Any], *, season: str, season_type: str, roots: list[Path]) -> dict[str, Any]:
+def enrich_payload(
+    payload: dict[str, Any],
+    *,
+    season: str,
+    season_type: str,
+    roots: list[Path],
+    global_profiles: list[dict[str, Any]],
+) -> dict[str, Any]:
     totals = payload.get("player_season_totals")
     if not isinstance(totals, list):
-        return payload
+        totals = []
     targets = [row for row in totals if isinstance(row, dict)]
+    synthesized_profiles: list[dict[str, Any]] = []
+    synthesized_source = ""
+    if not targets:
+        targets, synthesized_profiles, synthesized_source = synthesize_player_season_totals(
+            roots=roots,
+            season=season,
+            season_type=season_type,
+            global_profiles=global_profiles,
+        )
+        if targets:
+            payload["player_season_totals"] = targets
+            existing_profiles = payload.get("players")
+            if not isinstance(existing_profiles, list) or not existing_profiles:
+                payload["players"] = synthesized_profiles
+
     for row in targets:
         clear_previous(row)
 
@@ -462,6 +675,8 @@ def enrich_payload(payload: dict[str, Any], *, season: str, season_type: str, ro
         "unmatched_reasons": unmatched_reasons,
         "unmatched_examples": unmatched_examples,
         "enriched_players": sum(1 for row in targets if row.get("nba_com_part1_sources")),
+        "synthesized_player_rows": sum(1 for row in targets if row.get("nba_com_synthesized_season_row")),
+        "synthesized_source": synthesized_source,
         "unmatched_policy": "reported-not-fabricated",
     }
     return payload
@@ -491,11 +706,24 @@ def enrich_corpus(output: Path, *, roots: list[Path], force: bool = False) -> di
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     fp = fingerprint(roots)
     previous = manifest.get("nba_com_part1_enrichment") if isinstance(manifest, dict) else None
-    if not force and isinstance(previous, dict) and previous.get("fingerprint") == fp:
+    if (
+        not force
+        and isinstance(previous, dict)
+        and previous.get("contract") == CONTRACT
+        and previous.get("fingerprint") == fp
+    ):
         return previous
 
+    player_index_path = output / "players/index.json"
+    try:
+        global_profiles = json.loads(player_index_path.read_text(encoding="utf-8"))
+    except Exception:
+        global_profiles = []
+    if not isinstance(global_profiles, list):
+        global_profiles = []
+
     files = sorted((output / "seasons").glob("*/regular.json")) + sorted((output / "seasons").glob("*/playoffs.json"))
-    files_enriched = players_enriched = matched = unmatched = 0
+    files_enriched = players_enriched = synthesized = matched = unmatched = 0
     for path in files:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
@@ -504,11 +732,18 @@ def enrich_corpus(output: Path, *, roots: list[Path], force: bool = False) -> di
         if not isinstance(payload, dict):
             continue
         season, season_type = path.parent.name, path.stem
-        enrich_payload(payload, season=season, season_type=season_type, roots=roots)
+        enrich_payload(
+            payload,
+            season=season,
+            season_type=season_type,
+            roots=roots,
+            global_profiles=[row for row in global_profiles if isinstance(row, dict)],
+        )
         info = payload.get("nba_com_part1_enrichment") or {}
         if int(info.get("enriched_players") or 0):
             files_enriched += 1
         players_enriched += int(info.get("enriched_players") or 0)
+        synthesized += int(info.get("synthesized_player_rows") or 0)
         matched += int(info.get("matched_rows") or 0)
         unmatched += int(info.get("unmatched_rows") or 0)
         write_json(path, payload)
@@ -519,6 +754,7 @@ def enrich_corpus(output: Path, *, roots: list[Path], force: bool = False) -> di
         "season_files_scanned": len(files),
         "season_files_enriched": files_enriched,
         "enriched_player_rows": players_enriched,
+        "synthesized_player_rows": synthesized,
         "matched_source_rows": matched,
         "unmatched_source_rows": unmatched,
         "runtime_api_required": False,

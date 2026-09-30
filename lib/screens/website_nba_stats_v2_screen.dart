@@ -35,7 +35,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
   String _team = 'All';
   String _position = 'All';
   int _minGp = 50;
-  int _minMpg = 0;
+  int _minMpg = 20;
   String _sortKey = 'pts';
   bool _descending = true;
   final Set<String> _expanded = <String>{};
@@ -89,6 +89,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
     setState(() {
       _seasonType = next;
       _minGp = next == NbaStatsSeasonType.regular ? 50 : 0;
+      _minMpg = 20;
       _team = 'All';
       _page = 1;
       _snapshotFuture = _loadSnapshot();
@@ -101,7 +102,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
       _team = 'All';
       _position = 'All';
       _minGp = _seasonType == NbaStatsSeasonType.regular ? 50 : 0;
-      _minMpg = 0;
+      _minMpg = 20;
       _page = 1;
     });
   }
@@ -121,7 +122,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
 
   Widget _columnHeader(_StatColumn column) {
     if (column.children.isEmpty) {
-      return Text(column.label, maxLines: 1, overflow: TextOverflow.ellipsis);
+      return Text(column.label, maxLines: 1);
     }
     final open = _expanded.contains(column.key);
     return InkWell(
@@ -253,11 +254,11 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
     final tableColumns = <WebsiteStickyStatsColumn>[
       const WebsiteStickyStatsColumn(label: Text('Player'), width: 164),
       const WebsiteStickyStatsColumn(label: Text('Team'), width: 58),
-      const WebsiteStickyStatsColumn(label: Text('Pos'), width: 48),
+      const WebsiteStickyStatsColumn(label: Text('Position'), width: 72),
       for (final visible in visibleColumns)
         WebsiteStickyStatsColumn(
           label: _columnHeader(visible.column),
-          width: visible.child ? 58 : 61,
+          width: _statColumnWidth(visible.column, child: visible.child),
           numeric: true,
           backgroundColor: visible.child ? childTint : null,
           onTap: () => setState(() {
@@ -304,7 +305,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
 
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1510),
+        constraints: const BoxConstraints(maxWidth: 1900),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -435,8 +436,8 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
             const SizedBox(height: 12),
             Text(
               _seasonType == NbaStatsSeasonType.regular
-                  ? 'Default qualification: 50+ games. Use the triangle beside RPG, FG%, 3P% or FT% to reveal component columns.'
-                  : 'Playoff statistics use the same immutable static season files as the regular-season table. The GP filter opens automatically because no playoff sample reaches 50 games.',
+                  ? 'Default qualification: 50+ games and 20+ MPG. Use the triangle beside RPG, FG%, 3P% or FT% to reveal component columns.'
+                  : 'Playoff statistics use the same immutable static season files as the regular-season table. The GP filter opens automatically for postseason samples; the default minutes qualification remains 20+ MPG.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: colors.onSurfaceVariant,
                   ),
@@ -482,7 +483,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
     final header = [
       'Player',
       'Team',
-      'Pos',
+      'Position',
       ...columns.map((item) => item.column.label),
     ];
     final lines = <String>[_csvLine(header)];
@@ -683,12 +684,14 @@ const _baseColumns = <_StatColumn>[
       _StatColumn('fga', 'FGA'),
     ],
   ),
-  _StatColumn('three_pm', '3PM'),
-  _StatColumn('three_pa', '3PA'),
   _StatColumn(
     'three_pct',
     '3P%',
     percent: true,
+    children: [
+      _StatColumn('three_pm', '3PM'),
+      _StatColumn('three_pa', '3PA'),
+    ],
   ),
   _StatColumn(
     'ft_pct',
@@ -700,6 +703,12 @@ const _baseColumns = <_StatColumn>[
     ],
   ),
 ];
+
+double _statColumnWidth(_StatColumn column, {required bool child}) {
+  final arrowAllowance = column.children.isEmpty ? 0.0 : 30.0;
+  final estimated = column.label.length * 8.0 + 24 + arrowAllowance;
+  return math.max(child ? 64.0 : 70.0, math.min(estimated, 190.0));
+}
 
 class _StatsLoading extends StatelessWidget {
   const _StatsLoading();

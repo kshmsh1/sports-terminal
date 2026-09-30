@@ -43,7 +43,7 @@ class _WebsiteNbaAdvancedStatsScreenState
   String _team = 'All';
   String _position = 'All';
   int _minGp = 50;
-  int _minMpg = 0;
+  int _minMpg = 20;
   String _sortKey = 'pts';
   bool _descending = true;
   final Set<String> _expanded = <String>{};
@@ -97,6 +97,7 @@ class _WebsiteNbaAdvancedStatsScreenState
     setState(() {
       _seasonType = next;
       _minGp = next == NbaStatsSeasonType.regular ? 50 : 0;
+      _minMpg = 20;
       _team = 'All';
       _page = 1;
       _snapshotFuture = _loadSnapshot();
@@ -120,7 +121,7 @@ class _WebsiteNbaAdvancedStatsScreenState
       _team = 'All';
       _position = 'All';
       _minGp = _seasonType == NbaStatsSeasonType.regular ? 50 : 0;
-      _minMpg = 0;
+      _minMpg = 20;
       _page = 1;
     });
   }
@@ -141,7 +142,7 @@ class _WebsiteNbaAdvancedStatsScreenState
   Widget _metricHeader(_Metric metric) {
     final label = metric.displayLabel(_basis);
     if (metric.children.isEmpty) {
-      return Text(label, maxLines: 1, overflow: TextOverflow.ellipsis);
+      return Text(label, maxLines: 1);
     }
     final open = _expanded.contains(metric.key);
     return InkWell(
@@ -161,13 +162,7 @@ class _WebsiteNbaAdvancedStatsScreenState
                 : Icons.arrow_right_rounded,
             size: 26,
           ),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+          Text(label, maxLines: 1),
         ],
       ),
     );
@@ -272,11 +267,11 @@ class _WebsiteNbaAdvancedStatsScreenState
     final tableColumns = <WebsiteStickyStatsColumn>[
       const WebsiteStickyStatsColumn(label: Text('Player'), width: 164),
       const WebsiteStickyStatsColumn(label: Text('Team'), width: 58),
-      const WebsiteStickyStatsColumn(label: Text('Pos'), width: 48),
+      const WebsiteStickyStatsColumn(label: Text('Position'), width: 72),
       for (final item in visibleMetrics)
         WebsiteStickyStatsColumn(
           label: _metricHeader(item.metric),
-          width: item.child ? 67 : 70,
+          width: _metricColumnWidth(item.metric, _basis, child: item.child),
           numeric: true,
           backgroundColor: item.child ? childTint : null,
           onTap: () => setState(() {
@@ -324,7 +319,7 @@ class _WebsiteNbaAdvancedStatsScreenState
 
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1510),
+        constraints: const BoxConstraints(maxWidth: 1900),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -362,7 +357,7 @@ class _WebsiteNbaAdvancedStatsScreenState
                       onSelectionChanged: (value) => _changeSegment(value.first),
                     ),
                     SizedBox(
-                      width: 148,
+                      width: 165,
                       child: DropdownButtonFormField<NbaStatsBasis>(
                         initialValue: _basis,
                         decoration: const InputDecoration(labelText: 'Rate', isDense: true),
@@ -376,7 +371,7 @@ class _WebsiteNbaAdvancedStatsScreenState
                         },
                       ),
                     ),
-                    _StringDropdown(label: 'Stat group', value: _category, values: [for (final item in _categories) item.name], width: 205, onChanged: _selectCategory),
+                    _StringDropdown(label: 'Stat group', value: _category, values: [for (final item in _categories) item.name], width: 245, onChanged: _selectCategory),
                     SizedBox(width: 220, child: TextField(controller: _search, onChanged: (_) => setState(() => _page = 1), decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'Search players', isDense: true))),
                     _StringDropdown(label: 'Team', value: _team, values: teams.toList()..sort(), onChanged: (value) => setState(() { _team = value; _page = 1; })),
                     _StringDropdown(label: 'Position', value: _position, values: const ['All', 'PG', 'SG', 'SF', 'PF', 'C'], width: 112, onChanged: (value) => setState(() { _position = value; _page = 1; })),
@@ -412,7 +407,7 @@ class _WebsiteNbaAdvancedStatsScreenState
   }
 
   Future<void> _copyCsv(BuildContext context, List<NbaStatsRow> rows, List<_VisibleMetric> metrics) async {
-    final header = ['Player','Team','Pos',...metrics.map((item) => item.metric.displayLabel(_basis))];
+    final header = ['Player','Team','Position',...metrics.map((item) => item.metric.displayLabel(_basis))];
     final lines = <String>[_csvLine(header)];
     for (final row in rows) {
       lines.add(_csvLine([row.player,row.team,row.position,for (final item in metrics) _formatMetric(_metricValue(row, item.metric.key, _basis),item.metric,_basis)]));
@@ -549,30 +544,34 @@ final _categories = <_Category>[
     countMetric('tov','TPG','Turnovers','TOV','Turnovers.'),
     countMetric('pf','PF PG','Personal Fouls','PF','Personal fouls.'),
     _Metric('fg_pct','FG%','Field-goal percentage.',percent:true,children:[childCount('fgm','FGM','Field Goals Made','FGM','Field goals made.'),childCount('fga','FGA','Field Goal Attempts','FGA','Field-goal attempts.')]),
-    countMetric('three_pm','3PM','Three-Pointers Made','3PM','Three-pointers made.'),
-    countMetric('three_pa','3PA','Three-Point Attempts','3PA','Three-point attempts.'),
-    const _Metric('three_pct','3P%','Three-point percentage.',percent:true),
+    _Metric('three_pct','3P%','Three-point percentage.',percent:true,children:[childCount('three_pm','3PM','Three-Pointers Made','3PM','Three-pointers made.'),childCount('three_pa','3PA','Three-Point Attempts','3PA','Three-point attempts.')]),
     _Metric('ft_pct','FT%','Free-throw percentage.',percent:true,children:[childCount('ftm','FTM','Free Throws Made','FTM','Free throws made.'),childCount('fta','FTA','Free Throw Attempts','FTA','Free-throw attempts.')]),
-    const _Metric('pace','Pace','Estimated possessions per 48 team minutes.'),
-    const _Metric('pie','PIE','NBA Player Impact Estimate.'),
     const _Metric('per','PER','Player Efficiency Rating.'),
-    const _Metric('bpm','BPM','Box Plus/Minus.',signed:true,children:[_Metric('obpm','OBPM','Offensive Box Plus/Minus.',signed:true),_Metric('dbpm','DBPM','Defensive Box Plus/Minus.',signed:true)]),
+    const _Metric('bpm','BPM','Box Plus/Minus.',signed:true,children:[_Metric('obpm','Offensive BPM','Offensive Box Plus/Minus.',signed:true),_Metric('dbpm','Defensive BPM','Defensive Box Plus/Minus.',signed:true)]),
     const _Metric('vorp','VORP','Value Over Replacement Player.'),
-    const _Metric('ws','WS','Win Shares.'),
+    _catalogMetric('ws'),
   ]),
-  _Category('Shooting & Efficiency','Scoring efficiency, shot mix and three-point production.',[
-    const _Metric('fg_pct','FG%','Field-goal percentage.',percent:true),
-    countMetric('three_pm','3PM','Three-Pointers Made','3PM','Three-pointers made.'),
-    countMetric('three_pa','3PA','Three-Point Attempts','3PA','Three-point attempts.'),
-    const _Metric('three_pct','3P%','Three-point percentage.',percent:true),
-    const _Metric('ft_pct','FT%','Free-throw percentage.',percent:true),
+  _Category('Shooting & Efficiency','Shooting percentages, shot-location efficiency and possession efficiency in one consolidated view.',[
+    _Metric('fg_pct','FG%','Field-goal percentage.',percent:true,children:[childCount('fgm','FGM','Field Goals Made','FGM','Field goals made.'),childCount('fga','FGA','Field Goal Attempts','FGA','Field-goal attempts.')]),
+    _catalogMetric('two_pct'),
+    _Metric('three_pct','3P%','Three-point percentage.',percent:true,children:[childCount('three_pm','3PM','Three-Pointers Made','3PM','Three-pointers made.'),childCount('three_pa','3PA','Three-Point Attempts','3PA','Three-point attempts.')]),
+    _Metric('ft_pct','FT%','Free-throw percentage.',percent:true,children:[childCount('ftm','FTM','Free Throws Made','FTM','Free throws made.'),childCount('fta','FTA','Free Throw Attempts','FTA','Free-throw attempts.')]),
+    _catalogMetric('rim_fg_pct'),
+    _catalogMetric('midrange_fg_pct'),
     const _Metric('efg_pct','eFG%','Effective field-goal percentage.',percent:true),
     const _Metric('ts_pct','TS%','True shooting percentage.',percent:true),
+    _catalogMetric('ftr'),
+    _catalogMetric('three_par'),
+    _catalogMetric('pps'),
+    _catalogMetric('pie'),
+    _catalogMetric('assisted_fg_pct'),
+    _catalogMetric('unassisted_fg_pct'),
+    _catalogMetric('assisted_ppg'),
+    _catalogMetric('unassisted_ppg'),
   ]),
   _catalogCategory('defense_hustle'),
   _catalogCategory('playmaking'),
   _catalogCategory('rebounding'),
-  _catalogCategory('efficiency'),
   _catalogCategory('impact'),
   _catalogCategory('aggregate'),
   _catalogCategory('movement'),
@@ -608,6 +607,13 @@ final _categories = <_Category>[
     countMetric('ftm','FTM PG','Free Throws Made','FTM','Free throws made.'),
   ]),
 ];
+
+double _metricColumnWidth(_Metric metric, NbaStatsBasis basis, {required bool child}) {
+  final label = metric.displayLabel(basis);
+  final arrowAllowance = metric.children.isEmpty ? 0.0 : 32.0;
+  final estimated = label.length * 7.8 + 26 + arrowAllowance;
+  return math.max(child ? 72.0 : 78.0, math.min(estimated, 320.0));
+}
 
 class _StatGlossary extends StatelessWidget {
   const _StatGlossary({required this.category, required this.basis});

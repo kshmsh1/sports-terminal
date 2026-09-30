@@ -4,6 +4,10 @@ enum NbaPercentageHeatMetric {
   fieldGoal,
   threePoint,
   freeThrow,
+  effectiveFieldGoal,
+  trueShooting,
+  assistTurnover,
+  boxOut,
   defensiveFieldGoal,
   rimDefensiveFieldGoal,
   threePointDefensiveFieldGoal,
@@ -49,7 +53,10 @@ Color? nbaPercentageHeatColor(
   double? rawValue,
 ) {
   if (rawValue == null || rawValue.isNaN || rawValue.isInfinite) return null;
-  final value = rawValue > 1.5 ? rawValue / 100 : rawValue;
+  final isPercentage = metric != NbaPercentageHeatMetric.assistTurnover;
+  final value = isPercentage && rawValue.abs() > 1.5
+      ? rawValue / 100
+      : rawValue;
 
   const darkGreen = Color(0xFF14532D);
   const green = Color(0xFF15803D);
@@ -71,6 +78,26 @@ Color? nbaPercentageHeatColor(
       if (value >= .88) return darkGreen;
       if (value >= .78) return green;
       if (value >= .70) return darkYellow;
+      return maroon;
+    case NbaPercentageHeatMetric.effectiveFieldGoal:
+      if (value >= .60) return darkGreen;
+      if (value >= .55) return green;
+      if (value >= .51) return darkYellow;
+      return maroon;
+    case NbaPercentageHeatMetric.trueShooting:
+      if (value >= .62) return darkGreen;
+      if (value >= .57) return green;
+      if (value >= .545) return darkYellow;
+      return maroon;
+    case NbaPercentageHeatMetric.assistTurnover:
+      if (value >= 3.00) return darkGreen;
+      if (value >= 2.00) return green;
+      if (value >= 1.30) return darkYellow;
+      return maroon;
+    case NbaPercentageHeatMetric.boxOut:
+      if (value >= .75) return darkGreen;
+      if (value >= .60) return green;
+      if (value >= .50) return darkYellow;
       return maroon;
     case NbaPercentageHeatMetric.defensiveFieldGoal:
       if (value < .43) return darkGreen;
@@ -96,16 +123,31 @@ NbaPercentageHeatMetric? nbaPercentageHeatMetricForKey(String key) {
     case 'fg_pct':
     case 'field_goal_pct':
     case 'field_goal_percentage':
+    case 'clutch_fg_pct':
       return NbaPercentageHeatMetric.fieldGoal;
     case 'three_pct':
     case 'fg3_pct':
     case 'three_point_pct':
     case 'three_point_percentage':
+    case 'clutch_three_pct':
       return NbaPercentageHeatMetric.threePoint;
     case 'ft_pct':
     case 'free_throw_pct':
     case 'free_throw_percentage':
+    case 'clutch_ft_pct':
       return NbaPercentageHeatMetric.freeThrow;
+    case 'efg_pct':
+    case 'effective_field_goal_pct':
+      return NbaPercentageHeatMetric.effectiveFieldGoal;
+    case 'ts_pct':
+    case 'true_shooting_pct':
+      return NbaPercentageHeatMetric.trueShooting;
+    case 'ast_to':
+    case 'ast_tov':
+      return NbaPercentageHeatMetric.assistTurnover;
+    case 'box_out_pct':
+    case 'boxout_pct':
+      return NbaPercentageHeatMetric.boxOut;
     case 'd_fg_pct':
     case 'dfg_pct':
     case 'defensive_field_goal_pct':

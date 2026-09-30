@@ -22,11 +22,18 @@ void main() {
     final repository = File(
       'lib/services/website_nba_static_repository.dart',
     ).readAsStringSync();
+    final loader = File(
+      'lib/services/sports_terminal_static_json_loader.dart',
+    ).readAsStringSync();
+    final config = File(
+      'lib/services/sports_terminal_static_config.dart',
+    ).readAsStringSync();
     final facade =
         File('lib/services/website_nba_api_service.dart').readAsStringSync();
 
-    expect(repository, contains("basePath = 'data/nba_static'"));
-    expect(repository, contains('Uri.base.resolve'));
+    expect(repository, contains('sportsTerminalStaticPath()'));
+    expect(loader, contains('Uri.base.resolve'));
+    expect(config, contains("defaultValue: 'data/nba_static'"));
     expect(facade, contains('WebsiteNbaStaticRepository'));
     expect(facade, isNot(contains('LaunchBackendTransport')));
     expect(facade, isNot(contains('http://127.0.0.1')));

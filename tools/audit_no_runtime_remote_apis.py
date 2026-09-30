@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 LIB = ROOT / "lib"
 ALLOWED_STATIC_LOADERS = {
     LIB / "services" / "website_nba_static_repository.dart",
+    LIB / "services" / "sports_terminal_static_json_loader.dart",
     LIB / "services" / "nba_live_game_service.dart",
     LIB / "services" / "front_office_static_snapshot_repository.dart",
     LIB / "services" / "nba_with_without_repository.dart",
