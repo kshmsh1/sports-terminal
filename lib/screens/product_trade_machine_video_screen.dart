@@ -1321,20 +1321,22 @@ class _ProductTradeMachineVideoScreenState
 
   Widget _freeAgentsTab(BuildContext context, String team) {
     final query = _search.trim().toLowerCase();
-    final rights = NbaTradeSupplementalAssets202627.freeAgentRightsFor(team)
+    final allRights =
+        NbaTradeSupplementalAssets202627.freeAgentRightsFor(team);
+    final rights = allRights
         .where((item) =>
             query.isEmpty || item.player.toLowerCase().contains(query))
         .toList();
 
     return Column(
       children: [
-        if (rights.isNotEmpty)
+        if (allRights.isNotEmpty)
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () {
                 setState(() {
-                  for (final item in rights) {
+                  for (final item in allRights) {
                     _renouncedFreeAgentRights.add(item.id);
                     _signAndTradeDestinations.remove(item.id);
                     _signAndTradeSalaries.remove(item.id);
