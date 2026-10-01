@@ -447,51 +447,91 @@ class _ProductTradeMachineVideoScreenState
       final active = activeTeam == team;
       final accent = _teamAccent(team);
       final shortName = _teamMeta[team]?.shortName ?? team;
-      return InkWell(
-        borderRadius: BorderRadius.circular(5),
-        onTap: () => setState(() {
-          _activeTeam = team;
-          _assetTab = _AssetTab.roster;
-          _search = '';
-        }),
-        child: Container(
-          height: 38,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: active ? accent : Colors.white,
-            borderRadius: BorderRadius.circular(5),
-            border: Border.all(
-              color: active ? accent : const Color(0xFFD5E0EB),
+      return Container(
+        height: 38,
+        decoration: BoxDecoration(
+          color: active ? accent : Colors.white,
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(
+            color: active ? accent : const Color(0xFFD5E0EB),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            InkWell(
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(5),
+              ),
+              onTap: () => setState(() {
+                _activeTeam = team;
+                _assetTab = _AssetTab.roster;
+                _search = '';
+              }),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 5, 0),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: _teamLogo(
+                        team,
+                        fallbackColor: active ? Colors.white : accent,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      shortName.toUpperCase(),
+                      style: TextStyle(
+                        color:
+                            active ? Colors.white : const Color(0xFF263D55),
+                        fontWeight: FontWeight.w900,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 22,
-                height: 22,
-                child: _teamLogo(
-                  team,
-                  fallbackColor: active ? Colors.white : accent,
+            PopupMenuButton<String>(
+              tooltip: 'Team options',
+              padding: EdgeInsets.zero,
+              onSelected: (value) {
+                if (value == 'view') {
+                  setState(() {
+                    _activeTeam = team;
+                    _assetTab = _AssetTab.roster;
+                    _search = '';
+                  });
+                } else if (value == 'remove' && _teams.length > 2) {
+                  _removeTeamFromBuilder(team);
+                }
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'view',
+                  child: Text('View team'),
+                ),
+                PopupMenuItem(
+                  value: 'remove',
+                  enabled: _teams.length > 2,
+                  child: const Text('Remove team'),
+                ),
+              ],
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(2, 0, 7, 0),
+                child: Icon(
+                  active
+                      ? Icons.keyboard_arrow_down_rounded
+                      : Icons.more_horiz_rounded,
+                  size: 15,
+                  color:
+                      active ? Colors.white : const Color(0xFF6B7E93),
                 ),
               ),
-              const SizedBox(width: 6),
-              Text(
-                shortName.toUpperCase(),
-                style: TextStyle(
-                  color: active ? Colors.white : const Color(0xFF263D55),
-                  fontWeight: FontWeight.w900,
-                  fontSize: 9,
-                ),
-              ),
-              const SizedBox(width: 5),
-              Icon(
-                active ? Icons.keyboard_arrow_down_rounded : Icons.more_horiz_rounded,
-                size: 15,
-                color: active ? Colors.white : const Color(0xFF6B7E93),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
@@ -2659,6 +2699,29 @@ class _ProductTradeMachineVideoScreenState
       }
     }
     return result;
+  }
+
+  void _removeTeamFromBuilder(String team) {
+    if (_teams.length <= 2) return;
+    setState(() {
+      _teams.remove(team);
+      if (_activeTeam == team) {
+        _activeTeam = _teams.isEmpty ? null : _teams.first;
+      }
+      _cashAmounts.remove(team);
+      _cashDestinations.remove(team);
+      _cashDestinations.removeWhere((_, destination) => destination == team);
+      _routes.removeWhere(
+        (assetId, destination) =>
+            destination == team ||
+            assetId.startsWith('$team:') ||
+            assetId.startsWith('cash:$team'),
+      );
+      _signAndTradeDestinations.removeWhere(
+        (_, destination) => destination == team,
+      );
+      _repairTradeState();
+    });
   }
 
   void _clearTrade() {
