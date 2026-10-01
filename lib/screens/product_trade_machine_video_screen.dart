@@ -2366,31 +2366,21 @@ class _ProductTradeMachineVideoScreenState
   }
 
   Widget _teamLogo(String team, {required Color fallbackColor}) {
-    final id = _nbaTeamIds[team];
-    if (id == null) {
-      return Center(
-        child: Text(
-          team == 'BRK' ? 'BKN' : team,
-          style: TextStyle(
-            color: fallbackColor,
-            fontSize: 9,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      );
-    }
-    return Image.network(
-      'https://cdn.nba.com/logos/nba/$id/global/L/logo.png',
-      fit: BoxFit.contain,
-      filterQuality: FilterQuality.medium,
-      errorBuilder: (_, __, ___) => Center(
-        child: Text(
-          team == 'BRK' ? 'BKN' : team,
-          style: TextStyle(
-            color: fallbackColor,
-            fontSize: 9,
-            fontWeight: FontWeight.w900,
-          ),
+    final display = team == 'BRK' ? 'BKN' : team;
+    return Container(
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .88),
+        shape: BoxShape.circle,
+        border: Border.all(color: fallbackColor.withValues(alpha: .35)),
+      ),
+      child: Text(
+        display,
+        style: TextStyle(
+          color: fallbackColor,
+          fontSize: display.length > 3 ? 7 : 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -.2,
         ),
       ),
     );
@@ -2648,40 +2638,6 @@ class _RestrictionStripePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
-const _nbaTeamIds = <String, int>{
-  'ATL': 1610612737,
-  'BOS': 1610612738,
-  'BRK': 1610612751,
-  'BKN': 1610612751,
-  'CHA': 1610612766,
-  'CHI': 1610612741,
-  'CLE': 1610612739,
-  'DAL': 1610612742,
-  'DEN': 1610612743,
-  'DET': 1610612765,
-  'GSW': 1610612744,
-  'HOU': 1610612745,
-  'IND': 1610612754,
-  'LAC': 1610612746,
-  'LAL': 1610612747,
-  'MEM': 1610612763,
-  'MIA': 1610612748,
-  'MIL': 1610612749,
-  'MIN': 1610612750,
-  'NOP': 1610612740,
-  'NYK': 1610612752,
-  'OKC': 1610612760,
-  'ORL': 1610612753,
-  'PHI': 1610612755,
-  'PHO': 1610612756,
-  'POR': 1610612757,
-  'SAC': 1610612758,
-  'SAS': 1610612759,
-  'TOR': 1610612761,
-  'UTA': 1610612762,
-  'WAS': 1610612764,
-};
 
 const _teamAccentColors = <String, Color>{
   'ATL': Color(0xFFE03A3E),
