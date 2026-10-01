@@ -85,7 +85,7 @@ void main() {
     await tester.tap(tradeButton);
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Philadelphia 76ers Acquire'), findsOneWidget);
+    expect(find.text('This is an incomplete trade.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -135,6 +135,13 @@ void main() {
     final phillyTradeButton =
         find.widgetWithText(OutlinedButton, 'Trade').first;
     await tester.tap(phillyTradeButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Celtics'));
+    await tester.pumpAndSettle();
+    final bostonTradeButton =
+        find.widgetWithText(OutlinedButton, 'Trade').first;
+    await tester.tap(bostonTradeButton);
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Snapshot'));
