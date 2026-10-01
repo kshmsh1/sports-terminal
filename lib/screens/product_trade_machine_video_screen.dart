@@ -8,6 +8,7 @@ import '../services/nba_league_environment_2026.dart';
 import '../services/nba_team_cap_reference_2026.dart';
 import '../services/nba_team_salary_position_2026.dart';
 import '../services/nba_trade_contract_repository.dart';
+import '../services/nba_trade_exception_reference_2026.dart';
 import '../services/nba_trade_kicker_reference_2026.dart';
 import '../services/nba_trade_supplemental_assets_2026.dart';
 import '../services/nba_two_way_contract_reference_2026.dart';
@@ -53,6 +54,7 @@ class _ProductTradeMachineVideoScreenState
   final Map<String, String> _cashDestinations = {};
   final Map<String, String> _signAndTradeDestinations = {};
   final Map<String, double> _signAndTradeSalaries = {};
+  final Map<String, String> _acquisitionMechanisms = {};
   final Set<String> _expandedFreeAgents = {};
 
   List<TradeMachineSavedTrade> _savedTrades = const [];
@@ -94,7 +96,12 @@ class _ProductTradeMachineVideoScreenState
         final scenario = _builderActive
             ? _scenario(data, draftAssets)
             : null;
-        final report = scenario == null ? null : _engine.validate(scenario);
+        final report = scenario == null
+            ? null
+            : _applyAcquisitionMechanisms(
+                _engine.validate(scenario),
+                scenario,
+              );
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -963,7 +970,7 @@ class _ProductTradeMachineVideoScreenState
     final kicker = NbaTradeKickerReference202627.forPlayer(player.player);
     final routedTo = _routes[player.id];
 
-    final row = Container(
+    final baseRow = Container(
       color: routedTo != null
           ? const Color(0xFF2E7D32).withValues(alpha: .08)
           : Colors.transparent,
@@ -1055,6 +1062,19 @@ class _ProductTradeMachineVideoScreenState
       ),
     );
 
+    final row = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        baseRow,
+        if (routedTo != null)
+          _acquisitionMechanismRow(
+            context,
+            player: player,
+            destinationTeam: routedTo,
+          ),
+      ],
+    );
+
     return Container(
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
@@ -1065,6 +1085,66 @@ class _ProductTradeMachineVideoScreenState
               child: row,
             )
           : row,
+    );
+  }
+
+  Widget _acquisitionMechanismRow(
+    BuildContext context, {
+    required NbaTradeContract player,
+    required String destinationTeam,
+  }) {
+    final selected = _acquisitionMechanisms[player.id] ?? 'match';
+    final tpes = NbaTradeExceptionReference202627.forTeam(
+      destinationTeam,
+      asOfIso: _effectiveTradeDate.toIso8601String(),
+    )
+        .where((tpe) =>
+            !tpe.exhausted &&
+            player.salaryFor('2026-27') <= tpe.available + 100000)
+        .take(5)
+        .toList();
+
+    Widget methodChip(String value, String label) {
+      final active = selected == value;
+      return ChoiceChip(
+        label: Text(label),
+        selected: active,
+        showCheckmark: false,
+        visualDensity: VisualDensity.compact,
+        labelStyle: TextStyle(
+          fontSize: 8,
+          fontWeight: FontWeight.w800,
+          color: active ? const Color(0xFF1769AA) : const Color(0xFF63758A),
+        ),
+        side: const BorderSide(color: Color(0xFFD3DFEA)),
+        selectedColor: const Color(0xFFEAF4FC),
+        backgroundColor: Colors.white,
+        onSelected: (_) => setState(() {
+          if (value == 'match') {
+            _acquisitionMechanisms.remove(player.id);
+          } else {
+            _acquisitionMechanisms[player.id] = value;
+          }
+        }),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(40, 3, 8, 7),
+      color: const Color(0xFF2E7D32).withValues(alpha: .05),
+      child: Wrap(
+        spacing: 5,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          methodChip('match', 'SALARY MATCH'),
+          for (final tpe in tpes)
+            methodChip(
+              'tpe:${tpe.id}',
+              'TPE ${_money(tpe.available)}',
+            ),
+        ],
+      ),
     );
   }
 
@@ -1371,7 +1451,10 @@ class _ProductTradeMachineVideoScreenState
     if (current != null && destinations.contains(current)) {
       return InputChip(
         label: Text(_teamMeta[current]?.shortName ?? current),
-        onDeleted: () => setState(() => _routes.remove(assetId)),
+        onDeleted: () => setState(() {
+          _routes.remove(assetId);
+          _acquisitionMechanisms.remove(assetId);
+        }),
       );
     }
 
@@ -1384,7 +1467,10 @@ class _ProductTradeMachineVideoScreenState
 
     if (destinations.length == 1) {
       return OutlinedButton.icon(
-        onPressed: () => setState(() => _routes[assetId] = destinations.first),
+        onPressed: () => setState(() {
+          _routes[assetId] = destinations.first;
+          _acquisitionMechanisms.remove(assetId);
+        }),
         icon: const Icon(Icons.add_rounded, size: 16),
         label: const Text('Trade'),
       );
@@ -1392,7 +1478,10 @@ class _ProductTradeMachineVideoScreenState
 
     return PopupMenuButton<String>(
       tooltip: 'Trade asset',
-      onSelected: (team) => setState(() => _routes[assetId] = team),
+      onSelected: (team) => setState(() {
+        _routes[assetId] = team;
+        _acquisitionMechanisms.remove(assetId);
+      }),
       itemBuilder: (_) => [
         for (final team in destinations)
           PopupMenuItem(
@@ -1774,13 +1863,26 @@ class _ProductTradeMachineVideoScreenState
           _assetBadge(context, asset),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              asset.label,
-              style: const TextStyle(
-                color: Color(0xFF273A50),
-                fontWeight: FontWeight.w800,
-                fontSize: 11,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  asset.label,
+                  style: const TextStyle(
+                    color: Color(0xFF273A50),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                  ),
+                ),
+                if (_acquisitionMechanismLabel(asset.id) != null)
+                  Text(
+                    _acquisitionMechanismLabel(asset.id)!,
+                    style: const TextStyle(
+                      color: Color(0xFF6E8196),
+                      fontSize: 8,
+                    ),
+                  ),
+              ],
             ),
           ),
           SizedBox(
@@ -2006,6 +2108,133 @@ class _ProductTradeMachineVideoScreenState
         ],
       ),
     );
+  }
+
+  TradeValidationReport _applyAcquisitionMechanisms(
+    TradeValidationReport base,
+    TradeScenario scenario,
+  ) {
+    final findings = [...base.findings];
+    final grouped = <String, double>{};
+    final tpeById = {
+      for (final tpe in NbaTradeExceptionReference202627.tpes) tpe.id: tpe,
+    };
+    final validAbsorbedByTeam = <String, double>{};
+
+    for (final assignment in scenario.assignments) {
+      if (assignment.asset.type != TradeAssetType.player) continue;
+      final mechanism = _acquisitionMechanisms[assignment.asset.id];
+      if (mechanism == null || !mechanism.startsWith('tpe:')) continue;
+
+      final tpeId = mechanism.substring(4);
+      final tpe = tpeById[tpeId];
+      final team = assignment.destinationTeam;
+      if (tpe == null || tpe.team != team) {
+        findings.add(
+          TradeValidationFinding(
+            code: 'TPE_MISSING',
+            message:
+                '${assignment.asset.label} references an unavailable traded-player exception for $team.',
+            severity: TradeValidationSeverity.error,
+            team: team,
+            assetId: assignment.asset.id,
+          ),
+        );
+        continue;
+      }
+
+      final expiry = DateTime.tryParse(tpe.expires);
+      if (expiry != null && expiry.isBefore(_effectiveTradeDate)) {
+        findings.add(
+          TradeValidationFinding(
+            code: 'TPE_EXPIRED',
+            message:
+                '${tpe.sourceTransaction} expired ${tpe.expires}.',
+            severity: TradeValidationSeverity.error,
+            team: team,
+            assetId: assignment.asset.id,
+          ),
+        );
+        continue;
+      }
+
+      final context = scenario.capContexts[team];
+      if (context != null &&
+          (context.aboveSecondApron ||
+              scenario.postTradeSalary(team) > context.secondApron)) {
+        findings.add(
+          TradeValidationFinding(
+            code: 'TPE_APRON',
+            message:
+                '$team cannot use ${tpe.sourceTransaction} under the modeled second-apron restriction.',
+            severity: TradeValidationSeverity.error,
+            team: team,
+            assetId: assignment.asset.id,
+          ),
+        );
+        continue;
+      }
+
+      final total =
+          (grouped[tpeId] ?? 0) + assignment.asset.salary;
+      grouped[tpeId] = total;
+      if (total > tpe.available + 100000) {
+        findings.add(
+          TradeValidationFinding(
+            code: 'TPE_AMOUNT',
+            message:
+                '${tpe.sourceTransaction} cannot absorb ${_money(total)} of routed salary; ${_money(tpe.available)} is available.',
+            severity: TradeValidationSeverity.error,
+            team: team,
+            assetId: assignment.asset.id,
+          ),
+        );
+        continue;
+      }
+
+      validAbsorbedByTeam[team] =
+          (validAbsorbedByTeam[team] ?? 0) + assignment.asset.salary;
+      findings.add(
+        TradeValidationFinding(
+          code: 'TPE_OK',
+          message:
+              '$team absorbs ${assignment.asset.label} with ${tpe.sourceTransaction}.',
+          severity: TradeValidationSeverity.info,
+          team: team,
+          assetId: assignment.asset.id,
+        ),
+      );
+    }
+
+    for (final entry in validAbsorbedByTeam.entries) {
+      final summary = base.teamSummaries[entry.key];
+      if (summary == null) continue;
+      final salaryMatchedIncoming =
+          (summary.incomingSalary - entry.value).clamp(0, double.infinity);
+      if (salaryMatchedIncoming <= summary.maximumIncomingSalary + .01) {
+        findings.removeWhere(
+          (finding) =>
+              finding.team == entry.key && finding.code == 'SALARY_MATCH',
+        );
+      }
+    }
+
+    return TradeValidationReport(
+      findings: findings,
+      teamSummaries: base.teamSummaries,
+    );
+  }
+
+  String? _acquisitionMechanismLabel(String assetId) {
+    final mechanism = _acquisitionMechanisms[assetId];
+    if (mechanism == null || !mechanism.startsWith('tpe:')) return null;
+    final id = mechanism.substring(4);
+    for (final tpe in NbaTradeExceptionReference202627.tpes) {
+      if (tpe.id == id) {
+        return 'Via TPE · ${_money(tpe.available)}';
+      }
+    }
+    return 'Via TPE';
   }
 
   Future<void> _openTradeResearch() async {
@@ -2320,6 +2549,8 @@ class _ProductTradeMachineVideoScreenState
           Map<String, String>.from(_signAndTradeDestinations),
       signAndTradeSalaries:
           Map<String, double>.from(_signAndTradeSalaries),
+      acquisitionMechanisms:
+          Map<String, String>.from(_acquisitionMechanisms),
       incomingAssets: incoming,
       passed: report.isValid,
       restrictionMode: _restrictionMode.name,
@@ -2353,6 +2584,9 @@ class _ProductTradeMachineVideoScreenState
       _signAndTradeSalaries
         ..clear()
         ..addAll(trade.signAndTradeSalaries);
+      _acquisitionMechanisms
+        ..clear()
+        ..addAll(trade.acquisitionMechanisms);
       _restrictionMode = _RestrictionMode.values.firstWhere(
         (item) => item.name == trade.restrictionMode,
         orElse: () => _RestrictionMode.on,
@@ -2397,6 +2631,7 @@ class _ProductTradeMachineVideoScreenState
       _cashDestinations.clear();
       _signAndTradeDestinations.clear();
       _signAndTradeSalaries.clear();
+      _acquisitionMechanisms.clear();
       _expandedFreeAgents.clear();
       _search = '';
     });
@@ -2413,6 +2648,7 @@ class _ProductTradeMachineVideoScreenState
         _signAndTradeSalaries.remove(assetId);
       } else {
         _routes.remove(assetId);
+        _acquisitionMechanisms.remove(assetId);
       }
     });
   }
@@ -2437,6 +2673,9 @@ class _ProductTradeMachineVideoScreenState
     );
     _signAndTradeDestinations.removeWhere(
       (_, destination) => !_teams.contains(destination),
+    );
+    _acquisitionMechanisms.removeWhere(
+      (assetId, _) => !_routes.containsKey(assetId),
     );
   }
 
