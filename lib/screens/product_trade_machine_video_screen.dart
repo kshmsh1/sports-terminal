@@ -116,7 +116,6 @@ class _ProductTradeMachineVideoScreenState
   }
 
   Widget _header(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     Widget tab(String label, _TradePage page) {
       final selected = _page == page;
       return InkWell(
