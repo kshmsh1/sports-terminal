@@ -291,9 +291,7 @@ class _ProductTradeMachineVideoScreenState
     String team,
   ) {
     final selected = _teams.contains(team);
-    final meta = _teamMeta[team] ?? _TeamMeta(team, team, '');
     final status = _operatingAs(team, data);
-    final colors = Theme.of(context).colorScheme;
     final accent = _teamAccent(team);
 
     return Material(
@@ -738,11 +736,16 @@ class _ProductTradeMachineVideoScreenState
         .forTeam(team, '2026-27')
         .where((item) =>
             query.isEmpty || item.player.toLowerCase().contains(query))
+        .where((item) =>
+            _positionFilter == 'All P' ||
+            _playerPositionReference[item.player] == _positionFilter)
         .toList();
 
     final twoWays = NbaTwoWayContractReference202627.forTeam(team)
         .where((item) =>
             query.isEmpty || item.player.toLowerCase().contains(query))
+        .where((item) =>
+            _positionFilter == 'All P' || item.position == _positionFilter)
         .where((item) =>
             !players.any((player) => player.player == item.player))
         .toList();
@@ -767,11 +770,11 @@ class _ProductTradeMachineVideoScreenState
     final assetId = 'two-way:${player.team}:${player.player.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-')}';
     final routedTo = _routes[assetId];
     return Container(
-      color: routedTo != null
-          ? const Color(0xFF2E7D32).withValues(alpha: .08)
-          : null,
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
+        color: routedTo != null
+            ? const Color(0xFF2E7D32).withValues(alpha: .08)
+            : null,
         border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
       ),
       child: Row(
@@ -1971,6 +1974,10 @@ class _ProductTradeMachineVideoScreenState
       for (final item in NbaTradeSupplementalAssets202627.draftRights)
         item.id: item,
     };
+    final twoWayById = <String, NbaTwoWayContractRecord>{
+      for (final item in NbaTwoWayContractReference202627.records)
+        'two-way:${item.team}:${item.player.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-')}': item,
+    };
     final freeAgentById = {
       for (final item in NbaTradeSupplementalAssets202627.freeAgentRights)
         item.id: item,
@@ -2006,6 +2013,27 @@ class _ProductTradeMachineVideoScreenState
                 'no_trade': restriction?.hasTradeVeto == true,
                 'trade_kicker':
                     NbaTradeKickerReference202627.forPlayer(player.player)?.percent,
+              },
+            ),
+            destinationTeam: destination,
+          ),
+        );
+        continue;
+      }
+
+      final twoWay = twoWayById[entry.key];
+      if (twoWay != null) {
+        assignments.add(
+          TradeAssignment(
+            asset: TradeAsset(
+              id: entry.key,
+              type: TradeAssetType.player,
+              label: twoWay.player,
+              originTeam: twoWay.team,
+              salary: 0,
+              metadata: {
+                'two_way': true,
+                'position': twoWay.position,
               },
             ),
             destinationTeam: destination,
@@ -2215,6 +2243,10 @@ class _ProductTradeMachineVideoScreenState
     for (final pick in _drafts.all()) {
       if (_routes.containsKey(pick.id)) result[pick.id] = pick.label;
     }
+    for (final player in NbaTwoWayContractReference202627.records) {
+      final id = 'two-way:${player.team}:${player.player.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-')}';
+      if (_routes.containsKey(id)) result[id] = player.player;
+    }
     for (final right in NbaTradeSupplementalAssets202627.draftRights) {
       if (_routes.containsKey(right.id)) {
         result[right.id] = '${right.player} (draft rights)';
@@ -2318,6 +2350,8 @@ class _ProductTradeMachineVideoScreenState
       );
 
   String _operatingAs(String team, NbaTradeContractSnapshot data) {
+    final reference = _spotracOperatingStatus[team];
+    if (reference != null) return reference;
     final salary = _teamSalary(team, data);
     final hard = NbaFrontOfficeTracker202627.hardCaps[team]?.capLevel;
     if (hard == 'second') return '2nd Apron (Hard-Cap)';
@@ -2329,6 +2363,75 @@ class _ProductTradeMachineVideoScreenState
     }
     if (salary > NbaLeagueEnvironment202627.salaryCap) return 'Over The Cap';
     return 'Cap Space';
+  }
+
+  Widget _teamLogo(String team, {required Color fallbackColor}) {
+    final id = _nbaTeamIds[team];
+    if (id == null) {
+      return Center(
+        child: Text(
+          team == 'BRK' ? 'BKN' : team,
+          style: TextStyle(
+            color: fallbackColor,
+            fontSize: 9,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      );
+    }
+    return Image.network(
+      'https://cdn.nba.com/logos/nba/$id/global/L/logo.png',
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.medium,
+      errorBuilder: (_, __, ___) => Center(
+        child: Text(
+          team == 'BRK' ? 'BKN' : team,
+          style: TextStyle(
+            color: fallbackColor,
+            fontSize: 9,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _teamAccent(String team) =>
+      _teamAccentColors[team] ?? const Color(0xFF1769AA);
+
+  Widget _assetBadge(BuildContext context, TradeAsset asset) {
+    if (asset.type == TradeAssetType.player) {
+      return _initialAvatar(context, asset.label.replaceAll(' (sign-and-trade)', ''));
+    }
+    final color = switch (asset.type) {
+      TradeAssetType.draftPick => const Color(0xFF5C7EA5),
+      TradeAssetType.draftRights => const Color(0xFF5C7EA5),
+      TradeAssetType.cash => const Color(0xFF2E9A69),
+      TradeAssetType.freeAgentRights => const Color(0xFF7768A8),
+      TradeAssetType.tradeException => const Color(0xFF8D6E63),
+      TradeAssetType.signingException => const Color(0xFF8D6E63),
+      TradeAssetType.player => const Color(0xFF1769AA),
+    };
+    return Container(
+      width: 28,
+      height: 28,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .10),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Icon(_assetIcon(asset.type), color: color, size: 15),
+    );
+  }
+
+  String _displayRestrictionDate(String iso) {
+    final date = DateTime.tryParse(iso);
+    if (date == null) return iso;
+    const months = <String>[
+      'Jan','Feb','Mar','Apr','May','Jun',
+      'Jul','Aug','Sep','Oct','Nov','Dec',
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
   Widget _tableHeader(BuildContext context, List<String> labels) {
@@ -2523,6 +2626,159 @@ String _savedAtLabel(String iso) {
   if (date == null) return iso;
   return '${date.month}/${date.day}/${date.year}';
 }
+
+class _RestrictionStripePainter extends CustomPainter {
+  const _RestrictionStripePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0x18D45B66)
+      ..strokeWidth = 1;
+    const gap = 9.0;
+    for (double x = -size.height; x < size.width; x += gap) {
+      canvas.drawLine(
+        Offset(x, size.height),
+        Offset(x + size.height, 0),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+const _nbaTeamIds = <String, int>{
+  'ATL': 1610612737,
+  'BOS': 1610612738,
+  'BRK': 1610612751,
+  'BKN': 1610612751,
+  'CHA': 1610612766,
+  'CHI': 1610612741,
+  'CLE': 1610612739,
+  'DAL': 1610612742,
+  'DEN': 1610612743,
+  'DET': 1610612765,
+  'GSW': 1610612744,
+  'HOU': 1610612745,
+  'IND': 1610612754,
+  'LAC': 1610612746,
+  'LAL': 1610612747,
+  'MEM': 1610612763,
+  'MIA': 1610612748,
+  'MIL': 1610612749,
+  'MIN': 1610612750,
+  'NOP': 1610612740,
+  'NYK': 1610612752,
+  'OKC': 1610612760,
+  'ORL': 1610612753,
+  'PHI': 1610612755,
+  'PHO': 1610612756,
+  'POR': 1610612757,
+  'SAC': 1610612758,
+  'SAS': 1610612759,
+  'TOR': 1610612761,
+  'UTA': 1610612762,
+  'WAS': 1610612764,
+};
+
+const _teamAccentColors = <String, Color>{
+  'ATL': Color(0xFFE03A3E),
+  'BOS': Color(0xFF007A33),
+  'BRK': Color(0xFF111111),
+  'BKN': Color(0xFF111111),
+  'CHA': Color(0xFF1D1160),
+  'CHI': Color(0xFFCE1141),
+  'CLE': Color(0xFF860038),
+  'DAL': Color(0xFF00538C),
+  'DEN': Color(0xFF0E2240),
+  'DET': Color(0xFFC8102E),
+  'GSW': Color(0xFF1D428A),
+  'HOU': Color(0xFFCE1141),
+  'IND': Color(0xFF002D62),
+  'LAC': Color(0xFFC8102E),
+  'LAL': Color(0xFF552583),
+  'MEM': Color(0xFF5D76A9),
+  'MIA': Color(0xFF98002E),
+  'MIL': Color(0xFF00471B),
+  'MIN': Color(0xFF0C2340),
+  'NOP': Color(0xFF0C2340),
+  'NYK': Color(0xFF006BB6),
+  'OKC': Color(0xFF007AC1),
+  'ORL': Color(0xFF0077C0),
+  'PHI': Color(0xFF006BB6),
+  'PHO': Color(0xFF1D1160),
+  'POR': Color(0xFFE03A3E),
+  'SAC': Color(0xFF5A2D81),
+  'SAS': Color(0xFF777777),
+  'TOR': Color(0xFFCE1141),
+  'UTA': Color(0xFF4B2E83),
+  'WAS': Color(0xFF002B5C),
+};
+
+const _spotracOperatingStatus = <String, String>{
+  'ATL': '1st Apron (Hard-Cap)',
+  'BOS': '1st Apron (Hard-Cap)',
+  'BRK': 'Cap Space',
+  'BKN': 'Cap Space',
+  'CHA': '1st Apron (Hard-Cap)',
+  'CHI': '1st Apron (Hard-Cap)',
+  'CLE': '1st Apron (Hard-Cap)',
+  'DAL': '1st Apron (Hard-Cap)',
+  'DEN': '2nd Apron',
+  'DET': '1st Apron (Hard-Cap)',
+  'GSW': '2nd Apron (Hard-Cap)',
+  'HOU': '2nd Apron (Hard-Cap)',
+  'IND': '1st Apron (Hard-Cap)',
+  'LAC': '1st Apron (Hard-Cap)',
+  'LAL': '1st Apron (Hard-Cap)',
+  'MEM': '1st Apron (Hard-Cap)',
+  'MIA': '1st Apron (Hard-Cap)',
+  'MIL': '1st Apron (Hard-Cap)',
+  'MIN': '2nd Apron (Hard-Cap)',
+  'NOP': '1st Apron',
+  'NYK': '1st Apron',
+  'OKC': '1st Apron',
+  'ORL': '1st Apron',
+  'PHI': '1st Apron (Hard-Cap)',
+  'PHO': '2nd Apron (Hard-Cap)',
+  'POR': '1st Apron (Hard-Cap)',
+  'SAC': '1st Apron (Hard-Cap)',
+  'SAS': '1st Apron (Hard-Cap)',
+  'TOR': 'Over The Cap/Tax',
+  'UTA': '1st Apron (Hard-Cap)',
+  'WAS': '1st Apron (Hard-Cap)',
+};
+
+const _playerPositionReference = <String, String>{
+  'Jayson Tatum': 'PF',
+  'Paul George': 'SG',
+  'Derrick White': 'PG',
+  'Mitchell Robinson': 'C',
+  'Sam Hauser': 'SF',
+  'Payton Pritchard': 'PG',
+  'Ron Harper Jr.': 'SG',
+  'Chris Cenac Jr.': 'PF',
+  'Hugo González': 'SF',
+  'Luka Garza': 'C',
+  'Baylor Scheierman': 'SG',
+  'Neemias Queta': 'C',
+  'Mike Conley': 'PG',
+  'Jordan Walsh': 'SF',
+  'Joel Embiid': 'C',
+  'Jaylen Brown': 'SF',
+  'Tyrese Maxey': 'PG',
+  'VJ Edgecombe': 'SG',
+  'Dean Wade': 'PF',
+  'Anfernee Simons': 'SG',
+  'LeBron James': 'PF',
+  'Duncan Robinson': 'SF',
+  'Isaiah Joe': 'SG',
+  'Ausar Thompson': 'SF',
+  'Kevin Huerter': 'SG',
+  'Ron Holland II': 'SF',
+};
 
 class _TeamMeta {
   const _TeamMeta(this.code, this.name, this.conference, [this.shortName = '']);
