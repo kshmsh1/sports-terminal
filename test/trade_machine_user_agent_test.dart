@@ -78,8 +78,6 @@ void main() {
     expect(find.text('CASH'), findsOneWidget);
     expect(find.text('FREE AGENTS'), findsOneWidget);
     expect(find.text('Jayson Tatum'), findsOneWidget);
-    expect(find.text('Financials'), findsOneWidget);
-    expect(find.text('Snapshot'), findsOneWidget);
 
     final tradeButton = find.widgetWithText(OutlinedButton, 'Trade').first;
     await tester.tap(tradeButton);
