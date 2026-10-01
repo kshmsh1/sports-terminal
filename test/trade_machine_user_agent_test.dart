@@ -120,7 +120,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Cash considerations'), findsOneWidget);
 
-    final phillyChip = find.text('76ers');
+    final phillyChip = find.text('76ERS');
     expect(phillyChip, findsOneWidget);
     await tester.tap(phillyChip);
     await tester.pumpAndSettle();
@@ -137,7 +137,7 @@ void main() {
     await tester.tap(phillyTradeButton);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Celtics'));
+    await tester.tap(find.text('CELTICS'));
     await tester.pumpAndSettle();
     final bostonTradeButton =
         find.widgetWithText(OutlinedButton, 'Trade').first;
@@ -148,6 +148,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Trade snapshot saved'), findsOneWidget);
 
+    await tester.tap(find.byIcon(Icons.home_outlined));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('RECENT TRADES'));
     await tester.pumpAndSettle();
     expect(find.text('Load a copy'), findsOneWidget);
