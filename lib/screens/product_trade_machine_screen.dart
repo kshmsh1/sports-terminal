@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'product_trade_machine_complete_screen.dart';
+import 'product_trade_machine_video_screen.dart';
 
 /// Stable public shell entry point for the Sports Terminal NBA Trade Machine.
 class ProductTradeMachineScreen extends StatelessWidget {
@@ -15,7 +15,7 @@ class ProductTradeMachineScreen extends StatelessWidget {
           titleMedium: theme.textTheme.titleMedium?.copyWith(fontSize: 9),
         ),
       ),
-      child: const ProductTradeMachineCompleteScreen(),
+      child: const ProductTradeMachineVideoScreen(),
     );
   }
 }
