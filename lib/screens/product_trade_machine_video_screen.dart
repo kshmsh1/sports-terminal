@@ -99,8 +99,10 @@ class _ProductTradeMachineVideoScreenState
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _header(context),
-            const SizedBox(height: 14),
+            if (!_builderActive || _page == _TradePage.recent) ...[
+              _header(context),
+              const SizedBox(height: 14),
+            ],
             if (_page == _TradePage.recent)
               _recentTrades(context, data)
             else if (!_builderActive)
@@ -434,89 +436,195 @@ class _ProductTradeMachineVideoScreenState
     final available = data.teams.where((item) => !_teams.contains(item)).toList()
       ..sort();
 
-    return _surface(
-      context,
-      padding: const EdgeInsets.all(12),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          for (final team in _teams)
-            ChoiceChip(
-              avatar: _teamBadge(context, team, size: 24),
-              label: Text(_teamMeta[team]?.shortName ?? team),
-              selected: activeTeam == team,
-              onSelected: (_) => setState(() {
-                _activeTeam = team;
-                _assetTab = _AssetTab.roster;
-                _search = '';
-              }),
+    Widget teamChip(String team) {
+      final active = activeTeam == team;
+      final accent = _teamAccent(team);
+      final shortName = _teamMeta[team]?.shortName ?? team;
+      return InkWell(
+        borderRadius: BorderRadius.circular(5),
+        onTap: () => setState(() {
+          _activeTeam = team;
+          _assetTab = _AssetTab.roster;
+          _search = '';
+        }),
+        child: Container(
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: active ? accent : Colors.white,
+            borderRadius: BorderRadius.circular(5),
+            border: Border.all(
+              color: active ? accent : const Color(0xFFD5E0EB),
             ),
-          if (_teams.length < 5)
-            PopupMenuButton<String>(
-              tooltip: 'Add team',
-              onSelected: (team) => setState(() {
-                _teams.add(team);
-                _activeTeam = team;
-                _repairTradeState();
-              }),
-              itemBuilder: (_) => [
-                for (final team in available)
-                  PopupMenuItem(
-                    value: team,
-                    child: Text('$team · ${_teamMeta[team]?.name ?? team}'),
-                  ),
-              ],
-              child: const Chip(
-                avatar: Icon(Icons.add_rounded, size: 17),
-                label: Text('Add team'),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: _teamLogo(
+                  team,
+                  fallbackColor: active ? Colors.white : accent,
+                ),
               ),
-            ),
-          const SizedBox(width: 10),
-          SegmentedButton<_RestrictionMode>(
-            segments: const [
-              ButtonSegment(
-                value: _RestrictionMode.on,
-                label: Text('On'),
-                tooltip: 'Restrictions on',
+              const SizedBox(width: 6),
+              Text(
+                shortName.toUpperCase(),
+                style: TextStyle(
+                  color: active ? Colors.white : const Color(0xFF263D55),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 9,
+                ),
               ),
-              ButtonSegment(
-                value: _RestrictionMode.off,
-                label: Text('Off'),
-                tooltip: 'Restrictions off',
-              ),
-              ButtonSegment(
-                value: _RestrictionMode.deadline,
-                label: Text('Deadline'),
-                tooltip: 'Modeled trade-deadline eligibility',
+              const SizedBox(width: 5),
+              Icon(
+                active ? Icons.keyboard_arrow_down_rounded : Icons.more_horiz_rounded,
+                size: 15,
+                color: active ? Colors.white : const Color(0xFF6B7E93),
               ),
             ],
-            selected: {_restrictionMode},
-            showSelectedIcon: false,
-            onSelectionChanged: (value) =>
-                setState(() => _restrictionMode = value.first),
           ),
-          IconButton(
-            tooltip: 'Trade research',
-            onPressed: _openTradeResearch,
-            icon: const Icon(Icons.manage_search_rounded),
+        ),
+      );
+    }
+
+    Widget modeButton(
+      _RestrictionMode mode,
+      String title,
+      String subtitle,
+    ) {
+      final selected = _restrictionMode == mode;
+      return InkWell(
+        borderRadius: BorderRadius.circular(5),
+        onTap: () => setState(() => _restrictionMode = mode),
+        child: Container(
+          width: 58,
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFF2F7FD) : Colors.white,
+            borderRadius: BorderRadius.circular(5),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFF88B4D9)
+                  : const Color(0xFFD6E0EA),
+            ),
           ),
-          IconButton(
-            tooltip: 'Reset trade',
-            onPressed: _clearTrade,
-            icon: const Icon(Icons.restart_alt_rounded),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: selected
+                      ? const Color(0xFF1769AA)
+                      : const Color(0xFF6C7E92),
+                  fontSize: 8,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: Color(0xFF8998A9),
+                  fontSize: 6.5,
+                  height: 1,
+                ),
+              ),
+            ],
           ),
-          IconButton(
-            tooltip: 'Back to team selection',
-            onPressed: () => setState(() {
-              _builderActive = false;
-              _activeTeam = null;
-            }),
-            icon: const Icon(Icons.home_outlined),
+        ),
+      );
+    }
+
+    Widget squareAction(IconData icon, String tooltip, VoidCallback onPressed) {
+      return Tooltip(
+        message: tooltip,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(5),
+          onTap: onPressed,
+          child: Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(color: const Color(0xFFD6E0EA)),
+            ),
+            child: Icon(icon, size: 17, color: const Color(0xFF58728E)),
           ),
-        ],
-      ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final team in _teams) ...[
+                  teamChip(team),
+                  const SizedBox(width: 5),
+                ],
+                if (_teams.length < 5)
+                  PopupMenuButton<String>(
+                    tooltip: 'Add team',
+                    onSelected: (team) => setState(() {
+                      _teams.add(team);
+                      _activeTeam = team;
+                      _repairTradeState();
+                    }),
+                    itemBuilder: (_) => [
+                      for (final team in available)
+                        PopupMenuItem(
+                          value: team,
+                          child: Text('$team · ${_teamMeta[team]?.name ?? team}'),
+                        ),
+                    ],
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(5),
+                        border: Border.all(color: const Color(0xFFD6E0EA)),
+                      ),
+                      child: const Icon(
+                        Icons.add_rounded,
+                        size: 17,
+                        color: Color(0xFF4D8DC1),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        modeButton(_RestrictionMode.on, 'On', 'Restrictions'),
+        const SizedBox(width: 4),
+        modeButton(_RestrictionMode.off, 'Off', 'Restrictions'),
+        const SizedBox(width: 4),
+        modeButton(_RestrictionMode.deadline, 'Deadline', 'Trade mode'),
+        const SizedBox(width: 7),
+        squareAction(Icons.manage_search_rounded, 'Trade research', _openTradeResearch),
+        const SizedBox(width: 4),
+        squareAction(Icons.restart_alt_rounded, 'Reset trade', _clearTrade),
+        const SizedBox(width: 4),
+        squareAction(
+          Icons.home_outlined,
+          'Back to team selection',
+          () => setState(() {
+            _builderActive = false;
+            _activeTeam = null;
+          }),
+        ),
+      ],
     );
   }
 
@@ -980,6 +1088,7 @@ class _ProductTradeMachineVideoScreenState
             title: '${asset.year}, Round ${asset.round}: ${asset.label}',
             subtitle: asset.description,
             warning: asset.frozen || !asset.tradable,
+            selected: _routes.containsKey(asset.id),
             badges: [
               if (asset.frozen) 'Frozen',
               if (asset.conditional) 'Conditional',
@@ -1005,6 +1114,7 @@ class _ProductTradeMachineVideoScreenState
             context,
             title: '${item.player} (draft rights)',
             subtitle: '${item.position} · ${item.note}',
+            selected: _routes.containsKey(item.id),
             control: _routeControl(
               assetId: item.id,
               originTeam: team,
@@ -2475,12 +2585,17 @@ class _ProductTradeMachineVideoScreenState
     required String subtitle,
     Widget? control,
     bool warning = false,
+    bool selected = false,
     List<String> badges = const [],
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 9),
       decoration: BoxDecoration(
-        color: warning ? const Color(0xFFC62828).withValues(alpha: .06) : null,
+        color: selected
+            ? const Color(0xFF1976D2).withValues(alpha: .08)
+            : warning
+                ? const Color(0xFFC62828).withValues(alpha: .06)
+                : null,
         border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
       ),
       child: Row(
