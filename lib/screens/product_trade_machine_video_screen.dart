@@ -55,6 +55,7 @@ class _ProductTradeMachineVideoScreenState
   final Map<String, String> _signAndTradeDestinations = {};
   final Map<String, double> _signAndTradeSalaries = {};
   final Map<String, String> _acquisitionMechanisms = {};
+  final Set<String> _renouncedFreeAgentRights = {};
   final Set<String> _expandedFreeAgents = {};
 
   List<TradeMachineSavedTrade> _savedTrades = const [];
@@ -641,7 +642,8 @@ class _ProductTradeMachineVideoScreenState
   ) {
     final payroll = _teamSalary(team, data);
     final capAllocation =
-        NbaTeamCapReference202627.forTeam(team)?.totalCap ?? payroll;
+        (NbaTeamCapReference202627.forTeam(team)?.totalCap ?? payroll) -
+        _renouncedCapHoldTotal(team);
     final metrics = [
       ('Operating As', _operatingAs(team, data), null),
       (
@@ -1293,6 +1295,7 @@ class _ProductTradeMachineVideoScreenState
               onPressed: () {
                 setState(() {
                   for (final item in rights) {
+                    _renouncedFreeAgentRights.add(item.id);
                     _signAndTradeDestinations.remove(item.id);
                     _signAndTradeSalaries.remove(item.id);
                     _expandedFreeAgents.remove(item.id);
@@ -1313,6 +1316,7 @@ class _ProductTradeMachineVideoScreenState
 
   Widget _freeAgentRow(BuildContext context, NbaTradeFreeAgentRight item) {
     final expanded = _expandedFreeAgents.contains(item.id);
+    final renounced = _renouncedFreeAgentRights.contains(item.id);
     final destinations = _teams.where((team) => team != item.team).toList();
     final destination = _signAndTradeDestinations[item.id];
     final min = item.signAndTradeMinimum ?? 0;
@@ -1353,30 +1357,45 @@ class _ProductTradeMachineVideoScreenState
               SizedBox(
                 width: 120,
                 child: Text(
-                  _money(item.capHold),
+                  renounced ? 'Renounced' : _money(item.capHold),
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
               SizedBox(
                 width: 150,
                 child: OutlinedButton.icon(
-                  onPressed: item.signAndTradeReady
+                  onPressed: renounced
                       ? () => setState(() {
-                            if (expanded) {
-                              _expandedFreeAgents.remove(item.id);
-                            } else {
-                              _expandedFreeAgents.add(item.id);
-                              _signAndTradeSalaries.putIfAbsent(item.id, () => min);
-                            }
+                            _renouncedFreeAgentRights.remove(item.id);
                           })
-                      : null,
-                  icon: const Icon(Icons.add_rounded, size: 16),
-                  label: Text(item.signAndTradeReady ? 'Action' : 'Rights only'),
+                      : item.signAndTradeReady
+                          ? () => setState(() {
+                                if (expanded) {
+                                  _expandedFreeAgents.remove(item.id);
+                                } else {
+                                  _expandedFreeAgents.add(item.id);
+                                  _signAndTradeSalaries.putIfAbsent(item.id, () => min);
+                                }
+                              })
+                          : () => setState(() {
+                                _renouncedFreeAgentRights.add(item.id);
+                              }),
+                  icon: Icon(
+                    renounced ? Icons.undo_rounded : Icons.add_rounded,
+                    size: 16,
+                  ),
+                  label: Text(
+                    renounced
+                        ? 'Restore'
+                        : item.signAndTradeReady
+                            ? 'Action'
+                            : 'Renounce',
+                  ),
                 ),
               ),
             ],
           ),
-          if (expanded && item.signAndTradeReady) ...[
+          if (expanded && item.signAndTradeReady && !renounced) ...[
             const SizedBox(height: 10),
             Row(
               children: [
@@ -1423,6 +1442,19 @@ class _ProductTradeMachineVideoScreenState
               label: _money(salary),
               onChanged: (value) =>
                   setState(() => _signAndTradeSalaries[item.id] = value),
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setState(() {
+                  _renouncedFreeAgentRights.add(item.id);
+                  _signAndTradeDestinations.remove(item.id);
+                  _signAndTradeSalaries.remove(item.id);
+                  _expandedFreeAgents.remove(item.id);
+                }),
+                icon: const Icon(Icons.block_rounded, size: 14),
+                label: const Text('Renounce rights'),
+              ),
             ),
             Align(
               alignment: Alignment.centerLeft,
@@ -2551,6 +2583,8 @@ class _ProductTradeMachineVideoScreenState
           Map<String, double>.from(_signAndTradeSalaries),
       acquisitionMechanisms:
           Map<String, String>.from(_acquisitionMechanisms),
+      renouncedFreeAgentRights:
+          _renouncedFreeAgentRights.toList(growable: false),
       incomingAssets: incoming,
       passed: report.isValid,
       restrictionMode: _restrictionMode.name,
@@ -2587,6 +2621,9 @@ class _ProductTradeMachineVideoScreenState
       _acquisitionMechanisms
         ..clear()
         ..addAll(trade.acquisitionMechanisms);
+      _renouncedFreeAgentRights
+        ..clear()
+        ..addAll(trade.renouncedFreeAgentRights);
       _restrictionMode = _RestrictionMode.values.firstWhere(
         (item) => item.name == trade.restrictionMode,
         orElse: () => _RestrictionMode.on,
@@ -2632,6 +2669,7 @@ class _ProductTradeMachineVideoScreenState
       _signAndTradeDestinations.clear();
       _signAndTradeSalaries.clear();
       _acquisitionMechanisms.clear();
+      _renouncedFreeAgentRights.clear();
       _expandedFreeAgents.clear();
       _search = '';
     });
@@ -2709,6 +2747,12 @@ class _ProductTradeMachineVideoScreenState
         .forTeam(team, '2026-27')
         .where((item) => !twoWays.contains(item.player))
         .length;
+  }
+
+  double _renouncedCapHoldTotal(String team) {
+    return NbaTradeSupplementalAssets202627.freeAgentRightsFor(team)
+        .where((item) => _renouncedFreeAgentRights.contains(item.id))
+        .fold<double>(0, (sum, item) => sum + item.capHold);
   }
 
   double _teamSalary(String team, NbaTradeContractSnapshot data) {
