@@ -53,11 +53,11 @@ class NbaTradeSupplementalAssets202627 {
   /// to be an all-team rights ledger before those records are normalized.
   static const List<NbaTradeDraftRight> draftRights = [
     NbaTradeDraftRight(
-      id: 'draft-right:BOS:juhann-begarin',
+      id: 'draft-right:BOS:justinian-jessup',
       team: 'BOS',
-      player: 'Juhann Begarin',
+      player: 'Justinian Jessup',
       position: 'SG',
-      note: 'Boston draft rights shown in the supplied reference workflow.',
+      note: 'Boston draft rights shown in the supplied Spotrac reference workflow.',
     ),
   ];
 
