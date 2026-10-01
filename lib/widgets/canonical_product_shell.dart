@@ -295,7 +295,7 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
                   padding: const EdgeInsets.fromLTRB(20, 28, 20, 64),
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1320),
+                      constraints: BoxConstraints(maxWidth: _selected == 'trade' ? 1680 : 1320),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
