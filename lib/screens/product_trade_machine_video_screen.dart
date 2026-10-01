@@ -1893,7 +1893,8 @@ class _ProductTradeMachineVideoScreenState
                     _signedMoney(
                       NbaLeagueEnvironment202627.salaryCap -
                           ((NbaTeamCapReference202627.forTeam(team)?.totalCap ??
-                                  (scenario.capContexts[team]?.teamSalary ?? post)) +
+                                  (scenario.capContexts[team]?.teamSalary ?? post)) -
+                              _renouncedCapHoldTotal(team) +
                               (post -
                                   (scenario.capContexts[team]?.teamSalary ??
                                       post))),
