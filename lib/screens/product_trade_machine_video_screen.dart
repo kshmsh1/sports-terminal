@@ -525,19 +525,31 @@ class _ProductTradeMachineVideoScreenState
     NbaTradeContractSnapshot data,
     String team,
   ) {
-    final salary = _teamSalary(team, data);
+    final payroll = _teamSalary(team, data);
+    final capAllocation =
+        NbaTeamCapReference202627.forTeam(team)?.totalCap ?? payroll;
     final metrics = [
       ('Operating As', _operatingAs(team, data), null),
-      ('Cap Space', _signedMoney(NbaLeagueEnvironment202627.salaryCap - salary),
-          NbaLeagueEnvironment202627.salaryCap - salary),
-      ('1st Apron Space',
-          _signedMoney(NbaLeagueEnvironment202627.firstApron - salary),
-          NbaLeagueEnvironment202627.firstApron - salary),
-      ('2nd Apron Space',
-          _signedMoney(NbaLeagueEnvironment202627.secondApron - salary),
-          NbaLeagueEnvironment202627.secondApron - salary),
-      ('Tax Space', _signedMoney(NbaLeagueEnvironment202627.luxuryTax - salary),
-          NbaLeagueEnvironment202627.luxuryTax - salary),
+      (
+        'Cap Space',
+        _signedMoney(NbaLeagueEnvironment202627.salaryCap - capAllocation),
+        NbaLeagueEnvironment202627.salaryCap - capAllocation,
+      ),
+      (
+        '1st Apron Space',
+        _signedMoney(NbaLeagueEnvironment202627.firstApron - payroll),
+        NbaLeagueEnvironment202627.firstApron - payroll,
+      ),
+      (
+        '2nd Apron Space',
+        _signedMoney(NbaLeagueEnvironment202627.secondApron - payroll),
+        NbaLeagueEnvironment202627.secondApron - payroll,
+      ),
+      (
+        'Tax Space',
+        _signedMoney(NbaLeagueEnvironment202627.luxuryTax - payroll),
+        NbaLeagueEnvironment202627.luxuryTax - payroll,
+      ),
     ];
 
     return LayoutBuilder(
@@ -1302,7 +1314,7 @@ class _ProductTradeMachineVideoScreenState
     final hasActivity = scenario.assignments.isNotEmpty;
     final colors = Theme.of(context).colorScheme;
     final incompleteTeams = _teams.where((team) {
-      return scenario.incomingFor(team).isEmpty &&
+      return scenario.incomingFor(team).isEmpty ||
           scenario.outgoingFor(team).isEmpty;
     }).toList();
     final incomplete = hasActivity && incompleteTeams.isNotEmpty;
@@ -1358,7 +1370,9 @@ class _ProductTradeMachineVideoScreenState
                   const SizedBox(height: 5),
                   for (final team in incompleteTeams)
                     Text(
-                      '• $team needs to send/receive something to/from another selected team.',
+                      scenario.outgoingFor(team).isEmpty
+                          ? '• $team needs to send something to another selected team.'
+                          : '• $team needs to receive something from another selected team.',
                       style: const TextStyle(
                         color: Color(0xFF3E6687),
                         fontSize: 11,
@@ -1606,7 +1620,14 @@ class _ProductTradeMachineVideoScreenState
                 children: [
                   _smallMetric(
                     'Cap space',
-                    _signedMoney(NbaLeagueEnvironment202627.salaryCap - post),
+                    _signedMoney(
+                      NbaLeagueEnvironment202627.salaryCap -
+                          ((NbaTeamCapReference202627.forTeam(team)?.totalCap ??
+                                  (scenario.capContexts[team]?.teamSalary ?? post)) +
+                              (post -
+                                  (scenario.capContexts[team]?.teamSalary ??
+                                      post))),
+                    ),
                   ),
                   _smallMetric(
                     '1st apron space',
@@ -2342,12 +2363,12 @@ class _ProductTradeMachineVideoScreenState
         .length;
   }
 
-  double _teamSalary(String team, NbaTradeContractSnapshot data) =>
-      NbaTeamSalaryPosition202627.forTeam(team)?.totalSalary ??
-      NbaTeamCapReference202627.teamSalary(
-        team,
-        data.payroll(team, '2026-27'),
-      );
+  double _teamSalary(String team, NbaTradeContractSnapshot data) {
+    final activePayroll = data.payroll(team, '2026-27');
+    if (activePayroll > 0) return activePayroll;
+    return NbaTeamSalaryPosition202627.forTeam(team)?.totalSalary ??
+        NbaTeamCapReference202627.teamSalary(team, 0);
+  }
 
   String _operatingAs(String team, NbaTradeContractSnapshot data) {
     final reference = _spotracOperatingStatus[team];
