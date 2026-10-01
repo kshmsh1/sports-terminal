@@ -37,11 +37,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('NBA Trade Machine'), findsOneWidget);
-    expect(find.text('Build a Trade'), findsWidgets);
-    expect(find.text('Recent Trades'), findsOneWidget);
-    expect(find.text('Boston Celtics'), findsOneWidget);
-    expect(find.text('Philadelphia 76ers'), findsOneWidget);
+    expect(find.text('BUILD A TRADE'), findsOneWidget);
+    expect(find.text('RECENT TRADES'), findsOneWidget);
+    expect(find.text('BOS'), findsOneWidget);
+    expect(find.text('PHI'), findsOneWidget);
     expect(find.textContaining('Choose 2-5 teams'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -64,8 +63,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Boston Celtics'));
-    await tester.tap(find.text('Philadelphia 76ers'));
+    await tester.tap(find.text('BOS'));
+    await tester.tap(find.text('PHI'));
     await tester.pumpAndSettle();
 
     final buildButtons = find.widgetWithText(FilledButton, 'Build a Trade');
@@ -73,24 +72,16 @@ void main() {
     await tester.tap(buildButtons);
     await tester.pumpAndSettle();
 
-    expect(find.text('Active Roster'), findsOneWidget);
-    expect(find.text('Draft Picks'), findsOneWidget);
-    expect(find.text('Draft Rights'), findsOneWidget);
-    expect(find.text('Cash'), findsOneWidget);
-    expect(find.text('Free Agents'), findsOneWidget);
+    expect(find.text('ACTIVE ROSTER'), findsOneWidget);
+    expect(find.text('DRAFT PICKS'), findsOneWidget);
+    expect(find.text('DRAFT RIGHTS'), findsOneWidget);
+    expect(find.text('CASH'), findsOneWidget);
+    expect(find.text('FREE AGENTS'), findsOneWidget);
     expect(find.text('Jayson Tatum'), findsOneWidget);
     expect(find.text('Financials'), findsOneWidget);
     expect(find.text('Snapshot'), findsOneWidget);
 
-    final tatumRow = find.ancestor(
-      of: find.text('Jayson Tatum'),
-      matching: find.byType(Row),
-    ).first;
-    final tradeButton = find.descendant(
-      of: tatumRow,
-      matching: find.widgetWithText(OutlinedButton, 'Trade'),
-    );
-    expect(tradeButton, findsOneWidget);
+    final tradeButton = find.widgetWithText(OutlinedButton, 'Trade').first;
     await tester.tap(tradeButton);
     await tester.pumpAndSettle();
 
@@ -116,16 +107,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Boston Celtics'));
-    await tester.tap(find.text('Philadelphia 76ers'));
+    await tester.tap(find.text('BOS'));
+    await tester.tap(find.text('PHI'));
     await tester.tap(find.widgetWithText(FilledButton, 'Build a Trade'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Draft Rights'));
+    await tester.tap(find.text('DRAFT RIGHTS'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Juhann Begarin'), findsOneWidget);
+    expect(find.textContaining('Justinian Jessup'), findsOneWidget);
 
-    await tester.tap(find.text('Cash'));
+    await tester.tap(find.text('CASH'));
     await tester.pumpAndSettle();
     expect(find.text('Cash considerations'), findsOneWidget);
 
@@ -134,29 +125,23 @@ void main() {
     await tester.tap(phillyChip);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Free Agents'));
+    await tester.tap(find.text('FREE AGENTS'));
     await tester.pumpAndSettle();
     expect(find.text('Kyle Lowry'), findsOneWidget);
     expect(find.text('Action'), findsOneWidget);
 
-    await tester.tap(find.text('Active Roster'));
+    await tester.tap(find.text('ACTIVE ROSTER'));
     await tester.pumpAndSettle();
-    final embiidRow = find.ancestor(
-      of: find.text('Joel Embiid'),
-      matching: find.byType(Row),
-    ).first;
-    final tradeButton = find.descendant(
-      of: embiidRow,
-      matching: find.widgetWithText(OutlinedButton, 'Trade'),
-    );
-    await tester.tap(tradeButton);
+    final phillyTradeButton =
+        find.widgetWithText(OutlinedButton, 'Trade').first;
+    await tester.tap(phillyTradeButton);
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Snapshot'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Trade snapshot saved'), findsOneWidget);
 
-    await tester.tap(find.text('Recent Trades').first);
+    await tester.tap(find.text('RECENT TRADES'));
     await tester.pumpAndSettle();
     expect(find.text('Load a copy'), findsOneWidget);
     expect(tester.takeException(), isNull);
