@@ -199,24 +199,30 @@ class _ProductTradeMachineVideoScreenState
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Row(
-            children: [
-              SizedBox(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final season = SizedBox(
                 width: 130,
                 child: DropdownButtonFormField<String>(
                   initialValue: '2026-27',
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Season',
                     isDense: true,
                   ),
                   items: const [
-                    DropdownMenuItem(value: '2026-27', child: Text('2026-27')),
+                    DropdownMenuItem(
+                      value: '2026-27',
+                      child: Text(
+                        '2026-27',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                   onChanged: (_) {},
                 ),
-              ),
-              const SizedBox(width: 10),
-              SegmentedButton<_TeamFilter>(
+              );
+              final conference = SegmentedButton<_TeamFilter>(
                 segments: const [
                   ButtonSegment(value: _TeamFilter.all, label: Text('All teams')),
                   ButtonSegment(value: _TeamFilter.east, label: Text('East')),
@@ -226,32 +232,64 @@ class _ProductTradeMachineVideoScreenState
                 showSelectedIcon: false,
                 onSelectionChanged: (value) =>
                     setState(() => _teamFilter = value.first),
-              ),
-              const Spacer(),
-              Text(
-                '${_teams.length} teams selected',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(width: 10),
-              TextButton(
-                onPressed: _teams.isEmpty
-                    ? null
-                    : () => setState(() => _teams.clear()),
-                child: const Text('Clear'),
-              ),
-              const SizedBox(width: 6),
-              FilledButton.icon(
-                onPressed: _teams.length >= 2
-                    ? () => setState(() {
-                          _builderActive = true;
-                          _activeTeam = _teams.first;
-                          _assetTab = _AssetTab.roster;
-                        })
-                    : null,
-                icon: const Icon(Icons.arrow_forward_rounded),
-                label: const Text('Build a Trade'),
-              ),
-            ],
+              );
+              final actions = Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                alignment: WrapAlignment.end,
+                children: [
+                  Text(
+                    '${_teams.length} teams selected',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _teams.isEmpty
+                        ? null
+                        : () => setState(() => _teams.clear()),
+                    child: const Text('Clear'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: _teams.length >= 2
+                        ? () => setState(() {
+                              _builderActive = true;
+                              _activeTeam = _teams.first;
+                              _assetTab = _AssetTab.roster;
+                            })
+                        : null,
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    label: const Text('Build a Trade'),
+                  ),
+                ],
+              );
+
+              if (constraints.maxWidth < 920) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [season, conference],
+                    ),
+                    const SizedBox(height: 8),
+                    Align(alignment: Alignment.centerRight, child: actions),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  season,
+                  const SizedBox(width: 10),
+                  conference,
+                  const Spacer(),
+                  Flexible(child: actions),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 16),
           LayoutBuilder(
@@ -856,18 +894,19 @@ class _ProductTradeMachineVideoScreenState
                     width: 105,
                     child: DropdownButtonFormField<String>(
                       initialValue: _positionFilter,
+                      isExpanded: true,
                       isDense: true,
                       decoration: const InputDecoration(
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(horizontal: 9, vertical: 9),
                       ),
                       items: const [
-                        DropdownMenuItem(value: 'All P', child: Text('All P')),
-                        DropdownMenuItem(value: 'PG', child: Text('Point Guard')),
-                        DropdownMenuItem(value: 'SG', child: Text('Shooting Guard')),
-                        DropdownMenuItem(value: 'SF', child: Text('Small Forward')),
-                        DropdownMenuItem(value: 'PF', child: Text('Power Forward')),
-                        DropdownMenuItem(value: 'C', child: Text('Center')),
+                        DropdownMenuItem(value: 'All P', child: Text('All P', overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'PG', child: Text('Point Guard', overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'SG', child: Text('Shooting Guard', overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'SF', child: Text('Small Forward', overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'PF', child: Text('Power Forward', overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'C', child: Text('Center', overflow: TextOverflow.ellipsis)),
                       ],
                       onChanged: (value) =>
                           setState(() => _positionFilter = value ?? 'All P'),
@@ -1078,17 +1117,15 @@ class _ProductTradeMachineVideoScreenState
           ),
           SizedBox(
             width: 170,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            child: Wrap(
+              spacing: 5,
+              runSpacing: 4,
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                if (kicker != null) ...[
-                  _tag(context, 'Trade Kicker'),
-                  const SizedBox(width: 5),
-                ],
-                if (restriction?.hasTradeVeto == true) ...[
+                if (kicker != null) _tag(context, 'Trade Kicker'),
+                if (restriction?.hasTradeVeto == true)
                   _tag(context, 'Consent'),
-                  const SizedBox(width: 5),
-                ],
                 SizedBox(
                   width: 84,
                   child: _routeControl(
