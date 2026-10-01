@@ -2716,10 +2716,20 @@ class _ProductTradeMachineVideoScreenState
         (assetId, destination) =>
             destination == team ||
             assetId.startsWith('$team:') ||
+            assetId.startsWith('$team-') ||
+            assetId.startsWith('two-way:$team:') ||
+            assetId.startsWith('draft-right:$team:') ||
             assetId.startsWith('cash:$team'),
       );
       _signAndTradeDestinations.removeWhere(
-        (_, destination) => destination == team,
+        (assetId, destination) =>
+            destination == team || assetId.startsWith('fa-right:$team:'),
+      );
+      _signAndTradeSalaries.removeWhere(
+        (assetId, _) => assetId.startsWith('fa-right:$team:'),
+      );
+      _renouncedFreeAgentRights.removeWhere(
+        (assetId) => assetId.startsWith('fa-right:$team:'),
       );
       _repairTradeState();
     });
