@@ -1306,13 +1306,20 @@ class _ProductTradeMachineVideoScreenState
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
           initialValue: destinations.contains(destination) ? destination : null,
+          isExpanded: true,
           decoration: const InputDecoration(
             labelText: 'Send cash to',
             isDense: true,
           ),
           items: [
             for (final item in destinations)
-              DropdownMenuItem(value: item, child: Text(_teamName(item))),
+              DropdownMenuItem(
+                value: item,
+                child: Text(
+                  _teamName(item),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
           ],
           onChanged: (value) => setState(() {
             if (value == null) {
@@ -1482,6 +1489,7 @@ class _ProductTradeMachineVideoScreenState
                   child: DropdownButtonFormField<String>(
                     initialValue:
                         destinations.contains(destination) ? destination : null,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Sign-and-trade to',
                       isDense: true,
@@ -1490,7 +1498,10 @@ class _ProductTradeMachineVideoScreenState
                       for (final team in destinations)
                         DropdownMenuItem(
                           value: team,
-                          child: Text(_teamName(team)),
+                          child: Text(
+                            _teamName(team),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                     ],
                     onChanged: (value) => setState(() {
@@ -2086,6 +2097,7 @@ class _ProductTradeMachineVideoScreenState
                   initialValue: allTeams.contains(_recentTeam)
                       ? _recentTeam
                       : 'All',
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Filter by team',
                     isDense: true,
@@ -2094,7 +2106,10 @@ class _ProductTradeMachineVideoScreenState
                     for (final team in allTeams)
                       DropdownMenuItem(
                         value: team,
-                        child: Text(team == 'All' ? 'All teams' : _teamName(team)),
+                        child: Text(
+                          team == 'All' ? 'All teams' : _teamName(team),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                   ],
                   onChanged: (value) =>
