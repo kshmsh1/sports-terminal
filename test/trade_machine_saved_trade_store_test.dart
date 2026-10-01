@@ -18,6 +18,8 @@ void main() {
       cashDestinations: {},
       signAndTradeDestinations: {},
       signAndTradeSalaries: {},
+      acquisitionMechanisms: {'BOS:jayson-tatum': 'tpe:BOS-demo'},
+      renouncedFreeAgentRights: ['fa-right:PHI:kyle-lowry'],
       incomingAssets: {
         'BOS': [],
         'PHI': ['Jayson Tatum'],
@@ -51,6 +53,8 @@ void main() {
     expect(rows.map((item) => item.id), ['two', 'one']);
     expect(rows.first.cashAmounts['MEM'], 1000000);
     expect(rows.last.routes['BOS:jayson-tatum'], 'PHI');
+    expect(rows.last.acquisitionMechanisms['BOS:jayson-tatum'], 'tpe:BOS-demo');
+    expect(rows.last.renouncedFreeAgentRights, ['fa-right:PHI:kyle-lowry']);
     expect(rows.last.incomingAssets['PHI'], ['Jayson Tatum']);
 
     final afterDelete = await store.delete('two');
