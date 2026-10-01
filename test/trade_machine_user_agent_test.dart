@@ -106,7 +106,9 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('BOS'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('PHI'));
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Build a Trade'));
     await tester.pumpAndSettle();
 
