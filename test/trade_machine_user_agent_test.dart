@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sports_terminal/screens/product_trade_machine_complete_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sports_terminal/screens/product_trade_machine_video_screen.dart';
 import 'package:sports_terminal/services/trade_machine_user_agent.dart';
 
 void main() {
@@ -18,150 +19,140 @@ void main() {
     expect(report.passedCount, greaterThanOrEqualTo(20));
   });
 
-  testWidgets('Trade Machine UI renders as a usable front-office surface',
+  testWidgets('Trade Machine opens on the 2-5 team build selector',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1600, 1800));
+    SharedPreferences.setMockInitialValues({});
+    await tester.binding.setSurfaceSize(const Size(1700, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: ProductTradeMachineCompleteScreen(),
-            ),
+            padding: EdgeInsets.all(16),
+            child: ProductTradeMachineVideoScreen(),
           ),
         ),
       ),
     );
-
     await tester.pumpAndSettle();
 
-    expect(find.text('NBA Trade Machine'), findsOneWidget);
-    expect(find.text('TRADE SETUP'), findsOneWidget);
-    expect(find.text('CBA / STRUCTURAL VALIDATION'), findsOneWidget);
-    expect(find.text('POST-TRADE FINANCIALS'), findsOneWidget);
-    expect(find.text('BOS'), findsWidgets);
-    expect(find.text('PHI'), findsWidgets);
-    expect(find.text('Players'), findsWidgets);
-    expect(find.text('Draft Picks'), findsWidgets);
-    expect(find.text('Money / Exceptions'), findsWidgets);
-    expect(find.text('Cap Table'), findsWidgets);
+    expect(find.text('BUILD A TRADE'), findsOneWidget);
+    expect(find.text('RECENT TRADES'), findsOneWidget);
+    expect(find.text('BOS'), findsOneWidget);
+    expect(find.text('PHI'), findsOneWidget);
+    expect(find.textContaining('Choose 2-5 teams'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Trade Machine routes assets and survives stateful controls',
+  testWidgets('Trade Machine builds a two-team asset-routing workspace',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1700, 2600));
+    SharedPreferences.setMockInitialValues({});
+    await tester.binding.setSurfaceSize(const Size(1700, 2400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: ProductTradeMachineCompleteScreen(),
-            ),
+            padding: EdgeInsets.all(16),
+            child: ProductTradeMachineVideoScreen(),
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    final calendar = find.byIcon(Icons.calendar_today_rounded);
-    expect(calendar, findsOneWidget);
-    await tester.ensureVisible(calendar);
-    await tester.tap(calendar);
-    await tester.pumpAndSettle();
-    expect(find.byType(DatePickerDialog), findsOneWidget);
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.text('BOS'));
+    await tester.tap(find.text('PHI'));
     await tester.pumpAndSettle();
 
-    final searchFields = find.byType(TextField);
-    expect(searchFields, findsWidgets);
-    await tester.enterText(searchFields.first, 'Jayson');
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-
-    await tester.enterText(searchFields.first, '');
+    final buildButtons = find.widgetWithText(FilledButton, 'Build a Trade');
+    expect(buildButtons, findsOneWidget);
+    await tester.tap(buildButtons);
     await tester.pumpAndSettle();
 
-    final routeHint = find.text('Route to…').first;
-    await tester.ensureVisible(routeHint);
-    await tester.tap(routeHint);
-    await tester.pumpAndSettle();
-    expect(find.text('PHI'), findsWidgets);
-    await tester.tap(find.text('PHI').last);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('→ PHI'), findsWidgets);
-    expect(tester.takeException(), isNull);
+    expect(find.text('ACTIVE ROSTER'), findsOneWidget);
+    expect(find.text('DRAFT PICKS'), findsOneWidget);
+    expect(find.text('DRAFT RIGHTS'), findsOneWidget);
+    expect(find.text('CASH'), findsOneWidget);
+    expect(find.text('FREE AGENTS'), findsOneWidget);
+    expect(find.text('Jayson Tatum'), findsOneWidget);
 
-    final moneyTab = find.text('Money / Exceptions').first;
-    await tester.ensureVisible(moneyTab);
-    await tester.tap(moneyTab);
+    final tradeButton = find.widgetWithText(OutlinedButton, 'Trade').first;
+    await tester.tap(tradeButton);
     await tester.pumpAndSettle();
-    expect(find.text('CASH CONSIDERATIONS'), findsWidgets);
-    expect(find.text('TRADED PLAYER EXCEPTIONS'), findsWidgets);
 
-    final tpeRadio = find.byType(Radio<String>).first;
-    await tester.ensureVisible(tpeRadio);
-    await tester.tap(tpeRadio);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Uses TPE:'), findsWidgets);
-    expect(tester.takeException(), isNull);
-
-    final reset = find.text('Reset');
-    await tester.ensureVisible(reset);
-    await tester.tap(reset);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Route a player or draft right'), findsOneWidget);
+    expect(find.text('This is an incomplete trade.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Trade Machine supports core interactive user flows', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1600, 2200));
+  testWidgets('Trade Machine exposes rights, cash, free-agent and saved-trade flows',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.binding.setSurfaceSize(const Size(1700, 2800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: ProductTradeMachineCompleteScreen(),
-            ),
+            padding: EdgeInsets.all(16),
+            child: ProductTradeMachineVideoScreen(),
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('BOS'), findsWidgets);
-    expect(find.text('PHI'), findsWidgets);
+    await tester.tap(find.text('BOS'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('PHI'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Build a Trade'));
+    await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Add team'));
+    await tester.tap(find.text('DRAFT RIGHTS'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('ATL').last);
-    await tester.pumpAndSettle();
-    expect(find.text('ATL'), findsWidgets);
+    expect(find.textContaining('Justinian Jessup'), findsOneWidget);
 
-    await tester.tap(find.text('Draft Picks').first);
+    await tester.tap(find.text('CASH'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('1st'), findsWidgets);
+    expect(find.text('Cash considerations'), findsOneWidget);
 
-    await tester.tap(find.text('Money / Exceptions').first);
+    final phillyChip = find.text('76ERS');
+    expect(phillyChip, findsOneWidget);
+    await tester.tap(phillyChip);
     await tester.pumpAndSettle();
-    expect(find.text('CASH CONSIDERATIONS'), findsWidgets);
 
-    await tester.tap(find.text('Routed only'));
+    await tester.tap(find.text('FREE AGENTS'));
     await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
+    expect(find.text('Kyle Lowry'), findsOneWidget);
+    expect(find.text('Action'), findsOneWidget);
 
-    await tester.tap(find.text('Reset'));
+    await tester.tap(find.text('ACTIVE ROSTER'));
     await tester.pumpAndSettle();
-    expect(find.text('Routed only'), findsOneWidget);
+    final phillyTradeButton =
+        find.widgetWithText(OutlinedButton, 'Trade').first;
+    await tester.tap(phillyTradeButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('CELTICS'));
+    await tester.pumpAndSettle();
+    final bostonTradeButton =
+        find.widgetWithText(OutlinedButton, 'Trade').first;
+    await tester.tap(bostonTradeButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Snapshot'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Trade snapshot saved'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.home_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('RECENT TRADES'));
+    await tester.pumpAndSettle();
+    expect(find.text('Load a copy'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
