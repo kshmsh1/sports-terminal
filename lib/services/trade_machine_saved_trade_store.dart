@@ -14,6 +14,7 @@ class TradeMachineSavedTrade {
     required this.signAndTradeDestinations,
     required this.signAndTradeSalaries,
     this.acquisitionMechanisms = const {},
+    this.renouncedFreeAgentRights = const [],
     required this.incomingAssets,
     required this.passed,
     required this.restrictionMode,
@@ -29,6 +30,7 @@ class TradeMachineSavedTrade {
   final Map<String, String> signAndTradeDestinations;
   final Map<String, double> signAndTradeSalaries;
   final Map<String, String> acquisitionMechanisms;
+  final List<String> renouncedFreeAgentRights;
   final Map<String, List<String>> incomingAssets;
   final bool passed;
   final String restrictionMode;
@@ -44,6 +46,7 @@ class TradeMachineSavedTrade {
         'sign_and_trade_destinations': signAndTradeDestinations,
         'sign_and_trade_salaries': signAndTradeSalaries,
         'acquisition_mechanisms': acquisitionMechanisms,
+        'renounced_free_agent_rights': renouncedFreeAgentRights,
         'incoming_assets': incomingAssets,
         'passed': passed,
         'restriction_mode': restrictionMode,
@@ -95,6 +98,11 @@ class TradeMachineSavedTrade {
           stringMap(json['sign_and_trade_destinations']),
       signAndTradeSalaries: doubleMap(json['sign_and_trade_salaries']),
       acquisitionMechanisms: stringMap(json['acquisition_mechanisms']),
+      renouncedFreeAgentRights: json['renounced_free_agent_rights'] is List
+          ? (json['renounced_free_agent_rights'] as List)
+              .map((item) => '$item')
+              .toList()
+          : const [],
       incomingAssets: listMap(json['incoming_assets']),
       passed: json['passed'] == true,
       restrictionMode: '${json['restriction_mode'] ?? 'on'}',
