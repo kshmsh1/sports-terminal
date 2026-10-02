@@ -996,7 +996,22 @@ class _ProductTradeMachineVideoScreenState
     List<NbaFutureDraftAsset> draftAssets,
     String team,
   ) {
-    Widget tabButton(_AssetTab tab, String label) {
+    final rosterCount = data.forTeam(team, '2026-27').length +
+        NbaTwoWayContractReference202627.forTeam(team)
+            .where(
+              (item) => !data
+                  .forTeam(team, '2026-27')
+                  .any((player) => player.player == item.player),
+            )
+            .length;
+    final pickCount =
+        draftAssets.where((asset) => asset.team == team).length;
+    final rightsCount =
+        NbaTradeSupplementalAssets202627.draftRightsFor(team).length;
+    final freeAgentCount =
+        NbaTradeSupplementalAssets202627.freeAgentRightsFor(team).length;
+
+    Widget tabButton(_AssetTab tab, String label, [int? count]) {
       final selected = _assetTab == tab;
       return InkWell(
         onTap: () => setState(() {
@@ -1014,13 +1029,43 @@ class _ProductTradeMachineVideoScreenState
               ),
             ),
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected ? const Color(0xFF173C62) : const Color(0xFF68798E),
-              fontWeight: FontWeight.w800,
-              fontSize: 10,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected
+                      ? const Color(0xFF173C62)
+                      : const Color(0xFF68798E),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 10,
+                ),
+              ),
+              if (count != null && count > 0) ...[
+                const SizedBox(width: 5),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? const Color(0xFF1769AA).withValues(alpha: .10)
+                        : const Color(0xFFEAF0F6),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                      color: selected
+                          ? const Color(0xFF1769AA)
+                          : const Color(0xFF6F8296),
+                      fontSize: 8,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       );
@@ -1045,11 +1090,27 @@ class _ProductTradeMachineVideoScreenState
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        tabButton(_AssetTab.roster, 'ACTIVE ROSTER'),
-                        tabButton(_AssetTab.draftPicks, 'DRAFT PICKS'),
-                        tabButton(_AssetTab.draftRights, 'DRAFT RIGHTS'),
+                        tabButton(
+                          _AssetTab.roster,
+                          'ACTIVE ROSTER',
+                          rosterCount,
+                        ),
+                        tabButton(
+                          _AssetTab.draftPicks,
+                          'DRAFT PICKS',
+                          pickCount,
+                        ),
+                        tabButton(
+                          _AssetTab.draftRights,
+                          'DRAFT RIGHTS',
+                          rightsCount,
+                        ),
                         tabButton(_AssetTab.cash, 'CASH'),
-                        tabButton(_AssetTab.freeAgents, 'FREE AGENTS'),
+                        tabButton(
+                          _AssetTab.freeAgents,
+                          'FREE AGENTS',
+                          freeAgentCount,
+                        ),
                       ],
                     ),
                   ),
@@ -1107,16 +1168,25 @@ class _ProductTradeMachineVideoScreenState
             ),
           ),
           const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            child: switch (_assetTab) {
-              _AssetTab.roster => _rosterTab(context, data, team),
-              _AssetTab.draftPicks =>
-                _draftPicksTab(context, draftAssets, team),
-              _AssetTab.draftRights => _draftRightsTab(context, team),
-              _AssetTab.cash => _cashTab(context, team),
-              _AssetTab.freeAgents => _freeAgentsTab(context, team),
-            },
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 150),
+            switchInCurve: Curves.easeOut,
+            switchOutCurve: Curves.easeIn,
+            child: KeyedSubtree(
+              key: ValueKey('$team-${_assetTab.name}'),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                child: switch (_assetTab) {
+                  _AssetTab.roster => _rosterTab(context, data, team),
+                  _AssetTab.draftPicks =>
+                    _draftPicksTab(context, draftAssets, team),
+                  _AssetTab.draftRights => _draftRightsTab(context, team),
+                  _AssetTab.cash => _cashTab(context, team),
+                  _AssetTab.freeAgents => _freeAgentsTab(context, team),
+                },
+              ),
+            ),
           ),
         ],
       ),
@@ -3903,6 +3973,7 @@ const _teamAccentColors = <String, Color>{
   'BRK': Color(0xFF111111),
   'BKN': Color(0xFF111111),
   'CHA': Color(0xFF1D1160),
+  'CHO': Color(0xFF1D1160),
   'CHI': Color(0xFFCE1141),
   'CLE': Color(0xFF860038),
   'DAL': Color(0xFF00538C),
@@ -3937,6 +4008,7 @@ const _spotracOperatingStatus = <String, String>{
   'BRK': 'Cap Space',
   'BKN': 'Cap Space',
   'CHA': '1st Apron (Hard-Cap)',
+  'CHO': '1st Apron (Hard-Cap)',
   'CHI': '1st Apron (Hard-Cap)',
   'CLE': '1st Apron (Hard-Cap)',
   'DAL': '1st Apron (Hard-Cap)',
@@ -4009,6 +4081,7 @@ const _teamMeta = <String, _TeamMeta>{
   'BRK': _TeamMeta('BRK', 'Brooklyn Nets', 'East', 'Nets'),
   'BKN': _TeamMeta('BKN', 'Brooklyn Nets', 'East', 'Nets'),
   'CHA': _TeamMeta('CHA', 'Charlotte Hornets', 'East', 'Hornets'),
+  'CHO': _TeamMeta('CHO', 'Charlotte Hornets', 'East', 'Hornets'),
   'CHI': _TeamMeta('CHI', 'Chicago Bulls', 'East', 'Bulls'),
   'CLE': _TeamMeta('CLE', 'Cleveland Cavaliers', 'East', 'Cavaliers'),
   'DAL': _TeamMeta('DAL', 'Dallas Mavericks', 'West', 'Mavericks'),
