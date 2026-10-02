@@ -293,7 +293,7 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
               Expanded(
                 child: SingleChildScrollView(
                   padding: _selected == 'trade'
-                      ? const EdgeInsets.fromLTRB(6, 8, 6, 64)
+                      ? const EdgeInsets.fromLTRB(6, 8, 6, 8)
                       : const EdgeInsets.fromLTRB(20, 28, 20, 64),
                   child: Center(
                     child: ConstrainedBox(
@@ -303,9 +303,22 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          selected.builder!(),
-                          const SizedBox(height: 56),
-                          _SiteFooter(onSelect: _select),
+                          if (_selected == 'trade')
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight:
+                                    (MediaQuery.sizeOf(context).height - 92)
+                                        .clamp(0.0, double.infinity)
+                                        .toDouble(),
+                              ),
+                              child: selected.builder!(),
+                            )
+                          else
+                            selected.builder!(),
+                          if (_selected != 'trade') ...[
+                            const SizedBox(height: 56),
+                            _SiteFooter(onSelect: _select),
+                          ],
                         ],
                       ),
                     ),
