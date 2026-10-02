@@ -248,7 +248,7 @@ class _ProductTradeMachineVideoScreenState
                   Text(
                     '${_teams.length} teams selected',
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: const Color(0xFF536A81),
                     ),
                   ),
                   TextButton(
@@ -1075,7 +1075,7 @@ class _ProductTradeMachineVideoScreenState
                 if (_assetTab == _AssetTab.roster) ...[
                   const SizedBox(width: 6),
                   SizedBox(
-                    width: 105,
+                    width: 132,
                     child: DropdownButtonFormField<String>(
                       initialValue: _positionFilter,
                       isExpanded: true,
@@ -1085,7 +1085,13 @@ class _ProductTradeMachineVideoScreenState
                         contentPadding: EdgeInsets.symmetric(horizontal: 9, vertical: 9),
                       ),
                       items: const [
-                        DropdownMenuItem(value: 'All P', child: Text('All P', overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(
+                          value: 'All',
+                          child: Text(
+                            'All positions',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                         DropdownMenuItem(value: 'PG', child: Text('Point Guard', overflow: TextOverflow.ellipsis)),
                         DropdownMenuItem(value: 'SG', child: Text('Shooting Guard', overflow: TextOverflow.ellipsis)),
                         DropdownMenuItem(value: 'SF', child: Text('Small Forward', overflow: TextOverflow.ellipsis)),
@@ -1093,7 +1099,7 @@ class _ProductTradeMachineVideoScreenState
                         DropdownMenuItem(value: 'C', child: Text('Center', overflow: TextOverflow.ellipsis)),
                       ],
                       onChanged: (value) =>
-                          setState(() => _positionFilter = value ?? 'All P'),
+                          setState(() => _positionFilter = value ?? 'All'),
                     ),
                   ),
                 ],
@@ -1128,7 +1134,7 @@ class _ProductTradeMachineVideoScreenState
         .where((item) =>
             query.isEmpty || item.player.toLowerCase().contains(query))
         .where((item) =>
-            _positionFilter == 'All P' ||
+            _positionFilter == 'All' ||
             _playerPositionReference[item.player] == _positionFilter)
         .toList();
 
@@ -1136,7 +1142,7 @@ class _ProductTradeMachineVideoScreenState
         .where((item) =>
             query.isEmpty || item.player.toLowerCase().contains(query))
         .where((item) =>
-            _positionFilter == 'All P' || item.position == _positionFilter)
+            _positionFilter == 'All' || item.position == _positionFilter)
         .where((item) =>
             !players.any((player) => player.player == item.player))
         .toList();
@@ -1290,12 +1296,11 @@ class _ProductTradeMachineVideoScreenState
           ),
           Expanded(
             child: Text(
-              player.guaranteed == null
-                  ? '2026-27 contract'
-                  : 'Guaranteed',
+              _contractLabel(player),
               style: const TextStyle(
-                color: Color(0xFF60768D),
+                color: Color(0xFF526980),
                 fontSize: 10,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -1755,8 +1760,29 @@ class _ProductTradeMachineVideoScreenState
     final destinations = _teams.where((team) => team != originTeam).toList();
 
     if (current != null && destinations.contains(current)) {
+      final accent = _teamAccent(current);
       return InputChip(
-        label: Text(_teamMeta[current]?.shortName ?? current),
+        avatar: Container(
+          width: 16,
+          height: 16,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: .10),
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            current == 'BRK' ? 'BKN' : current,
+            style: TextStyle(
+              color: accent,
+              fontSize: 6.5,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        label: Text(
+          current == 'BRK' ? 'BKN' : current,
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
         onDeleted: () => setState(() {
           _routes.remove(assetId);
           _acquisitionMechanisms.remove(assetId);
@@ -3149,6 +3175,22 @@ class _ProductTradeMachineVideoScreenState
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
+  String _assetTabLabel(_AssetTab tab) => switch (tab) {
+        _AssetTab.roster => 'Active roster',
+        _AssetTab.draftPicks => 'Draft picks',
+        _AssetTab.draftRights => 'Draft rights',
+        _AssetTab.cash => 'Cash',
+        _AssetTab.freeAgents => 'Free agents',
+      };
+
+  String _contractLabel(NbaTradeContract player) {
+    final salary = player.salaryFor('2026-27');
+    final guaranteed = player.guaranteed;
+    if (guaranteed == null || guaranteed <= 0) return '2026–27 salary';
+    if ((guaranteed - salary).abs() < 1) return 'Fully guaranteed';
+    return '${_money(guaranteed)} guaranteed';
+  }
+
   Widget _tableHeader(BuildContext context, List<String> labels) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 7),
@@ -3198,7 +3240,16 @@ class _ProductTradeMachineVideoScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: warning
+                        ? const Color(0xFF7B3038)
+                        : const Color(0xFF23394F),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 11.5,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
