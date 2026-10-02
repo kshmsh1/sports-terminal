@@ -738,7 +738,7 @@ class _ProductTradeMachineVideoScreenState
         const SizedBox(width: 4),
         modeButton(_RestrictionMode.deadline, 'Deadline', 'Trade mode'),
         const SizedBox(width: 7),
-        squareAction(Icons.manage_search_rounded, 'Trade research', _openTradeResearch),
+        squareAction(Icons.manage_search_rounded, 'Search saved trade snapshots', _openTradeResearch),
         const SizedBox(width: 4),
         squareAction(Icons.restart_alt_rounded, 'Reset trade', _clearTrade),
         const SizedBox(width: 4),
@@ -1236,7 +1236,10 @@ class _ProductTradeMachineVideoScreenState
 
     return Column(
       children: [
-        _tableHeader(context, const ['PLAYER', '2026-27 CAP HIT', 'CONTRACT', 'FLAGS']),
+        _tableHeader(
+          context,
+          const ['PLAYER', '2026–27 CAP HIT', 'CONTRACT / GUARANTEE', 'FLAGS / ROUTE'],
+        ),
         for (final player in players)
           _playerRow(context, player),
         for (final player in twoWays)
@@ -3082,7 +3085,7 @@ class _ProductTradeMachineVideoScreenState
           }).toList();
 
           return AlertDialog(
-            title: const Text('Trade research'),
+            title: const Text('Saved trade research'),
             content: SizedBox(
               width: 760,
               child: Column(
