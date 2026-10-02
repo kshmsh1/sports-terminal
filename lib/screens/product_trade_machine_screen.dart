@@ -16,6 +16,17 @@ class ProductTradeMachineScreen extends StatelessWidget {
         seedColor: const Color(0xFF1769AA),
         brightness: Brightness.light,
         surface: Colors.white,
+      ).copyWith(
+        primary: const Color(0xFF1769AA),
+        onPrimary: Colors.white,
+        surface: Colors.white,
+        surfaceContainerLow: const Color(0xFFF7F9FC),
+        surfaceContainer: const Color(0xFFF1F5F9),
+        surfaceContainerHighest: const Color(0xFFE7EDF4),
+        onSurface: const Color(0xFF24364B),
+        onSurfaceVariant: const Color(0xFF607388),
+        outline: const Color(0xFFCBD7E3),
+        outlineVariant: const Color(0xFFE0E7EF),
       ),
       dividerColor: const Color(0xFFDCE4EE),
       textTheme: ThemeData.light().textTheme.apply(
@@ -59,6 +70,39 @@ class ProductTradeMachineScreen extends StatelessWidget {
           ),
           textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
         ),
+      ),
+      chipTheme: const ChipThemeData(
+        backgroundColor: Color(0xFFF6F9FC),
+        selectedColor: Color(0xFFE6F1FA),
+        disabledColor: Color(0xFFF0F3F6),
+        side: BorderSide(color: Color(0xFFD6E0EA)),
+        labelStyle: TextStyle(
+          color: Color(0xFF334C64),
+          fontSize: 9.5,
+          fontWeight: FontWeight.w700,
+        ),
+        secondaryLabelStyle: TextStyle(
+          color: Color(0xFF1769AA),
+          fontSize: 9.5,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? Colors.white
+              : const Color(0xFF7B8997),
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? const Color(0xFF1769AA)
+              : const Color(0xFFDCE3EA),
+        ),
+      ),
+      sliderTheme: const SliderThemeData(
+        activeTrackColor: Color(0xFF2A6EA7),
+        inactiveTrackColor: Color(0xFFDCE5ED),
+        thumbColor: Color(0xFF2A6EA7),
       ),
     );
 
