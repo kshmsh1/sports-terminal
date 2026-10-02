@@ -41,7 +41,8 @@ void main() {
     expect(find.text('RECENT TRADES'), findsOneWidget);
     expect(find.text('BOS'), findsOneWidget);
     expect(find.text('PHI'), findsOneWidget);
-    expect(find.textContaining('Choose 2-5 teams'), findsOneWidget);
+    expect(find.textContaining('Select 2–5 teams'), findsOneWidget);
+    expect(find.text('Boston Celtics'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -83,7 +84,8 @@ void main() {
     await tester.tap(tradeButton);
     await tester.pumpAndSettle();
 
-    expect(find.text('This is an incomplete trade.'), findsOneWidget);
+    expect(find.text('Trade in progress'), findsOneWidget);
+    expect(find.textContaining('Needs outgoing'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
@@ -150,7 +152,7 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.home_outlined));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('RECENT TRADES'));
+    await tester.tap(find.textContaining('RECENT TRADES').first);
     await tester.pumpAndSettle();
     expect(find.text('Load a copy'), findsOneWidget);
     expect(tester.takeException(), isNull);
