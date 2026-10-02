@@ -1100,88 +1100,148 @@ class _ProductTradeMachineVideoScreenState
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        tabButton(
-                          _AssetTab.roster,
-                          'ACTIVE ROSTER',
-                          rosterCount,
-                        ),
-                        tabButton(
-                          _AssetTab.draftPicks,
-                          'DRAFT PICKS',
-                          pickCount,
-                        ),
-                        tabButton(
-                          _AssetTab.draftRights,
-                          'DRAFT RIGHTS',
-                          rightsCount,
-                        ),
-                        tabButton(_AssetTab.cash, 'CASH'),
-                        tabButton(
-                          _AssetTab.freeAgents,
-                          'FREE AGENTS',
-                          freeAgentCount,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (_assetTab == _AssetTab.roster ||
-                    _assetTab == _AssetTab.freeAgents) ...[
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 190,
-                    child: TextField(
-                      onChanged: (value) => setState(() => _search = value),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.search_rounded, size: 17),
-                        hintText: _assetTab == _AssetTab.roster
-                            ? 'Search players...'
-                            : 'Search free agents...',
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final tabs = SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      tabButton(
+                        _AssetTab.roster,
+                        'ACTIVE ROSTER',
+                        rosterCount,
                       ),
-                    ),
-                  ),
-                ],
-                if (_assetTab == _AssetTab.roster) ...[
-                  const SizedBox(width: 6),
-                  SizedBox(
-                    width: 132,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _positionFilter,
-                      isExpanded: true,
-                      isDense: true,
-                      decoration: const InputDecoration(
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 9, vertical: 9),
+                      tabButton(
+                        _AssetTab.draftPicks,
+                        'DRAFT PICKS',
+                        pickCount,
                       ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'All',
-                          child: Text(
-                            'All positions',
-                            overflow: TextOverflow.ellipsis,
+                      tabButton(
+                        _AssetTab.draftRights,
+                        'DRAFT RIGHTS',
+                        rightsCount,
+                      ),
+                      tabButton(_AssetTab.cash, 'CASH'),
+                      tabButton(
+                        _AssetTab.freeAgents,
+                        'FREE AGENTS',
+                        freeAgentCount,
+                      ),
+                    ],
+                  ),
+                );
+
+                final showSearch = _assetTab == _AssetTab.roster ||
+                    _assetTab == _AssetTab.freeAgents;
+                final tools = Row(
+                  children: [
+                    if (showSearch)
+                      Expanded(
+                        child: TextField(
+                          onChanged: (value) =>
+                              setState(() => _search = value),
+                          decoration: InputDecoration(
+                            prefixIcon:
+                                const Icon(Icons.search_rounded, size: 17),
+                            hintText: _assetTab == _AssetTab.roster
+                                ? 'Search players...'
+                                : 'Search free agents...',
+                            isDense: true,
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 10),
                           ),
                         ),
-                        DropdownMenuItem(value: 'PG', child: Text('Point Guard', overflow: TextOverflow.ellipsis)),
-                        DropdownMenuItem(value: 'SG', child: Text('Shooting Guard', overflow: TextOverflow.ellipsis)),
-                        DropdownMenuItem(value: 'SF', child: Text('Small Forward', overflow: TextOverflow.ellipsis)),
-                        DropdownMenuItem(value: 'PF', child: Text('Power Forward', overflow: TextOverflow.ellipsis)),
-                        DropdownMenuItem(value: 'C', child: Text('Center', overflow: TextOverflow.ellipsis)),
-                      ],
-                      onChanged: (value) =>
-                          setState(() => _positionFilter = value ?? 'All'),
-                    ),
-                  ),
-                ],
-              ],
+                      ),
+                    if (_assetTab == _AssetTab.roster) ...[
+                      const SizedBox(width: 6),
+                      SizedBox(
+                        width: 132,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _positionFilter,
+                          isExpanded: true,
+                          isDense: true,
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 9,
+                            ),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'All',
+                              child: Text(
+                                'All positions',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: 'PG',
+                              child: Text(
+                                'Point Guard',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: 'SG',
+                              child: Text(
+                                'Shooting Guard',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: 'SF',
+                              child: Text(
+                                'Small Forward',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: 'PF',
+                              child: Text(
+                                'Power Forward',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: 'C',
+                              child: Text(
+                                'Center',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                          onChanged: (value) => setState(
+                            () => _positionFilter = value ?? 'All',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+
+                if (constraints.maxWidth < 1040 && showSearch) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      tabs,
+                      const SizedBox(height: 7),
+                      tools,
+                      const SizedBox(height: 7),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: tabs),
+                    if (showSearch) ...[
+                      const SizedBox(width: 8),
+                      SizedBox(width: 328, child: tools),
+                    ],
+                  ],
+                );
+              },
             ),
           ),
           const Divider(height: 1),
