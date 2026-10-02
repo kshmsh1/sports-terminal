@@ -2183,7 +2183,7 @@ class _ProductTradeMachineVideoScreenState
                     report.warningCount,
                     const Color(0xFFA96422),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 10),
                   const Text(
                     'Financials',
                     style: TextStyle(
@@ -3002,10 +3002,47 @@ class _ProductTradeMachineVideoScreenState
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Successful saved trades involving ${_teams.map(_teamName).join(', ')}.',
+                  const Text(
+                    'Saved-trade research',
+                    style: TextStyle(
+                      color: Color(0xFF263E55),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Successful snapshots involving ${_teams.map(_teamName).join(', ')}. These results are local to this browser.',
+                    style: const TextStyle(
+                      color: Color(0xFF65788D),
+                      fontSize: 9.5,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 5,
+                    runSpacing: 5,
+                    children: [
+                      for (final team in _teams)
+                        Chip(
+                          avatar: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: _teamLogo(
+                              team,
+                              fallbackColor: _teamAccent(team),
+                            ),
+                          ),
+                          label: Text(
+                            team == 'BRK' ? 'BKN' : team,
+                            style: const TextStyle(fontSize: 9),
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   TextField(
                     onChanged: (value) =>
                         setDialogState(() => query = value),
@@ -3017,12 +3054,31 @@ class _ProductTradeMachineVideoScreenState
                   ),
                   const SizedBox(height: 12),
                   ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 360),
+                    constraints: BoxConstraints(
+                      maxHeight: selected.isEmpty ? 130 : 360,
+                    ),
                     child: selected.isEmpty
-                        ? const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(22),
-                              child: Text('No matching successful saved trades yet.'),
+                        ? const SizedBox(
+                            height: 110,
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.search_off_rounded,
+                                    color: Color(0xFF8192A3),
+                                    size: 24,
+                                  ),
+                                  SizedBox(height: 7),
+                                  Text(
+                                    'No matching successful snapshots yet.',
+                                    style: TextStyle(
+                                      color: Color(0xFF50677E),
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           )
                         : ListView.separated(
@@ -3340,6 +3396,7 @@ class _ProductTradeMachineVideoScreenState
       _builderActive = _teams.length >= 2;
       _page = _TradePage.build;
       _assetTab = _AssetTab.roster;
+      _showAllFindings = false;
       _search = '';
       _repairTradeState();
     });
@@ -3413,6 +3470,7 @@ class _ProductTradeMachineVideoScreenState
       _acquisitionMechanisms.clear();
       _renouncedFreeAgentRights.clear();
       _expandedFreeAgents.clear();
+      _showAllFindings = false;
       _search = '';
     });
   }
