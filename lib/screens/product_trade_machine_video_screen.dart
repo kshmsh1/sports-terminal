@@ -246,9 +246,15 @@ class _ProductTradeMachineVideoScreenState
                 alignment: WrapAlignment.end,
                 children: [
                   Text(
-                    '${_teams.length} teams selected',
-                    style: TextStyle(
-                      color: const Color(0xFF536A81),
+                    _teams.length < 2
+                        ? 'Select at least 2 teams'
+                        : _teams.length == 5
+                            ? '5 teams selected · max'
+                            : '${_teams.length} teams selected',
+                    style: const TextStyle(
+                      color: Color(0xFF536A81),
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   TextButton(
