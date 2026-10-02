@@ -1835,6 +1835,121 @@ class _ProductTradeMachineVideoScreenState
     );
   }
 
+  Widget _guideStep(String number, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFE1E8F0)),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: Color(0xFFEAF3FB),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              number,
+              style: const TextStyle(
+                color: Color(0xFF1769AA),
+                fontSize: 8.5,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF536A81),
+                fontSize: 8.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _participationRow(
+    BuildContext context,
+    String team, {
+    required bool sends,
+    required bool receives,
+  }) {
+    Widget state(String label, bool complete) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        decoration: BoxDecoration(
+          color: complete
+              ? const Color(0xFF148A55).withValues(alpha: .08)
+              : const Color(0xFF2877B5).withValues(alpha: .07),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              complete ? Icons.check_rounded : Icons.arrow_forward_rounded,
+              color: complete
+                  ? const Color(0xFF148A55)
+                  : const Color(0xFF2877B5),
+              size: 11,
+            ),
+            const SizedBox(width: 3),
+            Text(
+              label,
+              style: TextStyle(
+                color: complete
+                    ? const Color(0xFF148A55)
+                    : const Color(0xFF2877B5),
+                fontSize: 8.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: Color(0xFFE3EAF1))),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: _teamLogo(team, fallbackColor: _teamAccent(team)),
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              _teamName(team),
+              style: const TextStyle(
+                color: Color(0xFF31465C),
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          state(sends ? 'Sending' : 'Needs outgoing', sends),
+          const SizedBox(width: 5),
+          state(receives ? 'Receiving' : 'Needs incoming', receives),
+        ],
+      ),
+    );
+  }
+
   Widget _tradeSummary(
     BuildContext context,
     TradeScenario scenario,
@@ -1842,12 +1957,30 @@ class _ProductTradeMachineVideoScreenState
     NbaTradeContractSnapshot data,
   ) {
     final hasActivity = scenario.assignments.isNotEmpty;
-    final colors = Theme.of(context).colorScheme;
     final incompleteTeams = _teams.where((team) {
       return scenario.incomingFor(team).isEmpty ||
           scenario.outgoingFor(team).isEmpty;
     }).toList();
     final incomplete = hasActivity && incompleteTeams.isNotEmpty;
+
+    Widget countPill(String label, int count, Color color) {
+      if (count <= 0) return const SizedBox.shrink();
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .10),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          '$count $label',
+          style: TextStyle(
+            color: color,
+            fontSize: 9,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      );
+    }
 
     return _surface(
       context,
@@ -1856,62 +1989,111 @@ class _ProductTradeMachineVideoScreenState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (!hasActivity)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                'Build a trade by routing a player, draft asset, cash item or sign-and-trade.',
-                style: TextStyle(color: colors.onSurfaceVariant),
+            Container(
+              padding: const EdgeInsets.fromLTRB(22, 28, 22, 26),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFBFCFE),
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1769AA).withValues(alpha: .08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.swap_horiz_rounded,
+                      color: Color(0xFF1769AA),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(height: 11),
+                  const Text(
+                    'Start building the trade',
+                    style: TextStyle(
+                      color: Color(0xFF23394F),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  const Text(
+                    'Choose an asset on the left, route it to another team, then balance every participating team.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF63758A),
+                      fontSize: 10.5,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  Row(
+                    children: [
+                      Expanded(child: _guideStep('1', 'Choose an asset')),
+                      const SizedBox(width: 7),
+                      Expanded(child: _guideStep('2', 'Set destination')),
+                      const SizedBox(width: 7),
+                      Expanded(child: _guideStep('3', 'Resolve blockers')),
+                    ],
+                  ),
+                ],
               ),
             )
           else if (incomplete) ...[
-            const Padding(
-              padding: EdgeInsets.fromLTRB(12, 12, 12, 5),
-              child: Text(
-                'Incomplete trade',
-                style: TextStyle(
-                  color: Color(0xFF6F7D8C),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 11, 12, 10),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF4F9FD),
+                border: Border(
+                  left: BorderSide(color: Color(0xFF2877B5), width: 4),
                 ),
               ),
-            ),
-            Container(
-              margin: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEAF4FC),
-                border: Border.all(color: const Color(0xFFB7D3E9)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  const Text(
-                    'This is an incomplete trade.',
-                    style: TextStyle(
-                      color: Color(0xFF1F5F91),
-                      fontWeight: FontWeight.w900,
+                  const Icon(
+                    Icons.account_tree_outlined,
+                    color: Color(0xFF2877B5),
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Trade in progress',
+                          style: TextStyle(
+                            color: Color(0xFF245F8D),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11.5,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Every selected team needs both incoming and outgoing consideration before the full CBA result is shown.',
+                          style: TextStyle(
+                            color: Color(0xFF58758D),
+                            fontSize: 9.5,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 7),
-                  const Text(
-                    'More moves are needed for this trade to process:',
-                    style: TextStyle(color: Color(0xFF3E6687), fontSize: 11),
-                  ),
-                  const SizedBox(height: 5),
-                  for (final team in incompleteTeams)
-                    Text(
-                      scenario.outgoingFor(team).isEmpty
-                          ? '• $team needs to send something to another selected team.'
-                          : '• $team needs to receive something from another selected team.',
-                      style: const TextStyle(
-                        color: Color(0xFF3E6687),
-                        fontSize: 11,
-                        height: 1.45,
-                      ),
-                    ),
                 ],
               ),
             ),
+            for (final team in _teams)
+              _participationRow(
+                context,
+                team,
+                sends: scenario.outgoingFor(team).isNotEmpty,
+                receives: scenario.incomingFor(team).isNotEmpty,
+              ),
           ] else ...[
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -1928,10 +2110,16 @@ class _ProductTradeMachineVideoScreenState
                   ),
                 ),
               ),
-              child: Row(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 7,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: report.isValid
                           ? const Color(0xFF1E9C65)
@@ -1960,24 +2148,44 @@ class _ProductTradeMachineVideoScreenState
                       ],
                     ),
                   ),
+                  countPill(
+                    'blocker${report.errorCount == 1 ? '' : 's'}',
+                    report.errorCount,
+                    const Color(0xFFC93E50),
+                  ),
+                  countPill(
+                    'warning${report.warningCount == 1 ? '' : 's'}',
+                    report.warningCount,
+                    const Color(0xFFA96422),
+                  ),
                   const Spacer(),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Financials', style: TextStyle(fontSize: 10)),
-                      Switch(
-                        value: _showFinancials,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        onChanged: (value) =>
-                            setState(() => _showFinancials = value),
+                  const Text(
+                    'Financials',
+                    style: TextStyle(
+                      color: Color(0xFF66798D),
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Switch(
+                    value: _showFinancials,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    onChanged: (value) =>
+                        setState(() => _showFinancials = value),
+                  ),
+                  if (report.findings.length > 3)
+                    TextButton(
+                      onPressed: () => setState(
+                        () => _showAllFindings = !_showAllFindings,
                       ),
-                      const SizedBox(width: 4),
-                      OutlinedButton.icon(
-                        onPressed: () => _saveTrade(scenario, report, data),
-                        icon: const Icon(Icons.camera_alt_outlined, size: 14),
-                        label: const Text('Snapshot'),
+                      child: Text(
+                        _showAllFindings ? 'Less detail' : 'All findings',
                       ),
-                    ],
+                    ),
+                  OutlinedButton.icon(
+                    onPressed: () => _saveTrade(scenario, report, data),
+                    icon: const Icon(Icons.camera_alt_outlined, size: 14),
+                    label: const Text('Snapshot'),
                   ),
                 ],
               ),
@@ -1997,13 +2205,37 @@ class _ProductTradeMachineVideoScreenState
     TradeValidationReport report,
   ) {
     final incoming = scenario.incomingFor(team).toList();
-    final findings = report.findings.where((item) => item.team == team).toList();
-    final hasError = findings.any(
-      (item) => item.severity == TradeValidationSeverity.error,
-    );
+    final findings = report.findings.where((item) => item.team == team).toList()
+      ..sort((a, b) {
+        int rank(TradeValidationSeverity severity) => switch (severity) {
+              TradeValidationSeverity.error => 0,
+              TradeValidationSeverity.warning => 1,
+              TradeValidationSeverity.info => 2,
+            };
+        return rank(a.severity).compareTo(rank(b.severity));
+      });
+    final errors = findings
+        .where((item) => item.severity == TradeValidationSeverity.error)
+        .length;
+    final warnings = findings
+        .where((item) => item.severity == TradeValidationSeverity.warning)
+        .length;
+    final visibleFindings =
+        _showAllFindings ? findings : findings.take(3).toList();
     final summary = report.teamSummaries[team];
     final accent = _teamAccent(team);
     final post = summary?.postTradeSalary;
+
+    final checkLabel = errors > 0
+        ? '$errors blocker${errors == 1 ? '' : 's'}'
+        : warnings > 0
+            ? 'Passes with $warnings review item${warnings == 1 ? '' : 's'}'
+            : 'All modeled checks pass';
+    final checkColor = errors > 0
+        ? const Color(0xFFC93E50)
+        : warnings > 0
+            ? const Color(0xFFA96422)
+            : const Color(0xFF17844F);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(10, 9, 10, 10),
@@ -2030,13 +2262,27 @@ class _ProductTradeMachineVideoScreenState
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    '${_teamName(team)} Acquire',
-                    style: const TextStyle(
-                      color: Color(0xFF273A50),
-                      fontWeight: FontWeight.w900,
-                      fontSize: 12,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${_teamName(team)} Acquire',
+                        style: const TextStyle(
+                          color: Color(0xFF273A50),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (summary != null)
+                        Text(
+                          'Out ${_money(summary.outgoingSalary)}  •  In ${_money(summary.incomingSalary)}  •  Max ${_money(summary.maximumIncomingSalary)}',
+                          style: const TextStyle(
+                            color: Color(0xFF687A8F),
+                            fontSize: 8.5,
+                            height: 1.3,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],
@@ -2060,7 +2306,7 @@ class _ProductTradeMachineVideoScreenState
                 SizedBox(
                   width: 78,
                   child: Text(
-                    '2026 CAP HIT',
+                    '2026–27 CAP HIT',
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       color: Color(0xFF73859A),
@@ -2084,33 +2330,49 @@ class _ProductTradeMachineVideoScreenState
           else
             for (final assignment in incoming)
               _incomingRow(context, assignment),
-          if (hasError)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 7, 10, 0),
-              child: Text(
-                'Trade rules fail',
-                style: const TextStyle(
-                  color: Color(0xFFC93E50),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            )
-          else
-            const Padding(
-              padding: EdgeInsets.fromLTRB(10, 7, 10, 0),
-              child: Text(
-                'Salary matching passes',
-                style: TextStyle(
-                  color: Color(0xFF17844F),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(10, 7, 10, 7),
+            decoration: BoxDecoration(
+              color: checkColor.withValues(alpha: .045),
+              border: const Border(
+                top: BorderSide(color: Color(0xFFE4EAF1)),
               ),
             ),
-          if (findings.isNotEmpty)
-            for (final finding in findings.take(3))
-              _findingLine(context, finding),
+            child: Row(
+              children: [
+                Icon(
+                  errors > 0
+                      ? Icons.error_outline_rounded
+                      : warnings > 0
+                          ? Icons.info_outline_rounded
+                          : Icons.check_circle_outline_rounded,
+                  color: checkColor,
+                  size: 14,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    checkLabel,
+                    style: TextStyle(
+                      color: checkColor,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                if (!_showAllFindings && findings.length > 3)
+                  Text(
+                    '+${findings.length - 3} more',
+                    style: const TextStyle(
+                      color: Color(0xFF73859A),
+                      fontSize: 8.5,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          for (final finding in visibleFindings)
+            _findingLine(context, finding),
           if (_showFinancials && summary != null && post != null) ...[
             Container(
               margin: const EdgeInsets.fromLTRB(10, 8, 10, 4),
@@ -2123,16 +2385,19 @@ class _ProductTradeMachineVideoScreenState
                   const Text(
                     'AFTER THE TRADE',
                     style: TextStyle(
-                      color: Color(0xFF728398),
+                      color: Color(0xFF5F7388),
                       fontSize: 8,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   const Spacer(),
                   Text(
-                    _signedMoney(post - (scenario.capContexts[team]?.teamSalary ?? post)),
+                    _signedMoney(
+                      post - (scenario.capContexts[team]?.teamSalary ?? post),
+                    ),
                     style: TextStyle(
-                      color: post <= (scenario.capContexts[team]?.teamSalary ?? post)
+                      color: post <=
+                              (scenario.capContexts[team]?.teamSalary ?? post)
                           ? const Color(0xFF17844F)
                           : const Color(0xFFC93E50),
                       fontWeight: FontWeight.w900,
@@ -2145,15 +2410,16 @@ class _ProductTradeMachineVideoScreenState
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 5, 10, 10),
               child: Wrap(
-                spacing: 14,
-                runSpacing: 7,
+                spacing: 15,
+                runSpacing: 8,
                 children: [
                   _smallMetric(
                     'Cap space',
                     _signedMoney(
                       NbaLeagueEnvironment202627.salaryCap -
                           ((NbaTeamCapReference202627.forTeam(team)?.totalCap ??
-                                  (scenario.capContexts[team]?.teamSalary ?? post)) -
+                                  (scenario.capContexts[team]?.teamSalary ??
+                                      post)) -
                               _renouncedCapHoldTotal(team) +
                               (post -
                                   (scenario.capContexts[team]?.teamSalary ??
@@ -2161,20 +2427,29 @@ class _ProductTradeMachineVideoScreenState
                     ),
                   ),
                   _smallMetric(
-                    '1st apron space',
-                    _signedMoney(NbaLeagueEnvironment202627.firstApron - post),
+                    '1st apron',
+                    _signedMoney(
+                      NbaLeagueEnvironment202627.firstApron - post,
+                    ),
                   ),
                   _smallMetric(
-                    '2nd apron space',
-                    _signedMoney(NbaLeagueEnvironment202627.secondApron - post),
+                    '2nd apron',
+                    _signedMoney(
+                      NbaLeagueEnvironment202627.secondApron - post,
+                    ),
                   ),
                   _smallMetric(
-                    'Tax space',
-                    _signedMoney(NbaLeagueEnvironment202627.luxuryTax - post),
+                    'Tax',
+                    _signedMoney(
+                      NbaLeagueEnvironment202627.luxuryTax - post,
+                    ),
                   ),
-                  _smallMetric('Out', _money(summary.outgoingSalary)),
-                  _smallMetric('In', _money(summary.incomingSalary)),
-                  _smallMetric('Limit', _money(summary.maximumIncomingSalary)),
+                  _smallMetric('Outgoing', _money(summary.outgoingSalary)),
+                  _smallMetric('Incoming', _money(summary.incomingSalary)),
+                  _smallMetric(
+                    'Match limit',
+                    _money(summary.maximumIncomingSalary),
+                  ),
                 ],
               ),
             ),
