@@ -610,44 +610,55 @@ class _ProductTradeMachineVideoScreenState
       String subtitle,
     ) {
       final selected = _restrictionMode == mode;
-      return InkWell(
-        borderRadius: BorderRadius.circular(5),
-        onTap: () => setState(() => _restrictionMode = mode),
-        child: Container(
-          width: 58,
-          height: 38,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xFFF2F7FD) : Colors.white,
-            borderRadius: BorderRadius.circular(5),
-            border: Border.all(
-              color: selected
-                  ? const Color(0xFF88B4D9)
-                  : const Color(0xFFD6E0EA),
+      final tooltip = switch (mode) {
+        _RestrictionMode.on =>
+          'Apply current trade-eligibility and timing restrictions',
+        _RestrictionMode.off =>
+          'Ignore trade-timing restrictions for sandbox analysis',
+        _RestrictionMode.deadline =>
+          'Evaluate eligibility at the modeled 2027 trade deadline',
+      };
+      return Tooltip(
+        message: tooltip,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(5),
+          onTap: () => setState(() => _restrictionMode = mode),
+          child: Container(
+            width: 58,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: selected ? const Color(0xFFF2F7FD) : Colors.white,
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(
+                color: selected
+                    ? const Color(0xFF88B4D9)
+                    : const Color(0xFFD6E0EA),
+              ),
             ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: selected
-                      ? const Color(0xFF1769AA)
-                      : const Color(0xFF6C7E92),
-                  fontSize: 8,
-                  fontWeight: FontWeight.w900,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: selected
+                        ? const Color(0xFF1769AA)
+                        : const Color(0xFF6C7E92),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              ),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  color: Color(0xFF8998A9),
-                  fontSize: 6.5,
-                  height: 1,
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Color(0xFF8998A9),
+                    fontSize: 6.5,
+                    height: 1,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
@@ -733,7 +744,7 @@ class _ProductTradeMachineVideoScreenState
         const SizedBox(width: 4),
         squareAction(
           Icons.home_outlined,
-          'Back to team selection',
+          'Back to team selection (draft is kept)',
           () => setState(() {
             _builderActive = false;
             _activeTeam = null;
