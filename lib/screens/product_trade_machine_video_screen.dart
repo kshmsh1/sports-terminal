@@ -46,8 +46,9 @@ class _ProductTradeMachineVideoScreenState
   String? _activeTeam;
   bool _builderActive = false;
   bool _showFinancials = false;
+  bool _showAllFindings = false;
   String _search = '';
-  String _positionFilter = 'All P';
+  String _positionFilter = 'All';
 
   final Map<String, String> _routes = {};
   final Map<String, double> _cashAmounts = {};
@@ -175,7 +176,12 @@ class _ProductTradeMachineVideoScreenState
           children: [
             tab('BUILD A TRADE', _TradePage.build),
             const SizedBox(width: 4),
-            tab('RECENT TRADES', _TradePage.recent),
+            tab(
+              _savedTrades.isEmpty
+                  ? 'RECENT TRADES'
+                  : 'RECENT TRADES  ${_savedTrades.length}',
+              _TradePage.recent,
+            ),
           ],
         ),
       ),
@@ -320,7 +326,7 @@ class _ProductTradeMachineVideoScreenState
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Choose 2-5 teams. The cap-status label is based on the static 2026-27 team salary and hard-cap ledger.',
+              'Select 2–5 teams. Select a card again to remove it; cap status is calculated from the 2026–27 trade ledger.',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: 12,
@@ -380,16 +386,32 @@ class _ProductTradeMachineVideoScreenState
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  status,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF17243A),
-                    fontSize: 11,
-                    height: 1.22,
-                    fontWeight: FontWeight.w800,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _teamName(team),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF17243A),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      status,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF5E7085),
+                        fontSize: 9.5,
+                        height: 1.2,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 6),
@@ -433,7 +455,9 @@ class _ProductTradeMachineVideoScreenState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _builderToolbar(context, data, team),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
+        _workspaceStatusStrip(context, team, scenario, report),
+        const SizedBox(height: 8),
         _teamFinancialStrip(context, data, team),
         const SizedBox(height: 12),
         LayoutBuilder(
@@ -713,6 +737,137 @@ class _ProductTradeMachineVideoScreenState
     );
   }
 
+  Widget _workspaceStatusStrip(
+    BuildContext context,
+    String activeTeam,
+    TradeScenario scenario,
+    TradeValidationReport report,
+  ) {
+    final participating = _teams.where((team) {
+      return scenario.incomingFor(team).isNotEmpty &&
+          scenario.outgoingFor(team).isNotEmpty;
+    }).length;
+    final hasActivity = scenario.assignments.isNotEmpty;
+    final incomplete = hasActivity && participating < _teams.length;
+    final statusColor = !hasActivity
+        ? const Color(0xFF60758B)
+        : incomplete
+            ? const Color(0xFF2877B5)
+            : report.isValid
+                ? const Color(0xFF148A55)
+                : const Color(0xFFC23A4B);
+    final statusLabel = !hasActivity
+        ? 'No assets routed'
+        : incomplete
+            ? '$participating of ${_teams.length} teams complete'
+            : report.isValid
+                ? 'Trade passes'
+                : '${report.errorCount} blocker${report.errorCount == 1 ? '' : 's'}';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFD),
+        border: Border.all(color: const Color(0xFFDCE4EE)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 26,
+            height: 26,
+            child: _teamLogo(
+              activeTeam,
+              fallbackColor: _teamAccent(activeTeam),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Wrap(
+              spacing: 7,
+              runSpacing: 3,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'Viewing ${_teamName(activeTeam)}',
+                  style: const TextStyle(
+                    color: Color(0xFF20364D),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const Text(
+                  '•',
+                  style: TextStyle(color: Color(0xFF9AA8B7)),
+                ),
+                Text(
+                  _assetTabLabel(_assetTab),
+                  style: const TextStyle(
+                    color: Color(0xFF62758A),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Text(
+                  '•',
+                  style: TextStyle(color: Color(0xFF9AA8B7)),
+                ),
+                Text(
+                  _restrictionMode == _RestrictionMode.off
+                      ? 'Timing restrictions off'
+                      : 'As of ${_dateLabel(_effectiveTradeDate)}',
+                  style: const TextStyle(
+                    color: Color(0xFF62758A),
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: .10),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: statusColor.withValues(alpha: .24)),
+            ),
+            child: Text(
+              statusLabel,
+              style: TextStyle(
+                color: statusColor,
+                fontSize: 9.5,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          if (hasActivity && report.warningCount > 0) ...[
+            const SizedBox(width: 6),
+            Tooltip(
+              message: '${report.warningCount} warning${report.warningCount == 1 ? '' : 's'}',
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD58B45).withValues(alpha: .10),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${report.warningCount} warn',
+                  style: const TextStyle(
+                    color: Color(0xFFA96422),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _teamFinancialStrip(
     BuildContext context,
     NbaTradeContractSnapshot data,
@@ -746,30 +901,59 @@ class _ProductTradeMachineVideoScreenState
       ),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth >= 900
-            ? (constraints.maxWidth - 4 * 10) / 5
-            : constraints.maxWidth >= 520
-                ? (constraints.maxWidth - 10) / 2
-                : constraints.maxWidth;
-        return Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            for (final item in metrics)
-              SizedBox(
-                width: width,
-                child: _metricCard(
-                  context,
-                  item.$1,
-                  item.$2,
-                  item.$3,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(2, 0, 2, 5),
+          child: Row(
+            children: [
+              Text(
+                '${_teamName(team)} financial position',
+                style: const TextStyle(
+                  color: Color(0xFF40566F),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-          ],
-        );
-      },
+              const Spacer(),
+              const Text(
+                '2026–27',
+                style: TextStyle(
+                  color: Color(0xFF7A8999),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth >= 900
+                ? (constraints.maxWidth - 4 * 8) / 5
+                : constraints.maxWidth >= 520
+                    ? (constraints.maxWidth - 8) / 2
+                    : constraints.maxWidth;
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final item in metrics)
+                  SizedBox(
+                    width: width,
+                    child: _metricCard(
+                      context,
+                      item.$1,
+                      item.$2,
+                      item.$3,
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 
