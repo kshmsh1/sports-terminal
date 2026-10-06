@@ -16,26 +16,26 @@ class ProductTradeMachineScreen extends StatelessWidget {
     final dark = theme.brightness == Brightness.dark;
     final tradeTheme = theme.copyWith(
       scaffoldBackgroundColor:
-          dark ? const Color(0xFF0B111A) : const Color(0xFFF5F7FA),
+          dark ? const Color(0xFF0C131B) : const Color(0xFFF3F6F9),
       cardTheme: theme.cardTheme.copyWith(
-        color: dark ? const Color(0xFF111A24) : Colors.white,
+        color: dark ? const Color(0xFF141E29) : Colors.white,
       ),
       dividerColor:
-          dark ? const Color(0xFF2B3A49) : const Color(0xFFDCE4EE),
+          dark ? const Color(0xFF2C3A48) : const Color(0xFFD7E1EA),
       inputDecorationTheme: theme.inputDecorationTheme.copyWith(
         filled: true,
-        fillColor: dark ? const Color(0xFF111A24) : Colors.white,
+        fillColor: dark ? const Color(0xFF121B25) : Colors.white,
         isDense: true,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(7),
           borderSide: BorderSide(
-            color: dark ? const Color(0xFF314252) : const Color(0xFFD4DFEB),
+            color: dark ? const Color(0xFF3A4A59) : const Color(0xFFD4DFEB),
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(7),
           borderSide: BorderSide(
-            color: dark ? const Color(0xFF314252) : const Color(0xFFD4DFEB),
+            color: dark ? const Color(0xFF3A4A59) : const Color(0xFFD4DFEB),
           ),
         ),
       ),
