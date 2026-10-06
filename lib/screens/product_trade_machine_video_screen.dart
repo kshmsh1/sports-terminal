@@ -3755,17 +3755,20 @@ class _ProductTradeMachineVideoScreenState
   }
 
   String _operatingAs(String team, NbaTradeContractSnapshot data) {
-    final reference = _spotracOperatingStatus[team];
-    if (reference != null) return reference;
+    final source = NbaTeamFinancialReference202627.forTeam(team);
+    if (source != null) {
+      if (source.hardCap == 'second') return '2nd Apron (Hard-Cap)';
+      if (source.hardCap == 'first') return '1st Apron (Hard-Cap)';
+      if (source.secondApronSpace < 0) return '2nd Apron';
+      if (source.firstApronSpace < 0) return '1st Apron';
+      if (source.taxSpace < 0) return 'Luxury Tax';
+      if (source.capSpace < 0) return 'Over The Cap';
+      return 'Cap Space';
+    }
     final salary = _teamSalary(team, data);
-    final hard = NbaFrontOfficeTracker202627.hardCaps[team]?.capLevel;
-    if (hard == 'second') return '2nd Apron (Hard-Cap)';
-    if (hard == 'first') return '1st Apron (Hard-Cap)';
     if (salary > NbaLeagueEnvironment202627.secondApron) return '2nd Apron';
     if (salary > NbaLeagueEnvironment202627.firstApron) return '1st Apron';
-    if (salary > NbaLeagueEnvironment202627.luxuryTax) {
-      return 'Over The Cap/Tax';
-    }
+    if (salary > NbaLeagueEnvironment202627.luxuryTax) return 'Luxury Tax';
     if (salary > NbaLeagueEnvironment202627.salaryCap) return 'Over The Cap';
     return 'Cap Space';
   }
