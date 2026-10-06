@@ -293,12 +293,12 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
               Expanded(
                 child: SingleChildScrollView(
                   padding: _selected == 'trade'
-                      ? const EdgeInsets.fromLTRB(6, 8, 6, 8)
+                      ? const EdgeInsets.fromLTRB(28, 12, 28, 24)
                       : const EdgeInsets.fromLTRB(20, 28, 20, 64),
                   child: Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        maxWidth: _selected == 'trade' ? 1680 : 1320,
+                        maxWidth: _selected == 'trade' ? 1480 : 1320,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
