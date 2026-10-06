@@ -1676,7 +1676,9 @@ class _ProductTradeMachineVideoScreenState
           ),
         if (rights.isEmpty)
           _empty(
-            'No source-certified draft-rights records are installed for $team yet. The tab stays source-gated rather than inventing rights.',
+            NbaTradeSupplementalAssets202627.draftRightsCertifiedForTeam(team)
+                ? 'No draft rights are listed for $team in the supplied 2026–27 reference table.'
+                : 'No source-certified draft-rights records are installed for $team yet.',
           ),
       ],
     );
