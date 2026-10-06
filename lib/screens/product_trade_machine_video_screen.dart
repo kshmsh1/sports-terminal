@@ -2750,8 +2750,8 @@ class _ProductTradeMachineVideoScreenState
     final asset = assignment.asset;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Color(0xFFE4EAF1))),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: _tmBorder)),
       ),
       child: Row(
         children: [
@@ -2763,8 +2763,8 @@ class _ProductTradeMachineVideoScreenState
               children: [
                 Text(
                   asset.label,
-                  style: const TextStyle(
-                    color: Color(0xFF273A50),
+                  style: TextStyle(
+                    color: _tmTextStrong,
                     fontWeight: FontWeight.w800,
                     fontSize: 11,
                   ),
@@ -2772,8 +2772,8 @@ class _ProductTradeMachineVideoScreenState
                 if (_acquisitionMechanismLabel(asset.id) != null)
                   Text(
                     _acquisitionMechanismLabel(asset.id)!,
-                    style: const TextStyle(
-                      color: Color(0xFF6E8196),
+                    style: TextStyle(
+                      color: _tmTextSoft,
                       fontSize: 8,
                     ),
                   ),
@@ -2787,8 +2787,8 @@ class _ProductTradeMachineVideoScreenState
                   ? _money(asset.salary)
                   : '',
               textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: Color(0xFF33485E),
+              style: TextStyle(
+                color: _tmTextStrong,
                 fontWeight: FontWeight.w800,
                 fontSize: 10,
               ),
@@ -2821,8 +2821,8 @@ class _ProductTradeMachineVideoScreenState
       padding: const EdgeInsets.fromLTRB(10, 7, 10, 7),
       decoration: BoxDecoration(
         color: color.withValues(alpha: .055),
-        border: const Border(
-          top: BorderSide(color: Color(0xFFE5EBF1)),
+        border: Border(
+          top: BorderSide(color: _tmBorder),
         ),
       ),
       child: Row(
@@ -2933,30 +2933,30 @@ class _ProductTradeMachineVideoScreenState
         if (rows.isEmpty)
           _surface(
             context,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 30),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 30),
               child: Column(
                 children: [
                   Icon(
                     Icons.bookmark_border_rounded,
                     size: 30,
-                    color: Color(0xFF7B8EA2),
+                    color: _tmMuted,
                   ),
-                  SizedBox(height: 9),
+                  const SizedBox(height: 9),
                   Text(
                     'No matching trade snapshots',
                     style: TextStyle(
-                      color: Color(0xFF2D445A),
+                      color: _tmTextStrong,
                       fontWeight: FontWeight.w900,
                       fontSize: 13,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     'Save a scenario from the builder and it will appear here for comparison or reuse.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Color(0xFF718398),
+                      color: _tmTextSoft,
                       fontSize: 10.5,
                     ),
                   ),
@@ -3264,10 +3264,10 @@ class _ProductTradeMachineVideoScreenState
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
+                  Text(
                     'Saved-trade research',
                     style: TextStyle(
-                      color: Color(0xFF263E55),
+                      color: _tmTextStrong,
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
                     ),
@@ -3275,8 +3275,8 @@ class _ProductTradeMachineVideoScreenState
                   const SizedBox(height: 3),
                   Text(
                     'Successful snapshots involving ${_teams.map(_teamName).join(', ')}. These results are local to this browser.',
-                    style: const TextStyle(
-                      color: Color(0xFF65788D),
+                    style: TextStyle(
+                      color: _tmTextSoft,
                       fontSize: 9.5,
                       height: 1.35,
                     ),
@@ -3320,7 +3320,7 @@ class _ProductTradeMachineVideoScreenState
                       maxHeight: selected.isEmpty ? 130 : 360,
                     ),
                     child: selected.isEmpty
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 110,
                             child: Center(
                               child: Column(
@@ -3328,14 +3328,14 @@ class _ProductTradeMachineVideoScreenState
                                 children: [
                                   Icon(
                                     Icons.search_off_rounded,
-                                    color: Color(0xFF8192A3),
+                                    color: _tmMuted,
                                     size: 24,
                                   ),
-                                  SizedBox(height: 7),
+                                  const SizedBox(height: 7),
                                   Text(
                                     'No matching successful snapshots yet.',
                                     style: TextStyle(
-                                      color: Color(0xFF50677E),
+                                      color: _tmTextSoft,
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
