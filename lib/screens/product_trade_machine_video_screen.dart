@@ -1821,10 +1821,12 @@ class _ProductTradeMachineVideoScreenState
             ),
           ),
         for (final item in rights) _freeAgentRow(context, item),
-        if (rights.isEmpty)
+        if (allRights.isEmpty)
           _empty(
-            'No source-certified free-agent rights are installed for $team yet.',
-          ),
+            'Free-agent market data is supplied separately from tradeable Bird-rights / cap-hold data. The 2026–27 market table does not provide the cap holds, Bird-right classifications, or sign-and-trade salary bounds needed to create additional legal trade assets for $team.',
+          )
+        else if (rights.isEmpty)
+          _empty('No free-agent rights match this search.'),
       ],
     );
   }
