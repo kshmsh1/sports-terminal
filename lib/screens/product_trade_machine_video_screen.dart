@@ -370,9 +370,7 @@ class _ProductTradeMachineVideoScreenState
     final accent = _teamAccent(team);
 
     return Material(
-      color: selected
-          ? const Color(0xFFF7FBFF)
-          : Colors.white,
+      color: selected ? _tmSurfaceAlt : _tmSurface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(
@@ -691,11 +689,11 @@ class _ProductTradeMachineVideoScreenState
             height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _tmSurface,
               borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: const Color(0xFFD6E0EA)),
+              border: Border.all(color: _tmBorder),
             ),
-            child: Icon(icon, size: 17, color: const Color(0xFF58728E)),
+            child: Icon(icon, size: 17, color: _tmMuted),
           ),
         ),
       );
@@ -732,14 +730,14 @@ class _ProductTradeMachineVideoScreenState
                       height: 38,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: _tmSurface,
                         borderRadius: BorderRadius.circular(5),
-                        border: Border.all(color: const Color(0xFFD6E0EA)),
+                        border: Border.all(color: _tmBorder),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.add_rounded,
                         size: 17,
-                        color: Color(0xFF4D8DC1),
+                        color: _tmPrimary,
                       ),
                     ),
                   ),
@@ -1110,9 +1108,9 @@ class _ProductTradeMachineVideoScreenState
         children: [
           Container(
             padding: const EdgeInsets.fromLTRB(8, 7, 8, 0),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+            decoration: BoxDecoration(
+              color: _tmSurface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -1548,9 +1546,9 @@ class _ProductTradeMachineVideoScreenState
           fontWeight: FontWeight.w800,
           color: active ? const Color(0xFF1769AA) : const Color(0xFF63758A),
         ),
-        side: const BorderSide(color: Color(0xFFD3DFEA)),
-        selectedColor: const Color(0xFFEAF4FC),
-        backgroundColor: Colors.white,
+        side: BorderSide(color: _tmBorder),
+        selectedColor: _tmSurfaceAlt,
+        backgroundColor: _tmSurface,
         onSelected: (_) => setState(() {
           if (value == 'match') {
             _acquisitionMechanisms.remove(player.id);
@@ -2028,8 +2026,8 @@ class _ProductTradeMachineVideoScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFE1E8F0)),
+        color: _tmSurface,
+        border: Border.all(color: _tmBorder),
         borderRadius: BorderRadius.circular(7),
       ),
       child: Row(
@@ -2429,8 +2427,8 @@ class _ProductTradeMachineVideoScreenState
     return Container(
       margin: const EdgeInsets.fromLTRB(10, 9, 10, 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFDCE4EE)),
+        color: _tmSurface,
+        border: Border.all(color: _tmBorder),
         borderRadius: BorderRadius.circular(7),
       ),
       child: Column(
