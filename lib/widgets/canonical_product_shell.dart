@@ -9,6 +9,7 @@ import '../screens/product_trade_machine_screen.dart';
 import '../screens/website_nba_advanced_stats_screen.dart';
 import '../screens/website_nba_box_scores_screen.dart';
 import '../screens/website_nba_entity_pages.dart';
+import '../screens/website_nba_financials_screen.dart';
 import '../screens/website_nba_home_dashboard.dart';
 import '../screens/website_nba_live_games_screen.dart';
 import '../screens/website_nba_media_feed_screen.dart';
@@ -92,6 +93,12 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
           label: 'Trade Machine',
           icon: Icons.swap_horiz_rounded,
           builder: ProductTradeMachineScreen.new,
+        ),
+        const _Destination(
+          id: 'financials',
+          label: 'Financials',
+          icon: Icons.account_balance_wallet_outlined,
+          builder: WebsiteNbaFinancialsScreen.new,
         ),
         const _Destination(
           id: 'live-games',
@@ -293,12 +300,12 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
               Expanded(
                 child: SingleChildScrollView(
                   padding: _selected == 'trade'
-                      ? const EdgeInsets.fromLTRB(6, 8, 6, 8)
+                      ? const EdgeInsets.fromLTRB(28, 12, 28, 24)
                       : const EdgeInsets.fromLTRB(20, 28, 20, 64),
                   child: Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        maxWidth: _selected == 'trade' ? 1680 : 1320,
+                        maxWidth: _selected == 'trade' ? 1480 : 1320,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,

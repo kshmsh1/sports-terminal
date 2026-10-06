@@ -41,6 +41,8 @@ migrate_working_dir/
 __pycache__/
 
 # Local source exports and generated import review files
+*.har
+*.har.json
 /raw/*.json
 /raw/basketball_reference/
 /raw/historical/

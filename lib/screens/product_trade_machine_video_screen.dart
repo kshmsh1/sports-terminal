@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../services/nba_complete_draft_asset_repository.dart';
 import '../services/nba_contract_status_reference_2026.dart';
-import '../services/nba_front_office_tracker_2026.dart';
 import '../services/nba_future_draft_asset_repository.dart';
 import '../services/nba_league_environment_2026.dart';
 import '../services/nba_team_cap_reference_2026.dart';
+import '../services/nba_team_financial_reference_2026.dart';
 import '../services/nba_team_salary_position_2026.dart';
 import '../services/nba_trade_contract_repository.dart';
 import '../services/nba_trade_exception_reference_2026.dart';
@@ -66,6 +66,20 @@ class _ProductTradeMachineVideoScreenState
   static final DateTime _currentTradeDate = DateTime(2026, 9, 30);
   static final DateTime _modeledDeadlineDate = DateTime(2027, 2, 4);
 
+  bool _darkPalette = true;
+  Color get _tmSurface =>
+      _darkPalette ? const Color(0xFF111A24) : Colors.white;
+  Color get _tmSurfaceAlt =>
+      _darkPalette ? const Color(0xFF172330) : const Color(0xFFF4F7FB);
+  Color get _tmBorder =>
+      _darkPalette ? const Color(0xFF2B3A49) : const Color(0xFFD8E2EE);
+  Color get _tmText =>
+      _darkPalette ? const Color(0xFFE8EEF5) : const Color(0xFF17243A);
+  Color get _tmMuted =>
+      _darkPalette ? const Color(0xFF9AAABC) : const Color(0xFF64748B);
+  Color get _tmPrimary =>
+      _darkPalette ? const Color(0xFF72B7F2) : const Color(0xFF1769AA);
+
   @override
   void initState() {
     super.initState();
@@ -79,6 +93,7 @@ class _ProductTradeMachineVideoScreenState
 
   @override
   Widget build(BuildContext context) {
+    _darkPalette = Theme.of(context).brightness == Brightness.dark;
     return FutureBuilder<NbaTradeContractSnapshot>(
       future: _future,
       builder: (context, snapshot) {
@@ -134,7 +149,7 @@ class _ProductTradeMachineVideoScreenState
           duration: const Duration(milliseconds: 120),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? Colors.white : Colors.transparent,
+            color: selected ? _tmSurface : Colors.transparent,
             borderRadius: BorderRadius.circular(5),
             border: selected
                 ? Border.all(color: const Color(0xFFD7E0EC))
@@ -167,9 +182,9 @@ class _ProductTradeMachineVideoScreenState
       child: Container(
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          color: const Color(0xFFEFF4FA),
+          color: _tmSurfaceAlt,
           borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: const Color(0xFFD8E2EE)),
+          border: Border.all(color: _tmBorder),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -354,9 +369,7 @@ class _ProductTradeMachineVideoScreenState
     final accent = _teamAccent(team);
 
     return Material(
-      color: selected
-          ? const Color(0xFFF7FBFF)
-          : Colors.white,
+      color: selected ? _tmSurfaceAlt : _tmSurface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(
@@ -518,7 +531,7 @@ class _ProductTradeMachineVideoScreenState
       return Container(
         height: 38,
         decoration: BoxDecoration(
-          color: active ? accent : Colors.white,
+          color: active ? accent : _tmSurface,
           borderRadius: BorderRadius.circular(5),
           border: Border.all(
             color: active ? accent : const Color(0xFFD5E0EB),
@@ -622,13 +635,13 @@ class _ProductTradeMachineVideoScreenState
         message: tooltip,
         child: InkWell(
           borderRadius: BorderRadius.circular(5),
-          onTap: () => setState(() => _restrictionMode = mode),
+          onTap: () => _setRestrictionMode(mode, data),
           child: Container(
             width: 58,
             height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: selected ? const Color(0xFFF2F7FD) : Colors.white,
+              color: selected ? _tmSurfaceAlt : _tmSurface,
               borderRadius: BorderRadius.circular(5),
               border: Border.all(
                 color: selected
@@ -675,11 +688,11 @@ class _ProductTradeMachineVideoScreenState
             height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _tmSurface,
               borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: const Color(0xFFD6E0EA)),
+              border: Border.all(color: _tmBorder),
             ),
-            child: Icon(icon, size: 17, color: const Color(0xFF58728E)),
+            child: Icon(icon, size: 17, color: _tmMuted),
           ),
         ),
       );
@@ -716,14 +729,14 @@ class _ProductTradeMachineVideoScreenState
                       height: 38,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: _tmSurface,
                         borderRadius: BorderRadius.circular(5),
-                        border: Border.all(color: const Color(0xFFD6E0EA)),
+                        border: Border.all(color: _tmBorder),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.add_rounded,
                         size: 17,
-                        color: Color(0xFF4D8DC1),
+                        color: _tmPrimary,
                       ),
                     ),
                   ),
@@ -890,32 +903,30 @@ class _ProductTradeMachineVideoScreenState
     NbaTradeContractSnapshot data,
     String team,
   ) {
-    final payroll = _teamSalary(team, data);
-    final capAllocation =
-        (NbaTeamCapReference202627.forTeam(team)?.totalCap ?? payroll) -
-        _renouncedCapHoldTotal(team);
-    final metrics = [
+    final source = NbaTeamFinancialReference202627.forTeam(team);
+    final fallbackPayroll = _teamSalary(team, data);
+    final capSpace = source?.capSpace ??
+        NbaLeagueEnvironment202627.salaryCap - fallbackPayroll;
+    final taxSpace = source?.taxSpace ??
+        NbaLeagueEnvironment202627.luxuryTax - fallbackPayroll;
+    final firstSpace = source?.firstApronSpace ??
+        NbaLeagueEnvironment202627.firstApron - fallbackPayroll;
+    final secondSpace = source?.secondApronSpace ??
+        NbaLeagueEnvironment202627.secondApron - fallbackPayroll;
+    final largestTpe = source?.largestTpe;
+    final largestTpeLabel = largestTpe == null
+        ? 'None'
+        : '${_money(largestTpe)} · exp ${source?.largestTpeExpires ?? '—'}';
+
+    final metrics = <(String, String, double?)>[
       ('Operating As', _operatingAs(team, data), null),
-      (
-        'Cap Space',
-        _signedMoney(NbaLeagueEnvironment202627.salaryCap - capAllocation),
-        NbaLeagueEnvironment202627.salaryCap - capAllocation,
-      ),
-      (
-        '1st Apron Space',
-        _signedMoney(NbaLeagueEnvironment202627.firstApron - payroll),
-        NbaLeagueEnvironment202627.firstApron - payroll,
-      ),
-      (
-        '2nd Apron Space',
-        _signedMoney(NbaLeagueEnvironment202627.secondApron - payroll),
-        NbaLeagueEnvironment202627.secondApron - payroll,
-      ),
-      (
-        'Tax Space',
-        _signedMoney(NbaLeagueEnvironment202627.luxuryTax - payroll),
-        NbaLeagueEnvironment202627.luxuryTax - payroll,
-      ),
+      ('Cap Space', _signedMoney(capSpace), capSpace),
+      ('Tax Space', _signedMoney(taxSpace), taxSpace),
+      ('1st Apron Space', _signedMoney(firstSpace), firstSpace),
+      ('2nd Apron Space', _signedMoney(secondSpace), secondSpace),
+      ('Hard Cap', source?.hardCapLabel ?? 'None', null),
+      ('Available Exceptions', source?.exceptionSummary ?? 'Unknown', null),
+      ('Largest TPE', largestTpeLabel, null),
     ];
 
     return Column(
@@ -927,17 +938,17 @@ class _ProductTradeMachineVideoScreenState
             children: [
               Text(
                 '${_teamName(team)} financial position',
-                style: const TextStyle(
-                  color: Color(0xFF40566F),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                 ),
               ),
               const Spacer(),
-              const Text(
-                '2026–27',
+              Text(
+                '2026–27 · Team Summary source',
                 style: TextStyle(
-                  color: Color(0xFF7A8999),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
                 ),
@@ -947,9 +958,9 @@ class _ProductTradeMachineVideoScreenState
         ),
         LayoutBuilder(
           builder: (context, constraints) {
-            final width = constraints.maxWidth >= 900
-                ? (constraints.maxWidth - 4 * 8) / 5
-                : constraints.maxWidth >= 520
+            final width = constraints.maxWidth >= 1100
+                ? (constraints.maxWidth - 3 * 8) / 4
+                : constraints.maxWidth >= 620
                     ? (constraints.maxWidth - 8) / 2
                     : constraints.maxWidth;
             return Wrap(
@@ -1038,7 +1049,7 @@ class _ProductTradeMachineVideoScreenState
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFF7FAFE) : Colors.white,
+            color: selected ? _tmSurfaceAlt : _tmSurface,
             border: Border(
               bottom: BorderSide(
                 color: selected ? const Color(0xFF1769AA) : Colors.transparent,
@@ -1096,9 +1107,9 @@ class _ProductTradeMachineVideoScreenState
         children: [
           Container(
             padding: const EdgeInsets.fromLTRB(8, 7, 8, 0),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+            decoration: BoxDecoration(
+              color: _tmSurface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -1534,9 +1545,9 @@ class _ProductTradeMachineVideoScreenState
           fontWeight: FontWeight.w800,
           color: active ? const Color(0xFF1769AA) : const Color(0xFF63758A),
         ),
-        side: const BorderSide(color: Color(0xFFD3DFEA)),
-        selectedColor: const Color(0xFFEAF4FC),
-        backgroundColor: Colors.white,
+        side: BorderSide(color: _tmBorder),
+        selectedColor: _tmSurfaceAlt,
+        backgroundColor: _tmSurface,
         onSelected: (_) => setState(() {
           if (value == 'match') {
             _acquisitionMechanisms.remove(player.id);
@@ -2014,8 +2025,8 @@ class _ProductTradeMachineVideoScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFE1E8F0)),
+        color: _tmSurface,
+        border: Border.all(color: _tmBorder),
         borderRadius: BorderRadius.circular(7),
       ),
       child: Row(
@@ -2415,8 +2426,8 @@ class _ProductTradeMachineVideoScreenState
     return Container(
       margin: const EdgeInsets.fromLTRB(10, 9, 10, 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFDCE4EE)),
+        color: _tmSurface,
+        border: Border.all(color: _tmBorder),
         borderRadius: BorderRadius.circular(7),
       ),
       child: Column(
@@ -3446,26 +3457,28 @@ class _ProductTradeMachineVideoScreenState
       assignments: assignments,
       capContexts: {
         for (final team in _teams)
-          team: TeamCapContext(
-            team: team,
-            teamSalary: _teamSalary(team, data),
-            salaryCap: NbaLeagueEnvironment202627.salaryCap,
-            taxLine: NbaLeagueEnvironment202627.luxuryTax,
-            firstApron: NbaLeagueEnvironment202627.firstApron,
-            secondApron: NbaLeagueEnvironment202627.secondApron,
-            hardCappedAt: switch (
-              NbaFrontOfficeTracker202627.hardCaps[team]?.capLevel
-            ) {
-              'first' => NbaLeagueEnvironment202627.firstApron,
-              'second' => NbaLeagueEnvironment202627.secondApron,
-              _ => null,
-            },
-            standardRosterPlayers: _standardRosterCount(team, data),
-            cashSentThisSeason: NbaCashTradeReference202627.limit -
-                (NbaCashTradeReference202627.teams[team]?.availableToSend ??
-                    NbaCashTradeReference202627.limit),
-            cashLimitThisSeason: NbaCashTradeReference202627.limit,
-          ),
+          team: (() {
+            final source = NbaTeamFinancialReference202627.forTeam(team);
+            return TeamCapContext(
+              team: team,
+              teamSalary: source?.transactionSalary ?? _teamSalary(team, data),
+              salaryCap: NbaLeagueEnvironment202627.salaryCap,
+              taxLine: NbaLeagueEnvironment202627.luxuryTax,
+              firstApron: NbaLeagueEnvironment202627.firstApron,
+              secondApron: NbaLeagueEnvironment202627.secondApron,
+              hardCappedAt: switch (source?.hardCap) {
+                'first' => NbaLeagueEnvironment202627.firstApron,
+                'second' => NbaLeagueEnvironment202627.secondApron,
+                _ => null,
+              },
+              standardRosterPlayers:
+                  source?.standardRoster ?? _standardRosterCount(team, data),
+              cashSentThisSeason: NbaCashTradeReference202627.limit -
+                  (NbaCashTradeReference202627.teams[team]?.availableToSend ??
+                      NbaCashTradeReference202627.limit),
+              cashLimitThisSeason: NbaCashTradeReference202627.limit,
+            );
+          })(),
       },
     );
   }
@@ -3672,6 +3685,28 @@ class _ProductTradeMachineVideoScreenState
         _ => _currentTradeDate,
       };
 
+  void _setRestrictionMode(
+    _RestrictionMode mode,
+    NbaTradeContractSnapshot data,
+  ) {
+    setState(() {
+      _restrictionMode = mode;
+      if (mode == _RestrictionMode.off) return;
+      final byId = {for (final player in data.records) player.id: player};
+      final blockedIds = <String>{};
+      for (final entry in _routes.entries) {
+        final player = byId[entry.key];
+        if (player != null && _playerBlocked(player.player)) {
+          blockedIds.add(entry.key);
+        }
+      }
+      for (final id in blockedIds) {
+        _routes.remove(id);
+        _acquisitionMechanisms.remove(id);
+      }
+    });
+  }
+
   NbaTradeEligibilityRestriction? _restrictionFor(String player) {
     for (final item in NbaContractStatusReference202627.january15) {
       if (item.player == player) return item;
@@ -3690,6 +3725,8 @@ class _ProductTradeMachineVideoScreenState
     String team,
     NbaTradeContractSnapshot data,
   ) {
+    final source = NbaTeamFinancialReference202627.forTeam(team);
+    if (source != null) return source.standardRoster;
     final twoWays = NbaTwoWayContractReference202627.forTeam(team)
         .map((item) => item.player)
         .toSet();
@@ -3706,6 +3743,8 @@ class _ProductTradeMachineVideoScreenState
   }
 
   double _teamSalary(String team, NbaTradeContractSnapshot data) {
+    final source = NbaTeamFinancialReference202627.forTeam(team);
+    if (source != null) return source.transactionSalary;
     final activePayroll = data.payroll(team, '2026-27');
     if (activePayroll > 0) return activePayroll;
     return NbaTeamSalaryPosition202627.forTeam(team)?.totalSalary ??
@@ -3713,17 +3752,20 @@ class _ProductTradeMachineVideoScreenState
   }
 
   String _operatingAs(String team, NbaTradeContractSnapshot data) {
-    final reference = _spotracOperatingStatus[team];
-    if (reference != null) return reference;
+    final source = NbaTeamFinancialReference202627.forTeam(team);
+    if (source != null) {
+      if (source.hardCap == 'second') return '2nd Apron (Hard-Cap)';
+      if (source.hardCap == 'first') return '1st Apron (Hard-Cap)';
+      if (source.secondApronSpace < 0) return '2nd Apron';
+      if (source.firstApronSpace < 0) return '1st Apron';
+      if (source.taxSpace < 0) return 'Luxury Tax';
+      if (source.capSpace < 0) return 'Over The Cap';
+      return 'Cap Space';
+    }
     final salary = _teamSalary(team, data);
-    final hard = NbaFrontOfficeTracker202627.hardCaps[team]?.capLevel;
-    if (hard == 'second') return '2nd Apron (Hard-Cap)';
-    if (hard == 'first') return '1st Apron (Hard-Cap)';
     if (salary > NbaLeagueEnvironment202627.secondApron) return '2nd Apron';
     if (salary > NbaLeagueEnvironment202627.firstApron) return '1st Apron';
-    if (salary > NbaLeagueEnvironment202627.luxuryTax) {
-      return 'Over The Cap/Tax';
-    }
+    if (salary > NbaLeagueEnvironment202627.luxuryTax) return 'Luxury Tax';
     if (salary > NbaLeagueEnvironment202627.salaryCap) return 'Over The Cap';
     return 'Cap Space';
   }
@@ -4082,40 +4124,6 @@ const _teamAccentColors = <String, Color>{
   'WAS': Color(0xFF002B5C),
 };
 
-const _spotracOperatingStatus = <String, String>{
-  'ATL': '1st Apron (Hard-Cap)',
-  'BOS': '1st Apron (Hard-Cap)',
-  'BRK': 'Cap Space',
-  'BKN': 'Cap Space',
-  'CHA': '1st Apron (Hard-Cap)',
-  'CHO': '1st Apron (Hard-Cap)',
-  'CHI': '1st Apron (Hard-Cap)',
-  'CLE': '1st Apron (Hard-Cap)',
-  'DAL': '1st Apron (Hard-Cap)',
-  'DEN': '2nd Apron',
-  'DET': '1st Apron (Hard-Cap)',
-  'GSW': '2nd Apron (Hard-Cap)',
-  'HOU': '2nd Apron (Hard-Cap)',
-  'IND': '1st Apron (Hard-Cap)',
-  'LAC': '1st Apron (Hard-Cap)',
-  'LAL': '1st Apron (Hard-Cap)',
-  'MEM': '1st Apron (Hard-Cap)',
-  'MIA': '1st Apron (Hard-Cap)',
-  'MIL': '1st Apron (Hard-Cap)',
-  'MIN': '2nd Apron (Hard-Cap)',
-  'NOP': '1st Apron',
-  'NYK': '1st Apron',
-  'OKC': '1st Apron',
-  'ORL': '1st Apron',
-  'PHI': '1st Apron (Hard-Cap)',
-  'PHO': '2nd Apron (Hard-Cap)',
-  'POR': '1st Apron (Hard-Cap)',
-  'SAC': '1st Apron (Hard-Cap)',
-  'SAS': '1st Apron (Hard-Cap)',
-  'TOR': 'Over The Cap/Tax',
-  'UTA': '1st Apron (Hard-Cap)',
-  'WAS': '1st Apron (Hard-Cap)',
-};
 
 const _playerPositionReference = <String, String>{
   'Jayson Tatum': 'PF',

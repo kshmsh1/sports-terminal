@@ -43,7 +43,7 @@ class NbaTradeExceptionReference202627 {
 
   static const Map<String, Map<String, double>> signingExceptions = {
     'ATL': {'non_tax_mle': 944000, 'bae': 5477000},
-    'BOS': {'non_tax_mle': 0, 'bae': 5477000},
+    'BOS': {'bae': 5477000},
     'BRK': {'room_mle': 9366000},
     'CHA': {'non_tax_mle': 847026},
     'CHI': {'room_mle': 9366000},
@@ -55,19 +55,19 @@ class NbaTradeExceptionReference202627 {
     'HOU': {'non_tax_mle': 8980000, 'bae': 5477000},
     'IND': {'non_tax_mle': 6994000, 'bae': 5477000},
     'LAC': {'non_tax_mle': 1044000, 'bae': 5477000},
-    'LAL': {'room_mle': 0},
+    'LAL': {},
     'MEM': {'non_tax_mle': 4694000, 'bae': 5477000},
-    'MIA': {'non_tax_mle': 8979000, 'bae': 5477000},
+    'MIA': {'non_tax_mle': 3379000, 'bae': 5477000},
     'MIL': {'non_tax_mle': 15044000, 'bae': 5477000},
     'MIN': {'tax_mle': 6064000},
-    'NOP': {'non_tax_mle': 15044000, 'bae': 5477000},
+    'NOP': {'non_tax_mle': 7544000, 'bae': 5477000},
     'NYK': {'tax_mle': 6064000},
     'OKC': {'tax_mle': 6064000},
     'ORL': {'tax_mle': 6064000},
     'PHI': {'non_tax_mle': 44000, 'bae': 2077000},
-    'PHO': {'tax_mle': 0},
+    'PHO': {},
     'POR': {'non_tax_mle': 15044000, 'bae': 5477000},
-    'SAC': {'non_tax_mle': 15044000, 'bae': 0},
+    'SAC': {'non_tax_mle': 15044000, 'bae': 5477000},
     'SAS': {'non_tax_mle': 0, 'bae': 5477000},
     'TOR': {'non_tax_mle': 15044000, 'bae': 5477000},
     'UTA': {'non_tax_mle': 3044000},
@@ -144,6 +144,7 @@ NOP|alvarado|2027-02-05|Jose Alvarado trade with NYK|4500000|4500000||0
 PHI|mccain|2027-02-04|Jared McCain trade with OKC|4221360|4221360||0
 BOS|brown|2027-07-06|Jaylen Brown trade with PHI|2952348|2952348||0
 DAL|hardy-was|2027-02-05|Jaden Hardy trade with WAS|6000000|2909520|Partially used by AJ Johnson (3,090,480).|0
+LAC|source-summary|2027-09-14|2026-27 Team Summary largest TPE|3168489|3168489|Source-truth amount from supplied team summary.|0
 LAC|brown|2027-02-05|Kobe Brown trade with IND|2654880|2654880||0
 BOS|tillman|2027-02-05|Xavier Tillman Sr. trade with CHA|2546675|2546675||0
 OKC|dieng|2027-02-04|Ousmane Dieng trade with CHA|2449522|2449522||0
