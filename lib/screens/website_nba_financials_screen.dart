@@ -139,10 +139,10 @@ class _SignedMoney extends StatelessWidget {
 
 String _money(double value) {
   if (value.abs() >= 1000000) {
-    return '\$' + (value / 1000000).toStringAsFixed(2) + 'M';
+    return '\${(value / 1000000).toStringAsFixed(2)}M';
   }
   if (value.abs() >= 1000) {
-    return '\$' + (value / 1000).toStringAsFixed(0) + 'K';
+    return '\${(value / 1000).toStringAsFixed(0)}K';
   }
-  return '\$' + value.toStringAsFixed(0);
+  return '\${value.toStringAsFixed(0)}';
 }
