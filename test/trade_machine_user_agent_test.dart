@@ -80,7 +80,7 @@ void main() {
     expect(find.text('FREE AGENTS'), findsOneWidget);
     expect(find.text('Jayson Tatum'), findsOneWidget);
 
-    final tradeButton = find.widgetWithText(OutlinedButton, 'Trade').first;
+    final tradeButton = find.widgetWithText(OutlinedButton, 'Route').first;
     await tester.tap(tradeButton);
     await tester.pumpAndSettle();
 
@@ -135,14 +135,14 @@ void main() {
     await tester.tap(find.text('ACTIVE ROSTER'));
     await tester.pumpAndSettle();
     final phillyTradeButton =
-        find.widgetWithText(OutlinedButton, 'Trade').first;
+        find.widgetWithText(OutlinedButton, 'Route').first;
     await tester.tap(phillyTradeButton);
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('CELTICS'));
     await tester.pumpAndSettle();
     final bostonTradeButton =
-        find.widgetWithText(OutlinedButton, 'Trade').first;
+        find.widgetWithText(OutlinedButton, 'Route').first;
     await tester.tap(bostonTradeButton);
     await tester.pumpAndSettle();
 
