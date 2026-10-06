@@ -154,6 +154,14 @@ class NbaTradeSupplementalAssets202627 {
   static List<NbaTradeDraftRight> draftRightsFor(String team) =>
       draftRights.where((item) => item.team == team).toList(growable: false);
 
+  static const Set<String> _teamsWithCertifiedDraftRights = {
+    'BOS','BRK','CHA','CLE','DAL','DEN','GSW','HOU','LAC','MEM','MIL','MIN',
+    'NYK','OKC','PHI','POR','SAC','SAS','UTA','WAS',
+  };
+
+  static bool draftRightsCertifiedForTeam(String team) =>
+      _teamsWithCertifiedDraftRights.contains(team);
+
   static List<NbaTradeFreeAgentRight> freeAgentRightsFor(String team) =>
       freeAgentRights
           .where((item) => item.team == team)
