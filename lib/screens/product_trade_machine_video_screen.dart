@@ -852,33 +852,33 @@ class _ProductTradeMachineVideoScreenState
               children: [
                 Text(
                   'Viewing ${_teamName(activeTeam)}',
-                  style: const TextStyle(
-                    color: Color(0xFF20364D),
+                  style: TextStyle(
+                    color: _tmTextStrong,
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const Text(
+                Text(
                   '•',
-                  style: TextStyle(color: Color(0xFF9AA8B7)),
+                  style: TextStyle(color: _tmMuted),
                 ),
                 Text(
                   _assetTabLabel(_assetTab),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _tmTextSoft,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const Text(
+                Text(
                   '•',
-                  style: TextStyle(color: Color(0xFF9AA8B7)),
+                  style: TextStyle(color: _tmMuted),
                 ),
                 Text(
                   _restrictionMode == _RestrictionMode.off
                       ? 'Timing restrictions off'
                       : 'As of ${_dateLabel(_effectiveTradeDate)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _tmTextSoft,
                     fontSize: 10,
                   ),
@@ -2606,7 +2606,7 @@ class _ProductTradeMachineVideoScreenState
             padding: const EdgeInsets.fromLTRB(10, 7, 10, 7),
             decoration: BoxDecoration(
               color: checkColor.withValues(alpha: .045),
-              border: const Border(
+              border: Border(
                 top: BorderSide(color: _tmBorder),
               ),
             ),
@@ -2635,7 +2635,7 @@ class _ProductTradeMachineVideoScreenState
                 if (!_showAllFindings && findings.length > 3)
                   Text(
                     '+${findings.length - 3} more',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: _tmMuted,
                       fontSize: 8.5,
                     ),
@@ -2649,7 +2649,7 @@ class _ProductTradeMachineVideoScreenState
             Container(
               margin: const EdgeInsets.fromLTRB(10, 8, 10, 4),
               padding: const EdgeInsets.only(top: 7),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(top: BorderSide(color: _tmBorder)),
               ),
               child: Row(
@@ -3058,7 +3058,7 @@ class _ProductTradeMachineVideoScreenState
                                   .join(' • '),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: _tmTextSoft,
                             fontSize: 9.5,
                             height: 1.3,
