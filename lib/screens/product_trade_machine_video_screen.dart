@@ -649,8 +649,8 @@ class _ProductTradeMachineVideoScreenState
           borderRadius: BorderRadius.circular(5),
           onTap: () => _setRestrictionMode(mode, data),
           child: Container(
-            width: 58,
-            height: 38,
+            width: 66,
+            height: 40,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: selected ? _tmSurfaceSoft : _tmSurface,
@@ -692,8 +692,8 @@ class _ProductTradeMachineVideoScreenState
           borderRadius: BorderRadius.circular(5),
           onTap: onPressed,
           child: Container(
-            width: 38,
-            height: 38,
+            width: 40,
+            height: 40,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: _tmSurface,
@@ -1335,19 +1335,34 @@ class _ProductTradeMachineVideoScreenState
             !players.any((player) => player.player == item.player))
         .toList();
 
-    return Column(
-      children: [
-        _tableHeader(
-          context,
-          const ['PLAYER', '2026–27 CAP HIT', 'CONTRACT / GUARANTEE', 'FLAGS / ROUTE'],
-        ),
-        for (final player in players)
-          _playerRow(context, player),
-        for (final player in twoWays)
-          _twoWayPlayerRow(context, player),
-        if (players.isEmpty && twoWays.isEmpty)
-          _empty('No roster players match this search.'),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final minimumWidth = constraints.maxWidth < 840 ? 840.0 : constraints.maxWidth;
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: minimumWidth,
+            child: Column(
+              children: [
+                _tableHeader(
+                  context,
+                  const [
+                    'PLAYER',
+                    '2026–27 CAP HIT',
+                    'CONTRACT / GUARANTEE',
+                    'FLAGS / ROUTE',
+                  ],
+                ),
+                for (final player in players) _playerRow(context, player),
+                for (final player in twoWays)
+                  _twoWayPlayerRow(context, player),
+                if (players.isEmpty && twoWays.isEmpty)
+                  _empty('No roster players match this search.'),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1404,14 +1419,14 @@ class _ProductTradeMachineVideoScreenState
             ),
           ),
           SizedBox(
-            width: 190,
+            width: 210,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 _tag(context, 'Two-Way'),
                 const SizedBox(width: 6),
                 SizedBox(
-                  width: 104,
+                  width: 118,
                   child: _routeControl(
                     assetId: assetId,
                     originTeam: player.team,
@@ -1496,7 +1511,7 @@ class _ProductTradeMachineVideoScreenState
             ),
           ),
           SizedBox(
-            width: 190,
+            width: 210,
             child: Wrap(
               spacing: 5,
               runSpacing: 4,
@@ -1507,7 +1522,7 @@ class _ProductTradeMachineVideoScreenState
                 if (restriction?.hasTradeVeto == true)
                   _tag(context, 'Consent'),
                 SizedBox(
-                  width: 104,
+                  width: 118,
                   child: _routeControl(
                     assetId: player.id,
                     originTeam: player.team,
@@ -3943,7 +3958,7 @@ class _ProductTradeMachineVideoScreenState
           SizedBox(width: 240, child: Text(labels[0], style: _headerStyle(context))),
           Expanded(child: Text(labels[1], style: _headerStyle(context))),
           Expanded(child: Text(labels[2], style: _headerStyle(context))),
-          SizedBox(width: 190, child: Text(labels[3], style: _headerStyle(context))),
+          SizedBox(width: 210, child: Text(labels[3], style: _headerStyle(context))),
         ],
       ),
     );
