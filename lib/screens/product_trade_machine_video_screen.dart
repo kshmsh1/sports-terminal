@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../services/nba_complete_draft_asset_repository.dart';
 import '../services/nba_contract_status_reference_2026.dart';
-import '../services/nba_front_office_tracker_2026.dart';
 import '../services/nba_future_draft_asset_repository.dart';
 import '../services/nba_league_environment_2026.dart';
 import '../services/nba_team_cap_reference_2026.dart';
@@ -4125,40 +4124,6 @@ const _teamAccentColors = <String, Color>{
   'WAS': Color(0xFF002B5C),
 };
 
-const _spotracOperatingStatus = <String, String>{
-  'ATL': '1st Apron (Hard-Cap)',
-  'BOS': '1st Apron (Hard-Cap)',
-  'BRK': 'Cap Space',
-  'BKN': 'Cap Space',
-  'CHA': '1st Apron (Hard-Cap)',
-  'CHO': '1st Apron (Hard-Cap)',
-  'CHI': '1st Apron (Hard-Cap)',
-  'CLE': '1st Apron (Hard-Cap)',
-  'DAL': '1st Apron (Hard-Cap)',
-  'DEN': '2nd Apron',
-  'DET': '1st Apron (Hard-Cap)',
-  'GSW': '2nd Apron (Hard-Cap)',
-  'HOU': '2nd Apron (Hard-Cap)',
-  'IND': '1st Apron (Hard-Cap)',
-  'LAC': '1st Apron (Hard-Cap)',
-  'LAL': '1st Apron (Hard-Cap)',
-  'MEM': '1st Apron (Hard-Cap)',
-  'MIA': '1st Apron (Hard-Cap)',
-  'MIL': '1st Apron (Hard-Cap)',
-  'MIN': '2nd Apron (Hard-Cap)',
-  'NOP': '1st Apron',
-  'NYK': '1st Apron',
-  'OKC': '1st Apron',
-  'ORL': '1st Apron',
-  'PHI': '1st Apron (Hard-Cap)',
-  'PHO': '2nd Apron (Hard-Cap)',
-  'POR': '1st Apron (Hard-Cap)',
-  'SAC': '1st Apron (Hard-Cap)',
-  'SAS': '1st Apron (Hard-Cap)',
-  'TOR': 'Over The Cap/Tax',
-  'UTA': '1st Apron (Hard-Cap)',
-  'WAS': '1st Apron (Hard-Cap)',
-};
 
 const _playerPositionReference = <String, String>{
   'Jayson Tatum': 'PF',
