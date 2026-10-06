@@ -517,6 +517,7 @@ class _TopNav extends StatelessWidget {
       _item('advanced'),
     ];
     final more = <_Destination>[
+      _item('financials'),
       _item('live-games'),
       _item('box-scores'),
       _item('media-feed'),
