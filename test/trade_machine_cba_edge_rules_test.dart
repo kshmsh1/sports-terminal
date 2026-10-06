@@ -54,6 +54,10 @@ void main() {
     );
     expect(report.teamSummaries['AAA']!.outgoingSalary, 10000000);
     expect(report.teamSummaries['BBB']!.incomingSalary, 25000000);
+    // Matching salaries differ, but actual cap charges still move at nominal
+    // salary for apron / hard-cap accounting.
+    expect(report.teamSummaries['AAA']!.postTradeSalary, 100000000);
+    expect(report.teamSummaries['BBB']!.postTradeSalary, 120000000);
     expect(
       report.findings.map((item) => item.code),
       containsAll(['BYC_APPLIED', 'POISON_PILL_APPLIED']),
