@@ -78,7 +78,19 @@ class _ProductTradeMachineVideoScreenState
   Color get _tmMuted =>
       _darkPalette ? const Color(0xFF9AAABC) : const Color(0xFF64748B);
   Color get _tmPrimary =>
-      _darkPalette ? const Color(0xFF72B7F2) : const Color(0xFF1769AA);
+      _darkPalette ? const Color(0xFF6EA8E5) : const Color(0xFF1769AA);
+  Color get _tmCanvas =>
+      _darkPalette ? const Color(0xFF0D141C) : const Color(0xFFF4F7FA);
+  Color get _tmSurfaceStrong =>
+      _darkPalette ? const Color(0xFF141E29) : const Color(0xFFFFFFFF);
+  Color get _tmSurfaceSoft =>
+      _darkPalette ? const Color(0xFF101922) : const Color(0xFFF8FAFC);
+  Color get _tmBorderStrong =>
+      _darkPalette ? const Color(0xFF3A4A59) : const Color(0xFFC8D4E0);
+  Color get _tmTextStrong =>
+      _darkPalette ? const Color(0xFFF4F7FB) : const Color(0xFF18283A);
+  Color get _tmTextSoft =>
+      _darkPalette ? const Color(0xFFC2CEDA) : const Color(0xFF52677C);
 
   @override
   void initState() {
@@ -149,10 +161,10 @@ class _ProductTradeMachineVideoScreenState
           duration: const Duration(milliseconds: 120),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? _tmSurface : Colors.transparent,
+            color: selected ? _tmSurfaceStrong : Colors.transparent,
             borderRadius: BorderRadius.circular(5),
             border: selected
-                ? Border.all(color: const Color(0xFFD7E0EC))
+                ? Border.all(color: _tmBorderStrong)
                 : null,
             boxShadow: selected
                 ? const [
@@ -167,7 +179,7 @@ class _ProductTradeMachineVideoScreenState
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? const Color(0xFF1D5D98) : const Color(0xFF64748B),
+              color: selected ? _tmPrimary : _tmTextSoft,
               fontWeight: FontWeight.w900,
               fontSize: 12,
               letterSpacing: .1,
@@ -217,7 +229,7 @@ class _ProductTradeMachineVideoScreenState
 
     return _surface(
       context,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       child: Column(
         children: [
           LayoutBuilder(
@@ -371,14 +383,14 @@ class _ProductTradeMachineVideoScreenState
     return Material(
       color: selected ? _tmSurfaceAlt : _tmSurface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         side: BorderSide(
-          color: selected ? const Color(0xFF4D91CC) : const Color(0xFFDCE4EE),
-          width: selected ? 1.4 : 1,
+          color: selected ? _tmPrimary : _tmBorderStrong,
+          width: selected ? 1.5 : 1,
         ),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         onTap: () {
           setState(() {
             if (selected) {
@@ -389,12 +401,12 @@ class _ProductTradeMachineVideoScreenState
           });
         },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
           child: Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 46,
+                height: 46,
                 padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: .10),
@@ -412,9 +424,9 @@ class _ProductTradeMachineVideoScreenState
                       _teamName(team),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF17243A),
-                        fontSize: 11,
+                      style: TextStyle(
+                        color: _tmTextStrong,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -423,9 +435,9 @@ class _ProductTradeMachineVideoScreenState
                       status,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF5E7085),
-                        fontSize: 9.5,
+                      style: TextStyle(
+                        color: _tmTextSoft,
+                        fontSize: 9.8,
                         height: 1.2,
                         fontWeight: FontWeight.w700,
                       ),
@@ -439,18 +451,20 @@ class _ProductTradeMachineVideoScreenState
                 height: 28,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: selected ? const Color(0xFF1769AA) : const Color(0xFFF0F4F8),
+                  color: selected
+                      ? _tmPrimary
+                      : (_darkPalette
+                          ? const Color(0xFF16212C)
+                          : const Color(0xFFF0F4F8)),
                   borderRadius: BorderRadius.circular(5),
                   border: Border.all(
-                    color: selected
-                        ? const Color(0xFF1769AA)
-                        : const Color(0xFFD8E1EB),
+                    color: selected ? _tmPrimary : _tmBorderStrong,
                   ),
                 ),
                 child: Icon(
                   selected ? Icons.check_rounded : Icons.add_rounded,
                   size: 17,
-                  color: selected ? Colors.white : const Color(0xFF63758B),
+                  color: selected ? Colors.white : _tmTextSoft,
                 ),
               ),
             ],
@@ -641,7 +655,7 @@ class _ProductTradeMachineVideoScreenState
             height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: selected ? _tmSurfaceAlt : _tmSurface,
+              color: selected ? _tmSurfaceSoft : _tmSurface,
               borderRadius: BorderRadius.circular(5),
               border: Border.all(
                 color: selected
@@ -1052,7 +1066,7 @@ class _ProductTradeMachineVideoScreenState
             color: selected ? _tmSurfaceAlt : _tmSurface,
             border: Border(
               bottom: BorderSide(
-                color: selected ? const Color(0xFF1769AA) : Colors.transparent,
+                color: selected ? _tmPrimary : Colors.transparent,
                 width: 2,
               ),
             ),
@@ -1063,9 +1077,7 @@ class _ProductTradeMachineVideoScreenState
               Text(
                 label,
                 style: TextStyle(
-                  color: selected
-                      ? const Color(0xFF173C62)
-                      : const Color(0xFF68798E),
+                  color: selected ? _tmPrimary : _tmTextSoft,
                   fontWeight: FontWeight.w800,
                   fontSize: 10,
                 ),
@@ -1077,16 +1089,16 @@ class _ProductTradeMachineVideoScreenState
                       const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                   decoration: BoxDecoration(
                     color: selected
-                        ? const Color(0xFF1769AA).withValues(alpha: .10)
-                        : const Color(0xFFEAF0F6),
+                        ? _tmPrimary.withValues(alpha: .12)
+                        : (_darkPalette
+                            ? const Color(0xFF17222D)
+                            : const Color(0xFFEAF0F6)),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     '$count',
                     style: TextStyle(
-                      color: selected
-                          ? const Color(0xFF1769AA)
-                          : const Color(0xFF6F8296),
+                      color: selected ? _tmPrimary : _tmTextSoft,
                       fontSize: 8,
                       fontWeight: FontWeight.w900,
                     ),
@@ -2177,9 +2189,9 @@ class _ProductTradeMachineVideoScreenState
           if (!hasActivity)
             Container(
               padding: const EdgeInsets.fromLTRB(22, 28, 22, 26),
-              decoration: const BoxDecoration(
-                color: Color(0xFFFBFCFE),
-                borderRadius: BorderRadius.all(Radius.circular(12)),
+              decoration: BoxDecoration(
+                color: _tmSurfaceStrong,
+                borderRadius: const BorderRadius.all(Radius.circular(14)),
               ),
               child: Column(
                 children: [
@@ -2188,30 +2200,30 @@ class _ProductTradeMachineVideoScreenState
                     height: 44,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1769AA).withValues(alpha: .08),
+                      color: _tmPrimary.withValues(alpha: .10),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.swap_horiz_rounded,
-                      color: Color(0xFF1769AA),
+                      color: _tmPrimary,
                       size: 24,
                     ),
                   ),
                   const SizedBox(height: 11),
-                  const Text(
+                  Text(
                     'Start building the trade',
                     style: TextStyle(
-                      color: Color(0xFF23394F),
+                      color: _tmTextStrong,
                       fontWeight: FontWeight.w900,
                       fontSize: 14,
                     ),
                   ),
                   const SizedBox(height: 5),
-                  const Text(
+                  Text(
                     'Choose an asset on the left, route it to another team, then balance every participating team.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Color(0xFF63758A),
+                      color: _tmTextSoft,
                       fontSize: 10.5,
                       height: 1.4,
                     ),
@@ -4023,9 +4035,18 @@ class _ProductTradeMachineVideoScreenState
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerColor),
+        color: _tmSurfaceStrong,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _tmBorder),
+        boxShadow: _darkPalette
+            ? const []
+            : const [
+                BoxShadow(
+                  color: Color(0x0F22364A),
+                  blurRadius: 14,
+                  offset: Offset(0, 4),
+                ),
+              ],
       ),
       child: child,
     );
