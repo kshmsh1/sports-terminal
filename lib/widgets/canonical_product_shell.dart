@@ -9,6 +9,7 @@ import '../screens/product_trade_machine_screen.dart';
 import '../screens/website_nba_advanced_stats_screen.dart';
 import '../screens/website_nba_box_scores_screen.dart';
 import '../screens/website_nba_entity_pages.dart';
+import '../screens/website_nba_financials_screen.dart';
 import '../screens/website_nba_home_dashboard.dart';
 import '../screens/website_nba_live_games_screen.dart';
 import '../screens/website_nba_media_feed_screen.dart';
@@ -92,6 +93,12 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
           label: 'Trade Machine',
           icon: Icons.swap_horiz_rounded,
           builder: ProductTradeMachineScreen.new,
+        ),
+        const _Destination(
+          id: 'financials',
+          label: 'Financials',
+          icon: Icons.account_balance_wallet_outlined,
+          builder: WebsiteNbaFinancialsScreen.new,
         ),
         const _Destination(
           id: 'live-games',
