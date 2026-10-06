@@ -298,10 +298,23 @@ class TradeMachineEngine {
         0,
         (sum, assignment) => sum + _incomingMatchingSalary(assignment.asset),
       );
+      // Salary matching and team-salary accounting are separate CBA concepts.
+      // BYC / poison-pill values can change matching salary without changing the
+      // player's actual cap charge. Hard-cap and apron checks therefore use
+      // nominal team-salary movement while the matching test uses the sender /
+      // receiver values above.
+      final outgoingTeamSalary = outgoing.fold<double>(
+        0,
+        (sum, assignment) => sum + _teamSalaryCharge(assignment.asset),
+      );
+      final incomingTeamSalary = incoming.fold<double>(
+        0,
+        (sum, assignment) => sum + _teamSalaryCharge(assignment.asset),
+      );
       final context = scenario.capContexts[team];
       final postTradeSalary = (context?.teamSalary ?? 0) -
-          outgoingSalary +
-          incomingSalary;
+          outgoingTeamSalary +
+          incomingTeamSalary;
       final roster = (context?.standardRosterPlayers ?? 14) -
           outgoingPlayers.length +
           incomingPlayers.length;
@@ -880,6 +893,12 @@ class TradeMachineEngine {
     return _number(asset.metadata['incoming_matching_salary']) ??
         _number(asset.metadata['poison_pill_incoming_salary']) ??
         asset.salary;
+  }
+
+  double _teamSalaryCharge(TradeAsset asset) {
+    if (asset.type != TradeAssetType.player) return 0;
+    if (asset.metadata['two_way'] == true) return 0;
+    return _number(asset.metadata['team_salary_charge']) ?? asset.salary;
   }
 
   double _cashAmount(TradeAsset asset) =>
