@@ -3581,10 +3581,8 @@ class _ProductTradeMachineVideoScreenState
               },
               standardRosterPlayers:
                   source?.standardRoster ?? _standardRosterCount(team, data),
-              cashSentThisSeason: 8495000 -
-                  (NbaCashTradeReference202627.teams[team]?.availableToSend ??
-                      NbaCashTradeReference202627.limit),
-              cashLimitThisSeason: NbaCashTradeReference202627.limit,
+              cashSentThisSeason: 0,
+              cashLimitThisSeason: 8495000,
             );
           })(),
       },
