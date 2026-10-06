@@ -1683,8 +1683,10 @@ class _ProductTradeMachineVideoScreenState
   }
 
   Widget _cashTab(BuildContext context, String team) {
-    final reference = NbaCashTradeReference202627.teams[team];
-    final available = reference?.availableToSend ?? 0;
+    const annualLimit = 8495000.0;
+    final source = NbaTeamFinancialReference202627.forTeam(team);
+    final secondApronBlocked = (source?.secondApronSpace ?? 0) < 0;
+    final available = secondApronBlocked ? 0.0 : annualLimit;
     final destinations = _teams.where((item) => item != team).toList();
     final destination = _cashDestinations[team];
     final amount = (_cashAmounts[team] ?? 0).clamp(0, available).toDouble();
@@ -1696,7 +1698,7 @@ class _ProductTradeMachineVideoScreenState
           context,
           title: 'Cash considerations',
           subtitle:
-              'Annual send capacity remaining: ${_money(available)} · receive capacity: ${_money(reference?.availableToReceive ?? 0)}',
+              '2026–27 annual cash limit: ${_money(annualLimit)} · sending and receiving limits are separate',
         ),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
@@ -1774,10 +1776,15 @@ class _ProductTradeMachineVideoScreenState
               ],
             ),
           ),
-        if (reference?.sendRestrictedAboveSecondApron == true)
+        if (secondApronBlocked)
           const Text(
-            'Source note: cash sending is restricted while this team is above the second apron.',
+            'This team is above the second apron and cannot send cash in a trade.',
             style: TextStyle(color: Color(0xFFD58B45), fontSize: 11),
+          )
+        else
+          Text(
+            'Cash does not affect team salary. Max send: ${_money(annualLimit)} · Max receive: ${_money(annualLimit)}.',
+            style: TextStyle(color: _tmTextSoft, fontSize: 11),
           ),
       ],
     );
@@ -3574,7 +3581,7 @@ class _ProductTradeMachineVideoScreenState
               },
               standardRosterPlayers:
                   source?.standardRoster ?? _standardRosterCount(team, data),
-              cashSentThisSeason: NbaCashTradeReference202627.limit -
+              cashSentThisSeason: 8495000 -
                   (NbaCashTradeReference202627.teams[team]?.availableToSend ??
                       NbaCashTradeReference202627.limit),
               cashLimitThisSeason: NbaCashTradeReference202627.limit,
