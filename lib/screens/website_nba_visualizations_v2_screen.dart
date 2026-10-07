@@ -340,7 +340,9 @@ class _WebsiteNbaVisualizationsScreenState
       _ChartType.radar => radarName == null
           ? <NbaStatsRow>[]
           : ranked.where((row) => row.player == radarName).take(1).toList(),
-      _ => ranked.take(_topN).toList(growable: false),
+      _ => _topN == 0
+          ? ranked
+          : ranked.take(_topN).toList(growable: false),
     };
 
     final analytics = _supportsXYAnalytics
@@ -370,6 +372,7 @@ class _WebsiteNbaVisualizationsScreenState
           analytics: analytics,
           metricLabel: metricLabel,
           xLabel: xLabel,
+          eligibleCount: filtered.length,
         );
 
         return Column(
@@ -421,7 +424,7 @@ class _WebsiteNbaVisualizationsScreenState
                 const SizedBox(width: 10),
                 Tooltip(
                   message:
-                      'Built from the same static player-season dataset used by Stats and Advanced Stats.',
+                      'Built from the same static player-season dataset used by Stats and Advanced Stats. $plotted plotted from $eligible eligible players.',
                   child: Icon(
                     Icons.info_outline_rounded,
                     size: 18,
@@ -463,10 +466,6 @@ class _WebsiteNbaVisualizationsScreenState
             _StudioContextChip(
               icon: Icons.speed_outlined,
               label: _basis.label,
-            ),
-            _StudioContextChip(
-              icon: Icons.groups_outlined,
-              label: '$plotted plotted · $eligible eligible',
             ),
           ],
         );
@@ -692,9 +691,19 @@ class _WebsiteNbaVisualizationsScreenState
             TextField(
               controller: _search,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 isDense: true,
-                prefixIcon: Icon(Icons.search_rounded, size: 19),
+                prefixIcon: const Icon(Icons.search_rounded, size: 19),
+                suffixIcon: _search.text.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear filter',
+                        onPressed: () {
+                          _search.clear();
+                          setState(() {});
+                        },
+                        icon: const Icon(Icons.close_rounded, size: 17),
+                      ),
                 hintText: 'Player, team, position…',
                 labelText: 'Filter',
               ),
@@ -731,11 +740,15 @@ class _WebsiteNbaVisualizationsScreenState
                 value: _topN,
                 items: (_chart == _ChartType.bar
                         ? const [10, 20]
-                        : const [10, 20, 30, 40, 60, 100])
+                        : const [0, 10, 20, 30, 40, 60, 100])
                     .map(
                       (value) => DropdownMenuItem(
                         value: value,
-                        child: Text('Top $value by selected metric'),
+                        child: Text(
+                          value == 0
+                              ? 'All eligible players'
+                              : 'Top $value by selected metric',
+                        ),
                       ),
                     )
                     .toList(),
@@ -816,6 +829,7 @@ class _WebsiteNbaVisualizationsScreenState
     required _RegressionSummary? analytics,
     required String metricLabel,
     required String xLabel,
+    required int eligibleCount,
   }) {
     final colors = Theme.of(context).colorScheme;
     final top = rows.isEmpty ? null : rows.first;
@@ -852,7 +866,11 @@ class _WebsiteNbaVisualizationsScreenState
                           ? 'Filtered population · ${rows.length} players'
                           : _chart == _ChartType.radar
                               ? 'Percentile profile across six core metrics'
-                              : 'Top ${rows.length} by $metricLabel after filters',
+                              : _chart == _ChartType.bar
+                                  ? 'Top ${rows.length} by $metricLabel after filters'
+                                  : _topN == 0
+                                      ? '${rows.length} eligible players plotted'
+                                      : '${rows.length} plotted from $eligibleCount eligible · ranked by $metricLabel',
                       style: TextStyle(
                         color: colors.onSurfaceVariant,
                         fontSize: 11,
@@ -1170,9 +1188,14 @@ class _StudioToggle extends StatelessWidget {
                 ),
               ),
             ),
-            Switch.adaptive(
+            Switch(
               value: value,
               onChanged: onChanged,
+              activeTrackColor: colors.primary.withValues(alpha: .72),
+              activeThumbColor: colors.onPrimary,
+              inactiveTrackColor:
+                  colors.surfaceContainerHighest.withValues(alpha: .9),
+              inactiveThumbColor: colors.onSurfaceVariant,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ],
@@ -1203,7 +1226,7 @@ class _StudioAnalyticsBar extends StatelessWidget {
         _InsightTile(
           label: 'PAIRED',
           value: '${summary.count}',
-          caption: 'players',
+          caption: 'plotted sample',
         ),
         _InsightTile(
           label: 'CORRELATION',
