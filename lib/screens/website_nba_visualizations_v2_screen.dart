@@ -439,6 +439,10 @@ class _WebsiteNbaVisualizationsScreenState
           runSpacing: 7,
           alignment: WrapAlignment.end,
           children: [
+            const _StudioContextChip(
+              icon: Icons.storage_rounded,
+              label: 'Static season data',
+            ),
             _StudioContextChip(
               icon: Icons.calendar_month_outlined,
               label: _season,
