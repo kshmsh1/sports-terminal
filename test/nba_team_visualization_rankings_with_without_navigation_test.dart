@@ -66,35 +66,43 @@ void main() {
     expect(repository, isNot(contains('Math.random')));
   });
 
-  test('visualization studio supports saved presets and analytical overlays', () {
+  test('visualization studio supports interactive analytical workflows', () {
     final alias = File(
       'lib/screens/website_nba_visualizations_screen.dart',
     ).readAsStringSync();
     final source = File(
       'lib/screens/website_nba_visualizations_v2_screen.dart',
     ).readAsStringSync();
+    final shell = File(
+      'lib/widgets/canonical_product_shell.dart',
+    ).readAsStringSync();
 
     expect(alias, contains("export 'website_nba_visualizations_v2_screen.dart'"));
     expect(source, contains('Visualization Studio'));
-    expect(source, contains("scatter('Scatterplot')"));
-    expect(source, contains("bubble('Bubble chart')"));
-    expect(source, contains("bar('Bar chart')"));
-    expect(source, contains("line('Line chart')"));
-    expect(source, contains("area('Area chart')"));
-    expect(source, contains("pie('Pie chart')"));
-    expect(source, contains("histogram('Histogram')"));
-    expect(source, contains("radar('Radar chart')"));
-    expect(source, contains('CustomPaint'));
+    expect(source, contains("scatter('Scatter')"));
+    expect(source, contains("bubble('Bubble')"));
+    expect(source, contains("bar('Player ranking')"));
+    expect(source, contains("histogram('Distribution')"));
+    expect(source, contains("radar('Player profile')"));
+    expect(source, isNot(contains("line('Line chart')")));
+    expect(source, isNot(contains("pie('Pie chart')")));
+    expect(source, contains('_InteractiveChartPanel'));
+    expect(source, contains('Hover to inspect · click to pin'));
+    expect(source, contains('Swap axes'));
+    expect(source, contains('_ChartLegend'));
+    expect(source, contains('_visualGroupColor'));
     expect(source, contains('WebsiteNbaApiService'));
     expect(source, contains('seasonSnapshot('));
     expect(source, contains('nba_visualization_presets_v1'));
     expect(source, contains('SharedPreferences'));
-    expect(source, contains('Save As'));
+    expect(source, contains('Save as'));
     expect(source, contains('Best-fit line'));
     expect(source, contains('Mean reference lines'));
-    expect(source, contains('Correlation (r)'));
+    expect(source, contains('CORRELATION'));
     expect(source, contains('R²'));
     expect(source, contains('_RegressionSummary'));
+    expect(shell, contains("_selected == 'visualizations'"));
+    expect(shell, contains('? 1880'));
   });
 
   test('rankings supports ordered drag-drop tiers and durable saved boards', () {
