@@ -1622,6 +1622,166 @@ class _ChartLegend extends StatelessWidget {
   }
 }
 
+class _BubbleSizeLegend extends StatelessWidget {
+  const _BubbleSizeLegend({
+    required this.rows,
+    required this.metricKey,
+    required this.engine,
+    required this.colorScheme,
+  });
+
+  final List<NbaStatsRow> rows;
+  final String metricKey;
+  final NbaStatsWorkstationEngine engine;
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final values = rows
+        .map((row) => row.value(metricKey))
+        .whereType<double>()
+        .where((value) => value.isFinite)
+        .toList()
+      ..sort();
+    if (values.isEmpty) return const SizedBox.shrink();
+
+    final samples = <double>[
+      values.first,
+      values[values.length ~/ 2],
+      values.last,
+    ];
+    const radii = [5.0, 8.0, 11.0];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 9, 16, 9),
+      child: Wrap(
+        spacing: 14,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            'SIZE · ${engine.metric(metricKey).shortLabel}',
+            style: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: .55,
+            ),
+          ),
+          for (var index = 0; index < samples.length; index++)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: Center(
+                    child: Container(
+                      width: radii[index] * 2,
+                      height: radii[index] * 2,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: .48),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: colorScheme.primary.withValues(alpha: .8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  engine.formatValue(metricKey, samples[index]),
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileComparisonLegend extends StatelessWidget {
+  const _ProfileComparisonLegend({
+    required this.primary,
+    required this.comparison,
+    required this.colorScheme,
+  });
+
+  final NbaStatsRow primary;
+  final NbaStatsRow comparison;
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 11),
+        child: Wrap(
+          spacing: 18,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              'PROFILE',
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 9.5,
+                fontWeight: FontWeight.w900,
+                letterSpacing: .55,
+              ),
+            ),
+            _ProfileLegendItem(
+              color: colorScheme.primary,
+              label: '${primary.player} · ${primary.team}',
+            ),
+            _ProfileLegendItem(
+              color: colorScheme.tertiary,
+              label: '${comparison.player} · ${comparison.team}',
+            ),
+          ],
+        ),
+      );
+}
+
+class _ProfileLegendItem extends StatelessWidget {
+  const _ProfileLegendItem({
+    required this.color,
+    required this.label,
+  });
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: .28),
+              border: Border.all(color: color, width: 1.5),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      );
+}
+
 class _ChartReadout extends StatelessWidget {
   const _ChartReadout({
     required this.rows,
