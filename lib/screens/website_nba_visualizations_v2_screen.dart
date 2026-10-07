@@ -312,7 +312,9 @@ class _WebsiteNbaVisualizationsScreenState
               .contains(query)) {
         return false;
       }
-      return row.value(_yMetric) != null;
+      if (row.value(_yMetric) == null) return false;
+      if (_supportsXYAnalytics && row.value(_xMetric) == null) return false;
+      return true;
     }).toList(growable: false);
 
     final ranked = [...filtered]
