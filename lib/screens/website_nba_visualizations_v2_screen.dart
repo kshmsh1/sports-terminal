@@ -1756,6 +1756,7 @@ class _NbaChartPainter extends CustomPainter {
     required this.showLabels,
     required this.showTrendLine,
     required this.showMeans,
+    this.highlightedPlayer,
   });
 
   final List<NbaStatsRow> rows;
@@ -1770,129 +1771,75 @@ class _NbaChartPainter extends CustomPainter {
   final bool showLabels;
   final bool showTrendLine;
   final bool showMeans;
-
-  bool get _xy =>
-      chart == _ChartType.scatter ||
-      chart == _ChartType.bubble ||
-      chart == _ChartType.line ||
-      chart == _ChartType.area;
+  final String? highlightedPlayer;
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTWH(
-      62,
-      20,
-      math.max(10.0, size.width - 88),
-      math.max(10.0, size.height - 72),
+      72,
+      28,
+      math.max(10.0, size.width - 104),
+      math.max(10.0, size.height - 88),
     );
-    final axisPaint = Paint()
-      ..strokeWidth = 1.2
-      ..color = colorScheme.outlineVariant;
-    canvas.drawLine(rect.bottomLeft, rect.bottomRight, axisPaint);
-    canvas.drawLine(rect.bottomLeft, rect.topLeft, axisPaint);
 
     switch (chart) {
+      case _ChartType.scatter:
+        _paintXY(canvas, rect, bubbles: false);
+      case _ChartType.bubble:
+        _paintXY(canvas, rect, bubbles: true);
       case _ChartType.bar:
         _paintBars(canvas, rect);
-      case _ChartType.pie:
-        _paintPie(canvas, rect);
       case _ChartType.histogram:
         _paintHistogram(canvas, rect);
       case _ChartType.radar:
         _paintRadar(canvas, rect);
-      case _ChartType.line:
-        _paintXY(canvas, rect, connect: true, fill: false, bubbles: false);
-      case _ChartType.area:
-        _paintXY(canvas, rect, connect: true, fill: true, bubbles: false);
-      case _ChartType.bubble:
-        _paintXY(canvas, rect, connect: false, fill: false, bubbles: true);
-      case _ChartType.scatter:
-        _paintXY(canvas, rect, connect: false, fill: false, bubbles: false);
-    }
-
-    _text(
-      canvas,
-      engine.metric(yMetric).shortLabel,
-      Offset(8, rect.top + 4),
-      colorScheme.onSurfaceVariant,
-      bold: true,
-    );
-    if (_xy) {
-      _text(
-        canvas,
-        engine.metric(xMetric).shortLabel,
-        Offset(rect.right - 42, rect.bottom + 20),
-        colorScheme.onSurfaceVariant,
-        bold: true,
-      );
     }
   }
 
   void _paintXY(
     Canvas canvas,
     Rect rect, {
-    required bool connect,
-    required bool fill,
     required bool bubbles,
   }) {
     final valid = rows
         .where(
-          (row) => row.value(xMetric) != null && row.value(yMetric) != null,
+          (row) =>
+              row.value(xMetric) != null &&
+              row.value(yMetric) != null &&
+              row.value(xMetric)!.isFinite &&
+              row.value(yMetric)!.isFinite,
         )
-        .toList();
+        .toList(growable: false);
     if (valid.isEmpty) return;
-    valid.sort((a, b) => a.value(xMetric)!.compareTo(b.value(xMetric)!));
+
     final xs = valid.map((row) => row.value(xMetric)!).toList();
     final ys = valid.map((row) => row.value(yMetric)!).toList();
-    final xMin = xs.reduce(math.min);
-    final xMax = xs.reduce(math.max);
-    final yMin = ys.reduce(math.min);
-    final yMax = ys.reduce(math.max);
-    final points = <Offset>[];
+    final xRange = _paddedRange(xs);
+    final yRange = _paddedRange(ys);
+    final xMin = xRange.$1;
+    final xMax = xRange.$2;
+    final yMin = yRange.$1;
+    final yMax = yRange.$2;
+
+    _paintXYGrid(
+      canvas,
+      rect,
+      xMin: xMin,
+      xMax: xMax,
+      yMin: yMin,
+      yMax: yMax,
+    );
 
     if (showMeans && valid.length > 1) {
       final meanX = xs.reduce((a, b) => a + b) / xs.length;
       final meanY = ys.reduce((a, b) => a + b) / ys.length;
       final meanPaint = Paint()
-        ..color = colorScheme.outline.withValues(alpha: .7)
+        ..color = colorScheme.onSurfaceVariant.withValues(alpha: .46)
         ..strokeWidth = 1;
-      final x = _scale(meanX, xMin, xMax, rect.left, rect.right);
-      final y = _scale(meanY, yMin, yMax, rect.bottom, rect.top);
+      final x = _scaleChartValue(meanX, xMin, xMax, rect.left, rect.right);
+      final y = _scaleChartValue(meanY, yMin, yMax, rect.bottom, rect.top);
       canvas.drawLine(Offset(x, rect.top), Offset(x, rect.bottom), meanPaint);
       canvas.drawLine(Offset(rect.left, y), Offset(rect.right, y), meanPaint);
-    }
-
-    for (var index = 0; index < valid.length; index++) {
-      final row = valid[index];
-      final point = Offset(
-        _scale(row.value(xMetric)!, xMin, xMax, rect.left, rect.right),
-        _scale(row.value(yMetric)!, yMin, yMax, rect.bottom, rect.top),
-      );
-      points.add(point);
-      final color = _colorFor(row, index);
-      final radius = bubbles
-          ? _bubbleRadius(
-              row.value(sizeMetric),
-              valid
-                  .map((item) => item.value(sizeMetric))
-                  .whereType<double>()
-                  .toList(),
-            )
-          : 4.5;
-      canvas.drawCircle(
-        point,
-        radius,
-        Paint()..color = color.withValues(alpha: .82),
-      );
-      if (showLabels && (valid.length <= 24 || index < 12)) {
-        _text(
-          canvas,
-          _shortLabel(row.player),
-          point + const Offset(6, -11),
-          colorScheme.onSurface,
-          small: true,
-        );
-      }
     }
 
     if (showTrendLine && valid.length > 1) {
@@ -1900,175 +1847,353 @@ class _NbaChartPainter extends CustomPainter {
       if (summary.count >= 2 && summary.slope.isFinite) {
         final yAtMin = summary.intercept + summary.slope * xMin;
         final yAtMax = summary.intercept + summary.slope * xMax;
+        canvas.save();
+        canvas.clipRect(rect);
         canvas.drawLine(
           Offset(
             rect.left,
-            _scale(yAtMin, yMin, yMax, rect.bottom, rect.top),
+            _scaleChartValue(yAtMin, yMin, yMax, rect.bottom, rect.top),
           ),
           Offset(
             rect.right,
-            _scale(yAtMax, yMin, yMax, rect.bottom, rect.top),
+            _scaleChartValue(yAtMax, yMin, yMax, rect.bottom, rect.top),
           ),
           Paint()
             ..color = colorScheme.tertiary
-            ..strokeWidth = 2.2,
+            ..strokeWidth = 2.1,
         );
+        canvas.restore();
       }
     }
 
-    if (connect && points.length > 1) {
-      final path = Path()..moveTo(points.first.dx, points.first.dy);
-      for (final point in points.skip(1)) {
-        path.lineTo(point.dx, point.dy);
-      }
-      if (fill) {
-        final area = Path.from(path)
-          ..lineTo(points.last.dx, rect.bottom)
-          ..lineTo(points.first.dx, rect.bottom)
-          ..close();
-        canvas.drawPath(
-          area,
-          Paint()..color = colorScheme.primary.withValues(alpha: .14),
+    final bubbleValues = bubbles
+        ? valid
+            .map((item) => item.value(sizeMetric))
+            .whereType<double>()
+            .toList(growable: false)
+        : const <double>[];
+
+    final labelPlayers = <String>{};
+    if (showLabels) {
+      final byY = [...valid]
+        ..sort(
+          (a, b) => (b.value(yMetric) ?? 0).compareTo(a.value(yMetric) ?? 0),
+        );
+      labelPlayers.addAll(
+        byY.take(valid.length <= 20 ? valid.length : 10).map((row) => row.player),
+      );
+      if (highlightedPlayer != null) labelPlayers.add(highlightedPlayer!);
+    }
+
+    for (final row in valid) {
+      final point = Offset(
+        _scaleChartValue(
+          row.value(xMetric)!,
+          xMin,
+          xMax,
+          rect.left,
+          rect.right,
+        ),
+        _scaleChartValue(
+          row.value(yMetric)!,
+          yMin,
+          yMax,
+          rect.bottom,
+          rect.top,
+        ),
+      );
+      final color = _visualColorForRow(row, groupBy, colorScheme);
+      final radius = bubbles
+          ? _bubbleRadius(row.value(sizeMetric), bubbleValues)
+          : 5.2;
+      final highlighted = row.player == highlightedPlayer;
+
+      if (highlighted) {
+        canvas.drawCircle(
+          point,
+          radius + 5,
+          Paint()
+            ..color = color.withValues(alpha: .16)
+            ..style = PaintingStyle.fill,
+        );
+        canvas.drawCircle(
+          point,
+          radius + 2.2,
+          Paint()
+            ..color = color
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.8,
         );
       }
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = colorScheme.primary
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2,
+      canvas.drawCircle(
+        point,
+        radius,
+        Paint()..color = color.withValues(alpha: highlighted ? 1 : .86),
+      );
+
+      if (labelPlayers.contains(row.player)) {
+        _text(
+          canvas,
+          _shortLabel(row.player),
+          point + Offset(radius + 4, -11),
+          colorScheme.onSurface,
+          small: true,
+          background: colorScheme.surface.withValues(alpha: .72),
+        );
+      }
+    }
+  }
+
+  void _paintXYGrid(
+    Canvas canvas,
+    Rect rect, {
+    required double xMin,
+    required double xMax,
+    required double yMin,
+    required double yMax,
+  }) {
+    final gridPaint = Paint()
+      ..color = colorScheme.outlineVariant.withValues(alpha: .42)
+      ..strokeWidth = .8;
+    final axisPaint = Paint()
+      ..color = colorScheme.outlineVariant
+      ..strokeWidth = 1.1;
+
+    const steps = 5;
+    for (var index = 0; index <= steps; index++) {
+      final t = index / steps;
+      final x = rect.left + rect.width * t;
+      final y = rect.bottom - rect.height * t;
+      canvas.drawLine(Offset(x, rect.top), Offset(x, rect.bottom), gridPaint);
+      canvas.drawLine(Offset(rect.left, y), Offset(rect.right, y), gridPaint);
+
+      final xValue = xMin + (xMax - xMin) * t;
+      final yValue = yMin + (yMax - yMin) * t;
+      _text(
+        canvas,
+        engine.formatValue(xMetric, xValue),
+        Offset(x - 18, rect.bottom + 10),
+        colorScheme.onSurfaceVariant,
+        tiny: true,
+      );
+      _text(
+        canvas,
+        engine.formatValue(yMetric, yValue),
+        Offset(8, y - 6),
+        colorScheme.onSurfaceVariant,
+        tiny: true,
       );
     }
+    canvas.drawLine(rect.bottomLeft, rect.bottomRight, axisPaint);
+    canvas.drawLine(rect.bottomLeft, rect.topLeft, axisPaint);
+
+    _text(
+      canvas,
+      engine.metric(yMetric).shortLabel,
+      Offset(8, rect.top - 18),
+      colorScheme.onSurfaceVariant,
+      bold: true,
+    );
+    _text(
+      canvas,
+      engine.metric(xMetric).shortLabel,
+      Offset(rect.right - 28, rect.bottom + 34),
+      colorScheme.onSurfaceVariant,
+      bold: true,
+    );
   }
 
   void _paintBars(Canvas canvas, Rect rect) {
     final valid = rows
         .where((row) => row.value(yMetric) != null)
-        .take(16)
-        .toList();
+        .take(14)
+        .toList(growable: false);
     if (valid.isEmpty) return;
-    final maxValue = valid
-        .map((row) => row.value(yMetric)!.abs())
-        .fold<double>(0, math.max);
-    final width = rect.width / valid.length;
+
+    final values = valid.map((row) => row.value(yMetric)!).toList();
+    final minValue = math.min(0.0, values.reduce(math.min));
+    final maxValue = math.max(0.0, values.reduce(math.max));
+    final labelWidth = math.min(145.0, rect.width * .18);
+    final valueWidth = 58.0;
+    final barLeft = rect.left + labelWidth;
+    final barRight = rect.right - valueWidth;
+    final zeroX = _scaleChartValue(
+      0,
+      minValue,
+      maxValue == minValue ? minValue + 1 : maxValue,
+      barLeft,
+      barRight,
+    );
+    final rowHeight = rect.height / valid.length;
+
     for (var index = 0; index < valid.length; index++) {
-      final value = valid[index].value(yMetric)!;
-      final height = maxValue <= 0
-          ? 0.0
-          : rect.height * .82 * (value.abs() / maxValue);
-      final bar = Rect.fromLTWH(
-        rect.left + index * width + width * .14,
-        rect.bottom - height,
-        width * .72,
-        height,
+      final row = valid[index];
+      final value = row.value(yMetric)!;
+      final y = rect.top + index * rowHeight;
+      final centerY = y + rowHeight * .5;
+      final valueX = _scaleChartValue(
+        value,
+        minValue,
+        maxValue == minValue ? minValue + 1 : maxValue,
+        barLeft,
+        barRight,
+      );
+      final left = math.min(zeroX, valueX);
+      final width = math.max(1.5, (valueX - zeroX).abs());
+      final color = _visualColorForRow(row, groupBy, colorScheme);
+
+      if (index.isOdd) {
+        canvas.drawRect(
+          Rect.fromLTWH(rect.left, y, rect.width, rowHeight),
+          Paint()
+            ..color =
+                colorScheme.surfaceContainerHighest.withValues(alpha: .12),
+        );
+      }
+      _text(
+        canvas,
+        '${index + 1}. ${_shortLabel(row.player)}',
+        Offset(rect.left + 2, centerY - 7),
+        colorScheme.onSurface,
+        small: true,
       );
       canvas.drawRRect(
-        RRect.fromRectAndRadius(bar, const Radius.circular(4)),
-        Paint()
-          ..color = _colorFor(valid[index], index).withValues(alpha: .86),
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(
+            left,
+            centerY - rowHeight * .22,
+            width,
+            rowHeight * .44,
+          ),
+          const Radius.circular(5),
+        ),
+        Paint()..color = color.withValues(alpha: .88),
       );
-      if (showLabels) {
-        _text(
-          canvas,
-          _shortLabel(valid[index].player),
-          Offset(bar.left, rect.bottom + 8),
-          colorScheme.onSurfaceVariant,
-          small: true,
-        );
-      }
+      _text(
+        canvas,
+        engine.formatValue(yMetric, value),
+        Offset(barRight + 8, centerY - 7),
+        colorScheme.onSurface,
+        small: true,
+        bold: true,
+      );
     }
-  }
 
-  void _paintPie(Canvas canvas, Rect rect) {
-    final valid = rows
-        .where((row) => (row.value(yMetric) ?? 0) > 0)
-        .take(10)
-        .toList();
-    if (valid.isEmpty) return;
-    final total = valid.fold<double>(
-      0,
-      (sum, row) => sum + row.value(yMetric)!,
+    canvas.drawLine(
+      Offset(zeroX, rect.top),
+      Offset(zeroX, rect.bottom),
+      Paint()
+        ..color = colorScheme.outlineVariant
+        ..strokeWidth = 1,
     );
-    final radius = math.min(rect.width, rect.height) * .34;
-    final center = Offset(rect.center.dx - rect.width * .12, rect.center.dy);
-    var start = -math.pi / 2;
-    for (var index = 0; index < valid.length; index++) {
-      final sweep = total <= 0
-          ? 0.0
-          : valid[index].value(yMetric)! / total * math.pi * 2;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        start,
-        sweep,
-        true,
-        Paint()..color = _colorFor(valid[index], index),
-      );
-      start += sweep;
-      if (showLabels) {
-        final legendY = rect.top + index * 22.0;
-        canvas.drawRect(
-          Rect.fromLTWH(rect.right - 170, legendY, 12, 12),
-          Paint()..color = _colorFor(valid[index], index),
-        );
-        _text(
-          canvas,
-          '${_shortLabel(valid[index].player)} ${engine.formatValue(yMetric, valid[index].value(yMetric))}',
-          Offset(rect.right - 152, legendY - 2),
-          colorScheme.onSurface,
-          small: true,
-        );
-      }
-    }
+    _text(
+      canvas,
+      engine.metric(yMetric).shortLabel,
+      Offset(barLeft, rect.bottom + 20),
+      colorScheme.onSurfaceVariant,
+      bold: true,
+    );
   }
 
   void _paintHistogram(Canvas canvas, Rect rect) {
     final values = rows
         .map((row) => row.value(yMetric))
         .whereType<double>()
-        .toList();
+        .where((value) => value.isFinite)
+        .toList(growable: false);
     if (values.isEmpty) return;
+
     final minValue = values.reduce(math.min);
     final maxValue = values.reduce(math.max);
-    const bins = 10;
+    const bins = 12;
     final counts = List<int>.filled(bins, 0);
     final span = maxValue - minValue;
     for (final value in values) {
-      final raw = span == 0
-          ? 0
-          : ((value - minValue) / span * bins).floor();
-      final index = raw.clamp(0, bins - 1).toInt();
-      counts[index] += 1;
+      final raw =
+          span == 0 ? 0 : ((value - minValue) / span * bins).floor();
+      counts[raw.clamp(0, bins - 1).toInt()] += 1;
     }
-    final maxCount = counts.reduce(math.max);
-    final width = rect.width / bins;
-    for (var index = 0; index < bins; index++) {
-      final height = maxCount == 0
-          ? 0.0
-          : rect.height * .84 * counts[index] / maxCount;
-      canvas.drawRect(
-        Rect.fromLTWH(
-          rect.left + index * width + 1,
-          rect.bottom - height,
-          width - 2,
-          height,
-        ),
-        Paint()..color = colorScheme.primary.withValues(alpha: .76),
+    final maxCount = math.max(1, counts.reduce(math.max));
+    final gridPaint = Paint()
+      ..color = colorScheme.outlineVariant.withValues(alpha: .42)
+      ..strokeWidth = .8;
+
+    for (var index = 0; index <= 4; index++) {
+      final t = index / 4;
+      final y = rect.bottom - rect.height * t;
+      canvas.drawLine(Offset(rect.left, y), Offset(rect.right, y), gridPaint);
+      _text(
+        canvas,
+        '${(maxCount * t).round()}',
+        Offset(22, y - 6),
+        colorScheme.onSurfaceVariant,
+        tiny: true,
       );
     }
+
+    final width = rect.width / bins;
+    for (var index = 0; index < bins; index++) {
+      final height = rect.height * counts[index] / maxCount;
+      final bar = Rect.fromLTWH(
+        rect.left + index * width + 2,
+        rect.bottom - height,
+        math.max(2, width - 4),
+        height,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(bar, const Radius.circular(4)),
+        Paint()..color = colorScheme.primary.withValues(alpha: .76),
+      );
+      if (index % 2 == 0 || bins <= 8) {
+        final value = minValue + span * index / bins;
+        _text(
+          canvas,
+          engine.formatValue(yMetric, value),
+          Offset(bar.left, rect.bottom + 10),
+          colorScheme.onSurfaceVariant,
+          tiny: true,
+        );
+      }
+    }
+
+    canvas.drawLine(
+      rect.bottomLeft,
+      rect.bottomRight,
+      Paint()
+        ..color = colorScheme.outlineVariant
+        ..strokeWidth = 1.1,
+    );
+    _text(
+      canvas,
+      'PLAYERS',
+      Offset(8, rect.top - 18),
+      colorScheme.onSurfaceVariant,
+      bold: true,
+    );
+    _text(
+      canvas,
+      engine.metric(yMetric).shortLabel,
+      Offset(rect.right - 36, rect.bottom + 34),
+      colorScheme.onSurfaceVariant,
+      bold: true,
+    );
   }
 
   void _paintRadar(Canvas canvas, Rect rect) {
     final row = rows.first;
     const metrics = ['pts', 'reb', 'ast', 'stl', 'blk', 'ts_pct'];
     final center = rect.center;
-    final radius = math.min(rect.width, rect.height) * .35;
+    final radius = math.min(rect.width, rect.height) * .37;
     final grid = Paint()
-      ..color = colorScheme.outlineVariant
-      ..style = PaintingStyle.stroke;
+      ..color = colorScheme.outlineVariant.withValues(alpha: .68)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = .9;
+
     for (final fraction in const [.25, .5, .75, 1.0]) {
       final path = Path();
       for (var index = 0; index < metrics.length; index++) {
-        final angle = -math.pi / 2 + index * math.pi * 2 / metrics.length;
+        final angle =
+            -math.pi / 2 + index * math.pi * 2 / metrics.length;
         final point = center +
             Offset(math.cos(angle), math.sin(angle)) * radius * fraction;
         if (index == 0) {
@@ -2080,31 +2205,33 @@ class _NbaChartPainter extends CustomPainter {
       path.close();
       canvas.drawPath(path, grid);
     }
+
     final shape = Path();
     for (var index = 0; index < metrics.length; index++) {
       final metric = metrics[index];
       final percentile = (row.percentiles[metric] ?? 0) / 100;
-      final angle = -math.pi / 2 + index * math.pi * 2 / metrics.length;
-      final outer = center + Offset(math.cos(angle), math.sin(angle)) * radius;
+      final angle =
+          -math.pi / 2 + index * math.pi * 2 / metrics.length;
+      final outer =
+          center + Offset(math.cos(angle), math.sin(angle)) * radius;
       final point = center +
           Offset(math.cos(angle), math.sin(angle)) *
               radius *
               percentile.clamp(0, 1).toDouble();
+
       canvas.drawLine(center, outer, grid);
-      if (showLabels) {
-        _text(
-          canvas,
-          engine.metric(metric).shortLabel,
-          outer +
-              Offset(
-                math.cos(angle) * 10 - 10,
-                math.sin(angle) * 10 - 6,
-              ),
-          colorScheme.onSurfaceVariant,
-          bold: true,
-          small: true,
-        );
-      }
+      _text(
+        canvas,
+        '${engine.metric(metric).shortLabel}  ${(percentile * 100).round()}',
+        outer +
+            Offset(
+              math.cos(angle) * 13 - 18,
+              math.sin(angle) * 13 - 7,
+            ),
+        colorScheme.onSurfaceVariant,
+        bold: true,
+        small: true,
+      );
       if (index == 0) {
         shape.moveTo(point.dx, point.dy);
       } else {
@@ -2112,6 +2239,7 @@ class _NbaChartPainter extends CustomPainter {
       }
     }
     shape.close();
+
     canvas.drawPath(
       shape,
       Paint()..color = colorScheme.primary.withValues(alpha: .18),
@@ -2123,36 +2251,38 @@ class _NbaChartPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.4,
     );
-    if (showLabels) {
-      _text(
-        canvas,
-        '${row.player} percentile profile',
-        Offset(rect.left + 8, rect.top + 8),
-        colorScheme.onSurface,
-        bold: true,
-      );
+    _text(
+      canvas,
+      '${row.player} · percentile profile',
+      Offset(rect.left + 8, rect.top + 8),
+      colorScheme.onSurface,
+      bold: true,
+    );
+  }
+
+  (double, double) _paddedRange(List<double> values) {
+    var minValue = values.reduce(math.min);
+    var maxValue = values.reduce(math.max);
+    if (minValue == maxValue) {
+      final pad = minValue.abs() > 1 ? minValue.abs() * .08 : 1.0;
+      return (minValue - pad, maxValue + pad);
     }
+    final pad = (maxValue - minValue) * .06;
+    minValue -= pad;
+    maxValue += pad;
+    return (minValue, maxValue);
   }
 
   double _bubbleRadius(double? value, List<double> values) {
-    if (value == null || values.isEmpty) return 5;
+    if (value == null || values.isEmpty) return 5.5;
     final minValue = values.reduce(math.min);
     final maxValue = values.reduce(math.max);
     if (maxValue == minValue) return 10;
-    return 5 +
-        15 *
+    return 5.5 +
+        13.5 *
             ((value - minValue) / (maxValue - minValue))
                 .clamp(0, 1)
                 .toDouble();
-  }
-
-  Color _colorFor(NbaStatsRow row, int index) {
-    if (groupBy == 'None') return colorScheme.primary;
-    final token = groupBy == 'Position' ? row.position : row.team;
-    final hash =
-        token.codeUnits.fold<int>(0, (sum, value) => sum + value * 17) + index;
-    final hue = (hash * 37) % 360;
-    return HSVColor.fromAHSV(1, hue.toDouble(), .62, .86).toColor();
   }
 
   void _text(
@@ -2162,31 +2292,37 @@ class _NbaChartPainter extends CustomPainter {
     Color color, {
     bool bold = false,
     bool small = false,
+    bool tiny = false,
+    Color? background,
   }) {
     final painter = TextPainter(
       text: TextSpan(
         text: value,
         style: textStyle.copyWith(
           color: color,
-          fontSize: small ? 9 : 11,
+          fontSize: tiny ? 8 : (small ? 9.5 : 11),
           fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
         ),
       ),
       textDirection: TextDirection.ltr,
       maxLines: 1,
+      ellipsis: '…',
     )..layout(maxWidth: 180);
+    if (background != null) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(
+            offset.dx - 2,
+            offset.dy - 1,
+            painter.width + 4,
+            painter.height + 2,
+          ),
+          const Radius.circular(3),
+        ),
+        Paint()..color = background,
+      );
+    }
     painter.paint(canvas, offset);
-  }
-
-  double _scale(
-    double value,
-    double min,
-    double max,
-    double outMin,
-    double outMax,
-  ) {
-    if (max == min) return (outMin + outMax) / 2;
-    return outMin + (value - min) / (max - min) * (outMax - outMin);
   }
 
   String _shortLabel(String value) {
@@ -2197,6 +2333,48 @@ class _NbaChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _NbaChartPainter oldDelegate) => true;
+}
+
+Color _visualColorForRow(
+  NbaStatsRow row,
+  String groupBy,
+  ColorScheme colorScheme,
+) {
+  if (groupBy == 'None') return colorScheme.primary;
+  final token = groupBy == 'Position' ? row.position : row.team;
+  return _visualGroupColor(token, colorScheme);
+}
+
+Color _visualGroupColor(String token, ColorScheme colorScheme) {
+  if (token.isEmpty) return colorScheme.primary;
+  const positionColors = <String, Color>{
+    'PG': Color(0xFF5C8FDB),
+    'SG': Color(0xFF4FB6A8),
+    'SF': Color(0xFF7DBA57),
+    'PF': Color(0xFFE1A74F),
+    'C': Color(0xFF9B73D2),
+    'G': Color(0xFF4FA2C6),
+    'F': Color(0xFFD17C5E),
+  };
+  if (positionColors.containsKey(token)) return positionColors[token]!;
+
+  final hash = token.codeUnits.fold<int>(
+    17,
+    (value, unit) => (value * 31 + unit) & 0x7fffffff,
+  );
+  final hue = (hash % 330).toDouble();
+  return HSVColor.fromAHSV(1, hue, .58, .86).toColor();
+}
+
+double _scaleChartValue(
+  double value,
+  double min,
+  double max,
+  double outMin,
+  double outMax,
+) {
+  if (max == min) return (outMin + outMax) / 2;
+  return outMin + (value - min) / (max - min) * (outMax - outMin);
 }
 
 class _RegressionSummary {
