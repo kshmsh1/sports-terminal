@@ -744,7 +744,7 @@ class _WebsiteNbaVisualizationsScreenState
               ),
             const _StudioSectionDivider(),
             const _StudioSectionTitle('DISPLAY'),
-            if (_chart != _ChartType.histogram)
+            if (_supportsXYAnalytics)
               _StudioToggle(
                 label: 'Player labels',
                 value: _showLabels,
