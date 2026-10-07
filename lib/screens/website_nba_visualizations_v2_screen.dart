@@ -1638,17 +1638,21 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
         .where(
           (row) =>
               row.value(widget.xMetric) != null &&
-              row.value(widget.yMetric) != null,
+              row.value(widget.yMetric) != null &&
+              row.value(widget.xMetric)!.isFinite &&
+              row.value(widget.yMetric)!.isFinite,
         )
         .toList(growable: false);
     if (valid.isEmpty) return null;
 
     final xs = valid.map((row) => row.value(widget.xMetric)!).toList();
     final ys = valid.map((row) => row.value(widget.yMetric)!).toList();
-    final xMin = xs.reduce(math.min);
-    final xMax = xs.reduce(math.max);
-    final yMin = ys.reduce(math.min);
-    final yMax = ys.reduce(math.max);
+    final xRange = _paddedChartRange(xs);
+    final yRange = _paddedChartRange(ys);
+    final xMin = xRange.$1;
+    final xMax = xRange.$2;
+    final yMin = yRange.$1;
+    final yMax = yRange.$2;
     final rect = _plotRect(size);
 
     NbaStatsRow? nearest;
@@ -1706,13 +1710,15 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
       builder: (context, constraints) {
         final size = Size(constraints.maxWidth, constraints.maxHeight);
         final pointer = _pointer ?? Offset(size.width * .62, 72);
-        final tooltipLeft =
-            (pointer.dx + 14).clamp(12.0, math.max(12.0, size.width - 244));
-        final tooltipTop =
-            (pointer.dy - 32).clamp(12.0, math.max(12.0, size.height - 112));
+        final tooltipLeft = (pointer.dx + 14)
+            .clamp(12.0, math.max(12.0, size.width - 244))
+            .toDouble();
+        final tooltipTop = (pointer.dy - 32)
+            .clamp(12.0, math.max(12.0, size.height - 112))
+            .toDouble();
 
         return MouseRegion(
-          cursor: _xy ? SystemMouseCursors.precise : MouseCursor.defer,
+          cursor: _xy ? SystemMouseCursors.precise : SystemMouseCursors.basic,
           onHover: (event) => _hover(event, size),
           onExit: (_) => setState(() => _hovered = null),
           child: GestureDetector(
@@ -1969,8 +1975,8 @@ class _NbaChartPainter extends CustomPainter {
 
     final xs = valid.map((row) => row.value(xMetric)!).toList();
     final ys = valid.map((row) => row.value(yMetric)!).toList();
-    final xRange = _paddedRange(xs);
-    final yRange = _paddedRange(ys);
+    final xRange = _paddedChartRange(xs);
+    final yRange = _paddedChartRange(ys);
     final xMin = xRange.$1;
     final xMax = xRange.$2;
     final yMin = yRange.$1;
@@ -2415,19 +2421,6 @@ class _NbaChartPainter extends CustomPainter {
     );
   }
 
-  (double, double) _paddedRange(List<double> values) {
-    var minValue = values.reduce(math.min);
-    var maxValue = values.reduce(math.max);
-    if (minValue == maxValue) {
-      final pad = minValue.abs() > 1 ? minValue.abs() * .08 : 1.0;
-      return (minValue - pad, maxValue + pad);
-    }
-    final pad = (maxValue - minValue) * .06;
-    minValue -= pad;
-    maxValue += pad;
-    return (minValue, maxValue);
-  }
-
   double _bubbleRadius(double? value, List<double> values) {
     if (value == null || values.isEmpty) return 5.5;
     final minValue = values.reduce(math.min);
@@ -2519,6 +2512,19 @@ Color _visualGroupColor(String token, ColorScheme colorScheme) {
   );
   final hue = (hash % 330).toDouble();
   return HSVColor.fromAHSV(1, hue, .58, .86).toColor();
+}
+
+(double, double) _paddedChartRange(List<double> values) {
+  var minValue = values.reduce(math.min);
+  var maxValue = values.reduce(math.max);
+  if (minValue == maxValue) {
+    final pad = minValue.abs() > 1 ? minValue.abs() * .08 : 1.0;
+    return (minValue - pad, maxValue + pad);
+  }
+  final pad = (maxValue - minValue) * .06;
+  minValue -= pad;
+  maxValue += pad;
+  return (minValue, maxValue);
 }
 
 double _scaleChartValue(
