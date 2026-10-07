@@ -2486,7 +2486,13 @@ class _NbaChartPainter extends CustomPainter {
   String _shortLabel(String value) {
     final parts = value.trim().split(RegExp(r'\s+'));
     if (parts.length <= 1) return value;
-    return '${parts.first.substring(0, 1)}. ${parts.last}';
+    const suffixes = {'Jr.', 'Sr.', 'II', 'III', 'IV'};
+    final suffix = suffixes.contains(parts.last) && parts.length >= 3
+        ? ' ${parts.last}'
+        : '';
+    final familyName =
+        suffix.isEmpty ? parts.last : parts[parts.length - 2];
+    return '${parts.first.substring(0, 1)}. $familyName$suffix';
   }
 
   @override
