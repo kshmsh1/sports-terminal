@@ -1614,6 +1614,17 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
       widget.chart == _ChartType.scatter ||
       widget.chart == _ChartType.bubble;
 
+  @override
+  void didUpdateWidget(covariant _InteractiveChartPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_pinned != null &&
+        !widget.rows.any((row) => row.player == _pinned!.player)) {
+      _pinned = null;
+      _hovered = null;
+      _pointer = null;
+    }
+  }
+
   Rect _plotRect(Size size) => Rect.fromLTWH(
         72,
         28,
