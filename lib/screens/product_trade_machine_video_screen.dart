@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/nba_complete_draft_asset_repository.dart';
 import '../services/nba_contract_status_reference_2026.dart';
+import '../services/nba_exhibit_contract_reference_2026.dart';
 import '../services/nba_future_draft_asset_repository.dart';
 import '../services/nba_league_environment_2026.dart';
 import '../services/nba_team_cap_reference_2026.dart';
@@ -1063,6 +1064,16 @@ class _ProductTradeMachineVideoScreenState
                   .forTeam(team, '2026-27')
                   .any((player) => player.player == item.player),
             )
+            .length +
+        NbaExhibitContractReference202627.forTeam(team)
+            .where(
+              (item) =>
+                  !data
+                      .forTeam(team, '2026-27')
+                      .any((player) => player.player == item.player) &&
+                  !NbaTwoWayContractReference202627.forTeam(team)
+                      .any((player) => player.player == item.player),
+            )
             .length;
     final pickCount =
         draftAssets.where((asset) => asset.team == team).length;
@@ -1335,6 +1346,16 @@ class _ProductTradeMachineVideoScreenState
             !players.any((player) => player.player == item.player))
         .toList();
 
+    final exhibits = NbaExhibitContractReference202627.forTeam(team)
+        .where((item) =>
+            query.isEmpty || item.player.toLowerCase().contains(query))
+        .where((item) =>
+            _positionFilter == 'All' || item.position == _positionFilter)
+        .where((item) =>
+            !players.any((player) => player.player == item.player) &&
+            !twoWays.any((player) => player.player == item.player))
+        .toList();
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final minimumWidth = constraints.maxWidth < 840 ? 840.0 : constraints.maxWidth;
@@ -1356,7 +1377,9 @@ class _ProductTradeMachineVideoScreenState
                 for (final player in players) _playerRow(context, player),
                 for (final player in twoWays)
                   _twoWayPlayerRow(context, player),
-                if (players.isEmpty && twoWays.isEmpty)
+                for (final player in exhibits)
+                  _exhibitPlayerRow(context, player),
+                if (players.isEmpty && twoWays.isEmpty && exhibits.isEmpty)
                   _empty('No roster players match this search.'),
               ],
             ),
