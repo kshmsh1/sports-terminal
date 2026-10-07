@@ -1047,6 +1047,24 @@ class _WebsiteNbaVisualizationsScreenState
               final height = (constraints.maxWidth * .52)
                   .clamp(500.0, 720.0)
                   .toDouble();
+              Widget chartPanel() => _InteractiveChartPanel(
+                    rows: rows,
+                    chart: _chart,
+                    xMetric: _xMetric,
+                    yMetric: _yMetric,
+                    sizeMetric: _sizeMetric,
+                    groupBy: _groupBy,
+                    engine: _engine,
+                    colorScheme: colors,
+                    textStyle:
+                        Theme.of(context).textTheme.bodySmall ??
+                            const TextStyle(),
+                    showLabels: _showLabels,
+                    showTrendLine: _showTrendLine,
+                    showMeans: _showMeans,
+                    histogramBins: _histogramBins,
+                  );
+
               return Column(
                 children: [
                   SizedBox(
@@ -1057,23 +1075,29 @@ class _WebsiteNbaVisualizationsScreenState
                               'No players match the active filters.',
                             ),
                           )
-                        : _InteractiveChartPanel(
-                            rows: rows,
-                            chart: _chart,
-                            xMetric: _xMetric,
-                            yMetric: _yMetric,
-                            sizeMetric: _sizeMetric,
-                            groupBy: _groupBy,
-                            engine: _engine,
-                            colorScheme: colors,
-                            textStyle:
-                                Theme.of(context).textTheme.bodySmall ??
-                                    const TextStyle(),
-                            showLabels: _showLabels,
-                            showTrendLine: _showTrendLine,
-                            showMeans: _showMeans,
-                            histogramBins: _histogramBins,
-                          ),
+                        : _chart == _ChartType.radar &&
+                                constraints.maxWidth >= 940
+                            ? Row(
+                                children: [
+                                  Expanded(child: chartPanel()),
+                                  VerticalDivider(
+                                    width: 1,
+                                    thickness: 1,
+                                    color: Theme.of(context).dividerColor,
+                                  ),
+                                  SizedBox(
+                                    width: 310,
+                                    child: _ProfileMetricPanel(
+                                      primary: rows.first,
+                                      comparison:
+                                          rows.length > 1 ? rows[1] : null,
+                                      engine: _engine,
+                                      colorScheme: colors,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : chartPanel(),
                   ),
                   if (_chart == _ChartType.bubble && rows.isNotEmpty) ...[
                     Divider(height: 1, color: Theme.of(context).dividerColor),
@@ -1791,6 +1815,153 @@ class _ProfileLegendItem extends StatelessWidget {
       );
 }
 
+class _ProfileMetricPanel extends StatelessWidget {
+  const _ProfileMetricPanel({
+    required this.primary,
+    required this.comparison,
+    required this.engine,
+    required this.colorScheme,
+  });
+
+  final NbaStatsRow primary;
+  final NbaStatsRow? comparison;
+  final NbaStatsWorkstationEngine engine;
+  final ColorScheme colorScheme;
+
+  static const _metrics = ['pts', 'reb', 'ast', 'stl', 'blk', 'ts_pct'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'METRIC PERCENTILES',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: .7,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            comparison == null
+                ? 'Raw value and league percentile'
+                : 'Primary and comparison percentile',
+            style: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 10,
+            ),
+          ),
+          const SizedBox(height: 16),
+          for (var index = 0; index < _metrics.length; index++) ...[
+            _ProfileMetricRow(
+              metricKey: _metrics[index],
+              primary: primary,
+              comparison: comparison,
+              engine: engine,
+              colorScheme: colorScheme,
+            ),
+            if (index != _metrics.length - 1) const SizedBox(height: 13),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileMetricRow extends StatelessWidget {
+  const _ProfileMetricRow({
+    required this.metricKey,
+    required this.primary,
+    required this.comparison,
+    required this.engine,
+    required this.colorScheme,
+  });
+
+  final String metricKey;
+  final NbaStatsRow primary;
+  final NbaStatsRow? comparison;
+  final NbaStatsWorkstationEngine engine;
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryPct = (primary.percentiles[metricKey] ?? 0).clamp(0, 100);
+    final comparisonPct =
+        (comparison?.percentiles[metricKey] ?? 0).clamp(0, 100);
+
+    Widget progress(double value, Color color) => ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: value / 100,
+            minHeight: 5,
+            backgroundColor:
+                colorScheme.surfaceContainerHighest.withValues(alpha: .55),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                engine.metric(metricKey).shortLabel,
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            Text(
+              '${engine.formatValue(metricKey, primary.value(metricKey))} · P${primaryPct.round()}',
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 9.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        progress(primaryPct.toDouble(), colorScheme.primary),
+        if (comparison != null) ...[
+          const SizedBox(height: 5),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  comparison!.team,
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Text(
+                '${engine.formatValue(metricKey, comparison!.value(metricKey))} · P${comparisonPct.round()}',
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          progress(comparisonPct.toDouble(), colorScheme.tertiary),
+        ],
+      ],
+    );
+  }
+}
+
 class _ChartReadout extends StatelessWidget {
   const _ChartReadout({
     required this.rows,
@@ -2495,7 +2666,10 @@ class _NbaChartPainter extends CustomPainter {
       canvas.drawCircle(
         point,
         radius,
-        Paint()..color = color.withValues(alpha: highlighted ? 1 : .86),
+        Paint()
+          ..color = color.withValues(
+            alpha: highlighted ? 1 : (bubbles ? .70 : .86),
+          ),
       );
 
       if (labelPlayers.contains(row.player)) {
