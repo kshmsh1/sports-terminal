@@ -8,14 +8,11 @@ import '../services/nba_stats_workstation_engine.dart';
 import '../services/website_nba_api_service.dart';
 
 enum _ChartType {
-  scatter('Scatterplot'),
-  bubble('Bubble chart'),
-  bar('Bar chart'),
-  line('Line chart'),
-  area('Area chart'),
-  pie('Pie chart'),
-  histogram('Histogram'),
-  radar('Radar chart');
+  scatter('Scatter'),
+  bubble('Bubble'),
+  bar('Player ranking'),
+  histogram('Distribution'),
+  radar('Player profile');
 
   const _ChartType(this.label);
   final String label;
@@ -53,6 +50,7 @@ class _WebsiteNbaVisualizationsScreenState
   bool _showLabels = true;
   bool _showTrendLine = true;
   bool _showMeans = false;
+  String? _radarPlayer;
   String? _activePresetId;
   late Future<List<NbaStatsRow>> _future;
 
@@ -143,10 +141,31 @@ class _WebsiteNbaVisualizationsScreenState
   void _reload() => setState(() => _future = _loadRows());
 
   bool get _supportsXYAnalytics =>
-      _chart == _ChartType.scatter ||
-      _chart == _ChartType.bubble ||
-      _chart == _ChartType.line ||
-      _chart == _ChartType.area;
+      _chart == _ChartType.scatter || _chart == _ChartType.bubble;
+
+  void _resetStudio() {
+    setState(() {
+      _season = _seasons.any((item) => item.id == '2025-26')
+          ? '2025-26'
+          : (_seasons.isEmpty ? _season : _seasons.first.id);
+      _seasonType = NbaStatsSeasonType.regular;
+      _basis = NbaStatsBasis.perGame;
+      _chart = _ChartType.scatter;
+      _xMetric = 'ast';
+      _yMetric = 'pts';
+      _sizeMetric = 'reb';
+      _groupBy = 'Team';
+      _minGames = 20;
+      _topN = 40;
+      _showLabels = true;
+      _showTrendLine = true;
+      _showMeans = false;
+      _radarPlayer = null;
+      _search.clear();
+      _activePresetId = null;
+      _future = _loadRows();
+    });
+  }
 
   _SavedVisualization _capture({required String id, required String name}) =>
       _SavedVisualization(
