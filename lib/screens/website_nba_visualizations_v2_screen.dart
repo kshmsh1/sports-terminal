@@ -997,6 +997,7 @@ class _WebsiteNbaVisualizationsScreenState
           yMetric: _yMetric,
           engine: _engine,
           showX: _supportsXYAnalytics,
+          profileMode: _chart == _ChartType.radar,
         ),
       ],
     );
@@ -1493,6 +1494,7 @@ class _ChartReadout extends StatelessWidget {
     required this.yMetric,
     required this.engine,
     required this.showX,
+    required this.profileMode,
   });
 
   final List<NbaStatsRow> rows;
@@ -1500,6 +1502,7 @@ class _ChartReadout extends StatelessWidget {
   final String yMetric;
   final NbaStatsWorkstationEngine engine;
   final bool showX;
+  final bool profileMode;
 
   @override
   Widget build(BuildContext context) {
@@ -1543,42 +1546,89 @@ class _ChartReadout extends StatelessWidget {
               headingRowHeight: 42,
               dataRowMinHeight: 38,
               dataRowMaxHeight: 46,
-              columns: [
-                const DataColumn(label: Text('Player')),
-                const DataColumn(label: Text('Team')),
-                if (showX)
-                  DataColumn(
-                    numeric: true,
-                    label: Text(engine.metric(xMetric).shortLabel),
-                  ),
-                DataColumn(
-                  numeric: true,
-                  label: Text(engine.metric(yMetric).shortLabel),
-                ),
-              ],
+              columns: profileMode
+                  ? [
+                      const DataColumn(label: Text('Player')),
+                      const DataColumn(label: Text('Team')),
+                      for (final metric
+                          in const ['pts', 'reb', 'ast', 'stl', 'blk', 'ts_pct'])
+                        DataColumn(
+                          numeric: true,
+                          label: Text(engine.metric(metric).shortLabel),
+                        ),
+                    ]
+                  : [
+                      const DataColumn(label: Text('Player')),
+                      const DataColumn(label: Text('Team')),
+                      if (showX)
+                        DataColumn(
+                          numeric: true,
+                          label: Text(engine.metric(xMetric).shortLabel),
+                        ),
+                      DataColumn(
+                        numeric: true,
+                        label: Text(engine.metric(yMetric).shortLabel),
+                      ),
+                    ],
               rows: [
                 for (final row in rows)
                   DataRow(
-                    cells: [
-                      DataCell(
-                        Text(
-                          row.player,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                      DataCell(Text(row.team)),
-                      if (showX)
-                        DataCell(
-                          Text(
-                            engine.formatValue(xMetric, row.value(xMetric)),
-                          ),
-                        ),
-                      DataCell(
-                        Text(
-                          engine.formatValue(yMetric, row.value(yMetric)),
-                        ),
-                      ),
-                    ],
+                    cells: profileMode
+                        ? [
+                            DataCell(
+                              Text(
+                                row.player,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            DataCell(Text(row.team)),
+                            for (final metric in const [
+                              'pts',
+                              'reb',
+                              'ast',
+                              'stl',
+                              'blk',
+                              'ts_pct',
+                            ])
+                              DataCell(
+                                Text(
+                                  engine.formatValue(
+                                    metric,
+                                    row.value(metric),
+                                  ),
+                                ),
+                              ),
+                          ]
+                        : [
+                            DataCell(
+                              Text(
+                                row.player,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            DataCell(Text(row.team)),
+                            if (showX)
+                              DataCell(
+                                Text(
+                                  engine.formatValue(
+                                    xMetric,
+                                    row.value(xMetric),
+                                  ),
+                                ),
+                              ),
+                            DataCell(
+                              Text(
+                                engine.formatValue(
+                                  yMetric,
+                                  row.value(yMetric),
+                                ),
+                              ),
+                            ),
+                          ],
                   ),
               ],
             ),
