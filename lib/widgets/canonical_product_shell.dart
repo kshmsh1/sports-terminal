@@ -301,11 +301,17 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
                 child: SingleChildScrollView(
                   padding: _selected == 'trade'
                       ? const EdgeInsets.fromLTRB(36, 18, 36, 28)
-                      : const EdgeInsets.fromLTRB(20, 28, 20, 64),
+                      : _selected == 'visualizations'
+                          ? const EdgeInsets.fromLTRB(24, 24, 24, 48)
+                          : const EdgeInsets.fromLTRB(20, 28, 20, 64),
                   child: Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        maxWidth: _selected == 'trade' ? 1420 : 1320,
+                        maxWidth: _selected == 'trade'
+                            ? 1420
+                            : _selected == 'visualizations'
+                                ? 1880
+                                : 1320,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
