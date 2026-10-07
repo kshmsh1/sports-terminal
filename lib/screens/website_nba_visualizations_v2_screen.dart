@@ -2497,6 +2497,42 @@ Color _visualColorForRow(
 
 Color _visualGroupColor(String token, ColorScheme colorScheme) {
   if (token.isEmpty) return colorScheme.primary;
+
+  const teamColors = <String, Color>{
+    'ATL': Color(0xFFE03A3E),
+    'BOS': Color(0xFF007A33),
+    'BKN': Color(0xFF8C8C8C),
+    'BRK': Color(0xFF8C8C8C),
+    'CHA': Color(0xFF1D8E9F),
+    'CHI': Color(0xFFCE1141),
+    'CLE': Color(0xFF860038),
+    'DAL': Color(0xFF2D7DC1),
+    'DEN': Color(0xFFF0B323),
+    'DET': Color(0xFFC8102E),
+    'GSW': Color(0xFF1D70B7),
+    'HOU': Color(0xFFCE1141),
+    'IND': Color(0xFFFDBB30),
+    'LAC': Color(0xFFC8102E),
+    'LAL': Color(0xFF8A63D2),
+    'MEM': Color(0xFF6C8EBF),
+    'MIA': Color(0xFFB6264F),
+    'MIL': Color(0xFF2F8B57),
+    'MIN': Color(0xFF5D87B5),
+    'NOP': Color(0xFFC79A4A),
+    'NYK': Color(0xFFF58426),
+    'OKC': Color(0xFF4AA3DF),
+    'ORL': Color(0xFF5AA7D9),
+    'PHI': Color(0xFF3D78C5),
+    'PHO': Color(0xFFE56020),
+    'POR': Color(0xFFE03A3E),
+    'SAC': Color(0xFF7B61A8),
+    'SAS': Color(0xFFA6A6A6),
+    'TOR': Color(0xFFD43B5E),
+    'UTA': Color(0xFF6B63B5),
+    'WAS': Color(0xFF56789A),
+  };
+  if (teamColors.containsKey(token)) return teamColors[token]!;
+
   const positionColors = <String, Color>{
     'PG': Color(0xFF5C8FDB),
     'SG': Color(0xFF4FB6A8),
