@@ -104,6 +104,7 @@ void main() {
     expect(source, contains('All eligible players'));
     expect(source, contains('Compare with'));
     expect(source, contains('_ProfileComparisonLegend'));
+    expect(source, contains('_ProfileMetricPanel'));
     expect(source, contains('_BubbleSizeLegend'));
     expect(source, contains("'histogram_bins': histogramBins"));
     expect(source, contains("'radar_compare_player': radarComparePlayer"));
