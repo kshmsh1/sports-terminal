@@ -2074,8 +2074,10 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
       builder: (context, constraints) {
         final size = Size(constraints.maxWidth, constraints.maxHeight);
         final pointer = _pointer ?? Offset(size.width * .62, 72);
+        final tooltipWidth =
+            widget.chart == _ChartType.bubble ? 276.0 : 224.0;
         final tooltipLeft = (pointer.dx + 14)
-            .clamp(12.0, math.max(12.0, size.width - 244))
+            .clamp(12.0, math.max(12.0, size.width - tooltipWidth - 12))
             .toDouble();
         final tooltipTop = (pointer.dy - 32)
             .clamp(12.0, math.max(12.0, size.height - 112))
@@ -2144,7 +2146,7 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
                     top: tooltipTop,
                     child: IgnorePointer(
                       child: Container(
-                        width: widget.chart == _ChartType.bubble ? 276 : 224,
+                        width: tooltipWidth,
                         padding: const EdgeInsets.all(11),
                         decoration: BoxDecoration(
                           color: widget.colorScheme.surface,
@@ -2553,7 +2555,7 @@ class _NbaChartPainter extends CustomPainter {
     final values = valid.map((row) => row.value(yMetric)!).toList();
     final minValue = math.min(0.0, values.reduce(math.min)).toDouble();
     final maxValue = math.max(0.0, values.reduce(math.max)).toDouble();
-    final labelWidth = math.min(145.0, rect.width * .18).toDouble();
+    final labelWidth = math.min(190.0, rect.width * .22).toDouble();
     final valueWidth = 58.0;
     final barLeft = rect.left + labelWidth;
     final barRight = rect.right - valueWidth;
@@ -2592,7 +2594,7 @@ class _NbaChartPainter extends CustomPainter {
       }
       _text(
         canvas,
-        '${index + 1}. ${_shortLabel(row.player)}',
+        '${index + 1}. ${_shortLabel(row.player)} · ${row.team}',
         Offset(rect.left + 2, centerY - 7),
         colorScheme.onSurface,
         small: true,
@@ -2645,7 +2647,7 @@ class _NbaChartPainter extends CustomPainter {
 
     final minValue = values.reduce(math.min);
     final maxValue = values.reduce(math.max);
-    final bins = histogramBins.clamp(6, 24);
+    final bins = histogramBins.clamp(6, 24).toInt();
     final counts = List<int>.filled(bins, 0);
     final span = maxValue - minValue;
     for (final value in values) {
@@ -2720,10 +2722,11 @@ class _NbaChartPainter extends CustomPainter {
   }
 
   void _paintRadar(Canvas canvas, Rect rect) {
-    final row = rows.first;
+    final primary = rows.first;
+    final comparison = rows.length > 1 ? rows[1] : null;
     const metrics = ['pts', 'reb', 'ast', 'stl', 'blk', 'ts_pct'];
     final center = rect.center;
-    final radius = math.min(rect.width, rect.height) * .37;
+    final radius = math.min(rect.width, rect.height) * .42;
     final grid = Paint()
       ..color = colorScheme.outlineVariant.withValues(alpha: .68)
       ..style = PaintingStyle.stroke
@@ -2744,59 +2747,94 @@ class _NbaChartPainter extends CustomPainter {
       }
       path.close();
       canvas.drawPath(path, grid);
+
+      if (fraction < 1) {
+        _text(
+          canvas,
+          '${(fraction * 100).round()}',
+          Offset(center.dx + 7, center.dy - radius * fraction - 5),
+          colorScheme.onSurfaceVariant.withValues(alpha: .7),
+          tiny: true,
+        );
+      }
     }
 
-    final shape = Path();
+    Path shapeFor(NbaStatsRow row) {
+      final shape = Path();
+      for (var index = 0; index < metrics.length; index++) {
+        final metric = metrics[index];
+        final percentile = (row.percentiles[metric] ?? 0) / 100;
+        final angle =
+            -math.pi / 2 + index * math.pi * 2 / metrics.length;
+        final point = center +
+            Offset(math.cos(angle), math.sin(angle)) *
+                radius *
+                percentile.clamp(0, 1).toDouble();
+        if (index == 0) {
+          shape.moveTo(point.dx, point.dy);
+        } else {
+          shape.lineTo(point.dx, point.dy);
+        }
+      }
+      shape.close();
+      return shape;
+    }
+
     for (var index = 0; index < metrics.length; index++) {
       final metric = metrics[index];
-      final percentile = (row.percentiles[metric] ?? 0) / 100;
+      final primaryPct = (primary.percentiles[metric] ?? 0).round();
+      final comparePct = comparison?.percentiles[metric]?.round();
       final angle =
           -math.pi / 2 + index * math.pi * 2 / metrics.length;
       final outer =
           center + Offset(math.cos(angle), math.sin(angle)) * radius;
-      final point = center +
-          Offset(math.cos(angle), math.sin(angle)) *
-              radius *
-              percentile.clamp(0, 1).toDouble();
 
       canvas.drawLine(center, outer, grid);
       _text(
         canvas,
-        '${engine.metric(metric).shortLabel}  ${(percentile * 100).round()}',
+        comparison == null
+            ? '${engine.metric(metric).shortLabel}  $primaryPct'
+            : '${engine.metric(metric).shortLabel}  $primaryPct · $comparePct',
         outer +
             Offset(
-              math.cos(angle) * 13 - 18,
-              math.sin(angle) * 13 - 7,
+              math.cos(angle) * 16 - 22,
+              math.sin(angle) * 16 - 7,
             ),
         colorScheme.onSurfaceVariant,
         bold: true,
         small: true,
       );
-      if (index == 0) {
-        shape.moveTo(point.dx, point.dy);
-      } else {
-        shape.lineTo(point.dx, point.dy);
-      }
     }
-    shape.close();
 
+    if (comparison != null) {
+      final compareShape = shapeFor(comparison);
+      canvas.drawPath(
+        compareShape,
+        Paint()..color = colorScheme.tertiary.withValues(alpha: .10),
+      );
+      canvas.drawPath(
+        compareShape,
+        Paint()
+          ..color = colorScheme.tertiary
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.2,
+      );
+    }
+
+    final primaryShape = shapeFor(primary);
     canvas.drawPath(
-      shape,
-      Paint()..color = colorScheme.primary.withValues(alpha: .18),
+      primaryShape,
+      Paint()
+        ..color = colorScheme.primary.withValues(
+          alpha: comparison == null ? .18 : .11,
+        ),
     );
     canvas.drawPath(
-      shape,
+      primaryShape,
       Paint()
         ..color = colorScheme.primary
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.4,
-    );
-    _text(
-      canvas,
-      '${row.player} · percentile profile',
-      Offset(rect.left + 8, rect.top + 8),
-      colorScheme.onSurface,
-      bold: true,
     );
   }
 
@@ -2827,7 +2865,7 @@ class _NbaChartPainter extends CustomPainter {
         text: value,
         style: textStyle.copyWith(
           color: color,
-          fontSize: tiny ? 8 : (small ? 9.5 : 11),
+          fontSize: tiny ? 8.8 : (small ? 10.2 : 11.5),
           fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
         ),
       ),
