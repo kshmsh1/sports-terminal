@@ -1464,6 +1464,97 @@ class _ProductTradeMachineVideoScreenState
     );
   }
 
+  Widget _exhibitPlayerRow(
+    BuildContext context,
+    NbaExhibitContractRecord player,
+  ) {
+    final assetId =
+        'exhibit-${player.exhibit}:${player.team}:${player.player.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-')}';
+    final routedTo = _routes[assetId];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: routedTo != null
+            ? const Color(0xFF2E7D32).withValues(alpha: .08)
+            : null,
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 240,
+            child: Row(
+              children: [
+                _initialAvatar(context, player.player),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        player.player,
+                        style: TextStyle(
+                          color: _tmTextStrong,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Text(
+                        '${player.position} · Exhibit ${player.exhibit}',
+                        style: TextStyle(fontSize: 10, color: _tmTextSoft),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Text(
+              _money(player.value),
+              style: TextStyle(
+                color: _tmTextStrong,
+                fontWeight: FontWeight.w700,
+                fontSize: 11,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              'Signed ${_displayRestrictionDate(player.signedDate)}',
+              style: TextStyle(
+                color: _tmTextSoft,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 210,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _tag(context, 'Exhibit ${player.exhibit}'),
+                const SizedBox(width: 6),
+                SizedBox(
+                  width: 118,
+                  child: _routeControl(
+                    assetId: assetId,
+                    originTeam: player.team,
+                    enabled: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _playerRow(BuildContext context, NbaTradeContract player) {
     final restriction = _restrictionFor(player.player);
     final blocked = _playerBlocked(player.player);
