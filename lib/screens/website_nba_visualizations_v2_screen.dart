@@ -2184,7 +2184,7 @@ class _NbaChartPainter extends CustomPainter {
     final values = valid.map((row) => row.value(yMetric)!).toList();
     final minValue = math.min(0.0, values.reduce(math.min)).toDouble();
     final maxValue = math.max(0.0, values.reduce(math.max)).toDouble();
-    final labelWidth = math.min(145.0, rect.width * .18);
+    final labelWidth = math.min(145.0, rect.width * .18).toDouble();
     final valueWidth = 58.0;
     final barLeft = rect.left + labelWidth;
     final barRight = rect.right - valueWidth;
@@ -2209,8 +2209,8 @@ class _NbaChartPainter extends CustomPainter {
         barLeft,
         barRight,
       );
-      final left = math.min(zeroX, valueX);
-      final width = math.max(1.5, (valueX - zeroX).abs());
+      final left = math.min(zeroX, valueX).toDouble();
+      final width = math.max(1.5, (valueX - zeroX).abs()).toDouble();
       final color = _visualColorForRow(row, groupBy, colorScheme);
 
       if (index.isOdd) {
@@ -2308,7 +2308,7 @@ class _NbaChartPainter extends CustomPainter {
       final bar = Rect.fromLTWH(
         rect.left + index * width + 2,
         rect.bottom - height,
-        math.max(2, width - 4),
+        math.max(2.0, width - 4).toDouble(),
         height,
       );
       canvas.drawRRect(
