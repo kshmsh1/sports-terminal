@@ -347,16 +347,27 @@ class _WebsiteNbaVisualizationsScreenState
             ranked.any((row) => row.player == _radarPlayer)
         ? _radarPlayer
         : (ranked.isEmpty ? null : ranked.first.player);
+    final radarCompareName = _radarComparePlayer != null &&
+            _radarComparePlayer != radarName &&
+            ranked.any((row) => row.player == _radarComparePlayer)
+        ? _radarComparePlayer
+        : null;
 
     final rows = switch (_chart) {
       _ChartType.histogram => filtered,
       _ChartType.radar => radarName == null
           ? <NbaStatsRow>[]
-          : ranked.where((row) => row.player == radarName).take(1).toList(),
+          : [
+              ranked.firstWhere((row) => row.player == radarName),
+              if (radarCompareName != null)
+                ranked.firstWhere((row) => row.player == radarCompareName),
+            ],
       _ => _topN == 0
           ? ranked
           : ranked.take(_topN).toList(growable: false),
     };
+    final readoutRows =
+        _chart == _ChartType.histogram ? ranked : rows;
 
     final analytics = _supportsXYAnalytics
         ? _RegressionSummary.fromRows(rows, _xMetric, _yMetric)
@@ -378,6 +389,7 @@ class _WebsiteNbaVisualizationsScreenState
           context,
           filtered: ranked,
           radarName: radarName,
+          radarCompareName: radarCompareName,
         );
         final workspace = _buildWorkspace(
           context,
@@ -386,6 +398,7 @@ class _WebsiteNbaVisualizationsScreenState
           metricLabel: metricLabel,
           xLabel: xLabel,
           eligibleCount: filtered.length,
+          readoutRows: readoutRows,
         );
 
         return Column(
@@ -509,13 +522,11 @@ class _WebsiteNbaVisualizationsScreenState
     BuildContext context, {
     required List<NbaStatsRow> filtered,
     required String? radarName,
+    required String? radarCompareName,
   }) {
     final colors = Theme.of(context).colorScheme;
-    final playerNames = filtered
-        .map((row) => row.player)
-        .toSet()
-        .take(120)
-        .toList(growable: false);
+    final playerNames = filtered.map((row) => row.player).toSet().toList()
+      ..sort();
 
     return Card(
       margin: EdgeInsets.zero,
@@ -559,6 +570,7 @@ class _WebsiteNbaVisualizationsScreenState
                 if (value == null) return;
                 _season = value;
                 _radarPlayer = null;
+                _radarComparePlayer = null;
                 _reload();
               },
             ),
@@ -580,6 +592,7 @@ class _WebsiteNbaVisualizationsScreenState
                 if (value == null) return;
                 _seasonType = value;
                 _radarPlayer = null;
+                _radarComparePlayer = null;
                 _reload();
               },
             ),
@@ -624,8 +637,11 @@ class _WebsiteNbaVisualizationsScreenState
                     _chart = value;
                     if (_chart == _ChartType.radar) {
                       _showTrendLine = false;
+                    } else {
+                      _radarComparePlayer = null;
                     }
-                    if (_chart == _ChartType.bar && _topN > 20) {
+                    if (_chart == _ChartType.bar &&
+                        (_topN == 0 || _topN > 20)) {
                       _topN = 20;
                     }
                   });
@@ -647,7 +663,38 @@ class _WebsiteNbaVisualizationsScreenState
                       ),
                     ),
                 ],
-                onChanged: (value) => setState(() => _radarPlayer = value),
+                onChanged: (value) {
+                  setState(() {
+                    _radarPlayer = value;
+                    if (_radarComparePlayer == value) {
+                      _radarComparePlayer = null;
+                    }
+                  });
+                },
+              ),
+              const SizedBox(height: 10),
+              _StudioSelect<String>(
+                label: 'Compare with',
+                value: radarCompareName ?? '__none__',
+                items: [
+                  const DropdownMenuItem(
+                    value: '__none__',
+                    child: Text('No comparison'),
+                  ),
+                  for (final player in playerNames)
+                    if (player != radarName)
+                      DropdownMenuItem(
+                        value: player,
+                        child: Text(
+                          player,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                ],
+                onChanged: (value) => setState(
+                  () => _radarComparePlayer =
+                      value == null || value == '__none__' ? null : value,
+                ),
               ),
             ] else ...[
               if (_supportsXYAnalytics) ...[
@@ -670,6 +717,26 @@ class _WebsiteNbaVisualizationsScreenState
                 engine: _engine,
                 onChanged: (value) => setState(() => _yMetric = value),
               ),
+              if (_chart == _ChartType.histogram) ...[
+                const SizedBox(height: 10),
+                _StudioSelect<int>(
+                  label: 'Bins',
+                  value: _histogramBins,
+                  items: const [8, 10, 12, 16, 20]
+                      .map(
+                        (value) => DropdownMenuItem(
+                          value: value,
+                          child: Text('$value bins'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _histogramBins = value);
+                    }
+                  },
+                ),
+              ],
               if (_chart == _ChartType.bubble) ...[
                 const SizedBox(height: 10),
                 _StudioMetricSelect(
@@ -769,27 +836,26 @@ class _WebsiteNbaVisualizationsScreenState
                   if (value != null) setState(() => _topN = value);
                 },
               ),
-            const _StudioSectionDivider(),
-            const _StudioSectionTitle('DISPLAY'),
-            if (_supportsXYAnalytics)
+            if (_supportsXYAnalytics) ...[
+              const _StudioSectionDivider(),
+              const _StudioSectionTitle('DISPLAY'),
               _StudioToggle(
                 label: 'Player labels',
                 value: _showLabels,
                 onChanged: (value) => setState(() => _showLabels = value),
               ),
-            if (_supportsXYAnalytics)
               _StudioToggle(
                 label: 'Best-fit line',
                 value: _showTrendLine,
                 onChanged: (value) =>
                     setState(() => _showTrendLine = value),
               ),
-            if (_supportsXYAnalytics)
               _StudioToggle(
                 label: 'Mean reference lines',
                 value: _showMeans,
                 onChanged: (value) => setState(() => _showMeans = value),
               ),
+            ],
             const _StudioSectionDivider(),
             const _StudioSectionTitle('PRESETS'),
             Row(
