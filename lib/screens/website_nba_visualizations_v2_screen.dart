@@ -51,7 +51,9 @@ class _WebsiteNbaVisualizationsScreenState
   bool _showLabels = true;
   bool _showTrendLine = true;
   bool _showMeans = false;
+  int _histogramBins = 12;
   String? _radarPlayer;
+  String? _radarComparePlayer;
   String? _activePresetId;
   late Future<List<NbaStatsRow>> _future;
 
@@ -161,7 +163,9 @@ class _WebsiteNbaVisualizationsScreenState
       _showLabels = true;
       _showTrendLine = true;
       _showMeans = false;
+      _histogramBins = 12;
       _radarPlayer = null;
+      _radarComparePlayer = null;
       _search.clear();
       _activePresetId = null;
       _future = _loadRows();
@@ -185,6 +189,9 @@ class _WebsiteNbaVisualizationsScreenState
         showLabels: _showLabels,
         showTrendLine: _showTrendLine,
         showMeans: _showMeans,
+        histogramBins: _histogramBins,
+        radarPlayer: _radarPlayer,
+        radarComparePlayer: _radarComparePlayer,
         search: _search.text,
       );
 
@@ -263,15 +270,21 @@ class _WebsiteNbaVisualizationsScreenState
           : 'Team';
       _minGames = preset.minGames.clamp(0, 82).toDouble();
       final savedTopN =
-          const [10, 20, 30, 40, 60, 100].contains(preset.topN)
+          const [0, 10, 20, 30, 40, 60, 100].contains(preset.topN)
               ? preset.topN
               : 40;
-      _topN = _chart == _ChartType.bar && savedTopN > 20
+      _topN = _chart == _ChartType.bar && (savedTopN == 0 || savedTopN > 20)
           ? 20
           : savedTopN;
       _showLabels = preset.showLabels;
       _showTrendLine = preset.showTrendLine;
       _showMeans = preset.showMeans;
+      _histogramBins =
+          const [8, 10, 12, 16, 20].contains(preset.histogramBins)
+              ? preset.histogramBins
+              : 12;
+      _radarPlayer = preset.radarPlayer;
+      _radarComparePlayer = preset.radarComparePlayer;
       _search.text = preset.search;
       _activePresetId = preset.id;
       _future = _loadRows();
@@ -2749,6 +2762,9 @@ class _SavedVisualization {
     required this.showLabels,
     required this.showTrendLine,
     required this.showMeans,
+    required this.histogramBins,
+    required this.radarPlayer,
+    required this.radarComparePlayer,
     required this.search,
   });
 
@@ -2767,6 +2783,9 @@ class _SavedVisualization {
   final bool showLabels;
   final bool showTrendLine;
   final bool showMeans;
+  final int histogramBins;
+  final String? radarPlayer;
+  final String? radarComparePlayer;
   final String search;
 
   Map<String, dynamic> toJson() => {
@@ -2785,6 +2804,9 @@ class _SavedVisualization {
         'show_labels': showLabels,
         'show_trend_line': showTrendLine,
         'show_means': showMeans,
+        'histogram_bins': histogramBins,
+        'radar_player': radarPlayer,
+        'radar_compare_player': radarComparePlayer,
         'search': search,
       };
 
@@ -2805,6 +2827,9 @@ class _SavedVisualization {
         showLabels: json['show_labels'] != false,
         showTrendLine: json['show_trend_line'] != false,
         showMeans: json['show_means'] == true,
+        histogramBins: (json['histogram_bins'] as num?)?.toInt() ?? 12,
+        radarPlayer: json['radar_player']?.toString(),
+        radarComparePlayer: json['radar_compare_player']?.toString(),
         search: json['search']?.toString() ?? '',
       );
 }
