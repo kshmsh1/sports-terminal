@@ -304,308 +304,662 @@ class _WebsiteNbaVisualizationsScreenState
 
   Widget _buildPage(BuildContext context, List<NbaStatsRow> allRows) {
     final query = _search.text.trim().toLowerCase();
-    final usable = allRows.where((row) {
+    final filtered = allRows.where((row) {
       if ((row.value('gp') ?? 0) < _minGames) return false;
       if (query.isNotEmpty &&
-          !'${row.player} ${row.team} ${row.position}'.toLowerCase().contains(query)) {
+          !'${row.player} ${row.team} ${row.position}'
+              .toLowerCase()
+              .contains(query)) {
         return false;
       }
       return row.value(_yMetric) != null;
-    }).toList();
-    usable.sort(
-      (a, b) =>
-          (b.value(_yMetric) ?? -99999).compareTo(a.value(_yMetric) ?? -99999),
-    );
-    final rows = usable.take(_topN).toList(growable: false);
+    }).toList(growable: false);
+
+    final ranked = [...filtered]
+      ..sort(
+        (a, b) => (b.value(_yMetric) ?? -99999)
+            .compareTo(a.value(_yMetric) ?? -99999),
+      );
+
+    final radarName = _radarPlayer != null &&
+            ranked.any((row) => row.player == _radarPlayer)
+        ? _radarPlayer
+        : (ranked.isEmpty ? null : ranked.first.player);
+
+    final rows = switch (_chart) {
+      _ChartType.histogram => filtered,
+      _ChartType.radar => radarName == null
+          ? <NbaStatsRow>[]
+          : ranked.where((row) => row.player == radarName).take(1).toList(),
+      _ => ranked.take(_topN).toList(growable: false),
+    };
+
     final analytics = _supportsXYAnalytics
         ? _RegressionSummary.fromRows(rows, _xMetric, _yMetric)
         : null;
     final colors = Theme.of(context).colorScheme;
+    final metricLabel = _engine.metric(_yMetric).shortLabel;
+    final xLabel = _engine.metric(_xMetric).shortLabel;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 12,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 1180;
+        final header = _buildStudioHeader(
+          context,
+          colors,
+          plotted: rows.length,
+          eligible: filtered.length,
+        );
+        final controls = _buildControlRail(
+          context,
+          allRows: allRows,
+          filtered: ranked,
+          radarName: radarName,
+        );
+        final workspace = _buildWorkspace(
+          context,
+          rows: rows,
+          analytics: analytics,
+          metricLabel: metricLabel,
+          xLabel: xLabel,
+        );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Visualization Studio',
-              style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    fontWeight: FontWeight.w900,
+            header,
+            const SizedBox(height: 18),
+            if (wide)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(width: 314, child: controls),
+                  const SizedBox(width: 16),
+                  Expanded(child: workspace),
+                ],
+              )
+            else ...[
+              controls,
+              const SizedBox(height: 16),
+              workspace,
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildStudioHeader(
+    BuildContext context,
+    ColorScheme colors, {
+    required int plotted,
+    required int eligible,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final title = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Visualization Studio',
+                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -.7,
+                      ),
+                ),
+                const SizedBox(width: 10),
+                Tooltip(
+                  message:
+                      'Built from the same static player-season dataset used by Stats and Advanced Stats.',
+                  child: Icon(
+                    Icons.info_outline_rounded,
+                    size: 18,
+                    color: colors.onSurfaceVariant,
                   ),
+                ),
+              ],
             ),
-            const Chip(
-              avatar: Icon(Icons.storage_rounded, size: 17),
-              label: Text('Static season data'),
+            const SizedBox(height: 5),
+            Text(
+              'Explore relationships, rankings, distributions, and player profiles without leaving the Terminal.',
+              style: TextStyle(
+                color: colors.onSurfaceVariant,
+                fontSize: 13,
+              ),
             ),
           ],
-        ),
-        const SizedBox(height: 5),
-        Text(
-          'Build, analyze, and save charts from the same player-season data that powers Stats and Advanced Stats.',
-          style: TextStyle(color: colors.onSurfaceVariant),
-        ),
-        const SizedBox(height: 18),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              crossAxisAlignment: WrapCrossAlignment.center,
+        );
+
+        final contextChips = Wrap(
+          spacing: 7,
+          runSpacing: 7,
+          alignment: WrapAlignment.end,
+          children: [
+            _StudioContextChip(
+              icon: Icons.calendar_month_outlined,
+              label: _season,
+            ),
+            _StudioContextChip(
+              icon: Icons.layers_outlined,
+              label: _seasonType == NbaStatsSeasonType.playoffs
+                  ? 'Playoffs'
+                  : 'Regular Season',
+            ),
+            _StudioContextChip(
+              icon: Icons.speed_outlined,
+              label: _basis.label,
+            ),
+            _StudioContextChip(
+              icon: Icons.groups_outlined,
+              label: '$plotted plotted · $eligible eligible',
+            ),
+          ],
+        );
+
+        if (constraints.maxWidth < 860) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              title,
+              const SizedBox(height: 12),
+              contextChips,
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(child: title),
+            const SizedBox(width: 20),
+            Flexible(child: contextChips),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildControlRail(
+    BuildContext context, {
+    required List<NbaStatsRow> allRows,
+    required List<NbaStatsRow> filtered,
+    required String? radarName,
+  }) {
+    final colors = Theme.of(context).colorScheme;
+    final playerNames = filtered
+        .map((row) => row.player)
+        .toSet()
+        .take(120)
+        .toList(growable: false);
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(15, 16, 15, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
               children: [
-                _LabeledControl(
-                  label: 'Chart',
-                  child: DropdownButton<_ChartType>(
-                    value: _chart,
-                    items: [
-                      for (final type in _ChartType.values)
-                        DropdownMenuItem(value: type, child: Text(type.label)),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) setState(() => _chart = value);
-                    },
+                const Expanded(
+                  child: Text(
+                    'BUILD',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .8,
+                    ),
                   ),
                 ),
-                _LabeledControl(
-                  label: 'Season',
-                  child: DropdownButton<String>(
-                    value: _season,
-                    items: [
-                      for (final season in _seasons)
-                        DropdownMenuItem(value: season.id, child: Text(season.label)),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      _season = value;
-                      _reload();
-                    },
-                  ),
+                TextButton.icon(
+                  onPressed: _resetStudio,
+                  icon: const Icon(Icons.restart_alt_rounded, size: 16),
+                  label: const Text('Reset'),
                 ),
-                _LabeledControl(
-                  label: 'Segment',
-                  child: DropdownButton<NbaStatsSeasonType>(
-                    value: _seasonType,
-                    items: const [
-                      DropdownMenuItem(
-                        value: NbaStatsSeasonType.regular,
-                        child: Text('Regular Season'),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const _StudioSectionTitle('DATASET'),
+            _StudioSelect<String>(
+              label: 'Season',
+              value: _season,
+              items: [
+                for (final season in _seasons)
+                  DropdownMenuItem(
+                    value: season.id,
+                    child: Text(season.label),
+                  ),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                _season = value;
+                _radarPlayer = null;
+                _reload();
+              },
+            ),
+            const SizedBox(height: 10),
+            _StudioSelect<NbaStatsSeasonType>(
+              label: 'Segment',
+              value: _seasonType,
+              items: const [
+                DropdownMenuItem(
+                  value: NbaStatsSeasonType.regular,
+                  child: Text('Regular Season'),
+                ),
+                DropdownMenuItem(
+                  value: NbaStatsSeasonType.playoffs,
+                  child: Text('Playoffs'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                _seasonType = value;
+                _radarPlayer = null;
+                _reload();
+              },
+            ),
+            const SizedBox(height: 10),
+            _StudioSelect<NbaStatsBasis>(
+              label: 'Rate',
+              value: _basis,
+              items: [
+                for (final basis in const [
+                  NbaStatsBasis.perGame,
+                  NbaStatsBasis.per36,
+                  NbaStatsBasis.per75,
+                  NbaStatsBasis.per100,
+                  NbaStatsBasis.totals,
+                ])
+                  DropdownMenuItem(
+                    value: basis,
+                    child: Text(basis.label),
+                  ),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                _basis = value;
+                _reload();
+              },
+            ),
+            const _StudioSectionDivider(),
+            const _StudioSectionTitle('VISUAL'),
+            _StudioSelect<_ChartType>(
+              label: 'Chart',
+              value: _chart,
+              items: [
+                for (final type in _ChartType.values)
+                  DropdownMenuItem(
+                    value: type,
+                    child: Text(type.label),
+                  ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    _chart = value;
+                    if (_chart == _ChartType.radar) {
+                      _showTrendLine = false;
+                    }
+                  });
+                }
+              },
+            ),
+            if (_chart == _ChartType.radar) ...[
+              const SizedBox(height: 10),
+              _StudioSelect<String>(
+                label: 'Player',
+                value: radarName,
+                items: [
+                  for (final player in playerNames)
+                    DropdownMenuItem(
+                      value: player,
+                      child: Text(
+                        player,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      DropdownMenuItem(
-                        value: NbaStatsSeasonType.playoffs,
-                        child: Text('Playoffs'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      _seasonType = value;
-                      _reload();
-                    },
-                  ),
-                ),
-                _LabeledControl(
-                  label: 'Rate',
-                  child: DropdownButton<NbaStatsBasis>(
-                    value: _basis,
-                    items: [
-                      for (final basis in const [
-                        NbaStatsBasis.perGame,
-                        NbaStatsBasis.per36,
-                        NbaStatsBasis.per75,
-                        NbaStatsBasis.per100,
-                        NbaStatsBasis.totals,
-                      ])
-                        DropdownMenuItem(value: basis, child: Text(basis.label)),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      _basis = value;
-                      _reload();
-                    },
-                  ),
-                ),
-                _MetricControl(
-                  label: 'X metric',
+                    ),
+                ],
+                onChanged: (value) => setState(() => _radarPlayer = value),
+              ),
+            ] else ...[
+              if (_supportsXYAnalytics) ...[
+                const SizedBox(height: 10),
+                _StudioMetricSelect(
+                  label: 'X axis',
                   value: _xMetric,
                   keys: _metricKeys,
                   engine: _engine,
                   onChanged: (value) => setState(() => _xMetric = value),
                 ),
-                _MetricControl(
-                  label: 'Y metric',
-                  value: _yMetric,
+              ],
+              const SizedBox(height: 10),
+              _StudioMetricSelect(
+                label: _chart == _ChartType.histogram
+                    ? 'Distribution metric'
+                    : 'Y axis / ranking metric',
+                value: _yMetric,
+                keys: _metricKeys,
+                engine: _engine,
+                onChanged: (value) => setState(() => _yMetric = value),
+              ),
+              if (_chart == _ChartType.bubble) ...[
+                const SizedBox(height: 10),
+                _StudioMetricSelect(
+                  label: 'Bubble size',
+                  value: _sizeMetric,
                   keys: _metricKeys,
                   engine: _engine,
-                  onChanged: (value) => setState(() => _yMetric = value),
+                  onChanged: (value) => setState(() => _sizeMetric = value),
                 ),
-                if (_chart == _ChartType.bubble)
-                  _MetricControl(
-                    label: 'Bubble size',
-                    value: _sizeMetric,
-                    keys: _metricKeys,
-                    engine: _engine,
-                    onChanged: (value) => setState(() => _sizeMetric = value),
-                  ),
-                _LabeledControl(
+              ],
+              if (_chart != _ChartType.histogram) ...[
+                const SizedBox(height: 10),
+                _StudioSelect<String>(
                   label: 'Color by',
-                  child: DropdownButton<String>(
-                    value: _groupBy,
-                    items: const [
-                      DropdownMenuItem(value: 'Team', child: Text('Team')),
-                      DropdownMenuItem(value: 'Position', child: Text('Position')),
-                      DropdownMenuItem(value: 'None', child: Text('None')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) setState(() => _groupBy = value);
-                    },
+                  value: _groupBy,
+                  items: const [
+                    DropdownMenuItem(value: 'Team', child: Text('Team')),
+                    DropdownMenuItem(
+                      value: 'Position',
+                      child: Text('Position'),
+                    ),
+                    DropdownMenuItem(value: 'None', child: Text('Single color')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) setState(() => _groupBy = value);
+                  },
+                ),
+              ],
+            ],
+            const _StudioSectionDivider(),
+            const _StudioSectionTitle('POPULATION'),
+            TextField(
+              controller: _search,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                isDense: true,
+                prefixIcon: Icon(Icons.search_rounded, size: 19),
+                hintText: 'Player, team, position…',
+                labelText: 'Filter',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Minimum games',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
                   ),
                 ),
-                SizedBox(
-                  width: 220,
-                  child: TextField(
-                    controller: _search,
-                    onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      prefixIcon: Icon(Icons.search_rounded),
-                      hintText: 'Filter players / teams',
-                    ),
+                Text(
+                  '${_minGames.round()}',
+                  style: TextStyle(
+                    color: colors.primary,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
             ),
+            Slider(
+              value: _minGames,
+              min: 0,
+              max: 82,
+              divisions: 82,
+              onChanged: (value) => setState(() => _minGames = value),
+            ),
+            if (_chart != _ChartType.histogram &&
+                _chart != _ChartType.radar)
+              _StudioSelect<int>(
+                label: 'Population size',
+                value: _topN,
+                items: const [10, 20, 30, 40, 60, 100]
+                    .map(
+                      (value) => DropdownMenuItem(
+                        value: value,
+                        child: Text('Top $value by selected metric'),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setState(() => _topN = value);
+                },
+              ),
+            const _StudioSectionDivider(),
+            const _StudioSectionTitle('DISPLAY'),
+            if (_chart != _ChartType.histogram)
+              _StudioToggle(
+                label: 'Player labels',
+                value: _showLabels,
+                onChanged: (value) => setState(() => _showLabels = value),
+              ),
+            if (_supportsXYAnalytics)
+              _StudioToggle(
+                label: 'Best-fit line',
+                value: _showTrendLine,
+                onChanged: (value) =>
+                    setState(() => _showTrendLine = value),
+              ),
+            if (_supportsXYAnalytics)
+              _StudioToggle(
+                label: 'Mean reference lines',
+                value: _showMeans,
+                onChanged: (value) => setState(() => _showMeans = value),
+              ),
+            const _StudioSectionDivider(),
+            const _StudioSectionTitle('PRESETS'),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => _savePreset(),
+                    icon: const Icon(Icons.save_outlined, size: 17),
+                    label: const Text('Save'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _savePreset(saveAs: true),
+                    icon: const Icon(Icons.save_as_outlined, size: 17),
+                    label: const Text('Save as'),
+                  ),
+                ),
+              ],
+            ),
+            if (_saved.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final preset in _saved)
+                    InputChip(
+                      selected: preset.id == _activePresetId,
+                      label: Text(
+                        preset.name,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onPressed: () => _applyPreset(preset),
+                      onDeleted: () => _deletePreset(preset),
+                    ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWorkspace(
+    BuildContext context, {
+    required List<NbaStatsRow> rows,
+    required _RegressionSummary? analytics,
+    required String metricLabel,
+    required String xLabel,
+  }) {
+    final colors = Theme.of(context).colorScheme;
+    final top = rows.isEmpty ? null : rows.first;
+    final chartTitle = switch (_chart) {
+      _ChartType.scatter => '$metricLabel vs $xLabel',
+      _ChartType.bubble => '$metricLabel vs $xLabel · bubble size ${_engine.metric(_sizeMetric).shortLabel}',
+      _ChartType.bar => '$metricLabel player ranking',
+      _ChartType.histogram => '$metricLabel distribution',
+      _ChartType.radar => top == null ? 'Player profile' : '${top.player} profile',
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 13, 12, 13),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final title = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      chartTitle,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _chart == _ChartType.histogram
+                          ? 'Filtered population · ${rows.length} players'
+                          : _chart == _ChartType.radar
+                              ? 'Percentile profile across six core metrics'
+                              : 'Top ${rows.length} by $metricLabel after filters',
+                      style: TextStyle(
+                        color: colors.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                );
+                final actions = Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: [
+                    if (_supportsXYAnalytics)
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            final oldX = _xMetric;
+                            _xMetric = _yMetric;
+                            _yMetric = oldX;
+                          });
+                        },
+                        icon: const Icon(Icons.swap_horiz_rounded, size: 17),
+                        label: const Text('Swap axes'),
+                      ),
+                    _StudioContextChip(
+                      icon: Icons.palette_outlined,
+                      label: _groupBy == 'None'
+                          ? 'Single color'
+                          : 'Color: $_groupBy',
+                    ),
+                  ],
+                );
+                if (constraints.maxWidth < 760) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      title,
+                      const SizedBox(height: 10),
+                      actions,
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: title),
+                    const SizedBox(width: 12),
+                    actions,
+                  ],
+                );
+              },
+            ),
           ),
         ),
         const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            FilterChip(
-              selected: _showLabels,
-              label: const Text('Player labels'),
-              onSelected: (value) => setState(() => _showLabels = value),
-            ),
-            if (_supportsXYAnalytics)
-              FilterChip(
-                selected: _showTrendLine,
-                label: const Text('Best-fit line'),
-                onSelected: (value) => setState(() => _showTrendLine = value),
-              ),
-            if (_supportsXYAnalytics)
-              FilterChip(
-                selected: _showMeans,
-                label: const Text('Mean reference lines'),
-                onSelected: (value) => setState(() => _showMeans = value),
-              ),
-            OutlinedButton.icon(
-              onPressed: () => _savePreset(),
-              icon: const Icon(Icons.save_outlined),
-              label: const Text('Save'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => _savePreset(saveAs: true),
-              icon: const Icon(Icons.save_as_outlined),
-              label: const Text('Save As'),
-            ),
-          ],
-        ),
-        if (_saved.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final preset in _saved)
-                InputChip(
-                  selected: preset.id == _activePresetId,
-                  label: Text(preset.name),
-                  onPressed: () => _applyPreset(preset),
-                  onDeleted: () => _deletePreset(preset),
-                ),
-            ],
-          ),
-        ],
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 20,
-          runSpacing: 10,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text('Minimum games: ${_minGames.round()}'),
-            SizedBox(
-              width: 220,
-              child: Slider(
-                value: _minGames,
-                min: 0,
-                max: 82,
-                divisions: 82,
-                onChanged: (value) => setState(() => _minGames = value),
-              ),
-            ),
-            Text('Players plotted: ${math.min(_topN, usable.length)}'),
-            DropdownButton<int>(
-              value: _topN,
-              items: const [10, 20, 30, 40, 60, 100]
-                  .map(
-                    (value) =>
-                        DropdownMenuItem(value: value, child: Text('$value')),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) setState(() => _topN = value);
-              },
-            ),
-          ],
-        ),
         if (analytics != null && analytics.count >= 2) ...[
-          const SizedBox(height: 12),
-          _AnalyticsStrip(
+          _StudioAnalyticsBar(
             summary: analytics,
-            xLabel: _engine.metric(_xMetric).shortLabel,
-            yLabel: _engine.metric(_yMetric).shortLabel,
+            xLabel: xLabel,
+            yLabel: metricLabel,
           ),
+          const SizedBox(height: 10),
+        ] else if (top != null) ...[
+          _NonRegressionInsightBar(
+            player: top,
+            metricLabel: metricLabel,
+            metricValue: _engine.formatValue(
+              _yMetric,
+              top.value(_yMetric),
+            ),
+            count: rows.length,
+          ),
+          const SizedBox(height: 10),
         ],
-        const SizedBox(height: 14),
         Card(
+          margin: EdgeInsets.zero,
           clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 18, 18, 12),
-            child: rows.isEmpty
-                ? const SizedBox(
-                    height: 420,
-                    child: Center(
-                      child: Text('No players match the active filters.'),
-                    ),
-                  )
-                : AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: CustomPaint(
-                      painter: _NbaChartPainter(
-                        rows: rows,
-                        chart: _chart,
-                        xMetric: _xMetric,
-                        yMetric: _yMetric,
-                        sizeMetric: _sizeMetric,
-                        groupBy: _groupBy,
-                        engine: _engine,
-                        colorScheme: colors,
-                        textStyle: Theme.of(context).textTheme.bodySmall ??
-                            const TextStyle(),
-                        showLabels: _showLabels,
-                        showTrendLine: _showTrendLine,
-                        showMeans: _showMeans,
-                      ),
-                    ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final height = (constraints.maxWidth * .52)
+                  .clamp(500.0, 720.0)
+                  .toDouble();
+              return Column(
+                children: [
+                  SizedBox(
+                    height: height,
+                    child: rows.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No players match the active filters.',
+                            ),
+                          )
+                        : _InteractiveChartPanel(
+                            rows: rows,
+                            chart: _chart,
+                            xMetric: _xMetric,
+                            yMetric: _yMetric,
+                            sizeMetric: _sizeMetric,
+                            groupBy: _groupBy,
+                            engine: _engine,
+                            colorScheme: colors,
+                            textStyle:
+                                Theme.of(context).textTheme.bodySmall ??
+                                    const TextStyle(),
+                            showLabels: _showLabels,
+                            showTrendLine: _showTrendLine,
+                            showMeans: _showMeans,
+                          ),
                   ),
+                  if (rows.isNotEmpty && _groupBy != 'None') ...[
+                    Divider(height: 1, color: Theme.of(context).dividerColor),
+                    _ChartLegend(
+                      rows: rows,
+                      groupBy: _groupBy,
+                      colorScheme: colors,
+                    ),
+                  ],
+                ],
+              );
+            },
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         _ChartReadout(
-          rows: rows.take(12).toList(growable: false),
+          rows: rows.take(15).toList(growable: false),
           xMetric: _xMetric,
           yMetric: _yMetric,
           engine: _engine,
@@ -613,6 +967,7 @@ class _WebsiteNbaVisualizationsScreenState
       ],
     );
   }
+
 }
 
 class _AnalyticsStrip extends StatelessWidget {
