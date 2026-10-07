@@ -261,7 +261,13 @@ class _WebsiteNbaVisualizationsScreenState
           ? preset.groupBy
           : 'Team';
       _minGames = preset.minGames.clamp(0, 82).toDouble();
-      _topN = const [10, 20, 30, 40, 60, 100].contains(preset.topN) ? preset.topN : 40;
+      final savedTopN =
+          const [10, 20, 30, 40, 60, 100].contains(preset.topN)
+              ? preset.topN
+              : 40;
+      _topN = _chart == _ChartType.bar && savedTopN > 20
+          ? 20
+          : savedTopN;
       _showLabels = preset.showLabels;
       _showTrendLine = preset.showTrendLine;
       _showMeans = preset.showMeans;
