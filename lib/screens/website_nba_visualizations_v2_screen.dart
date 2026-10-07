@@ -909,6 +909,7 @@ class _WebsiteNbaVisualizationsScreenState
     required String metricLabel,
     required String xLabel,
     required int eligibleCount,
+    required List<NbaStatsRow> readoutRows,
   }) {
     final colors = Theme.of(context).colorScheme;
     final top = rows.isEmpty ? null : rows.first;
@@ -944,7 +945,9 @@ class _WebsiteNbaVisualizationsScreenState
                       _chart == _ChartType.histogram
                           ? 'Filtered population · ${rows.length} players'
                           : _chart == _ChartType.radar
-                              ? 'Percentile profile across six core metrics'
+                              ? rows.length > 1
+                                  ? 'Percentile comparison across six core metrics'
+                                  : 'Percentile profile across six core metrics'
                               : _chart == _ChartType.bar
                                   ? 'Top ${rows.length} by $metricLabel after filters'
                                   : _topN == 0
@@ -1022,7 +1025,7 @@ class _WebsiteNbaVisualizationsScreenState
           ),
           const SizedBox(height: 10),
         ] else if (_chart == _ChartType.radar && top != null) ...[
-          _ProfileInsightBar(player: top),
+          _ProfileInsightBar(players: rows),
           const SizedBox(height: 10),
         ] else if (top != null) ...[
           _NonRegressionInsightBar(
@@ -1069,8 +1072,18 @@ class _WebsiteNbaVisualizationsScreenState
                             showLabels: _showLabels,
                             showTrendLine: _showTrendLine,
                             showMeans: _showMeans,
+                            histogramBins: _histogramBins,
                           ),
                   ),
+                  if (_chart == _ChartType.bubble && rows.isNotEmpty) ...[
+                    Divider(height: 1, color: Theme.of(context).dividerColor),
+                    _BubbleSizeLegend(
+                      rows: rows,
+                      metricKey: _sizeMetric,
+                      engine: _engine,
+                      colorScheme: colors,
+                    ),
+                  ],
                   if (rows.isNotEmpty &&
                       _groupBy != 'None' &&
                       (_chart == _ChartType.scatter ||
@@ -1083,6 +1096,14 @@ class _WebsiteNbaVisualizationsScreenState
                       colorScheme: colors,
                     ),
                   ],
+                  if (_chart == _ChartType.radar && rows.length > 1) ...[
+                    Divider(height: 1, color: Theme.of(context).dividerColor),
+                    _ProfileComparisonLegend(
+                      primary: rows[0],
+                      comparison: rows[1],
+                      colorScheme: colors,
+                    ),
+                  ],
                 ],
               );
             },
@@ -1090,7 +1111,7 @@ class _WebsiteNbaVisualizationsScreenState
         ),
         const SizedBox(height: 12),
         _ChartReadout(
-          rows: rows.take(15).toList(growable: false),
+          rows: readoutRows.take(15).toList(growable: false),
           xMetric: _xMetric,
           yMetric: _yMetric,
           engine: _engine,
@@ -1427,27 +1448,38 @@ class _DistributionInsightBar extends StatelessWidget {
 }
 
 class _ProfileInsightBar extends StatelessWidget {
-  const _ProfileInsightBar({required this.player});
-  final NbaStatsRow player;
+  const _ProfileInsightBar({required this.players});
+  final List<NbaStatsRow> players;
 
   @override
-  Widget build(BuildContext context) => Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
+  Widget build(BuildContext context) {
+    final primary = players.first;
+    final comparison = players.length > 1 ? players[1] : null;
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _InsightTile(
+          label: comparison == null ? 'PLAYER' : 'PRIMARY',
+          value: primary.player,
+          caption: '${primary.team} · ${primary.position}',
+          wide: true,
+        ),
+        if (comparison != null)
           _InsightTile(
-            label: 'PLAYER',
-            value: player.player,
-            caption: '${player.team} · ${player.position}',
+            label: 'COMPARE',
+            value: comparison.player,
+            caption: '${comparison.team} · ${comparison.position}',
             wide: true,
           ),
-          _InsightTile(
-            label: 'PROFILE',
-            value: '6 metrics',
-            caption: 'percentile view',
-          ),
-        ],
-      );
+        _InsightTile(
+          label: 'PROFILE',
+          value: '6 metrics',
+          caption: 'percentile view',
+        ),
+      ],
+    );
+  }
 }
 
 class _InsightTile extends StatelessWidget {
@@ -1471,7 +1503,7 @@ class _InsightTile extends StatelessWidget {
         minWidth: wide ? 250 : 122,
         maxWidth: wide ? 420 : 190,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
       decoration: BoxDecoration(
         color: colors.surfaceContainerHighest.withValues(alpha: .32),
         borderRadius: BorderRadius.circular(10),
@@ -1485,7 +1517,7 @@ class _InsightTile extends StatelessWidget {
             label,
             style: TextStyle(
               color: colors.onSurfaceVariant,
-              fontSize: 8.5,
+              fontSize: 9.5,
               fontWeight: FontWeight.w900,
               letterSpacing: .55,
             ),
@@ -1496,7 +1528,7 @@ class _InsightTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w900,
             ),
           ),
