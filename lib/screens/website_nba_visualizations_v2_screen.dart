@@ -858,12 +858,15 @@ class _WebsiteNbaVisualizationsScreenState
                         icon: const Icon(Icons.swap_horiz_rounded, size: 17),
                         label: const Text('Swap axes'),
                       ),
-                    _StudioContextChip(
-                      icon: Icons.palette_outlined,
-                      label: _groupBy == 'None'
-                          ? 'Single color'
-                          : 'Color: $_groupBy',
-                    ),
+                    if (_chart == _ChartType.scatter ||
+                        _chart == _ChartType.bubble ||
+                        _chart == _ChartType.bar)
+                      _StudioContextChip(
+                        icon: Icons.palette_outlined,
+                        label: _groupBy == 'None'
+                            ? 'Single color'
+                            : 'Color: $_groupBy',
+                      ),
                   ],
                 );
                 if (constraints.maxWidth < 760) {
@@ -894,6 +897,17 @@ class _WebsiteNbaVisualizationsScreenState
             xLabel: xLabel,
             yLabel: metricLabel,
           ),
+          const SizedBox(height: 10),
+        ] else if (_chart == _ChartType.histogram && rows.isNotEmpty) ...[
+          _DistributionInsightBar(
+            rows: rows,
+            metricKey: _yMetric,
+            metricLabel: metricLabel,
+            engine: _engine,
+          ),
+          const SizedBox(height: 10),
+        ] else if (_chart == _ChartType.radar && top != null) ...[
+          _ProfileInsightBar(player: top),
           const SizedBox(height: 10),
         ] else if (top != null) ...[
           _NonRegressionInsightBar(
@@ -942,7 +956,11 @@ class _WebsiteNbaVisualizationsScreenState
                             showMeans: _showMeans,
                           ),
                   ),
-                  if (rows.isNotEmpty && _groupBy != 'None') ...[
+                  if (rows.isNotEmpty &&
+                      _groupBy != 'None' &&
+                      (_chart == _ChartType.scatter ||
+                          _chart == _ChartType.bubble ||
+                          _chart == _ChartType.bar)) ...[
                     Divider(height: 1, color: Theme.of(context).dividerColor),
                     _ChartLegend(
                       rows: rows,
