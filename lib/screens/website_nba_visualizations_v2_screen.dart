@@ -1254,6 +1254,81 @@ class _NonRegressionInsightBar extends StatelessWidget {
       );
 }
 
+class _DistributionInsightBar extends StatelessWidget {
+  const _DistributionInsightBar({
+    required this.rows,
+    required this.metricKey,
+    required this.metricLabel,
+    required this.engine,
+  });
+
+  final List<NbaStatsRow> rows;
+  final String metricKey;
+  final String metricLabel;
+  final NbaStatsWorkstationEngine engine;
+
+  @override
+  Widget build(BuildContext context) {
+    final values = rows
+        .map((row) => row.value(metricKey))
+        .whereType<double>()
+        .where((value) => value.isFinite)
+        .toList(growable: false);
+    if (values.isEmpty) return const SizedBox.shrink();
+
+    final mean = values.reduce((a, b) => a + b) / values.length;
+    final minValue = values.reduce(math.min);
+    final maxValue = values.reduce(math.max);
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _InsightTile(
+          label: 'POPULATION',
+          value: '${values.length}',
+          caption: 'filtered players',
+        ),
+        _InsightTile(
+          label: 'MEAN $metricLabel',
+          value: engine.formatValue(metricKey, mean),
+          caption: 'population average',
+        ),
+        _InsightTile(
+          label: 'RANGE',
+          value:
+              '${engine.formatValue(metricKey, minValue)} – ${engine.formatValue(metricKey, maxValue)}',
+          caption: 'min to max',
+          wide: true,
+        ),
+      ],
+    );
+  }
+}
+
+class _ProfileInsightBar extends StatelessWidget {
+  const _ProfileInsightBar({required this.player});
+  final NbaStatsRow player;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          _InsightTile(
+            label: 'PLAYER',
+            value: player.player,
+            caption: '${player.team} · ${player.position}',
+            wide: true,
+          ),
+          _InsightTile(
+            label: 'PROFILE',
+            value: '6 metrics',
+            caption: 'percentile view',
+          ),
+        ],
+      );
+}
+
 class _InsightTile extends StatelessWidget {
   const _InsightTile({
     required this.label,
