@@ -1418,9 +1418,13 @@ class _DistributionInsightBar extends StatelessWidget {
         .toList(growable: false);
     if (values.isEmpty) return const SizedBox.shrink();
 
+    values.sort();
     final mean = values.reduce((a, b) => a + b) / values.length;
-    final minValue = values.reduce(math.min);
-    final maxValue = values.reduce(math.max);
+    final median = values.length.isOdd
+        ? values[values.length ~/ 2]
+        : (values[values.length ~/ 2 - 1] + values[values.length ~/ 2]) / 2;
+    final minValue = values.first;
+    final maxValue = values.last;
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -1434,6 +1438,11 @@ class _DistributionInsightBar extends StatelessWidget {
           label: 'MEAN $metricLabel',
           value: engine.formatValue(metricKey, mean),
           caption: 'population average',
+        ),
+        _InsightTile(
+          label: 'MEDIAN $metricLabel',
+          value: engine.formatValue(metricKey, median),
+          caption: '50th percentile',
         ),
         _InsightTile(
           label: 'RANGE',
@@ -2418,13 +2427,28 @@ class _NbaChartPainter extends CustomPainter {
 
     final labelPlayers = <String>{};
     if (showLabels) {
-      final byY = [...valid]
-        ..sort(
-          (a, b) => (b.value(yMetric) ?? 0).compareTo(a.value(yMetric) ?? 0),
-        );
-      labelPlayers.addAll(
-        byY.take(valid.length <= 20 ? valid.length : 10).map((row) => row.player),
-      );
+      if (valid.length <= 20) {
+        labelPlayers.addAll(valid.map((row) => row.player));
+      } else {
+        final byY = [...valid]
+          ..sort(
+            (a, b) => (b.value(yMetric) ?? 0).compareTo(a.value(yMetric) ?? 0),
+          );
+        final byX = [...valid]
+          ..sort(
+            (a, b) => (b.value(xMetric) ?? 0).compareTo(a.value(xMetric) ?? 0),
+          );
+        labelPlayers.addAll(byY.take(6).map((row) => row.player));
+        labelPlayers.addAll(byX.take(4).map((row) => row.player));
+        if (bubbles) {
+          final bySize = [...valid]
+            ..sort(
+              (a, b) => (b.value(sizeMetric) ?? 0)
+                  .compareTo(a.value(sizeMetric) ?? 0),
+            );
+          labelPlayers.addAll(bySize.take(3).map((row) => row.player));
+        }
+      }
       if (highlightedPlayer != null) labelPlayers.add(highlightedPlayer!);
     }
 
@@ -2697,6 +2721,58 @@ class _NbaChartPainter extends CustomPainter {
         );
       }
     }
+
+    final sorted = [...values]..sort();
+    final mean = values.reduce((a, b) => a + b) / values.length;
+    final median = sorted.length.isOdd
+        ? sorted[sorted.length ~/ 2]
+        : (sorted[sorted.length ~/ 2 - 1] + sorted[sorted.length ~/ 2]) / 2;
+    final meanX = _scaleChartValue(
+      mean,
+      minValue,
+      maxValue == minValue ? minValue + 1 : maxValue,
+      rect.left,
+      rect.right,
+    );
+    final medianX = _scaleChartValue(
+      median,
+      minValue,
+      maxValue == minValue ? minValue + 1 : maxValue,
+      rect.left,
+      rect.right,
+    );
+    canvas.drawLine(
+      Offset(meanX, rect.top),
+      Offset(meanX, rect.bottom),
+      Paint()
+        ..color = colorScheme.tertiary
+        ..strokeWidth = 1.6,
+    );
+    canvas.drawLine(
+      Offset(medianX, rect.top),
+      Offset(medianX, rect.bottom),
+      Paint()
+        ..color = colorScheme.secondary
+        ..strokeWidth = 1.2,
+    );
+    _text(
+      canvas,
+      'MEAN ${engine.formatValue(yMetric, mean)}',
+      Offset(meanX + 5, rect.top + 8),
+      colorScheme.tertiary,
+      small: true,
+      bold: true,
+      background: colorScheme.surface.withValues(alpha: .78),
+    );
+    _text(
+      canvas,
+      'MEDIAN ${engine.formatValue(yMetric, median)}',
+      Offset(medianX + 5, rect.top + 25),
+      colorScheme.secondary,
+      small: true,
+      bold: true,
+      background: colorScheme.surface.withValues(alpha: .78),
+    );
 
     canvas.drawLine(
       rect.bottomLeft,
