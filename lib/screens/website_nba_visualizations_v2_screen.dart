@@ -1948,6 +1948,7 @@ class _InteractiveChartPanel extends StatefulWidget {
     required this.showLabels,
     required this.showTrendLine,
     required this.showMeans,
+    required this.histogramBins,
   });
 
   final List<NbaStatsRow> rows;
@@ -1962,6 +1963,7 @@ class _InteractiveChartPanel extends StatefulWidget {
   final bool showLabels;
   final bool showTrendLine;
   final bool showMeans;
+  final int histogramBins;
 
   @override
   State<_InteractiveChartPanel> createState() => _InteractiveChartPanelState();
@@ -2103,6 +2105,7 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
                       showLabels: widget.showLabels,
                       showTrendLine: widget.showTrendLine,
                       showMeans: widget.showMeans,
+                      histogramBins: widget.histogramBins,
                       highlightedPlayer: active?.player,
                     ),
                   ),
@@ -2141,7 +2144,7 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
                     top: tooltipTop,
                     child: IgnorePointer(
                       child: Container(
-                        width: 224,
+                        width: widget.chart == _ChartType.bubble ? 276 : 224,
                         padding: const EdgeInsets.all(11),
                         decoration: BoxDecoration(
                           color: widget.colorScheme.surface,
@@ -2223,6 +2226,19 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
                                     ),
                                   ),
                                 ),
+                                if (widget.chart == _ChartType.bubble) ...[
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _TooltipMetric(
+                                      label:
+                                          'SIZE · ${widget.engine.metric(widget.sizeMetric).shortLabel}',
+                                      value: widget.engine.formatValue(
+                                        widget.sizeMetric,
+                                        active.value(widget.sizeMetric),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ],
@@ -2279,6 +2295,7 @@ class _NbaChartPainter extends CustomPainter {
     required this.showLabels,
     required this.showTrendLine,
     required this.showMeans,
+    required this.histogramBins,
     this.highlightedPlayer,
   });
 
@@ -2294,6 +2311,7 @@ class _NbaChartPainter extends CustomPainter {
   final bool showLabels;
   final bool showTrendLine;
   final bool showMeans;
+  final int histogramBins;
   final String? highlightedPlayer;
 
   @override
@@ -2627,7 +2645,7 @@ class _NbaChartPainter extends CustomPainter {
 
     final minValue = values.reduce(math.min);
     final maxValue = values.reduce(math.max);
-    const bins = 12;
+    final bins = histogramBins.clamp(6, 24);
     final counts = List<int>.filled(bins, 0);
     final span = maxValue - minValue;
     for (final value in values) {
