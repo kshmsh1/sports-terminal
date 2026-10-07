@@ -1428,6 +1428,320 @@ class _ChartReadout extends StatelessWidget {
       );
 }
 
+class _InteractiveChartPanel extends StatefulWidget {
+  const _InteractiveChartPanel({
+    required this.rows,
+    required this.chart,
+    required this.xMetric,
+    required this.yMetric,
+    required this.sizeMetric,
+    required this.groupBy,
+    required this.engine,
+    required this.colorScheme,
+    required this.textStyle,
+    required this.showLabels,
+    required this.showTrendLine,
+    required this.showMeans,
+  });
+
+  final List<NbaStatsRow> rows;
+  final _ChartType chart;
+  final String xMetric;
+  final String yMetric;
+  final String sizeMetric;
+  final String groupBy;
+  final NbaStatsWorkstationEngine engine;
+  final ColorScheme colorScheme;
+  final TextStyle textStyle;
+  final bool showLabels;
+  final bool showTrendLine;
+  final bool showMeans;
+
+  @override
+  State<_InteractiveChartPanel> createState() => _InteractiveChartPanelState();
+}
+
+class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
+  NbaStatsRow? _hovered;
+  NbaStatsRow? _pinned;
+  Offset? _pointer;
+
+  bool get _xy =>
+      widget.chart == _ChartType.scatter ||
+      widget.chart == _ChartType.bubble;
+
+  Rect _plotRect(Size size) => Rect.fromLTWH(
+        72,
+        28,
+        math.max(10.0, size.width - 104),
+        math.max(10.0, size.height - 88),
+      );
+
+  NbaStatsRow? _nearest(Offset position, Size size) {
+    if (!_xy) return null;
+    final valid = widget.rows
+        .where(
+          (row) =>
+              row.value(widget.xMetric) != null &&
+              row.value(widget.yMetric) != null,
+        )
+        .toList(growable: false);
+    if (valid.isEmpty) return null;
+
+    final xs = valid.map((row) => row.value(widget.xMetric)!).toList();
+    final ys = valid.map((row) => row.value(widget.yMetric)!).toList();
+    final xMin = xs.reduce(math.min);
+    final xMax = xs.reduce(math.max);
+    final yMin = ys.reduce(math.min);
+    final yMax = ys.reduce(math.max);
+    final rect = _plotRect(size);
+
+    NbaStatsRow? nearest;
+    var best = double.infinity;
+    for (final row in valid) {
+      final point = Offset(
+        _scaleChartValue(
+          row.value(widget.xMetric)!,
+          xMin,
+          xMax,
+          rect.left,
+          rect.right,
+        ),
+        _scaleChartValue(
+          row.value(widget.yMetric)!,
+          yMin,
+          yMax,
+          rect.bottom,
+          rect.top,
+        ),
+      );
+      final distance = (point - position).distance;
+      if (distance < best) {
+        best = distance;
+        nearest = row;
+      }
+    }
+    return best <= 18 ? nearest : null;
+  }
+
+  void _hover(PointerHoverEvent event, Size size) {
+    final next = _nearest(event.localPosition, size);
+    if (next?.player == _hovered?.player && _pointer == event.localPosition) {
+      return;
+    }
+    setState(() {
+      _hovered = next;
+      if (next != null) _pointer = event.localPosition;
+    });
+  }
+
+  void _tap(TapDownDetails details, Size size) {
+    final next = _nearest(details.localPosition, size);
+    setState(() {
+      _pinned = next;
+      _hovered = next;
+      _pointer = next == null ? null : details.localPosition;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final active = _hovered ?? _pinned;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = Size(constraints.maxWidth, constraints.maxHeight);
+        final pointer = _pointer ?? Offset(size.width * .62, 72);
+        final tooltipLeft =
+            (pointer.dx + 14).clamp(12.0, math.max(12.0, size.width - 244));
+        final tooltipTop =
+            (pointer.dy - 32).clamp(12.0, math.max(12.0, size.height - 112));
+
+        return MouseRegion(
+          cursor: _xy ? SystemMouseCursors.precise : MouseCursor.defer,
+          onHover: (event) => _hover(event, size),
+          onExit: (_) => setState(() => _hovered = null),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: _xy ? (details) => _tap(details, size) : null,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _NbaChartPainter(
+                      rows: widget.rows,
+                      chart: widget.chart,
+                      xMetric: widget.xMetric,
+                      yMetric: widget.yMetric,
+                      sizeMetric: widget.sizeMetric,
+                      groupBy: widget.groupBy,
+                      engine: widget.engine,
+                      colorScheme: widget.colorScheme,
+                      textStyle: widget.textStyle,
+                      showLabels: widget.showLabels,
+                      showTrendLine: widget.showTrendLine,
+                      showMeans: widget.showMeans,
+                      highlightedPlayer: active?.player,
+                    ),
+                  ),
+                ),
+                if (_xy)
+                  Positioned(
+                    right: 14,
+                    top: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: widget.colorScheme.surface.withValues(alpha: .86),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: widget.colorScheme.outlineVariant,
+                        ),
+                      ),
+                      child: Text(
+                        _pinned == null
+                            ? 'Hover to inspect · click to pin'
+                            : 'Pinned · click another point to replace',
+                        style: TextStyle(
+                          color: widget.colorScheme.onSurfaceVariant,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (active != null && _xy)
+                  Positioned(
+                    left: tooltipLeft,
+                    top: tooltipTop,
+                    child: IgnorePointer(
+                      child: Container(
+                        width: 224,
+                        padding: const EdgeInsets.all(11),
+                        decoration: BoxDecoration(
+                          color: widget.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: widget.colorScheme.outlineVariant,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x24000000),
+                              blurRadius: 18,
+                              offset: Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 9,
+                                  height: 9,
+                                  decoration: BoxDecoration(
+                                    color: _visualColorForRow(
+                                      active,
+                                      widget.groupBy,
+                                      widget.colorScheme,
+                                    ),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 7),
+                                Expanded(
+                                  child: Text(
+                                    active.player,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${active.team} · ${active.position}',
+                              style: TextStyle(
+                                color: widget.colorScheme.onSurfaceVariant,
+                                fontSize: 9.5,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _TooltipMetric(
+                                    label: widget.engine
+                                        .metric(widget.xMetric)
+                                        .shortLabel,
+                                    value: widget.engine.formatValue(
+                                      widget.xMetric,
+                                      active.value(widget.xMetric),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _TooltipMetric(
+                                    label: widget.engine
+                                        .metric(widget.yMetric)
+                                        .shortLabel,
+                                    value: widget.engine.formatValue(
+                                      widget.yMetric,
+                                      active.value(widget.yMetric),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TooltipMetric extends StatelessWidget {
+  const _TooltipMetric({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 8,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+          ),
+        ],
+      );
+}
+
 class _NbaChartPainter extends CustomPainter {
   const _NbaChartPainter({
     required this.rows,
