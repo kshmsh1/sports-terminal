@@ -961,6 +961,7 @@ class _WebsiteNbaVisualizationsScreenState
           xMetric: _xMetric,
           yMetric: _yMetric,
           engine: _engine,
+          showX: _supportsXYAnalytics,
         ),
       ],
     );
@@ -1381,49 +1382,101 @@ class _ChartReadout extends StatelessWidget {
     required this.xMetric,
     required this.yMetric,
     required this.engine,
+    required this.showX,
   });
 
   final List<NbaStatsRow> rows;
   final String xMetric;
   final String yMetric;
   final NbaStatsWorkstationEngine engine;
+  final bool showX;
 
   @override
-  Widget build(BuildContext context) => Card(
-        clipBehavior: Clip.antiAlias,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columns: [
-              const DataColumn(label: Text('Player')),
-              const DataColumn(label: Text('Team')),
-              DataColumn(
-                numeric: true,
-                label: Text(engine.metric(xMetric).shortLabel),
-              ),
-              DataColumn(
-                numeric: true,
-                label: Text(engine.metric(yMetric).shortLabel),
-              ),
-            ],
-            rows: [
-              for (final row in rows)
-                DataRow(
-                  cells: [
-                    DataCell(Text(row.player)),
-                    DataCell(Text(row.team)),
-                    DataCell(
-                      Text(engine.formatValue(xMetric, row.value(xMetric))),
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(15, 12, 15, 10),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'UNDERLYING DATA',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .7,
                     ),
-                    DataCell(
-                      Text(engine.formatValue(yMetric, row.value(yMetric))),
-                    ),
-                  ],
+                  ),
                 ),
-            ],
+                Text(
+                  'Showing ${rows.length}',
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      );
+          Divider(height: 1, color: Theme.of(context).dividerColor),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columnSpacing: 34,
+              headingRowHeight: 42,
+              dataRowMinHeight: 38,
+              dataRowMaxHeight: 46,
+              columns: [
+                const DataColumn(label: Text('Player')),
+                const DataColumn(label: Text('Team')),
+                if (showX)
+                  DataColumn(
+                    numeric: true,
+                    label: Text(engine.metric(xMetric).shortLabel),
+                  ),
+                DataColumn(
+                  numeric: true,
+                  label: Text(engine.metric(yMetric).shortLabel),
+                ),
+              ],
+              rows: [
+                for (final row in rows)
+                  DataRow(
+                    cells: [
+                      DataCell(
+                        Text(
+                          row.player,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      DataCell(Text(row.team)),
+                      if (showX)
+                        DataCell(
+                          Text(
+                            engine.formatValue(xMetric, row.value(xMetric)),
+                          ),
+                        ),
+                      DataCell(
+                        Text(
+                          engine.formatValue(yMetric, row.value(yMetric)),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _InteractiveChartPanel extends StatefulWidget {
