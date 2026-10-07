@@ -602,6 +602,9 @@ class _WebsiteNbaVisualizationsScreenState
                     if (_chart == _ChartType.radar) {
                       _showTrendLine = false;
                     }
+                    if (_chart == _ChartType.bar && _topN > 20) {
+                      _topN = 20;
+                    }
                   });
                 }
               },
@@ -715,7 +718,9 @@ class _WebsiteNbaVisualizationsScreenState
               _StudioSelect<int>(
                 label: 'Population size',
                 value: _topN,
-                items: const [10, 20, 30, 40, 60, 100]
+                items: (_chart == _ChartType.bar
+                        ? const [10, 20]
+                        : const [10, 20, 30, 40, 60, 100])
                     .map(
                       (value) => DropdownMenuItem(
                         value: value,
@@ -2169,7 +2174,6 @@ class _NbaChartPainter extends CustomPainter {
   void _paintBars(Canvas canvas, Rect rect) {
     final valid = rows
         .where((row) => row.value(yMetric) != null)
-        .take(14)
         .toList(growable: false);
     if (valid.isEmpty) return;
 
