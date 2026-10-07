@@ -352,7 +352,6 @@ class _WebsiteNbaVisualizationsScreenState
         );
         final controls = _buildControlRail(
           context,
-          allRows: allRows,
           filtered: ranked,
           radarName: radarName,
         );
@@ -483,7 +482,6 @@ class _WebsiteNbaVisualizationsScreenState
 
   Widget _buildControlRail(
     BuildContext context, {
-    required List<NbaStatsRow> allRows,
     required List<NbaStatsRow> filtered,
     required String? radarName,
   }) {
@@ -2011,8 +2009,8 @@ class _NbaChartPainter extends CustomPainter {
     if (valid.isEmpty) return;
 
     final values = valid.map((row) => row.value(yMetric)!).toList();
-    final minValue = math.min(0.0, values.reduce(math.min));
-    final maxValue = math.max(0.0, values.reduce(math.max));
+    final minValue = math.min(0.0, values.reduce(math.min)).toDouble();
+    final maxValue = math.max(0.0, values.reduce(math.max)).toDouble();
     final labelWidth = math.min(145.0, rect.width * .18);
     final valueWidth = 58.0;
     final barLeft = rect.left + labelWidth;
