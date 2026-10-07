@@ -970,73 +970,109 @@ class _WebsiteNbaVisualizationsScreenState
 
 }
 
-class _AnalyticsStrip extends StatelessWidget {
-  const _AnalyticsStrip({
-    required this.summary,
-    required this.xLabel,
-    required this.yLabel,
+class _StudioContextChip extends StatelessWidget {
+  const _StudioContextChip({
+    required this.icon,
+    required this.label,
   });
 
-  final _RegressionSummary summary;
-  final String xLabel;
-  final String yLabel;
+  final IconData icon;
+  final String label;
 
   @override
-  Widget build(BuildContext context) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Wrap(
-            spacing: 24,
-            runSpacing: 8,
-            children: [
-              _AnalyticValue('Paired players', '${summary.count}'),
-              _AnalyticValue('Correlation (r)', summary.r.toStringAsFixed(3)),
-              _AnalyticValue('R²', summary.rSquared.toStringAsFixed(3)),
-              _AnalyticValue(
-                'Best-fit equation',
-                '$yLabel = ${summary.slope.toStringAsFixed(3)} × $xLabel ${summary.intercept < 0 ? '−' : '+'} ${summary.intercept.abs().toStringAsFixed(3)}',
-              ),
-            ],
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: .52),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: colors.onSurfaceVariant),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StudioSectionTitle extends StatelessWidget {
+  const _StudioSectionTitle(this.label);
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 9),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: .8,
           ),
         ),
       );
 }
 
-class _AnalyticValue extends StatelessWidget {
-  const _AnalyticValue(this.label, this.value);
-  final String label;
-  final String value;
+class _StudioSectionDivider extends StatelessWidget {
+  const _StudioSectionDivider();
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelSmall),
-          const SizedBox(height: 2),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
-        ],
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 15),
+        child: Divider(height: 1, color: Theme.of(context).dividerColor),
       );
 }
 
-class _LabeledControl extends StatelessWidget {
-  const _LabeledControl({required this.label, required this.child});
+class _StudioSelect<T> extends StatelessWidget {
+  const _StudioSelect({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
   final String label;
-  final Widget child;
+  final T? value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
 
   @override
-  Widget build(BuildContext context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelSmall),
-          child,
-        ],
+  Widget build(BuildContext context) => InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          isDense: true,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<T>(
+            value: value,
+            items: items,
+            onChanged: onChanged,
+            isDense: true,
+            isExpanded: true,
+            menuMaxHeight: 420,
+          ),
+        ),
       );
 }
 
-class _MetricControl extends StatelessWidget {
-  const _MetricControl({
+class _StudioMetricSelect extends StatelessWidget {
+  const _StudioMetricSelect({
     required this.label,
     required this.value,
     required this.keys,
@@ -1051,22 +1087,294 @@ class _MetricControl extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   @override
-  Widget build(BuildContext context) => _LabeledControl(
+  Widget build(BuildContext context) => _StudioSelect<String>(
         label: label,
-        child: DropdownButton<String>(
-          value: value,
-          items: [
-            for (final key in keys)
-              DropdownMenuItem(
-                value: key,
-                child: Text(engine.metric(key).shortLabel),
-              ),
-          ],
-          onChanged: (next) {
-            if (next != null) onChanged(next);
-          },
-        ),
+        value: value,
+        items: [
+          for (final key in keys)
+            DropdownMenuItem(
+              value: key,
+              child: Text(engine.metric(key).shortLabel),
+            ),
+        ],
+        onChanged: (next) {
+          if (next != null) onChanged(next);
+        },
       );
+}
+
+class _StudioToggle extends StatelessWidget {
+  const _StudioToggle({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: colors.onSurfaceVariant,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Switch.adaptive(
+              value: value,
+              onChanged: onChanged,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StudioAnalyticsBar extends StatelessWidget {
+  const _StudioAnalyticsBar({
+    required this.summary,
+    required this.xLabel,
+    required this.yLabel,
+  });
+
+  final _RegressionSummary summary;
+  final String xLabel;
+  final String yLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final sign = summary.intercept < 0 ? '−' : '+';
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _InsightTile(
+          label: 'PAIRED',
+          value: '${summary.count}',
+          caption: 'players',
+        ),
+        _InsightTile(
+          label: 'CORRELATION',
+          value: summary.r.toStringAsFixed(3),
+          caption: _correlationLabel(summary.r),
+        ),
+        _InsightTile(
+          label: 'R²',
+          value: summary.rSquared.toStringAsFixed(3),
+          caption: 'variance explained',
+        ),
+        _InsightTile(
+          label: 'BEST FIT',
+          value:
+              '$yLabel = ${summary.slope.toStringAsFixed(2)}×$xLabel $sign ${summary.intercept.abs().toStringAsFixed(2)}',
+          caption: 'linear model',
+          wide: true,
+        ),
+      ],
+    );
+  }
+
+  static String _correlationLabel(double r) {
+    final value = r.abs();
+    if (value >= .7) return 'strong ${r >= 0 ? 'positive' : 'negative'}';
+    if (value >= .4) return 'moderate ${r >= 0 ? 'positive' : 'negative'}';
+    if (value >= .2) return 'weak ${r >= 0 ? 'positive' : 'negative'}';
+    return 'little linear relationship';
+  }
+}
+
+class _NonRegressionInsightBar extends StatelessWidget {
+  const _NonRegressionInsightBar({
+    required this.player,
+    required this.metricLabel,
+    required this.metricValue,
+    required this.count,
+  });
+
+  final NbaStatsRow player;
+  final String metricLabel;
+  final String metricValue;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          _InsightTile(
+            label: 'VISIBLE',
+            value: '$count',
+            caption: count == 1 ? 'player' : 'players',
+          ),
+          _InsightTile(
+            label: 'LEADER / FOCUS',
+            value: player.player,
+            caption: '${player.team} · ${player.position}',
+            wide: true,
+          ),
+          _InsightTile(
+            label: metricLabel.toUpperCase(),
+            value: metricValue,
+            caption: 'selected metric',
+          ),
+        ],
+      );
+}
+
+class _InsightTile extends StatelessWidget {
+  const _InsightTile({
+    required this.label,
+    required this.value,
+    required this.caption,
+    this.wide = false,
+  });
+
+  final String label;
+  final String value;
+  final String caption;
+  final bool wide;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      constraints: BoxConstraints(
+        minWidth: wide ? 250 : 122,
+        maxWidth: wide ? 420 : 190,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: .32),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: 8.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: .55,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          Text(
+            caption,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: 9,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChartLegend extends StatelessWidget {
+  const _ChartLegend({
+    required this.rows,
+    required this.groupBy,
+    required this.colorScheme,
+  });
+
+  final List<NbaStatsRow> rows;
+  final String groupBy;
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = <String>[];
+    for (final row in rows) {
+      final token = groupBy == 'Position' ? row.position : row.team;
+      if (token.isNotEmpty && !tokens.contains(token)) tokens.add(token);
+    }
+    final visible = tokens.take(12).toList(growable: false);
+    final hidden = tokens.length - visible.length;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 11),
+      child: Wrap(
+        spacing: 13,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            groupBy.toUpperCase(),
+            style: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              letterSpacing: .65,
+            ),
+          ),
+          for (final token in visible)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: _visualGroupColor(token, colorScheme),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  token,
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          if (hidden > 0)
+            Text(
+              '+$hidden more',
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ChartReadout extends StatelessWidget {
