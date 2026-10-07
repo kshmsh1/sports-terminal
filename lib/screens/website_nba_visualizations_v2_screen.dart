@@ -2859,7 +2859,9 @@ class _NbaChartPainter extends CustomPainter {
     for (var index = 0; index < metrics.length; index++) {
       final metric = metrics[index];
       final primaryPct = (primary.percentiles[metric] ?? 0).round();
-      final comparePct = comparison?.percentiles[metric]?.round();
+      final comparePct = comparison == null
+          ? null
+          : (comparison.percentiles[metric] ?? 0).round();
       final angle =
           -math.pi / 2 + index * math.pi * 2 / metrics.length;
       final outer =
