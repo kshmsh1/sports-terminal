@@ -1095,6 +1095,8 @@ class _WebsiteNbaVisualizationsScreenState
                     showTrendLine: _showTrendLine,
                     showMeans: _showMeans,
                     histogramBins: _histogramBins,
+                    season: _season,
+                    seasonType: _seasonType,
                   );
 
               return Column(
@@ -1156,18 +1158,6 @@ class _WebsiteNbaVisualizationsScreenState
                       rows: rows,
                       metricKey: _sizeMetric,
                       engine: _engine,
-                      colorScheme: colors,
-                    ),
-                  ],
-                  if (rows.isNotEmpty &&
-                      _groupBy != 'None' &&
-                      (_chart == _ChartType.scatter ||
-                          _chart == _ChartType.bubble ||
-                          _chart == _ChartType.bar)) ...[
-                    Divider(height: 1, color: Theme.of(context).dividerColor),
-                    _ChartLegend(
-                      rows: rows,
-                      groupBy: _groupBy,
                       colorScheme: colors,
                     ),
                   ],
@@ -2180,6 +2170,8 @@ class _InteractiveChartPanel extends StatefulWidget {
     required this.showTrendLine,
     required this.showMeans,
     required this.histogramBins,
+    required this.season,
+    required this.seasonType,
   });
 
   final List<NbaStatsRow> rows;
@@ -2195,6 +2187,8 @@ class _InteractiveChartPanel extends StatefulWidget {
   final bool showTrendLine;
   final bool showMeans;
   final int histogramBins;
+  final String season;
+  final NbaStatsSeasonType seasonType;
 
   @override
   State<_InteractiveChartPanel> createState() => _InteractiveChartPanelState();
@@ -2204,6 +2198,14 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
   NbaStatsRow? _hovered;
   NbaStatsRow? _pinned;
   Offset? _pointer;
+  double _zoom = 1;
+  Offset _center = const Offset(.5, .5);
+  double _gestureStartZoom = 1;
+  Offset? _lastFocal;
+  final _teamLookups = <String, Future<List<String>>>{};
+
+  bool get _bar => widget.chart == _ChartType.bar;
+  bool get _inspectable => _xy || _bar;
 
   bool get _xy =>
       widget.chart == _ChartType.scatter ||
@@ -2212,6 +2214,18 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
   @override
   void didUpdateWidget(covariant _InteractiveChartPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.chart != widget.chart ||
+        oldWidget.xMetric != widget.xMetric ||
+        oldWidget.yMetric != widget.yMetric ||
+        oldWidget.rows.length != widget.rows.length ||
+        oldWidget.season != widget.season ||
+        oldWidget.seasonType != widget.seasonType) {
+      _zoom = 1;
+      _center = const Offset(.5, .5);
+      _hovered = null;
+      _pinned = null;
+      _pointer = null;
+    }
     if (_pinned != null &&
         !widget.rows.any((row) => row.player == _pinned!.player)) {
       _pinned = null;
@@ -2227,8 +2241,124 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
         math.max(10.0, size.height - 88),
       );
 
+  _StudioViewport? _viewport() {
+    if (!_xy || widget.rows.isEmpty) return null;
+    final valid = widget.rows.where((row) =>
+        row.value(widget.xMetric) != null &&
+        row.value(widget.yMetric) != null &&
+        row.value(widget.xMetric)!.isFinite &&
+        row.value(widget.yMetric)!.isFinite).toList();
+    if (valid.isEmpty) return null;
+    final x = _paddedChartRange(
+        valid.map((row) => row.value(widget.xMetric)!).toList());
+    final y = _paddedChartRange(
+        valid.map((row) => row.value(widget.yMetric)!).toList());
+    final width = (x.$2 - x.$1) / _zoom;
+    final height = (y.$2 - y.$1) / _zoom;
+    final centerX = x.$1 + (x.$2 - x.$1) * _center.dx;
+    final centerY = y.$1 + (y.$2 - y.$1) * _center.dy;
+    return _StudioViewport(
+      xMin: centerX - width / 2,
+      xMax: centerX + width / 2,
+      yMin: centerY - height / 2,
+      yMax: centerY + height / 2,
+    );
+  }
+
+  void _zoomTo(double next, Offset focalPoint, Size size) {
+    if (!_xy) return;
+    final nextZoom = next.clamp(1.0, 16.0).toDouble();
+    final plot = _plotRect(size);
+    final fx = ((focalPoint.dx - plot.left) / plot.width).clamp(0.0, 1.0);
+    final fy = ((plot.bottom - focalPoint.dy) / plot.height).clamp(0.0, 1.0);
+    final shift = 1 / _zoom - 1 / nextZoom;
+    setState(() {
+      _center = Offset(
+        (_center.dx + (fx - .5) * shift)
+            .clamp(.5 / nextZoom, 1 - .5 / nextZoom),
+        (_center.dy + (fy - .5) * shift)
+            .clamp(.5 / nextZoom, 1 - .5 / nextZoom),
+      );
+      _zoom = nextZoom;
+      _hovered = null;
+    });
+  }
+
+  void _dragView(Offset pixels, Size size) {
+    if (!_xy || _zoom <= 1) return;
+    final plot = _plotRect(size);
+    setState(() {
+      _center = Offset(
+        (_center.dx - pixels.dx / plot.width / _zoom)
+            .clamp(.5 / _zoom, 1 - .5 / _zoom),
+        (_center.dy + pixels.dy / plot.height / _zoom)
+            .clamp(.5 / _zoom, 1 - .5 / _zoom),
+      );
+      _hovered = null;
+    });
+  }
+
+  void _resetViewport() {
+    setState(() {
+      _zoom = 1;
+      _center = const Offset(.5, .5);
+      _hovered = null;
+    });
+  }
+
+  void _scaleStart(ScaleStartDetails details) {
+    _gestureStartZoom = _zoom;
+    _lastFocal = details.localFocalPoint;
+  }
+
+  void _scaleUpdate(ScaleUpdateDetails details, Size size) {
+    final delta = details.localFocalPoint - (_lastFocal ?? details.localFocalPoint);
+    _lastFocal = details.localFocalPoint;
+    if (details.scale != 1) {
+      _zoomTo(_gestureStartZoom * details.scale, details.localFocalPoint, size);
+    }
+    if (delta != Offset.zero) _dragView(delta, size);
+  }
+
+  Future<List<String>> _teamsFor(NbaStatsRow row) {
+    final direct = _studioTeams(row);
+    if (direct.isNotEmpty) return Future.value(direct);
+    final key = '${widget.season}/${widget.seasonType.name}/${row.playerId}';
+    return _teamLookups.putIfAbsent(key, () async {
+      try {
+        final dossier = await const WebsiteNbaApiService().playerDossier(row.playerId);
+        final entries = dossier['seasons'];
+        if (entries is! List) return const <String>[];
+        final teams = <String>{};
+        for (final entry in entries) {
+          if (entry is! Map) continue;
+          final year = (entry['season_id'] ?? '').toString();
+          final segment = (entry['season_type'] ?? '').toString().toLowerCase();
+          final wanted = widget.seasonType == NbaStatsSeasonType.playoffs
+              ? segment.contains('play') || segment.contains('postseason')
+              : segment == 'regular';
+          if (year != widget.season || !wanted) continue;
+          final abbr = (entry['team_abbreviation'] ?? entry['team'] ?? '')
+              .toString().trim();
+          if (abbr.isNotEmpty && !_studioAggregateTeam(abbr)) teams.add(abbr);
+        }
+        return teams.toList()..sort();
+      } catch (_) {
+        return const <String>[];
+      }
+    });
+  }
+
   NbaStatsRow? _nearest(Offset position, Size size) {
-    if (!_xy) return null;
+    if (!_inspectable) return null;
+    final plot = _plotRect(size);
+    if (!plot.inflate(8).contains(position)) return null;
+    if (_bar) {
+      final index = ((position.dy - plot.top) / plot.height *
+              widget.rows.length).floor();
+      if (index < 0 || index >= widget.rows.length) return null;
+      return widget.rows[index];
+    }
     final valid = widget.rows
         .where(
           (row) =>
@@ -2242,12 +2372,11 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
 
     final xs = valid.map((row) => row.value(widget.xMetric)!).toList();
     final ys = valid.map((row) => row.value(widget.yMetric)!).toList();
-    final xRange = _paddedChartRange(xs);
-    final yRange = _paddedChartRange(ys);
-    final xMin = xRange.$1;
-    final xMax = xRange.$2;
-    final yMin = yRange.$1;
-    final yMax = yRange.$2;
+    final viewport = _viewport()!;
+    final xMin = viewport.xMin;
+    final xMax = viewport.xMax;
+    final yMin = viewport.yMin;
+    final yMax = viewport.yMax;
     final rect = _plotRect(size);
 
     NbaStatsRow? nearest;
@@ -2280,9 +2409,7 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
 
   void _hover(PointerHoverEvent event, Size size) {
     final next = _nearest(event.localPosition, size);
-    if (next?.player == _hovered?.player && _pointer == event.localPosition) {
-      return;
-    }
+    if (next?.player == _hovered?.player && next == null) return;
     setState(() {
       _hovered = next;
       if (next != null) _pointer = event.localPosition;
@@ -2306,21 +2433,37 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
         final size = Size(constraints.maxWidth, constraints.maxHeight);
         final pointer = _pointer ?? Offset(size.width * .62, 72);
         final tooltipWidth =
-            widget.chart == _ChartType.bubble ? 276.0 : 224.0;
+            widget.chart == _ChartType.bubble ? 276.0 : 244.0;
         final tooltipLeft = (pointer.dx + 14)
             .clamp(12.0, math.max(12.0, size.width - tooltipWidth - 12))
             .toDouble();
         final tooltipTop = (pointer.dy - 32)
-            .clamp(12.0, math.max(12.0, size.height - 112))
+            .clamp(12.0, math.max(12.0, size.height - 140))
             .toDouble();
 
         return MouseRegion(
-          cursor: _xy ? SystemMouseCursors.precise : SystemMouseCursors.basic,
+          cursor: _inspectable
+              ? SystemMouseCursors.precise
+              : SystemMouseCursors.basic,
           onHover: (event) => _hover(event, size),
           onExit: (_) => setState(() => _hovered = null),
-          child: GestureDetector(
+          child: Listener(
+            onPointerSignal: (event) {
+              if (event is PointerScrollEvent &&
+                  _xy &&
+                  _plotRect(size).contains(event.localPosition)) {
+                _zoomTo(
+                  _zoom * (event.scrollDelta.dy < 0 ? 1.18 : 1 / 1.18),
+                  event.localPosition,
+                  size,
+                );
+              }
+            },
+            child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTapDown: _xy ? (details) => _tap(details, size) : null,
+            onTapDown: _inspectable ? (details) => _tap(details, size) : null,
+            onScaleStart: _xy ? _scaleStart : null,
+            onScaleUpdate: _xy ? (details) => _scaleUpdate(details, size) : null,
             child: Stack(
               children: [
                 Positioned.fill(
@@ -2340,6 +2483,7 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
                       showMeans: widget.showMeans,
                       histogramBins: widget.histogramBins,
                       highlightedPlayer: active?.player,
+                      viewport: _viewport(),
                     ),
                   ),
                 ),
@@ -2371,7 +2515,44 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
                       ),
                     ),
                   ),
-                if (active != null && _xy)
+                if (_xy)
+                  Positioned(
+                    left: 82,
+                    bottom: 12,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: widget.colorScheme.surface.withValues(alpha: .94),
+                        border: Border.all(color: widget.colorScheme.outlineVariant),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: 'Zoom out',
+                            icon: const Icon(Icons.remove, size: 17),
+                            onPressed: _zoom <= 1
+                                ? null
+                                : () => _zoomTo(_zoom / 1.5, _plotRect(size).center, size),
+                          ),
+                          Text('${_zoom.toStringAsFixed(1)}×',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                          IconButton(
+                            tooltip: 'Zoom in',
+                            icon: const Icon(Icons.add, size: 17),
+                            onPressed: _zoom >= 16
+                                ? null
+                                : () => _zoomTo(_zoom * 1.5, _plotRect(size).center, size),
+                          ),
+                          TextButton(
+                            onPressed: _zoom == 1 ? null : _resetViewport,
+                            child: const Text('Reset view'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (active != null && _inspectable)
                   Positioned(
                     left: tooltipLeft,
                     top: tooltipTop,
@@ -2426,28 +2607,36 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
                               ],
                             ),
                             const SizedBox(height: 3),
-                            Text(
-                              '${active.team} · ${active.position}',
-                              style: TextStyle(
-                                color: widget.colorScheme.onSurfaceVariant,
-                                fontSize: 9.5,
+                            FutureBuilder<List<String>>(
+                              future: _teamsFor(active),
+                              builder: (context, snapshot) => Text(
+                                'Teams: ${snapshot.data == null
+                                    ? 'Loading…'
+                                    : snapshot.data!.isEmpty
+                                        ? 'Team stints unavailable'
+                                        : snapshot.data!.join(', ')} · ${active.position}',
+                                maxLines: 2,
+                                style: TextStyle(
+                                  color: widget.colorScheme.onSurfaceVariant,
+                                  fontSize: 10,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                Expanded(
-                                  child: _TooltipMetric(
-                                    label: widget.engine
-                                        .metric(widget.xMetric)
-                                        .shortLabel,
-                                    value: widget.engine.formatValue(
-                                      widget.xMetric,
-                                      active.value(widget.xMetric),
+                                if (_xy) ...[
+                                  Expanded(
+                                    child: _TooltipMetric(
+                                      label: widget.engine.metric(widget.xMetric).shortLabel,
+                                      value: widget.engine.formatValue(
+                                        widget.xMetric,
+                                        active.value(widget.xMetric),
+                                      ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
+                                  const SizedBox(width: 8),
+                                ],
                                 Expanded(
                                   child: _TooltipMetric(
                                     label: widget.engine
@@ -2482,6 +2671,7 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
               ],
             ),
           ),
+          ),
         );
       },
     );
@@ -2514,6 +2704,17 @@ class _TooltipMetric extends StatelessWidget {
       );
 }
 
+class _StudioViewport {
+  const _StudioViewport({
+    required this.xMin, required this.xMax,
+    required this.yMin, required this.yMax,
+  });
+  final double xMin;
+  final double xMax;
+  final double yMin;
+  final double yMax;
+}
+
 class _NbaChartPainter extends CustomPainter {
   const _NbaChartPainter({
     required this.rows,
@@ -2530,6 +2731,7 @@ class _NbaChartPainter extends CustomPainter {
     required this.showMeans,
     required this.histogramBins,
     this.highlightedPlayer,
+    this.viewport,
   });
 
   final List<NbaStatsRow> rows;
@@ -2546,6 +2748,7 @@ class _NbaChartPainter extends CustomPainter {
   final bool showMeans;
   final int histogramBins;
   final String? highlightedPlayer;
+  final _StudioViewport? viewport;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2590,10 +2793,10 @@ class _NbaChartPainter extends CustomPainter {
     final ys = valid.map((row) => row.value(yMetric)!).toList();
     final xRange = _paddedChartRange(xs);
     final yRange = _paddedChartRange(ys);
-    final xMin = xRange.$1;
-    final xMax = xRange.$2;
-    final yMin = yRange.$1;
-    final yMax = yRange.$2;
+    final xMin = viewport?.xMin ?? xRange.$1;
+    final xMax = viewport?.xMax ?? xRange.$2;
+    final yMin = viewport?.yMin ?? yRange.$1;
+    final yMax = viewport?.yMax ?? yRange.$2;
 
     _paintXYGrid(
       canvas,
@@ -2674,6 +2877,8 @@ class _NbaChartPainter extends CustomPainter {
       if (highlightedPlayer != null) labelPlayers.add(highlightedPlayer!);
     }
 
+    canvas.save();
+    canvas.clipRect(rect);
     for (final row in valid) {
       final point = Offset(
         _scaleChartValue(
@@ -2734,6 +2939,7 @@ class _NbaChartPainter extends CustomPainter {
         );
       }
     }
+    canvas.restore();
   }
 
   void _paintXYGrid(
