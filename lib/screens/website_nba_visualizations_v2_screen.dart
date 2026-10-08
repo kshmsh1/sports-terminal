@@ -2295,8 +2295,6 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
         .toList(growable: false);
     if (valid.isEmpty) return null;
 
-    final xs = valid.map((row) => row.value(widget.xMetric)!).toList();
-    final ys = valid.map((row) => row.value(widget.yMetric)!).toList();
     final viewport = _viewport()!;
     final xMin = viewport.xMin;
     final xMax = viewport.xMax;
