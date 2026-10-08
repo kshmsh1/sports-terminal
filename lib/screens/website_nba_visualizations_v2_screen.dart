@@ -3043,94 +3043,113 @@ class _NbaChartPainter extends CustomPainter {
             .toList(growable: false)
         : const <double>[];
 
-    final labelPlayers = <String>{};
+    // Rank labels by statistical prominence, then place them after the points
+    // to avoid masking marks and overlapping nearby player names.
+    final labelCandidates = <NbaStatsRow>[];
+    final seen = <String>{};
+    void include(Iterable<NbaStatsRow> candidates) {
+      for (final row in candidates) {
+        if (seen.add(row.playerId)) labelCandidates.add(row);
+      }
+    }
     if (showLabels) {
-      if (valid.length <= 20) {
-        labelPlayers.addAll(valid.map((row) => row.player));
+      if (highlightedPlayer != null) {
+        include(valid.where((row) => row.player == highlightedPlayer));
+      }
+      final byY = [...valid]..sort(
+        (a, b) => b.value(yMetric)!.compareTo(a.value(yMetric)!));
+      final byX = [...valid]..sort(
+        (a, b) => b.value(xMetric)!.compareTo(a.value(xMetric)!));
+      if (labelDensity == 'All' || valid.length <= 20) {
+        include(byY);
       } else {
-        final byY = [...valid]
-          ..sort(
-            (a, b) => (b.value(yMetric) ?? 0).compareTo(a.value(yMetric) ?? 0),
-          );
-        final byX = [...valid]
-          ..sort(
-            (a, b) => (b.value(xMetric) ?? 0).compareTo(a.value(xMetric) ?? 0),
-          );
-        labelPlayers.addAll(byY.take(6).map((row) => row.player));
-        labelPlayers.addAll(byX.take(4).map((row) => row.player));
+        final high = labelDensity == 'Selective' ? 7 : 15;
+        include(byY.take(high));
+        include(byX.take(high));
+        include(byY.reversed.take(labelDensity == 'Selective' ? 2 : 6));
+        include(byX.reversed.take(labelDensity == 'Selective' ? 2 : 5));
         if (bubbles) {
-          final bySize = [...valid]
-            ..sort(
-              (a, b) => (b.value(sizeMetric) ?? 0)
-                  .compareTo(a.value(sizeMetric) ?? 0),
-            );
-          labelPlayers.addAll(bySize.take(3).map((row) => row.player));
+          final bySize = [...valid]..sort(
+            (a, b) => (b.value(sizeMetric) ?? 0)
+                .compareTo(a.value(sizeMetric) ?? 0));
+          include(bySize.take(labelDensity == 'Selective' ? 4 : 9));
         }
       }
-      if (highlightedPlayer != null) labelPlayers.add(highlightedPlayer!);
     }
+
+    final bubbleValues = bubbles
+        ? valid.map((item) => item.value(sizeMetric))
+            .whereType<double>().toList(growable: false)
+        : const <double>[];
+    Offset chartPoint(NbaStatsRow row) => Offset(
+      _scaleChartValue(row.value(xMetric)!, xMin, xMax, rect.left, rect.right),
+      _scaleChartValue(row.value(yMetric)!, yMin, yMax, rect.bottom, rect.top),
+    );
+    double radiusFor(NbaStatsRow row) => bubbles
+        ? _bubbleRadius(row.value(sizeMetric), bubbleValues)
+        : 5.8;
 
     canvas.save();
     canvas.clipRect(rect);
     for (final row in valid) {
-      final point = Offset(
-        _scaleChartValue(
-          row.value(xMetric)!,
-          xMin,
-          xMax,
-          rect.left,
-          rect.right,
-        ),
-        _scaleChartValue(
-          row.value(yMetric)!,
-          yMin,
-          yMax,
-          rect.bottom,
-          rect.top,
-        ),
-      );
+      final point = chartPoint(row);
+      if (!rect.inflate(-2).contains(point)) continue;
       final color = _visualColorForRow(row, groupBy, colorScheme);
-      final radius = bubbles
-          ? _bubbleRadius(row.value(sizeMetric), bubbleValues)
-          : 5.8;
+      final radius = radiusFor(row);
       final highlighted = row.player == highlightedPlayer;
-
       if (highlighted) {
         canvas.drawCircle(
-          point,
-          radius + 5,
-          Paint()
-            ..color = color.withValues(alpha: .16)
-            ..style = PaintingStyle.fill,
+          point, radius + 5,
+          Paint()..color = color.withValues(alpha: .16),
         );
         canvas.drawCircle(
-          point,
-          radius + 2.2,
-          Paint()
-            ..color = color
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.8,
+          point, radius + 2.2,
+          Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 1.8,
         );
       }
-      canvas.drawCircle(
-        point,
-        radius,
-        Paint()
-          ..color = color.withValues(
-            alpha: highlighted ? 1 : (bubbles ? .70 : .86),
-          ),
-      );
+      canvas.drawCircle(point, radius, Paint()
+        ..color = color.withValues(alpha: highlighted ? 1 : (bubbles ? .76 : .90)));
+    }
 
-      if (labelPlayers.contains(row.player)) {
-        _text(
-          canvas,
-          _shortLabel(row.player),
-          point + Offset(radius + 4, -11),
-          colorScheme.onSurface,
-          small: true,
-          background: colorScheme.surface.withValues(alpha: .72),
-        );
+    final placedLabels = <Rect>[];
+    for (final row in labelCandidates) {
+      final point = chartPoint(row);
+      if (!rect.contains(point)) continue;
+      final label = _shortLabel(row.player);
+      final measure = TextPainter(
+        text: TextSpan(text: label,
+          style: textStyle.copyWith(fontSize: 11.7, fontWeight: FontWeight.w600)),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout(maxWidth: 180);
+      final width = measure.width + 5;
+      final height = measure.height + 3;
+      measure.dispose();
+      final radius = radiusFor(row);
+      final offsets = <Offset>[
+        Offset(radius + 6, -height - 2),
+        Offset(-width - radius - 6, -height - 2),
+        Offset(radius + 6, 3),
+        Offset(-width - radius - 6, 3),
+        Offset(-width / 2, -height - radius - 7),
+      ];
+      Rect? chosen;
+      for (final offset in offsets) {
+        final candidate = Rect.fromLTWH(
+          point.dx + offset.dx, point.dy + offset.dy, width, height);
+        if (!rect.deflate(3).contains(candidate.topLeft) ||
+            !rect.deflate(3).contains(candidate.bottomRight)) continue;
+        if (placedLabels.any((other) => other.inflate(3).overlaps(candidate))) {
+          continue;
+        }
+        chosen = candidate;
+        break;
       }
+      if (chosen == null) continue;
+      placedLabels.add(chosen);
+      _text(canvas, label, chosen.topLeft + const Offset(2, 1),
+        colorScheme.onSurface, small: true,
+        background: colorScheme.surface.withValues(alpha: .87));
     }
     canvas.restore();
   }
