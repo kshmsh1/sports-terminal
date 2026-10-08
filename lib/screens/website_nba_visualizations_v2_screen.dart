@@ -47,7 +47,8 @@ class _WebsiteNbaVisualizationsScreenState
   String _yMetric = 'pts';
   String _sizeMetric = 'reb';
   String _groupBy = 'Team';
-  double _minGames = 20;
+  double _minGames = 50;
+  double get _defaultMinGames => _seasonType == NbaStatsSeasonType.playoffs ? 4 : 50;
   int _topN = 40;
   int _rankingTopN = 20;
   bool _showLabels = true;
@@ -154,7 +155,7 @@ class _WebsiteNbaVisualizationsScreenState
       _yMetric = 'pts';
       _sizeMetric = 'reb';
       _groupBy = 'Team';
-      _minGames = 20;
+      _minGames = 50;
       _topN = 40;
       _rankingTopN = 20;
       _showLabels = true;
@@ -265,7 +266,7 @@ class _WebsiteNbaVisualizationsScreenState
       _groupBy = const ['Team', 'Position', 'None'].contains(preset.groupBy)
           ? preset.groupBy
           : 'Team';
-      _minGames = preset.minGames.clamp(0, 82).toDouble();
+      _minGames = preset.minGames.clamp(0, _seasonType == NbaStatsSeasonType.playoffs ? 28 : 82).toDouble();
       final savedTopN =
           const [0, 10, 20, 30, 40, 60, 100].contains(preset.topN)
               ? preset.topN
@@ -300,6 +301,7 @@ class _WebsiteNbaVisualizationsScreenState
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<NbaTerminalSeedSnapshot>(
+      key: ValueKey('$_season/${_seasonType.name}'),
       future: _snapshotFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
@@ -597,10 +599,13 @@ class _WebsiteNbaVisualizationsScreenState
               ],
               onChanged: (value) {
                 if (value == null) return;
-                _season = value;
-                _radarPlayer = null;
-                _radarComparePlayer = null;
-                _reload();
+                setState(() {
+                  _season = value;
+                  _minGames = _defaultMinGames;
+                  _radarPlayer = null;
+                  _radarComparePlayer = null;
+                  _snapshotFuture = _loadSnapshot();
+                });
               },
             ),
             const SizedBox(height: 10),
@@ -619,10 +624,13 @@ class _WebsiteNbaVisualizationsScreenState
               ],
               onChanged: (value) {
                 if (value == null) return;
-                _seasonType = value;
-                _radarPlayer = null;
-                _radarComparePlayer = null;
-                _reload();
+                setState(() {
+                  _seasonType = value;
+                  _minGames = _defaultMinGames;
+                  _radarPlayer = null;
+                  _radarComparePlayer = null;
+                  _snapshotFuture = _loadSnapshot();
+                });
               },
             ),
             const SizedBox(height: 10),
@@ -836,8 +844,8 @@ class _WebsiteNbaVisualizationsScreenState
             Slider(
               value: _minGames,
               min: 0,
-              max: 82,
-              divisions: 82,
+              max: _seasonType == NbaStatsSeasonType.playoffs ? 28 : 82,
+              divisions: _seasonType == NbaStatsSeasonType.playoffs ? 28 : 82,
               onChanged: (value) => setState(() => _minGames = value),
             ),
             if (_chart != _ChartType.histogram &&
@@ -2384,19 +2392,7 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
               : SystemMouseCursors.basic,
           onHover: (event) => _hover(event, size),
           onExit: (_) => setState(() => _hovered = null),
-          child: Listener(
-            onPointerSignal: (event) {
-              if (event is PointerScrollEvent &&
-                  _xy &&
-                  _plotRect(size).contains(event.localPosition)) {
-                _zoomTo(
-                  _zoom * (event.scrollDelta.dy < 0 ? 1.18 : 1 / 1.18),
-                  event.localPosition,
-                  size,
-                );
-              }
-            },
-            child: GestureDetector(
+          child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapDown: _inspectable ? (details) => _tap(details, size) : null,
             onScaleStart: _xy ? _scaleStart : null,
@@ -2442,7 +2438,7 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
                       ),
                       child: Text(
                         _pinned == null
-                            ? 'Hover to inspect · click to pin'
+                            ? 'Hover/click to inspect · use +/− to zoom'
                             : 'Pinned · click another point to replace',
                         style: TextStyle(
                           color: widget.colorScheme.onSurfaceVariant,
@@ -2617,7 +2613,6 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
                   ),
               ],
             ),
-          ),
           ),
         );
       },
