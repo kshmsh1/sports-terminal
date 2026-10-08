@@ -2430,9 +2430,11 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
         row.value(widget.yMetric)!.isFinite).toList();
     if (valid.isEmpty) return null;
     final x = _paddedChartRange(
-        valid.map((row) => row.value(widget.xMetric)!).toList());
+        valid.map((row) => row.value(widget.xMetric)!).toList(),
+        percentage: _studioPercent(widget.xMetric));
     final y = _paddedChartRange(
-        valid.map((row) => row.value(widget.yMetric)!).toList());
+        valid.map((row) => row.value(widget.yMetric)!).toList(),
+        percentage: _studioPercent(widget.yMetric));
     final width = (x.$2 - x.$1) / _zoom;
     final height = (y.$2 - y.$1) / _zoom;
     final centerX = x.$1 + (x.$2 - x.$1) * _center.dx;
@@ -2982,8 +2984,8 @@ class _NbaChartPainter extends CustomPainter {
 
     final xs = valid.map((row) => row.value(xMetric)!).toList();
     final ys = valid.map((row) => row.value(yMetric)!).toList();
-    final xRange = _paddedChartRange(xs);
-    final yRange = _paddedChartRange(ys);
+    final xRange = _paddedChartRange(xs, percentage: _studioPercent(xMetric));
+    final yRange = _paddedChartRange(ys, percentage: _studioPercent(yMetric));
     final xMin = viewport?.xMin ?? xRange.$1;
     final xMax = viewport?.xMax ?? xRange.$2;
     final yMin = viewport?.yMin ?? yRange.$1;
@@ -3090,7 +3092,7 @@ class _NbaChartPainter extends CustomPainter {
       final color = _visualColorForRow(row, groupBy, colorScheme);
       final radius = bubbles
           ? _bubbleRadius(row.value(sizeMetric), bubbleValues)
-          : 5.2;
+          : 5.8;
       final highlighted = row.player == highlightedPlayer;
 
       if (highlighted) {
@@ -3148,30 +3150,29 @@ class _NbaChartPainter extends CustomPainter {
       ..color = colorScheme.outlineVariant
       ..strokeWidth = 1.1;
 
-    const steps = 5;
-    for (var index = 0; index <= steps; index++) {
-      final t = index / steps;
-      final x = rect.left + rect.width * t;
-      final y = rect.bottom - rect.height * t;
-      canvas.drawLine(Offset(x, rect.top), Offset(x, rect.bottom), gridPaint);
-      canvas.drawLine(Offset(rect.left, y), Offset(rect.right, y), gridPaint);
-
-      final xValue = xMin + (xMax - xMin) * t;
-      final yValue = yMin + (yMax - yMin) * t;
-      _text(
-        canvas,
-        engine.formatValue(xMetric, xValue),
-        Offset(x - 18, rect.bottom + 10),
-        colorScheme.onSurfaceVariant,
-        tiny: true,
-      );
-      _text(
-        canvas,
-        engine.formatValue(yMetric, yValue),
-        Offset(8, y - 6),
-        colorScheme.onSurfaceVariant,
-        tiny: true,
-      );
+    for (final xValue in _studioTicks(xMin, xMax, percentage: _studioPercent(xMetric))) {
+      final x = _scaleChartValue(xValue, xMin, xMax, rect.left, rect.right);
+      if (showGrid) canvas.drawLine(Offset(x, rect.top), Offset(x, rect.bottom), gridPaint);
+      _text(canvas, _studioTickLabel(xValue, xMetric),
+        Offset((x - 18).clamp(4.0, rect.right - 35).toDouble(), rect.bottom + 11),
+        colorScheme.onSurfaceVariant, tiny: true);
+    }
+    for (final yValue in _studioTicks(yMin, yMax, percentage: _studioPercent(yMetric))) {
+      final y = _scaleChartValue(yValue, yMin, yMax, rect.bottom, rect.top);
+      if (showGrid) canvas.drawLine(Offset(rect.left, y), Offset(rect.right, y), gridPaint);
+      _text(canvas, _studioTickLabel(yValue, yMetric), Offset(6, y - 7),
+        colorScheme.onSurfaceVariant, tiny: true);
+    }
+    if (showZeroLine) {
+      final zero = Paint()..color = colorScheme.onSurfaceVariant.withValues(alpha: .52)..strokeWidth = 1.4;
+      if (xMin <= 0 && xMax >= 0) {
+        final x = _scaleChartValue(0, xMin, xMax, rect.left, rect.right);
+        canvas.drawLine(Offset(x, rect.top), Offset(x, rect.bottom), zero);
+      }
+      if (yMin <= 0 && yMax >= 0) {
+        final y = _scaleChartValue(0, yMin, yMax, rect.bottom, rect.top);
+        canvas.drawLine(Offset(rect.left, y), Offset(rect.right, y), zero);
+      }
     }
     canvas.drawLine(rect.bottomLeft, rect.bottomRight, axisPaint);
     canvas.drawLine(rect.bottomLeft, rect.topLeft, axisPaint);
@@ -3565,7 +3566,7 @@ class _NbaChartPainter extends CustomPainter {
         text: value,
         style: textStyle.copyWith(
           color: color,
-          fontSize: tiny ? 8.8 : (small ? 10.2 : 11.5),
+          fontSize: tiny ? 10.2 : (small ? 11.7 : 12.5),
           fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
         ),
       ),
@@ -3756,17 +3757,57 @@ Color _visualGroupColor(String token, ColorScheme colorScheme) {
   return HSVColor.fromAHSV(1, hue, .58, .86).toColor();
 }
 
-(double, double) _paddedChartRange(List<double> values) {
-  var minValue = values.reduce(math.min);
-  var maxValue = values.reduce(math.max);
-  if (minValue == maxValue) {
-    final pad = minValue.abs() > 1 ? minValue.abs() * .08 : 1.0;
-    return (minValue - pad, maxValue + pad);
+
+bool _studioPercent(String key) => const {
+  'fg_pct', 'three_pct', 'ft_pct', 'ts_pct', 'efg_pct',
+  'two_pct', 'three_rate', 'ft_rate', 'scoring_load',
+}.contains(key);
+
+double _studioNiceStep(double span, {required bool percentage}) {
+  final target = math.max(percentage ? 0.01 : 1.0, span.abs() / 5);
+  final exponent = math.pow(10, (math.log(target) / math.ln10).floor()).toDouble();
+  for (final factor in const [1.0, 2.0, 5.0, 10.0]) {
+    final candidate = exponent * factor;
+    if (candidate >= target) return candidate;
   }
-  final pad = (maxValue - minValue) * .06;
-  minValue -= pad;
-  maxValue += pad;
-  return (minValue, maxValue);
+  return exponent * 10;
+}
+
+List<double> _studioTicks(double minValue, double maxValue, {required bool percentage}) {
+  if (!minValue.isFinite || !maxValue.isFinite || maxValue <= minValue) return const [];
+  final step = _studioNiceStep(maxValue - minValue, percentage: percentage);
+  final first = (minValue / step - 1e-8).ceil();
+  final last = (maxValue / step + 1e-8).floor();
+  return [
+    for (var index = first; index <= last && index < first + 25; index++)
+      index * step,
+  ];
+}
+
+String _studioTickLabel(double value, String metric) {
+  final clean = value.abs() < 0.0000001 ? 0.0 : value;
+  return _studioPercent(metric)
+      ? '${(clean * 100).toStringAsFixed(1)}%'
+      : clean.toStringAsFixed(1);
+}
+
+(double, double) _paddedChartRange(
+  List<double> values, {
+  bool percentage = false,
+}) {
+  var minimum = values.reduce(math.min);
+  var maximum = values.reduce(math.max);
+  final width = maximum - minimum;
+  final pad = width == 0
+      ? math.max(percentage ? .01 : 1.0, minimum.abs() * .08)
+      : width * .065;
+  minimum -= pad;
+  maximum += pad;
+  final step = _studioNiceStep(maximum - minimum, percentage: percentage);
+  return (
+    (minimum / step).floorToDouble() * step,
+    (maximum / step).ceilToDouble() * step,
+  );
 }
 
 double _scaleChartValue(
