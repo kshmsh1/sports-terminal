@@ -1621,81 +1621,6 @@ class _InsightTile extends StatelessWidget {
   }
 }
 
-class _ChartLegend extends StatelessWidget {
-  const _ChartLegend({
-    required this.rows,
-    required this.groupBy,
-    required this.colorScheme,
-  });
-
-  final List<NbaStatsRow> rows;
-  final String groupBy;
-  final ColorScheme colorScheme;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = <String>[];
-    for (final row in rows) {
-      final token = groupBy == 'Position' ? row.position : row.team;
-      if (token.isNotEmpty && !tokens.contains(token)) tokens.add(token);
-    }
-    final visible = tokens.take(12).toList(growable: false);
-    final hidden = tokens.length - visible.length;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 11),
-      child: Wrap(
-        spacing: 13,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Text(
-            groupBy.toUpperCase(),
-            style: TextStyle(
-              color: colorScheme.onSurfaceVariant,
-              fontSize: 9,
-              fontWeight: FontWeight.w900,
-              letterSpacing: .65,
-            ),
-          ),
-          for (final token in visible)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: _visualGroupColor(token, colorScheme),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  token,
-                  style: TextStyle(
-                    color: colorScheme.onSurfaceVariant,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          if (hidden > 0)
-            Text(
-              '+$hidden more',
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 class _BubbleSizeLegend extends StatelessWidget {
   const _BubbleSizeLegend({
     required this.rows,
@@ -2607,21 +2532,31 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
                               ],
                             ),
                             const SizedBox(height: 3),
-                            FutureBuilder<List<String>>(
-                              future: _teamsFor(active),
-                              builder: (context, snapshot) => Text(
-                                'Teams: ${snapshot.data == null
-                                    ? 'Loading…'
-                                    : snapshot.data!.isEmpty
-                                        ? 'Team stints unavailable'
-                                        : snapshot.data!.join(', ')} · ${active.position}',
+                            if (_studioTeams(active).isNotEmpty)
+                              Text(
+                                'Teams: ${_studioTeams(active).join(', ')} · ${active.position}',
                                 maxLines: 2,
                                 style: TextStyle(
                                   color: widget.colorScheme.onSurfaceVariant,
                                   fontSize: 10,
                                 ),
+                              )
+                            else
+                              FutureBuilder<List<String>>(
+                                future: _teamsFor(active),
+                                builder: (context, snapshot) => Text(
+                                  'Teams: ${snapshot.data == null
+                                      ? 'Loading…'
+                                      : snapshot.data!.isEmpty
+                                          ? 'Team stints unavailable'
+                                          : snapshot.data!.join(', ')} · ${active.position}',
+                                  maxLines: 2,
+                                  style: TextStyle(
+                                    color: widget.colorScheme.onSurfaceVariant,
+                                    fontSize: 10,
+                                  ),
+                                ),
                               ),
-                            ),
                             const SizedBox(height: 8),
                             Row(
                               children: [
