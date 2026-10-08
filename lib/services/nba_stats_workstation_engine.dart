@@ -773,18 +773,27 @@ class NbaStatsWorkstationEngine {
     final shootingPossessions = fga + .44 * fta;
     final fgPct = _ratioOrSource(raw, fgm, fga, const [
       'fg_pct',
+      'field_goal_percentage',
       'field_goal_pct',
       'avg_fg_pct',
     ]);
     final threePct = _ratioOrSource(raw, threePm, threePa, const [
+      'three_point_percentage',
       'three_point_pct',
       'fg3_pct',
       'avg_fg3_pct',
     ]);
     final ftPct = _ratioOrSource(raw, ftm, fta, const [
+      'free_throw_percentage',
       'free_throw_pct',
       'ft_pct',
       'avg_ft_pct',
+    ]);
+    final tsPct = _ratioOrSource(raw, points, 2 * shootingPossessions, const [
+      'true_shooting_percentage', 'ts_pct', 'avg_ts_pct',
+    ]);
+    final efgPct = _ratioOrSource(raw, fgm + .5 * threePm, fga, const [
+      'effective_field_goal_percentage', 'efg_pct',
     ]);
     final bpm = _number(
       _first(raw, const ['avg_bpm', 'bpm', 'box_plus_minus']),
@@ -824,8 +833,8 @@ class NbaStatsWorkstationEngine {
         'ftm': scaled(ftm),
         'fta': scaled(fta),
         'ft_pct': ftPct,
-        'ts_pct': _ratio(points, 2 * shootingPossessions),
-        'efg_pct': _ratio(fgm + .5 * threePm, fga),
+        'ts_pct': tsPct,
+        'efg_pct': efgPct,
         'points_per_shot': _ratio(points, shootingPossessions),
         'ast_tov': turnovers > 0
             ? assists / turnovers
