@@ -1194,6 +1194,7 @@ class _WebsiteNbaVisualizationsScreenState
                     histogramBins: _histogramBins,
                     season: _season,
                     seasonType: _seasonType,
+                    basis: _basis,
                   );
 
               return Column(
@@ -1410,7 +1411,8 @@ class _StudioPopulationPicker extends StatelessWidget {
     for (final row in rows) {
       teams.addAll(_studioTeams(row));
       players.putIfAbsent(row.playerId, () => _StudioPopulationChoice(
-        'player:${row.playerId}', row.player, 'Player · ${row.position}',
+        'player:${row.playerId}', row.player,
+        'Player · ${_studioTeams(row).join(', ')} · ${row.position}',
       ));
     }
     final choices = <_StudioPopulationChoice>[
@@ -2345,6 +2347,7 @@ class _InteractiveChartPanel extends StatefulWidget {
     required this.histogramBins,
     required this.season,
     required this.seasonType,
+    required this.basis,
   });
 
   final List<NbaStatsRow> rows;
@@ -2366,6 +2369,7 @@ class _InteractiveChartPanel extends StatefulWidget {
   final int histogramBins;
   final String season;
   final NbaStatsSeasonType seasonType;
+  final NbaStatsBasis basis;
 
   @override
   State<_InteractiveChartPanel> createState() => _InteractiveChartPanelState();
@@ -2407,7 +2411,8 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
         oldWidget.yMetric != widget.yMetric ||
         !_samePopulation(oldWidget.rows, widget.rows) ||
         oldWidget.season != widget.season ||
-        oldWidget.seasonType != widget.seasonType) {
+        oldWidget.seasonType != widget.seasonType ||
+        oldWidget.basis != widget.basis) {
       _zoom = 1;
       _center = const Offset(.5, .5);
       _hovered = null;
@@ -3323,26 +3328,23 @@ class _NbaChartPainter extends CustomPainter {
       counts[raw.clamp(0, bins - 1).toInt()] += 1;
     }
     final maxCount = math.max(1, counts.reduce(math.max));
+    final countStep = _studioNiceStep(maxCount.toDouble(), percentage: false);
+    final countTop = math.max(countStep, (maxCount / countStep).ceil() * countStep);
     final gridPaint = Paint()
       ..color = colorScheme.outlineVariant.withValues(alpha: .42)
       ..strokeWidth = .8;
 
-    for (var index = 0; index <= 4; index++) {
-      final t = index / 4;
-      final y = rect.bottom - rect.height * t;
-      canvas.drawLine(Offset(rect.left, y), Offset(rect.right, y), gridPaint);
-      _text(
-        canvas,
-        '${(maxCount * t).round()}',
-        Offset(22, y - 6),
-        colorScheme.onSurfaceVariant,
-        tiny: true,
-      );
+    for (var count = 0.0; count <= countTop + 1e-8; count += countStep) {
+      final y = rect.bottom - rect.height * count / countTop;
+      if (showGrid) canvas.drawLine(
+        Offset(rect.left, y), Offset(rect.right, y), gridPaint);
+      _text(canvas, count.toStringAsFixed(1), Offset(18, y - 7),
+        colorScheme.onSurfaceVariant, tiny: true);
     }
 
     final width = rect.width / bins;
     for (var index = 0; index < bins; index++) {
-      final height = rect.height * counts[index] / maxCount;
+      final height = rect.height * counts[index] / countTop;
       final bar = Rect.fromLTWH(
         rect.left + index * width + 2,
         rect.bottom - height,
@@ -3353,16 +3355,17 @@ class _NbaChartPainter extends CustomPainter {
         RRect.fromRectAndRadius(bar, const Radius.circular(4)),
         Paint()..color = colorScheme.primary.withValues(alpha: .76),
       );
-      if (index % 2 == 0 || bins <= 8) {
-        final value = minValue + span * index / bins;
-        _text(
-          canvas,
-          engine.formatValue(yMetric, value),
-          Offset(bar.left, rect.bottom + 10),
-          colorScheme.onSurfaceVariant,
-          tiny: true,
-        );
-      }
+
+    }
+
+    final histMax = maxValue == minValue ? minValue + 1 : maxValue;
+    for (final tick in _studioTicks(minValue, histMax,
+        percentage: _studioPercent(yMetric))) {
+      final px = _scaleChartValue(tick, minValue, histMax,
+          rect.left, rect.right);
+      _text(canvas, _studioTickLabel(tick, yMetric),
+          Offset((px - 19).clamp(rect.left, rect.right - 36).toDouble(),
+              rect.bottom + 11), colorScheme.onSurfaceVariant, tiny: true);
     }
 
     final sorted = [...values]..sort();
