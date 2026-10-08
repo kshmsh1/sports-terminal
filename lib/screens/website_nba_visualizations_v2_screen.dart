@@ -3036,13 +3036,6 @@ class _NbaChartPainter extends CustomPainter {
       }
     }
 
-    final bubbleValues = bubbles
-        ? valid
-            .map((item) => item.value(sizeMetric))
-            .whereType<double>()
-            .toList(growable: false)
-        : const <double>[];
-
     // Rank labels by statistical prominence, then place them after the points
     // to avoid masking marks and overlapping nearby player names.
     final labelCandidates = <NbaStatsRow>[];
@@ -3437,6 +3430,152 @@ class _NbaChartPainter extends CustomPainter {
       colorScheme.onSurfaceVariant,
       bold: true,
     );
+  }
+
+
+  void _paintBox(Canvas canvas, Rect rect) {
+    final groups = <String, List<double>>{};
+    for (final row in rows) {
+      final value = row.value(yMetric);
+      if (value == null || !value.isFinite) continue;
+      final position = row.position.split(RegExp(r'[-,/ ]+')).first.toUpperCase();
+      final group = const ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F']
+              .contains(position) ? position : 'Other';
+      groups.putIfAbsent(group, () => []).add(value);
+    }
+    if (groups.isEmpty) return;
+    const preferred = ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'Other'];
+    final labels = preferred.where(groups.containsKey).toList();
+    final all = [for (final v in groups.values) ...v];
+    final bounds = _paddedChartRange(all, percentage: _studioPercent(yMetric));
+    final plot = Rect.fromLTRB(rect.left + 66, rect.top + 16,
+        rect.right - 15, rect.bottom - 24);
+    _paintStatAxis(canvas, plot, bounds.$1, bounds.$2);
+    final height = plot.height / labels.length;
+    double at(double value) => _scaleChartValue(
+        value, bounds.$1, bounds.$2, plot.left, plot.right);
+
+    for (var index = 0; index < labels.length; index++) {
+      final label = labels[index];
+      final numbers = [...groups[label]!]..sort();
+      double quantile(double p) {
+        if (numbers.length == 1) return numbers.first;
+        final rank = (numbers.length - 1) * p;
+        final lo = rank.floor();
+        final hi = rank.ceil();
+        return numbers[lo] + (numbers[hi] - numbers[lo]) * (rank - lo);
+      }
+      final q1 = quantile(.25);
+      final median = quantile(.50);
+      final q3 = quantile(.75);
+      final iqr = q3 - q1;
+      final lowFence = q1 - 1.5 * iqr;
+      final highFence = q3 + 1.5 * iqr;
+      final inliers = numbers.where((value) =>
+          value >= lowFence && value <= highFence).toList();
+      final low = inliers.isEmpty ? numbers.first : inliers.first;
+      final high = inliers.isEmpty ? numbers.last : inliers.last;
+      final centerY = plot.top + (index + .5) * height;
+      final h = math.min(30.0, height * .48);
+      final ink = _visualGroupColor(label, colorScheme);
+      final thin = Paint()..color = ink..strokeWidth = 1.5;
+      if (index.isOdd) {
+        canvas.drawRect(Rect.fromLTWH(plot.left, centerY - height / 2,
+            plot.width, height),
+            Paint()..color = colorScheme.surfaceContainerHighest.withValues(alpha: .10));
+      }
+      _text(canvas, '$label · n=${numbers.length}',
+          Offset(rect.left + 3, centerY - 7), colorScheme.onSurface, small: true);
+      canvas.drawLine(Offset(at(low), centerY), Offset(at(high), centerY), thin);
+      for (final end in [low, high]) {
+        canvas.drawLine(Offset(at(end), centerY - h * .28),
+            Offset(at(end), centerY + h * .28), thin);
+      }
+      canvas.drawRRect(RRect.fromRectAndRadius(
+        Rect.fromLTRB(at(q1), centerY - h / 2,
+            math.max(at(q1) + 1, at(q3)), centerY + h / 2),
+        const Radius.circular(5)),
+        Paint()..color = ink.withValues(alpha: .75));
+      canvas.drawLine(Offset(at(median), centerY - h / 2),
+          Offset(at(median), centerY + h / 2),
+          Paint()..color = colorScheme.onSurface..strokeWidth = 2.5);
+      if (showOutliers) {
+        for (final value in numbers) {
+          if (value < lowFence || value > highFence) {
+            canvas.drawCircle(Offset(at(value), centerY), 3.0,
+                Paint()..color = ink);
+          }
+        }
+      }
+    }
+    _text(canvas, 'Boxes = 25th–75th percentile · line = median · whiskers = 1.5×IQR',
+      Offset(plot.left, rect.bottom + 31), colorScheme.onSurfaceVariant, small: true);
+  }
+
+  void _paintCumulative(Canvas canvas, Rect rect) {
+    final values = rows.map((row) => row.value(yMetric))
+        .whereType<double>().where((v) => v.isFinite).toList()..sort();
+    if (values.isEmpty) return;
+    final bounds = _paddedChartRange(values, percentage: _studioPercent(yMetric));
+    final plot = Rect.fromLTRB(rect.left + 4, rect.top + 10,
+        rect.right - 12, rect.bottom - 12);
+    _paintStatAxis(canvas, plot, bounds.$1, bounds.$2);
+    final grid = Paint()
+      ..color = colorScheme.outlineVariant.withValues(alpha: .38)
+      ..strokeWidth = .9;
+    for (final percent in const [0, 25, 50, 75, 100]) {
+      final y = _scaleChartValue(percent.toDouble(), 0, 100, plot.bottom, plot.top);
+      if (showGrid) {
+        canvas.drawLine(Offset(plot.left, y), Offset(plot.right, y), grid);
+      }
+      _text(canvas, '${percent.toStringAsFixed(0)}.0%',
+          Offset(3, y - 7), colorScheme.onSurfaceVariant, tiny: true);
+    }
+    double x(double value) => _scaleChartValue(value, bounds.$1,
+        bounds.$2, plot.left, plot.right);
+    double y(double count) => _scaleChartValue(count, 0,
+        values.length.toDouble(), plot.bottom, plot.top);
+    final line = Path()..moveTo(x(values.first), plot.bottom);
+    for (var i = 0; i < values.length; i++) {
+      line.lineTo(x(values[i]), y(i.toDouble()));
+      line.lineTo(x(values[i]), y(i + 1.0));
+    }
+    canvas.save();
+    canvas.clipRect(plot);
+    canvas.drawPath(line, Paint()
+      ..color = colorScheme.primary
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5);
+    final median = values[(values.length - 1) ~/ 2];
+    final medianX = x(median);
+    canvas.drawLine(Offset(medianX, plot.top), Offset(medianX, plot.bottom),
+      Paint()..color = colorScheme.tertiary.withValues(alpha: .8)..strokeWidth = 1.4);
+    canvas.restore();
+    _text(canvas, 'Share of eligible players at or below each value',
+      Offset(plot.left, rect.bottom + 33),
+      colorScheme.onSurfaceVariant, small: true);
+  }
+
+  void _paintStatAxis(Canvas canvas, Rect plot, double min, double max) {
+    final grid = Paint()
+      ..color = colorScheme.outlineVariant.withValues(alpha: .4)
+      ..strokeWidth = .9;
+    for (final value in _studioTicks(min, max,
+        percentage: _studioPercent(yMetric))) {
+      final x = _scaleChartValue(value, min, max, plot.left, plot.right);
+      if (showGrid) {
+        canvas.drawLine(Offset(x, plot.top), Offset(x, plot.bottom), grid);
+      }
+      _text(canvas, _studioTickLabel(value, yMetric),
+          Offset((x - 20).clamp(plot.left, plot.right - 35).toDouble(),
+              plot.bottom + 12),
+          colorScheme.onSurfaceVariant, tiny: true);
+    }
+    canvas.drawLine(plot.bottomLeft, plot.bottomRight,
+        Paint()..color = colorScheme.outlineVariant..strokeWidth = 1.2);
+    _text(canvas, engine.metric(yMetric).shortLabel,
+        Offset(plot.right - 38, plot.bottom + 33),
+        colorScheme.onSurfaceVariant, bold: true);
   }
 
   void _paintRadar(Canvas canvas, Rect rect) {
