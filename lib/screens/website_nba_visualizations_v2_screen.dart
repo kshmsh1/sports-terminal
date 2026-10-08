@@ -147,8 +147,6 @@ class _WebsiteNbaVisualizationsScreenState
     );
   }
 
-  void _reload() => setState(() => _snapshotFuture = _loadSnapshot());
-
   bool get _supportsXYAnalytics =>
       _chart == _ChartType.scatter || _chart == _ChartType.bubble;
 
@@ -3323,10 +3321,19 @@ class _NbaChartPainter extends CustomPainter {
         ..color = colorScheme.outlineVariant
         ..strokeWidth = 1,
     );
+    final tickMax = maxValue == minValue ? minValue + 1 : maxValue;
+    for (final tick in _studioTicks(minValue, tickMax,
+        percentage: _studioPercent(yMetric))) {
+      final x = _scaleChartValue(tick, minValue, tickMax, barLeft, barRight);
+      _text(canvas, _studioTickLabel(tick, yMetric),
+          Offset((x - 17).clamp(barLeft, barRight - 36).toDouble(),
+              rect.bottom + 12),
+          colorScheme.onSurfaceVariant, tiny: true);
+    }
     _text(
       canvas,
       engine.metric(yMetric).shortLabel,
-      Offset(barLeft, rect.bottom + 20),
+      Offset(barLeft, rect.bottom + 34),
       colorScheme.onSurfaceVariant,
       bold: true,
     );
