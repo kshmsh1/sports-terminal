@@ -89,7 +89,7 @@ void main() {
     expect(source, contains('_InteractiveChartPanel'));
     expect(source, contains('Hover to inspect · click to pin'));
     expect(source, contains('Swap axes'));
-    expect(source, contains('_ChartLegend'));
+    expect(source, isNot(contains('class _ChartLegend')));
     expect(source, contains('_visualGroupColor'));
     expect(source, contains('WebsiteNbaApiService'));
     expect(source, contains('seasonSnapshot('));
@@ -106,6 +106,15 @@ void main() {
     expect(source, contains('_ProfileComparisonLegend'));
     expect(source, contains('_ProfileMetricPanel'));
     expect(source, contains('_BubbleSizeLegend'));
+    expect(source, contains('onPointerSignal:'));
+    expect(source, contains('_zoomTo('));
+    expect(source, contains('_dragView('));
+    expect(source, contains('Reset view'));
+    expect(source, contains('Teams:'));
+    expect(source, contains('team stints'));
+    expect(source, contains('_studioHasMetric'));
+    expect(source, contains('_snapshotFuture'));
+    expect(source, contains('Deterministic top-N selection'));
     expect(source, contains("'histogram_bins': histogramBins"));
     expect(source, contains("'radar_compare_player': radarComparePlayer"));
     expect(shell, contains("_selected == 'visualizations'"));
