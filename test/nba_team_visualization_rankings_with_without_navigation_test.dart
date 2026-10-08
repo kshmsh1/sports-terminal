@@ -89,7 +89,7 @@ void main() {
     expect(source, isNot(contains("line('Line chart')")));
     expect(source, isNot(contains("pie('Pie chart')")));
     expect(source, contains('_InteractiveChartPanel'));
-    expect(source, contains('Hover/click to inspect · use +/− to zoom'));
+    expect(source, contains('Hover/click · two-finger scroll to zoom · drag to pan'));
     expect(source, contains('Swap axes'));
     expect(source, isNot(contains('class _ChartLegend')));
     expect(source, contains('_visualGroupColor'));
@@ -108,7 +108,7 @@ void main() {
     expect(source, contains('_ProfileComparisonLegend'));
     expect(source, contains('_ProfileMetricPanel'));
     expect(source, contains('_BubbleSizeLegend'));
-    expect(source, isNot(contains('onPointerSignal:')));
+    expect(source, contains('pointerSignalResolver.register('));
     expect(source, contains('Autocomplete<_StudioPopulationChoice>'));
     expect(source, contains('population_filter_key'));
     expect(source, contains('team:'));
