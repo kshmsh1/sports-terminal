@@ -111,7 +111,7 @@ void main() {
     expect(source, contains('_dragView('));
     expect(source, contains('Reset view'));
     expect(source, contains('Teams:'));
-    expect(source, contains('team stints'));
+    expect(source, contains('Team stints unavailable'));
     expect(source, contains('_studioHasMetric'));
     expect(source, contains('_snapshotFuture'));
     expect(source, contains('Deterministic top-N selection'));
