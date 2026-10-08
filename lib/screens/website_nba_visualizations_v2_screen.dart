@@ -2136,13 +2136,24 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
       widget.chart == _ChartType.scatter ||
       widget.chart == _ChartType.bubble;
 
+  bool _samePopulation(
+    List<NbaStatsRow> before,
+    List<NbaStatsRow> after,
+  ) {
+    if (before.length != after.length) return false;
+    for (var i = 0; i < before.length; i++) {
+      if (before[i].playerId != after[i].playerId) return false;
+    }
+    return true;
+  }
+
   @override
   void didUpdateWidget(covariant _InteractiveChartPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.chart != widget.chart ||
         oldWidget.xMetric != widget.xMetric ||
         oldWidget.yMetric != widget.yMetric ||
-        oldWidget.rows.length != widget.rows.length ||
+        !_samePopulation(oldWidget.rows, widget.rows) ||
         oldWidget.season != widget.season ||
         oldWidget.seasonType != widget.seasonType) {
       _zoom = 1;
