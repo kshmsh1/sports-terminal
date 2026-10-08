@@ -49,6 +49,7 @@ class _WebsiteNbaVisualizationsScreenState
   String _groupBy = 'Team';
   double _minGames = 20;
   int _topN = 40;
+  int _rankingTopN = 20;
   bool _showLabels = true;
   bool _showTrendLine = true;
   bool _showMeans = false;
@@ -155,6 +156,7 @@ class _WebsiteNbaVisualizationsScreenState
       _groupBy = 'Team';
       _minGames = 20;
       _topN = 40;
+      _rankingTopN = 20;
       _showLabels = true;
       _showTrendLine = true;
       _showMeans = false;
@@ -180,7 +182,7 @@ class _WebsiteNbaVisualizationsScreenState
         sizeMetric: _sizeMetric,
         groupBy: _groupBy,
         minGames: _minGames,
-        topN: _topN,
+        topN: _chart == _ChartType.bar ? _rankingTopN : _topN,
         showLabels: _showLabels,
         showTrendLine: _showTrendLine,
         showMeans: _showMeans,
@@ -268,9 +270,11 @@ class _WebsiteNbaVisualizationsScreenState
           const [0, 10, 20, 30, 40, 60, 100].contains(preset.topN)
               ? preset.topN
               : 40;
-      _topN = _chart == _ChartType.bar && (savedTopN == 0 || savedTopN > 20)
-          ? 20
-          : savedTopN;
+      if (_chart == _ChartType.bar) {
+        _rankingTopN = savedTopN == 10 ? 10 : 20;
+      } else {
+        _topN = savedTopN;
+      }
       _showLabels = preset.showLabels;
       _showTrendLine = preset.showTrendLine;
       _showMeans = preset.showMeans;
@@ -381,9 +385,11 @@ class _WebsiteNbaVisualizationsScreenState
               if (radarCompareName != null)
                 ranked.firstWhere((row) => row.player == radarCompareName),
             ],
-      _ => _topN == 0
+      _ => (_chart == _ChartType.bar ? _rankingTopN : _topN) == 0
           ? ranked
-          : ranked.take(_topN).toList(growable: false),
+          : ranked
+              .take(_chart == _ChartType.bar ? _rankingTopN : _topN)
+              .toList(growable: false),
     };
     final readoutRows =
         _chart == _ChartType.histogram ? ranked : rows;
@@ -655,18 +661,7 @@ class _WebsiteNbaVisualizationsScreenState
               ],
               onChanged: (value) {
                 if (value != null) {
-                  setState(() {
-                    _chart = value;
-                    if (_chart == _ChartType.radar) {
-                      _showTrendLine = false;
-                    } else {
-                      _radarComparePlayer = null;
-                    }
-                    if (_chart == _ChartType.bar &&
-                        (_topN == 0 || _topN > 20)) {
-                      _topN = 20;
-                    }
-                  });
+                  setState(() => _chart = value);
                 }
               },
             ),
@@ -849,7 +844,7 @@ class _WebsiteNbaVisualizationsScreenState
                 _chart != _ChartType.radar)
               _StudioSelect<int>(
                 label: 'Population size',
-                value: _topN,
+                value: _chart == _ChartType.bar ? _rankingTopN : _topN,
                 items: (_chart == _ChartType.bar
                         ? const [10, 20]
                         : const [0, 10, 20, 30, 40, 60, 100])
@@ -865,7 +860,15 @@ class _WebsiteNbaVisualizationsScreenState
                     )
                     .toList(),
                 onChanged: (value) {
-                  if (value != null) setState(() => _topN = value);
+                  if (value != null) {
+                    setState(() {
+                      if (_chart == _ChartType.bar) {
+                        _rankingTopN = value;
+                      } else {
+                        _topN = value;
+                      }
+                    });
+                  }
                 },
               ),
             if (_supportsXYAnalytics) ...[
