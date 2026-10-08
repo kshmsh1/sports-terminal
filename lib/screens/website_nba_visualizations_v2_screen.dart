@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/nba_stats_workstation_engine.dart';
@@ -2640,7 +2641,28 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
               : SystemMouseCursors.basic,
           onHover: (event) => _hover(event, size),
           onExit: (_) => setState(() => _hovered = null),
-          child: GestureDetector(
+          child: Listener(
+            onPointerSignal: (event) {
+              if (event is PointerScrollEvent &&
+                  _xy &&
+                  _plotRect(size).contains(event.localPosition)) {
+                // Claim the scroll signal before the enclosing page Scrollable
+                // can handle it. The chart zooms without moving the page.
+                GestureBinding.instance.pointerSignalResolver.register(
+                  event,
+                  (signal) {
+                    if (signal is PointerScrollEvent) {
+                      _zoomTo(
+                        _zoom * (signal.scrollDelta.dy < 0 ? 1.18 : 1 / 1.18),
+                        event.localPosition,
+                        size,
+                      );
+                    }
+                  },
+                );
+              }
+            },
+            child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapDown: _inspectable ? (details) => _tap(details, size) : null,
             onScaleStart: _xy ? _scaleStart : null,
@@ -2690,7 +2712,7 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
                       ),
                       child: Text(
                         _pinned == null
-                            ? 'Hover/click to inspect · use +/− to zoom'
+                            ? 'Hover/click · two-finger scroll to zoom · drag to pan'
                             : 'Pinned · click another point to replace',
                         style: TextStyle(
                           color: widget.colorScheme.onSurfaceVariant,
@@ -2865,6 +2887,7 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
                   ),
               ],
             ),
+          ),
           ),
         );
       },
