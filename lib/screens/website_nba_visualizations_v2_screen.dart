@@ -36,6 +36,8 @@ class _WebsiteNbaVisualizationsScreenState
   final _api = const WebsiteNbaApiService();
   final _engine = const NbaStatsWorkstationEngine();
   final _search = TextEditingController();
+  String? _populationFilterKey;
+  int _populationSearchVersion = 0;
   final List<_SavedVisualization> _saved = [];
 
   List<WebsiteNbaSeason> _seasons = const [];
@@ -165,6 +167,8 @@ class _WebsiteNbaVisualizationsScreenState
       _radarPlayer = null;
       _radarComparePlayer = null;
       _search.clear();
+      _populationFilterKey = null;
+      _populationSearchVersion++;
       _activePresetId = null;
       _snapshotFuture = _loadSnapshot();
     });
@@ -191,6 +195,7 @@ class _WebsiteNbaVisualizationsScreenState
         radarPlayer: _radarPlayer,
         radarComparePlayer: _radarComparePlayer,
         search: _search.text,
+        populationFilterKey: _populationFilterKey,
       );
 
   Future<void> _savePreset({bool saveAs = false}) async {
@@ -286,6 +291,8 @@ class _WebsiteNbaVisualizationsScreenState
       _radarPlayer = preset.radarPlayer;
       _radarComparePlayer = preset.radarComparePlayer;
       _search.text = preset.search;
+      _populationFilterKey = preset.populationFilterKey;
+      _populationSearchVersion++;
       _activePresetId = preset.id;
       _snapshotFuture = _loadSnapshot();
     });
@@ -331,14 +338,14 @@ class _WebsiteNbaVisualizationsScreenState
   }
 
   Widget _buildPage(BuildContext context, List<NbaStatsRow> allRows) {
-    final query = _search.text.trim().toLowerCase();
+    final selected = _populationFilterKey;
     final matching = allRows.where((row) {
       if ((row.value('gp') ?? 0) < _minGames) return false;
-      if (query.isNotEmpty &&
-          !'${row.player} ${_studioTeams(row).join(' ')} ${row.position}'
-              .toLowerCase()
-              .contains(query)) {
-        return false;
+      if (selected != null) {
+        if (selected.startsWith('team:') &&
+            !_studioTeams(row).contains(selected.substring(5))) return false;
+        if (selected.startsWith('player:') &&
+            row.playerId != selected.substring(7)) return false;
       }
       return true;
     }).toList(growable: false);
@@ -415,6 +422,7 @@ class _WebsiteNbaVisualizationsScreenState
         final controls = _buildControlRail(
           context,
           filtered: ranked,
+          allRows: allRows,
           matchingCount: matching.length,
           dataCount: allRows.length,
           radarName: radarName,
@@ -550,6 +558,7 @@ class _WebsiteNbaVisualizationsScreenState
   Widget _buildControlRail(
     BuildContext context, {
     required List<NbaStatsRow> filtered,
+    required List<NbaStatsRow> allRows,
     required int matchingCount,
     required int dataCount,
     required String? radarName,
@@ -602,6 +611,9 @@ class _WebsiteNbaVisualizationsScreenState
                 setState(() {
                   _season = value;
                   _minGames = _defaultMinGames;
+                  _populationFilterKey = null;
+                  _search.clear();
+                  _populationSearchVersion++;
                   _radarPlayer = null;
                   _radarComparePlayer = null;
                   _snapshotFuture = _loadSnapshot();
@@ -627,6 +639,9 @@ class _WebsiteNbaVisualizationsScreenState
                 setState(() {
                   _seasonType = value;
                   _minGames = _defaultMinGames;
+                  _populationFilterKey = null;
+                  _search.clear();
+                  _populationSearchVersion++;
                   _radarPlayer = null;
                   _radarComparePlayer = null;
                   _snapshotFuture = _loadSnapshot();
@@ -803,25 +818,30 @@ class _WebsiteNbaVisualizationsScreenState
                 ),
               ),
             ),
-            TextField(
-              controller: _search,
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                isDense: true,
-                prefixIcon: const Icon(Icons.search_rounded, size: 19),
-                suffixIcon: _search.text.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Clear filter',
-                        onPressed: () {
-                          _search.clear();
-                          setState(() {});
-                        },
-                        icon: const Icon(Icons.close_rounded, size: 17),
-                      ),
-                hintText: 'Player, team, position…',
-                labelText: 'Filter',
-              ),
+            _StudioPopulationPicker(
+              key: ValueKey('$_season/${_seasonType.name}/$_populationSearchVersion'),
+              rows: allRows,
+              initialText: _search.text,
+              selectedKey: _populationFilterKey,
+              onTyping: (value) {
+                _search.text = value;
+                if (_populationFilterKey != null) {
+                  setState(() => _populationFilterKey = null);
+                }
+              },
+              onSelected: (option) {
+                setState(() {
+                  _populationFilterKey = option.key;
+                  _search.text = option.label;
+                });
+              },
+              onClear: () {
+                setState(() {
+                  _populationFilterKey = null;
+                  _search.clear();
+                  _populationSearchVersion++;
+                });
+              },
             ),
             const SizedBox(height: 12),
             Row(
@@ -1265,6 +1285,153 @@ class _StudioSectionDivider extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 15),
         child: Divider(height: 1, color: Theme.of(context).dividerColor),
       );
+}
+
+
+class _StudioPopulationChoice {
+  const _StudioPopulationChoice(this.key, this.label, this.subtitle);
+  final String key;
+  final String label;
+  final String subtitle;
+}
+
+const _studioTeamNames = <String, String>{
+  'ATL': 'Atlanta Hawks', 'BOS': 'Boston Celtics',
+  'BKN': 'Brooklyn Nets', 'BRK': 'Brooklyn Nets',
+  'CHA': 'Charlotte Hornets', 'CHI': 'Chicago Bulls',
+  'CLE': 'Cleveland Cavaliers', 'DAL': 'Dallas Mavericks',
+  'DEN': 'Denver Nuggets', 'DET': 'Detroit Pistons',
+  'GSW': 'Golden State Warriors', 'HOU': 'Houston Rockets',
+  'IND': 'Indiana Pacers', 'LAC': 'LA Clippers',
+  'LAL': 'Los Angeles Lakers', 'MEM': 'Memphis Grizzlies',
+  'MIA': 'Miami Heat', 'MIL': 'Milwaukee Bucks',
+  'MIN': 'Minnesota Timberwolves', 'NOP': 'New Orleans Pelicans',
+  'NYK': 'New York Knicks', 'OKC': 'Oklahoma City Thunder',
+  'ORL': 'Orlando Magic', 'PHI': 'Philadelphia 76ers',
+  'PHO': 'Phoenix Suns', 'PHX': 'Phoenix Suns',
+  'POR': 'Portland Trail Blazers', 'SAC': 'Sacramento Kings',
+  'SAS': 'San Antonio Spurs', 'TOR': 'Toronto Raptors',
+  'UTA': 'Utah Jazz', 'WAS': 'Washington Wizards',
+  'WSB': 'Washington Bullets', 'SEA': 'Seattle SuperSonics',
+  'NJN': 'New Jersey Nets', 'NOH': 'New Orleans Hornets',
+  'NOK': 'New Orleans/Oklahoma City Hornets',
+  'VAN': 'Vancouver Grizzlies', 'SDC': 'San Diego Clippers',
+  'KCK': 'Kansas City Kings', 'KCO': 'Kansas City-Omaha Kings',
+};
+
+class _StudioPopulationPicker extends StatelessWidget {
+  const _StudioPopulationPicker({
+    super.key,
+    required this.rows,
+    required this.initialText,
+    required this.selectedKey,
+    required this.onTyping,
+    required this.onSelected,
+    required this.onClear,
+  });
+
+  final List<NbaStatsRow> rows;
+  final String initialText;
+  final String? selectedKey;
+  final ValueChanged<String> onTyping;
+  final ValueChanged<_StudioPopulationChoice> onSelected;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final teams = <String>{};
+    final players = <String, _StudioPopulationChoice>{};
+    for (final row in rows) {
+      teams.addAll(_studioTeams(row));
+      players.putIfAbsent(row.playerId, () => _StudioPopulationChoice(
+        'player:${row.playerId}', row.player, 'Player · ${row.position}',
+      ));
+    }
+    final choices = <_StudioPopulationChoice>[
+      for (final team in teams.toList()..sort())
+        _StudioPopulationChoice(
+          'team:$team', '${_studioTeamNames[team] ?? team} ($team)', 'Team',
+        ),
+      ...players.values,
+    ];
+    choices.sort((a, b) {
+      final group = a.subtitle == 'Team' ? 0 : 1;
+      final other = b.subtitle == 'Team' ? 0 : 1;
+      return group != other
+          ? group.compareTo(other)
+          : a.label.compareTo(b.label);
+    });
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Autocomplete<_StudioPopulationChoice>(
+          initialValue: TextEditingValue(text: initialText),
+          displayStringForOption: (option) => option.label,
+          optionsBuilder: (value) {
+            final query = value.text.trim().toLowerCase();
+            if (query.isEmpty) return const Iterable<_StudioPopulationChoice>.empty();
+            return choices.where((option) =>
+                option.label.toLowerCase().contains(query) ||
+                option.subtitle.toLowerCase().contains(query))
+                .take(12);
+          },
+          onSelected: onSelected,
+          optionsViewBuilder: (context, select, options) => Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              elevation: 9,
+              borderRadius: BorderRadius.circular(10),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 300, maxWidth: 325),
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  children: [
+                    for (final option in options)
+                      ListTile(
+                        dense: true,
+                        title: Text(option.label, maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                        subtitle: Text(option.subtitle),
+                        onTap: () => select(option),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          fieldViewBuilder: (context, controller, focusNode, submit) =>
+              TextField(
+                controller: controller,
+                focusNode: focusNode,
+                onChanged: onTyping,
+                onSubmitted: (_) => submit(),
+                decoration: InputDecoration(
+                  isDense: true,
+                  labelText: 'Filter by team or player',
+                  hintText: 'Search and select…',
+                  prefixIcon: const Icon(Icons.search_rounded, size: 19),
+                  suffixIcon: selectedKey == null
+                      ? null
+                      : IconButton(
+                          tooltip: 'Clear selection',
+                          onPressed: onClear,
+                          icon: const Icon(Icons.close_rounded, size: 17),
+                        ),
+                ),
+              ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          selectedKey == null
+              ? 'Choose a result to filter. Typing alone does not change the chart.'
+              : 'Exact selection active · clear to see all players',
+          style: TextStyle(fontSize: 10,
+              color: Theme.of(context).colorScheme.onSurfaceVariant),
+        ),
+      ],
+    );
+  }
 }
 
 class _StudioSelect<T> extends StatelessWidget {
@@ -3614,6 +3781,7 @@ class _SavedVisualization {
     required this.radarPlayer,
     required this.radarComparePlayer,
     required this.search,
+    required this.populationFilterKey,
   });
 
   final String id;
@@ -3635,6 +3803,7 @@ class _SavedVisualization {
   final String? radarPlayer;
   final String? radarComparePlayer;
   final String search;
+  final String? populationFilterKey;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -3656,6 +3825,7 @@ class _SavedVisualization {
         'radar_player': radarPlayer,
         'radar_compare_player': radarComparePlayer,
         'search': search,
+        'population_filter_key': populationFilterKey,
       };
 
   factory _SavedVisualization.fromJson(Map<String, dynamic> json) =>
@@ -3670,7 +3840,7 @@ class _SavedVisualization {
         yMetric: json['y_metric']?.toString() ?? 'pts',
         sizeMetric: json['size_metric']?.toString() ?? 'reb',
         groupBy: json['group_by']?.toString() ?? 'Team',
-        minGames: (json['min_games'] as num?)?.toDouble() ?? 20,
+        minGames: (json['min_games'] as num?)?.toDouble() ?? (json['season_type'] == 'playoffs' ? 4 : 50),
         topN: (json['top_n'] as num?)?.toInt() ?? 40,
         showLabels: json['show_labels'] != false,
         showTrendLine: json['show_trend_line'] != false,
@@ -3679,5 +3849,6 @@ class _SavedVisualization {
         radarPlayer: json['radar_player']?.toString(),
         radarComparePlayer: json['radar_compare_player']?.toString(),
         search: json['search']?.toString() ?? '',
+        populationFilterKey: json['population_filter_key']?.toString(),
       );
 }
