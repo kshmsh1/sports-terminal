@@ -14,6 +14,8 @@ enum _ChartType {
   bubble('Bubble'),
   bar('Player ranking'),
   histogram('Distribution'),
+  box('Position box plot'),
+  cumulative('Cumulative percentile'),
   radar('Player profile');
 
   const _ChartType(this.label);
@@ -56,6 +58,10 @@ class _WebsiteNbaVisualizationsScreenState
   bool _showLabels = true;
   bool _showTrendLine = true;
   bool _showMeans = false;
+  bool _showGrid = true;
+  bool _showZeroLine = false;
+  bool _showOutliers = true;
+  String _labelDensity = 'More';
   int _histogramBins = 12;
   String? _radarPlayer;
   String? _radarComparePlayer;
@@ -163,6 +169,10 @@ class _WebsiteNbaVisualizationsScreenState
       _showLabels = true;
       _showTrendLine = true;
       _showMeans = false;
+      _showGrid = true;
+      _showZeroLine = false;
+      _showOutliers = true;
+      _labelDensity = 'More';
       _histogramBins = 12;
       _radarPlayer = null;
       _radarComparePlayer = null;
@@ -386,7 +396,7 @@ class _WebsiteNbaVisualizationsScreenState
         : null;
 
     final rows = switch (_chart) {
-      _ChartType.histogram => filtered,
+      _ChartType.histogram || _ChartType.box || _ChartType.cumulative => filtered,
       _ChartType.radar => radarName == null
           ? <NbaStatsRow>[]
           : [
@@ -401,7 +411,7 @@ class _WebsiteNbaVisualizationsScreenState
               .toList(growable: false),
     };
     final readoutRows =
-        _chart == _ChartType.histogram ? ranked : rows;
+        _chart == _ChartType.histogram || _chart == _ChartType.box || _chart == _ChartType.cumulative ? ranked : rows;
 
     final analytics = _supportsXYAnalytics
         ? _RegressionSummary.fromRows(rows, _xMetric, _yMetric)
@@ -757,6 +767,14 @@ class _WebsiteNbaVisualizationsScreenState
                 engine: _engine,
                 onChanged: (value) => setState(() => _yMetric = value),
               ),
+              if (_yMetric == 'game_score_proxy')
+                const Padding(
+                  padding: EdgeInsets.only(top: 5),
+                  child: Text(
+                    'PROD is a custom box-score index: PTS + 0.7×REB + 0.7×AST + STL + BLK − 0.7×TOV. Not an official NBA metric.',
+                    style: TextStyle(fontSize: 10),
+                  ),
+                ),
               if (_chart == _ChartType.histogram) ...[
                 const SizedBox(height: 10),
                 _StudioSelect<int>(
@@ -787,7 +805,7 @@ class _WebsiteNbaVisualizationsScreenState
                   onChanged: (value) => setState(() => _sizeMetric = value),
                 ),
               ],
-              if (_chart != _ChartType.histogram) ...[
+              if (_chart != _ChartType.histogram && _chart != _ChartType.box && _chart != _ChartType.cumulative) ...[
                 const SizedBox(height: 10),
                 _StudioSelect<String>(
                   label: 'Color by',
@@ -869,6 +887,8 @@ class _WebsiteNbaVisualizationsScreenState
               onChanged: (value) => setState(() => _minGames = value),
             ),
             if (_chart != _ChartType.histogram &&
+                _chart != _ChartType.box &&
+                _chart != _ChartType.cumulative &&
                 _chart != _ChartType.radar)
               _StudioSelect<int>(
                 label: 'Population size',
@@ -917,6 +937,38 @@ class _WebsiteNbaVisualizationsScreenState
                 label: 'Mean reference lines',
                 value: _showMeans,
                 onChanged: (value) => setState(() => _showMeans = value),
+              ),
+              _StudioToggle(
+                label: 'Gridlines',
+                value: _showGrid,
+                onChanged: (value) => setState(() => _showGrid = value),
+              ),
+              _StudioToggle(
+                label: 'Zero reference lines',
+                value: _showZeroLine,
+                onChanged: (value) => setState(() => _showZeroLine = value),
+              ),
+              if (_showLabels)
+                _StudioSelect<String>(
+                  label: 'Label density',
+                  value: _labelDensity,
+                  items: const [
+                    DropdownMenuItem(value: 'Selective', child: Text('Selective')),
+                    DropdownMenuItem(value: 'More', child: Text('More (recommended)')),
+                    DropdownMenuItem(value: 'All', child: Text('All (where space permits)')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) setState(() => _labelDensity = value);
+                  },
+                ),
+            ],
+            if (_chart == _ChartType.box) ...[
+              const _StudioSectionDivider(),
+              const _StudioSectionTitle('DISPLAY'),
+              _StudioToggle(
+                label: 'Show outlier points',
+                value: _showOutliers,
+                onChanged: (value) => setState(() => _showOutliers = value),
               ),
             ],
             const _StudioSectionDivider(),
@@ -981,6 +1033,8 @@ class _WebsiteNbaVisualizationsScreenState
       _ChartType.bubble => '$metricLabel vs $xLabel · bubble size ${_engine.metric(_sizeMetric).shortLabel}',
       _ChartType.bar => '$metricLabel player ranking',
       _ChartType.histogram => '$metricLabel distribution',
+      _ChartType.box => '$metricLabel by position · quartiles',
+      _ChartType.cumulative => '$metricLabel cumulative percentile',
       _ChartType.radar => top == null ? 'Player profile' : '${top.player} profile',
     };
 
@@ -1005,8 +1059,8 @@ class _WebsiteNbaVisualizationsScreenState
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      _chart == _ChartType.histogram
-                          ? 'Filtered population · ${rows.length} players'
+                      (_chart == _ChartType.histogram || _chart == _ChartType.box || _chart == _ChartType.cumulative)
+                          ? 'Full eligible population · ${rows.length} players'
                           : _chart == _ChartType.radar
                               ? rows.length > 1
                                   ? 'Percentile comparison across six core metrics'
@@ -1079,7 +1133,7 @@ class _WebsiteNbaVisualizationsScreenState
             yLabel: metricLabel,
           ),
           const SizedBox(height: 10),
-        ] else if (_chart == _ChartType.histogram && rows.isNotEmpty) ...[
+        ] else if ((_chart == _ChartType.histogram || _chart == _ChartType.box || _chart == _ChartType.cumulative) && rows.isNotEmpty) ...[
           _DistributionInsightBar(
             rows: rows,
             metricKey: _yMetric,
@@ -1125,6 +1179,10 @@ class _WebsiteNbaVisualizationsScreenState
                     showLabels: _showLabels,
                     showTrendLine: _showTrendLine,
                     showMeans: _showMeans,
+                    showGrid: _showGrid,
+                    showZeroLine: _showZeroLine,
+                    showOutliers: _showOutliers,
+                    labelDensity: _labelDensity,
                     histogramBins: _histogramBins,
                     season: _season,
                     seasonType: _seasonType,
@@ -2272,6 +2330,10 @@ class _InteractiveChartPanel extends StatefulWidget {
     required this.showLabels,
     required this.showTrendLine,
     required this.showMeans,
+    required this.showGrid,
+    required this.showZeroLine,
+    required this.showOutliers,
+    required this.labelDensity,
     required this.histogramBins,
     required this.season,
     required this.seasonType,
@@ -2289,6 +2351,10 @@ class _InteractiveChartPanel extends StatefulWidget {
   final bool showLabels;
   final bool showTrendLine;
   final bool showMeans;
+  final bool showGrid;
+  final bool showZeroLine;
+  final bool showOutliers;
+  final String labelDensity;
   final int histogramBins;
   final String season;
   final NbaStatsSeasonType seasonType;
@@ -2581,6 +2647,10 @@ class _InteractiveChartPanelState extends State<_InteractiveChartPanel> {
                       showLabels: widget.showLabels,
                       showTrendLine: widget.showTrendLine,
                       showMeans: widget.showMeans,
+                      showGrid: widget.showGrid,
+                      showZeroLine: widget.showZeroLine,
+                      showOutliers: widget.showOutliers,
+                      labelDensity: widget.labelDensity,
                       histogramBins: widget.histogramBins,
                       highlightedPlayer: active?.player,
                       viewport: _viewport(),
@@ -2838,6 +2908,10 @@ class _NbaChartPainter extends CustomPainter {
     required this.showLabels,
     required this.showTrendLine,
     required this.showMeans,
+    required this.showGrid,
+    required this.showZeroLine,
+    required this.showOutliers,
+    required this.labelDensity,
     required this.histogramBins,
     this.highlightedPlayer,
     this.viewport,
@@ -2855,6 +2929,10 @@ class _NbaChartPainter extends CustomPainter {
   final bool showLabels;
   final bool showTrendLine;
   final bool showMeans;
+  final bool showGrid;
+  final bool showZeroLine;
+  final bool showOutliers;
+  final String labelDensity;
   final int histogramBins;
   final String? highlightedPlayer;
   final _StudioViewport? viewport;
@@ -2877,6 +2955,10 @@ class _NbaChartPainter extends CustomPainter {
         _paintBars(canvas, rect);
       case _ChartType.histogram:
         _paintHistogram(canvas, rect);
+      case _ChartType.box:
+        _paintBox(canvas, rect);
+      case _ChartType.cumulative:
+        _paintCumulative(canvas, rect);
       case _ChartType.radar:
         _paintRadar(canvas, rect);
     }
