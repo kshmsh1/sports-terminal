@@ -201,6 +201,10 @@ class _WebsiteNbaVisualizationsScreenState
         showLabels: _showLabels,
         showTrendLine: _showTrendLine,
         showMeans: _showMeans,
+        showGrid: _showGrid,
+        showZeroLine: _showZeroLine,
+        showOutliers: _showOutliers,
+        labelDensity: _labelDensity,
         histogramBins: _histogramBins,
         radarPlayer: _radarPlayer,
         radarComparePlayer: _radarComparePlayer,
@@ -294,6 +298,10 @@ class _WebsiteNbaVisualizationsScreenState
       _showLabels = preset.showLabels;
       _showTrendLine = preset.showTrendLine;
       _showMeans = preset.showMeans;
+      _showGrid = preset.showGrid;
+      _showZeroLine = preset.showZeroLine;
+      _showOutliers = preset.showOutliers;
+      _labelDensity = preset.labelDensity;
       _histogramBins =
           const [8, 10, 12, 16, 20].contains(preset.histogramBins)
               ? preset.histogramBins
@@ -4058,6 +4066,10 @@ class _SavedVisualization {
     required this.showLabels,
     required this.showTrendLine,
     required this.showMeans,
+    required this.showGrid,
+    required this.showZeroLine,
+    required this.showOutliers,
+    required this.labelDensity,
     required this.histogramBins,
     required this.radarPlayer,
     required this.radarComparePlayer,
@@ -4080,6 +4092,10 @@ class _SavedVisualization {
   final bool showLabels;
   final bool showTrendLine;
   final bool showMeans;
+  final bool showGrid;
+  final bool showZeroLine;
+  final bool showOutliers;
+  final String labelDensity;
   final int histogramBins;
   final String? radarPlayer;
   final String? radarComparePlayer;
@@ -4102,6 +4118,10 @@ class _SavedVisualization {
         'show_labels': showLabels,
         'show_trend_line': showTrendLine,
         'show_means': showMeans,
+        'show_grid': showGrid,
+        'show_zero_line': showZeroLine,
+        'show_outliers': showOutliers,
+        'label_density': labelDensity,
         'histogram_bins': histogramBins,
         'radar_player': radarPlayer,
         'radar_compare_player': radarComparePlayer,
@@ -4126,6 +4146,13 @@ class _SavedVisualization {
         showLabels: json['show_labels'] != false,
         showTrendLine: json['show_trend_line'] != false,
         showMeans: json['show_means'] == true,
+        showGrid: json['show_grid'] != false,
+        showZeroLine: json['show_zero_line'] == true,
+        showOutliers: json['show_outliers'] != false,
+        labelDensity: const ['Selective', 'More', 'All']
+                .contains(json['label_density'])
+            ? json['label_density'].toString()
+            : 'More',
         histogramBins: (json['histogram_bins'] as num?)?.toInt() ?? 12,
         radarPlayer: json['radar_player']?.toString(),
         radarComparePlayer: json['radar_compare_player']?.toString(),
