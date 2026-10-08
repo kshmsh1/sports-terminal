@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/nba_stats_workstation_engine.dart';
+import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
 
 enum _ChartType {
@@ -55,7 +56,7 @@ class _WebsiteNbaVisualizationsScreenState
   String? _radarPlayer;
   String? _radarComparePlayer;
   String? _activePresetId;
-  late Future<List<NbaStatsRow>> _future;
+  late Future<NbaTerminalSeedSnapshot> _snapshotFuture;
 
   static const _metricKeys = <String>[
     'gp',
@@ -81,7 +82,7 @@ class _WebsiteNbaVisualizationsScreenState
   @override
   void initState() {
     super.initState();
-    _future = _initialize();
+    _snapshotFuture = _initialize();
   }
 
   @override
@@ -90,27 +91,21 @@ class _WebsiteNbaVisualizationsScreenState
     super.dispose();
   }
 
-  Future<List<NbaStatsRow>> _initialize() async {
+  Future<NbaTerminalSeedSnapshot> _initialize() async {
     _seasons = await _api.seasons();
     if (_seasons.isNotEmpty && !_seasons.any((item) => item.id == _season)) {
       _season = _seasons.first.id;
     }
     await _loadSaved();
-    return _loadRows();
+    return _loadSnapshot();
   }
 
-  Future<List<NbaStatsRow>> _loadRows() async {
-    final snapshot = await _api.seasonSnapshot(
-      _season,
-      seasonType:
-          _seasonType == NbaStatsSeasonType.playoffs ? 'playoffs' : 'regular',
-    );
-    return _engine.buildRows(
-      snapshot,
-      basis: _basis,
-      seasonType: _seasonType,
-    );
-  }
+  Future<NbaTerminalSeedSnapshot> _loadSnapshot() => _api.seasonSnapshot(
+        _season,
+        seasonType: _seasonType == NbaStatsSeasonType.playoffs
+            ? 'playoffs'
+            : 'regular',
+      );
 
   Future<void> _loadSaved() async {
     final prefs = await SharedPreferences.getInstance();
@@ -141,7 +136,7 @@ class _WebsiteNbaVisualizationsScreenState
     );
   }
 
-  void _reload() => setState(() => _future = _loadRows());
+  void _reload() => setState(() => _snapshotFuture = _loadSnapshot());
 
   bool get _supportsXYAnalytics =>
       _chart == _ChartType.scatter || _chart == _ChartType.bubble;
@@ -168,7 +163,7 @@ class _WebsiteNbaVisualizationsScreenState
       _radarComparePlayer = null;
       _search.clear();
       _activePresetId = null;
-      _future = _loadRows();
+      _snapshotFuture = _loadSnapshot();
     });
   }
 
@@ -287,7 +282,7 @@ class _WebsiteNbaVisualizationsScreenState
       _radarComparePlayer = preset.radarComparePlayer;
       _search.text = preset.search;
       _activePresetId = preset.id;
-      _future = _loadRows();
+      _snapshotFuture = _loadSnapshot();
     });
   }
 
@@ -300,8 +295,8 @@ class _WebsiteNbaVisualizationsScreenState
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<NbaStatsRow>>(
-      future: _future,
+    return FutureBuilder<NbaTerminalSeedSnapshot>(
+      future: _snapshotFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const SizedBox(
@@ -317,31 +312,55 @@ class _WebsiteNbaVisualizationsScreenState
             ),
           );
         }
-        return _buildPage(context, snapshot.data!);
+        return _buildPage(
+          context,
+          _engine.buildRows(
+            snapshot.data!,
+            basis: _basis,
+            seasonType: _seasonType,
+          ),
+        );
       },
     );
   }
 
   Widget _buildPage(BuildContext context, List<NbaStatsRow> allRows) {
     final query = _search.text.trim().toLowerCase();
-    final filtered = allRows.where((row) {
+    final matching = allRows.where((row) {
       if ((row.value('gp') ?? 0) < _minGames) return false;
       if (query.isNotEmpty &&
-          !'${row.player} ${row.team} ${row.position}'
+          !'${row.player} ${_studioTeams(row).join(' ')} ${row.position}'
               .toLowerCase()
               .contains(query)) {
         return false;
       }
-      if (row.value(_yMetric) == null) return false;
-      if (_supportsXYAnalytics && row.value(_xMetric) == null) return false;
       return true;
     }).toList(growable: false);
 
+    final filtered = matching.where((row) {
+      if (_chart == _ChartType.radar) {
+        return const ['pts', 'reb', 'ast', 'stl', 'blk', 'ts_pct']
+            .any((metric) => _studioHasMetric(row, metric, _basis));
+      }
+      if (!_studioHasMetric(row, _yMetric, _basis)) return false;
+      if (_supportsXYAnalytics &&
+          !_studioHasMetric(row, _xMetric, _basis)) return false;
+      if (_chart == _ChartType.bubble &&
+          !_studioHasMetric(row, _sizeMetric, _basis)) return false;
+      return true;
+    }).toList(growable: false);
+
+    // Deterministic top-N selection: highest Y/ranking metric first,
+    // followed by full player name and stable player ID for ties.
     final ranked = [...filtered]
-      ..sort(
-        (a, b) => (b.value(_yMetric) ?? -99999)
-            .compareTo(a.value(_yMetric) ?? -99999),
-      );
+      ..sort((a, b) {
+        final byMetric = _chart == _ChartType.radar
+            ? 0
+            : b.value(_yMetric)!.compareTo(a.value(_yMetric)!);
+        if (byMetric != 0) return byMetric;
+        final byName = a.player.compareTo(b.player);
+        return byName != 0 ? byName : a.playerId.compareTo(b.playerId);
+      });
 
     final radarName = _radarPlayer != null &&
             ranked.any((row) => row.player == _radarPlayer)
@@ -388,6 +407,8 @@ class _WebsiteNbaVisualizationsScreenState
         final controls = _buildControlRail(
           context,
           filtered: ranked,
+          matchingCount: matching.length,
+          dataCount: allRows.length,
           radarName: radarName,
           radarCompareName: radarCompareName,
         );
@@ -521,6 +542,8 @@ class _WebsiteNbaVisualizationsScreenState
   Widget _buildControlRail(
     BuildContext context, {
     required List<NbaStatsRow> filtered,
+    required int matchingCount,
+    required int dataCount,
     required String? radarName,
     required String? radarCompareName,
   }) {
@@ -615,8 +638,7 @@ class _WebsiteNbaVisualizationsScreenState
               ],
               onChanged: (value) {
                 if (value == null) return;
-                _basis = value;
-                _reload();
+                setState(() => _basis = value);
               },
             ),
             const _StudioSectionDivider(),
@@ -768,6 +790,16 @@ class _WebsiteNbaVisualizationsScreenState
             ],
             const _StudioSectionDivider(),
             const _StudioSectionTitle('POPULATION'),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                '${filtered.length} eligible · $matchingCount match filters · $dataCount season players',
+                style: TextStyle(
+                  color: colors.onSurfaceVariant,
+                  fontSize: 10.5,
+                ),
+              ),
+            ),
             TextField(
               controller: _search,
               onChanged: (_) => setState(() {}),
@@ -827,7 +859,7 @@ class _WebsiteNbaVisualizationsScreenState
                         child: Text(
                           value == 0
                               ? 'All eligible players'
-                              : 'Top $value by selected metric',
+                              : 'Top $value by ${_engine.metric(_yMetric).shortLabel}',
                         ),
                       ),
                     )
@@ -1070,9 +1102,28 @@ class _WebsiteNbaVisualizationsScreenState
                   SizedBox(
                     height: height,
                     child: rows.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'No players match the active filters.',
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('No eligible player data for this view.'),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Check minimum games, the selected season and rate, or choose a metric with source coverage.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: colors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  TextButton(
+                                    onPressed: () => setState(() => _minGames = 0),
+                                    child: const Text('Clear games minimum'),
+                                  ),
+                                ],
+                              ),
                             ),
                           )
                         : _chart == _ChartType.radar &&
