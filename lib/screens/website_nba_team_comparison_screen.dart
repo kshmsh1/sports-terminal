@@ -292,7 +292,12 @@ class _WebsiteNbaTeamComparisonScreenState
                 : 'Choose at least two teams to compare their available statistics.',
             icon: Icons.groups_outlined,
           ),
-        if (selected.length >= 2) ...[
+        if (selected.length >= 2 && selected.every((team) => team.row.values.isEmpty))
+          const ComparisonEmptyState(
+            title: 'Team names are available, but season statistics are missing',
+            message: 'The static shard does not contain numerical team-season records. Switch seasons or wait for a historical-data rebuild; the comparison will not invent zeros.',
+          ),
+        if (selected.length >= 2 && selected.any((team) => team.row.values.isNotEmpty)) ...[
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -398,6 +403,7 @@ class _TeamSelectorCard extends StatelessWidget {
                 DropdownButtonFormField<String>(
                   key: ValueKey('$label-$season-$teamKey'),
                   initialValue: teamKey,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Team',
                     isDense: true,
@@ -406,7 +412,8 @@ class _TeamSelectorCard extends StatelessWidget {
                     for (final row in rows)
                       DropdownMenuItem(
                         value: row.teamKey,
-                        child: Text('${row.name} (${row.abbreviation})'),
+                        child: Text('${row.name} (${row.abbreviation})',
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
                       ),
                   ],
                   onChanged: (value) {
@@ -669,68 +676,112 @@ class _TeamMetric {
 List<_TeamRow> _teamRows(NbaTerminalSeedSnapshot snapshot) {
   final logsByTeam = <String, List<Map<String, dynamic>>>{};
   for (final log in snapshot.teamGameLogs) {
-    final key = _text(log['team_id']);
+    final key = _text(log['team_id'] ?? log['team_key']);
     if (key.isEmpty) continue;
     logsByTeam.putIfAbsent(key, () => []).add(log);
   }
 
-  final rows = <_TeamRow>[];
+  final teamsByKey = <String, Map<String, dynamic>>{};
+  for (final team in snapshot.teams) {
+    final key = _text(team['team_id'] ?? team['team_key'] ?? team['id']);
+    if (key.isNotEmpty) teamsByKey[key] = team;
+  }
+
+  // Canonical team-season rows are authoritative. When a season shard lacks
+  // them, recover discoverable teams from standings and actual game logs.
+  // Never fabricate zero-valued statistics from an absent data source.
+  final records = <String, Map<String, dynamic>>{};
   for (final record in snapshot.teamRecords) {
-    final key = _text(record['team_id']);
-    if (key.isEmpty) continue;
-    final games = _num(record['games']) ?? 0;
-    final wins = _num(record['wins']) ?? 0;
-    final losses = _num(record['losses']) ?? math.max(0, games - wins);
+    final key = _text(record['team_id'] ?? record['team_key']);
+    if (key.isNotEmpty) records[key] = record;
+  }
+  for (final standing in snapshot.standings) {
+    final key = _text(standing['team_id'] ?? standing['team_key']);
+    if (key.isNotEmpty) records.putIfAbsent(key, () => standing);
+  }
+  for (final key in logsByTeam.keys) {
+    records.putIfAbsent(key, () => teamsByKey[key] ?? {'team_id': key});
+  }
+  for (final entry in teamsByKey.entries) {
+    records.putIfAbsent(entry.key, () => entry.value);
+  }
+
+  final rows = <_TeamRow>[];
+  for (final entry in records.entries) {
+    final key = entry.key;
+    final record = entry.value;
+    final metadata = teamsByKey[key] ?? const <String, dynamic>{};
     final logs = logsByTeam[key] ?? const <Map<String, dynamic>>[];
+    final gamesFromRecord = _num(record['games'] ?? record['gp']);
+    final games = gamesFromRecord ?? (logs.isEmpty ? null : logs.length.toDouble());
+    final winsFromLog = logs.where((log) =>
+        _text(log['result']).toUpperCase().startsWith('W')).length.toDouble();
+    final lossesFromLog = logs.where((log) =>
+        _text(log['result']).toUpperCase().startsWith('L')).length.toDouble();
+    final knownResults = winsFromLog + lossesFromLog > 0;
+    final wins = _num(record['wins']) ?? (knownResults ? winsFromLog : null);
+    final losses = _num(record['losses']) ?? (knownResults ? lossesFromLog : null);
+    final winGames = (wins ?? 0) + (losses ?? 0);
+
     final totals = <String, double>{};
+    final covered = <String>{};
     for (final log in logs) {
       for (final field in _teamLogFields) {
-        totals[field] = (totals[field] ?? 0) + (_num(log[field]) ?? 0);
+        final number = _num(log[field]);
+        if (number == null) continue;
+        totals[field] = (totals[field] ?? 0) + number;
+        covered.add(field);
       }
     }
-    final denom = logs.isNotEmpty ? logs.length.toDouble() : (games > 0 ? games : 1);
-    final fgm = totals['field_goals_made'] ?? 0;
-    final fga = totals['field_goal_attempts'] ?? 0;
-    final threes = totals['three_pointers_made'] ?? 0;
-    final threeA = totals['three_point_attempts'] ?? 0;
-    final ftm = totals['free_throws_made'] ?? 0;
-    final fta = totals['free_throw_attempts'] ?? 0;
-    final pts = totals['points'] ?? (_num(record['points']) ?? 0);
-    final oppPts = totals['opponent_points'] ?? (_num(record['opponent_points']) ?? 0);
+
+    final denom = logs.isNotEmpty ? logs.length.toDouble() : games;
+    final pts = covered.contains('points')
+        ? totals['points'] : _num(record['points']);
+    final opp = covered.contains('opponent_points')
+        ? totals['opponent_points'] : _num(record['opponent_points']);
+    final fgm = totals['field_goals_made'];
+    final fga = totals['field_goal_attempts'];
+    final threes = totals['three_pointers_made'];
+    final threeA = totals['three_point_attempts'];
+    final ftm = totals['free_throws_made'];
+    final fta = totals['free_throw_attempts'];
 
     final values = <String, double>{
-      'games': games,
-      'wins': wins,
-      'losses': losses,
-      'win_pct': games > 0 ? wins / games : 0,
+      if (games != null) 'games': games,
+      if (wins != null) 'wins': wins,
+      if (losses != null) 'losses': losses,
+      if (winGames > 0) 'win_pct': wins! / winGames,
       if (_num(record['pace']) != null) 'pace': _num(record['pace'])!,
-      if (_num(record['offensive_rating']) != null)
-        'ortg': _num(record['offensive_rating'])!,
-      if (_num(record['defensive_rating']) != null)
-        'drtg': _num(record['defensive_rating'])!,
-      if (_num(record['net_rating']) != null)
-        'net_rtg': _num(record['net_rating'])!,
+      if (_num(record['offensive_rating'] ?? record['ortg']) != null)
+        'ortg': _num(record['offensive_rating'] ?? record['ortg'])!,
+      if (_num(record['defensive_rating'] ?? record['drtg']) != null)
+        'drtg': _num(record['defensive_rating'] ?? record['drtg'])!,
+      if (_num(record['net_rating'] ?? record['net_rtg']) != null)
+        'net_rtg': _num(record['net_rating'] ?? record['net_rtg'])!,
       if (_num(record['srs']) != null) 'srs': _num(record['srs'])!,
-      'ppg': pts / denom,
-      'opp_ppg': oppPts / denom,
-      'point_diff': (pts - oppPts) / denom,
-      'fg_pct': fga > 0 ? fgm / fga : 0,
-      'three_pct': threeA > 0 ? threes / threeA : 0,
-      'ft_pct': fta > 0 ? ftm / fta : 0,
-      'efg_pct': fga > 0 ? (fgm + .5 * threes) / fga : 0,
-      'ts_pct': (fga + .44 * fta) > 0 ? pts / (2 * (fga + .44 * fta)) : 0,
-      for (final field in _teamLogFields)
-        '${field}_pg': (totals[field] ?? 0) / denom,
+      if (denom != null && denom > 0 && pts != null) 'ppg': pts / denom,
+      if (denom != null && denom > 0 && opp != null) 'opp_ppg': opp / denom,
+      if (denom != null && denom > 0 && pts != null && opp != null)
+        'point_diff': (pts - opp) / denom,
+      if (fga != null && fga > 0 && fgm != null) 'fg_pct': fgm / fga,
+      if (threeA != null && threeA > 0 && threes != null)
+        'three_pct': threes / threeA,
+      if (fta != null && fta > 0 && ftm != null) 'ft_pct': ftm / fta,
+      if (fga != null && fga > 0 && fgm != null && threes != null)
+        'efg_pct': (fgm + .5 * threes) / fga,
+      if (fga != null && fta != null && fga + .44 * fta > 0 && pts != null)
+        'ts_pct': pts / (2 * (fga + .44 * fta)),
+      if (denom != null && denom > 0)
+        for (final field in covered) '${field}_pg': totals[field]! / denom,
     };
-
-    rows.add(
-      _TeamRow(
-        teamKey: key,
-        name: _text(record['team_name'], key),
-        abbreviation: _text(record['team_abbreviation'], key),
-        values: values,
-      ),
-    );
+    rows.add(_TeamRow(
+      teamKey: key,
+      name: _text(record['team_name'] ?? record['name'] ??
+          metadata['team_name'] ?? metadata['name'], key),
+      abbreviation: _text(record['team_abbreviation'] ??
+          record['abbreviation'] ?? metadata['abbreviation'], key),
+      values: values,
+    ));
   }
   rows.sort((a, b) => a.name.compareTo(b.name));
   return rows;
