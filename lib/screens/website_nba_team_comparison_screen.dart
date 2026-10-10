@@ -1070,9 +1070,6 @@ List<_TeamRow> _teamRows(NbaTerminalSeedSnapshot snapshot) {
     final fta = totals['free_throw_attempts'];
 
     final values = <String, double>{
-      if (games != null) 'games': games,
-      if (wins != null) 'wins': wins,
-      if (losses != null) 'losses': losses,
       if (wins != null && losses != null && winGames > 0)
         'win_pct': wins / winGames,
       if (_num(record['pace']) != null) 'pace': _num(record['pace'])!,
@@ -1101,6 +1098,9 @@ List<_TeamRow> _teamRows(NbaTerminalSeedSnapshot snapshot) {
       if (completeLogs && denom != null && denom > 0)
         for (final field in covered) '${field}_pg': totals[field]! / denom,
     };
+    if (games != null) values['games'] = games;
+    if (wins != null) values['wins'] = wins;
+    if (losses != null) values['losses'] = losses;
     rows.add(_TeamRow(
       teamKey: key,
       name: _text(record['team_name'] ?? record['name'] ??
