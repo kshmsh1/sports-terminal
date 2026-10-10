@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'dart:math' as math;
+
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter/material.dart';
 
 import '../models/app_session.dart';
+import '../widgets/comparison_lab_components.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
@@ -21,7 +25,11 @@ class WebsiteNbaTeamComparisonScreen extends StatefulWidget {
 class _WebsiteNbaTeamComparisonScreenState
     extends State<WebsiteNbaTeamComparisonScreen> {
   static const _maxTeams = 5;
+  static const _savedKey = 'nba_team_compare_saved_views_v1';
+  static const _maxSaved = 10;
   final _api = const WebsiteNbaApiService();
+  final List<_SavedTeamView> _savedViews = [];
+  String? _activeSavedId;
   final List<_TeamSlot> _slots = [
     _TeamSlot(season: '2025-26'),
     _TeamSlot(season: '2025-26'),
@@ -32,6 +40,8 @@ class _WebsiteNbaTeamComparisonScreenState
   String _category = 'Overview';
   bool _lockSeasons = true;
   late Future<_TeamComparisonData> _future;
+  int _requestSerial = 0;
+  bool _seedInitialSelections = true;
 
   @override
   void initState() {
@@ -50,41 +60,156 @@ class _WebsiteNbaTeamComparisonScreenState
         slot.season = preferred.id;
       }
     }
+    await _loadSavedViews();
     return _loadData();
   }
 
-  Future<_TeamComparisonData> _loadData() async {
-    final rowsBySeason = <String, List<_TeamRow>>{};
-    for (final season in _slots.map((slot) => slot.season).toSet()) {
-      final snapshot = await _api.seasonSnapshot(
-        season,
-        seasonType:
-            _seasonType == NbaStatsSeasonType.playoffs ? 'playoffs' : 'regular',
-      );
-      rowsBySeason[season] = _teamRows(snapshot);
+  Future<void> _loadSavedViews() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_savedKey);
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return;
+      _savedViews
+        ..clear()
+        ..addAll([
+          for (final item in decoded)
+            if (item is Map)
+              _SavedTeamView.fromJson(Map<String, dynamic>.from(item)),
+        ]);
+    } catch (_) {
+      // Corrupted optional local presets do not prevent comparisons.
     }
+  }
 
+  Future<void> _persistSavedViews() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_savedKey,
+        jsonEncode([for (final view in _savedViews) view.toJson()]));
+  }
+
+  _SavedTeamView _captureView(String id, String name) => _SavedTeamView(
+        id: id, name: name, seasonType: _seasonType.name,
+        category: _category, lockSeasons: _lockSeasons,
+        slots: [for (final slot in _slots) slot.toJson()],
+      );
+
+  Future<void> _saveView({required bool saveAs}) async {
+    if (!saveAs && _activeSavedId != null) {
+      final index = _savedViews.indexWhere((v) => v.id == _activeSavedId);
+      if (index >= 0) {
+        final current = _savedViews[index];
+        _savedViews[index] = _captureView(current.id, current.name);
+        await _persistSavedViews();
+        if (mounted) {
+          setState(() {});
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Team comparison updated')));
+        }
+        return;
+      }
+    }
+    if (_savedViews.length >= _maxSaved) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Maximum of 10 saved team comparisons')));
+      return;
+    }
+    final controller = TextEditingController(
+      text: 'Team comparison ${_savedViews.length + 1}',
+    );
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Save team comparison'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Preset name'),
+          onSubmitted: (value) => Navigator.pop(context, value),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Save')),
+        ],
+      ),
+    );
+    if (name == null || name.trim().isEmpty) return;
+    final id = DateTime.now().microsecondsSinceEpoch.toString();
+    _savedViews.add(_captureView(id, name.trim()));
+    _activeSavedId = id;
+    await _persistSavedViews();
+    if (mounted) setState(() {});
+  }
+
+  void _applySavedView(_SavedTeamView view) {
+    setState(() {
+      _seasonType = NbaStatsSeasonType.values.firstWhere(
+        (value) => value.name == view.seasonType,
+        orElse: () => NbaStatsSeasonType.regular,
+      );
+      _category = _teamCategories.containsKey(view.category)
+          ? view.category : 'Overview';
+      _lockSeasons = view.lockSeasons;
+      _slots
+        ..clear()
+        ..addAll(view.slots.take(_maxTeams).map((json) =>
+            _TeamSlot.fromJson(json, _seasons)));
+      while (_slots.length < 2) {
+        _slots.add(_TeamSlot(season:
+            _seasons.isEmpty ? '2025-26' : _seasons.first.id));
+      }
+      _seedInitialSelections = false;
+      _activeSavedId = view.id;
+      _future = _loadData();
+    });
+  }
+
+  Future<void> _deleteSavedView(_SavedTeamView view) async {
+    _savedViews.removeWhere((item) => item.id == view.id);
+    if (_activeSavedId == view.id) _activeSavedId = null;
+    await _persistSavedViews();
+    if (mounted) setState(() {});
+  }
+
+  Future<_TeamComparisonData> _loadData() async {
+    final request = ++_requestSerial;
+    final seasonType = _seasonType;
+    final seasons = _slots.map((slot) => slot.season).toSet().toList();
+    final snapshots = await Future.wait([
+      for (final season in seasons)
+        _api.seasonSnapshot(season,
+          seasonType: seasonType == NbaStatsSeasonType.playoffs
+              ? 'playoffs' : 'regular'),
+    ]);
+    final rowsBySeason = <String, List<_TeamRow>>{};
+    for (var index = 0; index < seasons.length; index++) {
+      rowsBySeason[seasons[index]] = _teamRows(snapshots[index]);
+    }
+    if (request != _requestSerial) return _TeamComparisonData(rowsBySeason);
     for (var index = 0; index < _slots.length; index++) {
       final slot = _slots[index];
       final rows = rowsBySeason[slot.season] ?? const <_TeamRow>[];
       if (rows.isEmpty) {
         slot.teamKey = null;
-        continue;
-      }
-      if (!rows.any((row) => row.teamKey == slot.teamKey)) {
+      } else if (!rows.any((row) => row.teamKey == slot.teamKey) &&
+          !_seedInitialSelections) {
+        slot.teamKey = null;
+      } else if (!rows.any((row) => row.teamKey == slot.teamKey)) {
         final used = <String>{
           for (var other = 0; other < _slots.length; other++)
             if (other != index && _slots[other].season == slot.season)
               if (_slots[other].teamKey != null) _slots[other].teamKey!,
         };
-        slot.teamKey = rows
-            .firstWhere(
-              (row) => !used.contains(row.teamKey),
-              orElse: () => rows.first,
-            )
-            .teamKey;
+        slot.teamKey = rows.firstWhere(
+          (row) => !used.contains(row.teamKey),
+          orElse: () => rows.first,
+        ).teamKey;
       }
     }
+    _seedInitialSelections = false;
     return _TeamComparisonData(rowsBySeason);
   }
 
@@ -93,14 +218,10 @@ class _WebsiteNbaTeamComparisonScreenState
   void _setSeason(int index, String season) {
     if (_lockSeasons) {
       for (final slot in _slots) {
-        slot
-          ..season = season
-          ..teamKey = null;
+        slot.season = season;
       }
     } else {
-      _slots[index]
-        ..season = season
-        ..teamKey = null;
+      _slots[index].season = season;
     }
     _reload();
   }
@@ -218,9 +339,6 @@ class _WebsiteNbaTeamComparisonScreenState
                   selected: {_seasonType},
                   onSelectionChanged: (value) {
                     _seasonType = value.first;
-                    for (final slot in _slots) {
-                      slot.teamKey = null;
-                    }
                     _reload();
                   },
                 ),
@@ -237,63 +355,105 @@ class _WebsiteNbaTeamComparisonScreenState
                       if (value && _slots.isNotEmpty) {
                         final season = _slots.first.season;
                         for (final slot in _slots) {
-                          slot
-                            ..season = season
-                            ..teamKey = null;
+                          slot.season = season;
                         }
                         _future = _loadData();
                       }
                     });
                   },
                 ),
+                FilledButton.tonalIcon(
+                  onPressed: () => _saveView(saveAs: false),
+                  icon: const Icon(Icons.save_outlined, size: 18),
+                  label: const Text('Save'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _saveView(saveAs: true),
+                  icon: const Icon(Icons.save_as_outlined, size: 18),
+                  label: const Text('Save as'),
+                ),
+                if (_savedViews.isNotEmpty)
+                  PopupMenuButton<String>(
+                    tooltip: 'Saved team comparisons',
+                    onSelected: (id) {
+                      final view = _savedViews.firstWhere((v) => v.id == id);
+                      _applySavedView(view);
+                    },
+                    itemBuilder: (_) => [
+                      for (final view in _savedViews)
+                        PopupMenuItem(
+                          value: view.id,
+                          child: Row(children: [
+                            if (_activeSavedId == view.id)
+                              const Icon(Icons.check, size: 16),
+                            Expanded(child: Text(view.name,
+                              overflow: TextOverflow.ellipsis)),
+                            IconButton(
+                              tooltip: 'Delete saved comparison',
+                              icon: const Icon(Icons.delete_outline, size: 18),
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _deleteSavedView(view);
+                              },
+                            ),
+                          ]),
+                        ),
+                    ],
+                    child: const Chip(
+                      avatar: Icon(Icons.bookmarks_outlined, size: 17),
+                      label: Text('Saved comparisons'),
+                    ),
+                  ),
               ],
             ),
           ),
         ),
         const SizedBox(height: 16),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var index = 0; index < _slots.length; index++) ...[
-                SizedBox(
-                  width: 280,
-                  child: _TeamSelectorCard(
-                    label: 'Team ${String.fromCharCode(65 + index)}',
-                    accent: palette[index],
-                    season: _slots[index].season,
-                    seasons: _seasons,
-                    rows: data.rowsBySeason[_slots[index].season] ??
-                        const <_TeamRow>[],
-                    teamKey: _slots[index].teamKey,
-                    canRemove: _slots.length > 2,
-                    onSeason: (value) => _setSeason(index, value),
-                    onTeam: (value) =>
-                        setState(() => _slots[index].teamKey = value),
-                    onRemove: () => _removeTeam(index),
-                    onOpen: () {
-                      final row = _findTeam(
-                        data.rowsBySeason[_slots[index].season],
-                        _slots[index].teamKey,
-                      );
-                      if (row == null) return;
-                      openWebsiteNbaTeamPage(
-                        context,
-                        session: widget.session,
-                        teamKey: row.teamKey,
-                        teamName: row.name,
-                      );
-                    },
-                  ),
-                ),
-                if (index != _slots.length - 1) const SizedBox(width: 12),
-              ],
-            ],
-          ),
+        ComparisonSelectionLayout(
+          children: [
+            for (var index = 0; index < _slots.length; index++)
+              _TeamSelectorCard(
+                key: ValueKey('team-slot-$index'),
+                label: 'Team ${String.fromCharCode(65 + index)}',
+                accent: palette[index],
+                season: _slots[index].season,
+                seasons: _seasons,
+                rows: data.rowsBySeason[_slots[index].season] ??
+                    const <_TeamRow>[],
+                teamKey: _slots[index].teamKey,
+                canRemove: _slots.length > 2,
+                onSeason: (value) => _setSeason(index, value),
+                onTeam: (value) => setState(() => _slots[index].teamKey = value),
+                onRemove: () => _removeTeam(index),
+                onOpen: () {
+                  final row = _findTeam(
+                    data.rowsBySeason[_slots[index].season],
+                    _slots[index].teamKey,
+                  );
+                  if (row == null) return;
+                  openWebsiteNbaTeamPage(context, session: widget.session,
+                    teamKey: row.teamKey, teamName: row.name);
+                },
+              ),
+          ],
         ),
         const SizedBox(height: 18),
-        if (selected.length >= 2) ...[
+        if (selected.length < 2)
+          ComparisonEmptyState(
+            title: selected.isEmpty
+                ? 'No comparable team records for these settings'
+                : 'Choose another team season',
+            message: selected.isEmpty
+                ? 'The selected season or playoff segment has no team records in the published static dataset. Try a different season or Regular Season. Missing statistics will not be displayed as zero.'
+                : 'Choose at least two teams to compare their available statistics.',
+            icon: Icons.groups_outlined,
+          ),
+        if (selected.length >= 2 && selected.every((team) => team.row.values.isEmpty))
+          const ComparisonEmptyState(
+            title: 'Team names are available, but season statistics are missing',
+            message: 'The static shard does not contain numerical team-season records. Switch seasons or wait for a historical-data rebuild; the comparison will not invent zeros.',
+          ),
+        if (selected.length >= 2 && selected.any((team) => team.row.values.isNotEmpty)) ...[
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -308,6 +468,12 @@ class _WebsiteNbaTeamComparisonScreenState
           ),
           const SizedBox(height: 14),
           _TeamMetricTable(players: selected, metrics: metrics),
+          const SizedBox(height: 16),
+          _TeamSeasonFingerprint(
+            selected: selected,
+            metrics: metrics,
+            rowsBySeason: data.rowsBySeason,
+          ),
           const SizedBox(height: 12),
           Text(
             '★ marks the most favorable available value among the selected teams. Lower defensive rating, turnovers, fouls and opponent scoring are treated as better.',
@@ -321,6 +487,7 @@ class _WebsiteNbaTeamComparisonScreenState
 
 class _TeamSelectorCard extends StatelessWidget {
   const _TeamSelectorCard({
+    super.key,
     required this.label,
     required this.accent,
     required this.season,
@@ -398,6 +565,7 @@ class _TeamSelectorCard extends StatelessWidget {
                 DropdownButtonFormField<String>(
                   key: ValueKey('$label-$season-$teamKey'),
                   initialValue: teamKey,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Team',
                     isDense: true,
@@ -406,7 +574,8 @@ class _TeamSelectorCard extends StatelessWidget {
                     for (final row in rows)
                       DropdownMenuItem(
                         value: row.teamKey,
-                        child: Text('${row.name} (${row.abbreviation})'),
+                        child: Text('${row.name} (${row.abbreviation})',
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
                       ),
                   ],
                   onChanged: (value) {
@@ -414,14 +583,22 @@ class _TeamSelectorCard extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 14),
-                Container(
-                  height: 96,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: .10),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.shield_outlined, size: 48, color: accent),
+                Row(
+                  children: [
+                    Expanded(child: ComparisonMetricPill(
+                      label: 'W–L',
+                      value: team == null || team.values['wins'] == null ||
+                              team.values['losses'] == null
+                          ? '—' : '${team.wins.round()}–${team.losses.round()}',
+                      accent: accent,
+                    )),
+                    const SizedBox(width: 8),
+                    Expanded(child: ComparisonMetricPill(
+                      label: 'WIN%',
+                      value: team?.values['win_pct'] == null
+                          ? '—' : '${(team!.winPct * 100).toStringAsFixed(1)}%',
+                    )),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 if (team != null) ...[
@@ -433,7 +610,9 @@ class _TeamSelectorCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${team.wins.round()}-${team.losses.round()} · ${(team.winPct * 100).toStringAsFixed(1)}%',
+                    team.values['win_pct'] == null
+                        ? 'Season statistics unavailable'
+                        : '${team.wins.round()}-${team.losses.round()} · ${(team.winPct * 100).toStringAsFixed(1)}%',
                     style: TextStyle(color: colors.onSurfaceVariant),
                   ),
                   Align(
@@ -460,42 +639,32 @@ class _TeamMetricTable extends StatelessWidget {
   final List<_TeamMetric> metrics;
 
   @override
-  Widget build(BuildContext context) {
-    final width = math.max(
-      180.0 + 170.0 * players.length,
-      MediaQuery.sizeOf(context).width - 90,
-    );
-    return Card(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.all(16),
-        child: SizedBox(
-          width: width,
-          child: Table(
-            columnWidths: {
-              0: const FixedColumnWidth(150),
-              for (var index = 0; index < players.length; index++)
-                index + 1: const FlexColumnWidth(),
-            },
-            children: [
-              TableRow(
-                children: [
-                  const _TeamCell('METRIC', bold: true),
-                  for (final team in players)
-                    _TeamCell(
-                      '${team.row.abbreviation}\n${team.season}',
-                      bold: true,
-                      color: team.color,
-                    ),
-                ],
+  Widget build(BuildContext context) => ComparisonTableViewport(
+        participants: players.length,
+        builder: (width) => Table(
+          columnWidths: {
+            0: const FixedColumnWidth(150),
+            for (var index = 0; index < players.length; index++)
+              index + 1: const FlexColumnWidth(),
+          },
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: [
+            TableRow(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest
+                    .withValues(alpha: .35),
               ),
-              for (final metric in metrics) _row(context, metric),
-            ],
-          ),
+              children: [
+                const _TeamCell('METRIC', bold: true),
+                for (final team in players)
+                  _TeamCell('${team.row.abbreviation}\n${team.season}',
+                    bold: true, color: team.color),
+              ],
+            ),
+            for (final metric in metrics) _row(context, metric),
+          ],
         ),
-      ),
-    );
-  }
+      );
 
   TableRow _row(BuildContext context, _TeamMetric metric) {
     final values = [for (final team in players) metric.value(team.row)];
@@ -532,6 +701,111 @@ class _TeamMetricTable extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+
+class _TeamSeasonFingerprint extends StatelessWidget {
+  const _TeamSeasonFingerprint({
+    required this.selected,
+    required this.metrics,
+    required this.rowsBySeason,
+  });
+
+  final List<_SelectedTeam> selected;
+  final List<_TeamMetric> metrics;
+  final Map<String, List<_TeamRow>> rowsBySeason;
+
+  double? _percentile(_SelectedTeam selected, _TeamMetric metric) {
+    final actual = metric.value(selected.row);
+    if (actual == null || !actual.isFinite) return null;
+    final population = (rowsBySeason[selected.season] ?? const <_TeamRow>[])
+        .map(metric.value)
+        .whereType<double>()
+        .where((number) => number.isFinite)
+        .toList();
+    if (population.isEmpty) return null;
+    if (population.length == 1) return 50;
+    final behind = population.where((other) =>
+        metric.higherIsBetter ? other < actual : other > actual).length;
+    final tied = population.where((other) =>
+        (other - actual).abs() < 0.000001).length;
+    // Midrank handles statistical ties without declaring either team inferior.
+    return ((behind + (tied - 1) / 2) / (population.length - 1) * 100)
+        .clamp(0.0, 100.0).toDouble();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final eligible = metrics.where(
+      (metric) => selected.any((team) => _percentile(team, metric) != null),
+    ).toList();
+    if (eligible.isEmpty) return const SizedBox.shrink();
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Season-relative team fingerprint',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            Text('Percentiles are computed against teams in each selected season and segment. Missing values are excluded; higher percentile means a better relative rank.',
+              style: TextStyle(color: colors.onSurfaceVariant)),
+            const SizedBox(height: 16),
+            for (final metric in eligible)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: LayoutBuilder(builder: (context, constraints) {
+                  final columns = math.max(1,
+                    math.min(selected.length, (constraints.maxWidth / 208).floor()));
+                  final cellWidth = (constraints.maxWidth -
+                      92 - (columns - 1) * 10) / columns;
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(width: 92, child: Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: Text(metric.label, style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 12)),
+                      )),
+                      Expanded(child: Wrap(
+                        spacing: 10, runSpacing: 12,
+                        children: [
+                          for (final team in selected)
+                            SizedBox(
+                              width: cellWidth,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('${team.row.abbreviation} · ${team.season}: ${_percentile(team, metric)?.round().toString() ?? '—'}p',
+                                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 11.5,
+                                      fontWeight: FontWeight.w600)),
+                                  const SizedBox(height: 5),
+                                  LinearProgressIndicator(
+                                    value: (_percentile(team, metric) ?? 0) / 100,
+                                    minHeight: 8,
+                                    backgroundColor: team.color.withValues(alpha: .13),
+                                    valueColor: AlwaysStoppedAnimation(team.color),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      )),
+                    ],
+                  );
+                }),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -590,6 +864,55 @@ class _TeamSlot {
   _TeamSlot({required this.season, this.teamKey});
   String season;
   String? teamKey;
+
+  Map<String, dynamic> toJson() => {'season': season, 'team_key': teamKey};
+
+  factory _TeamSlot.fromJson(Map<String, dynamic> json,
+      List<WebsiteNbaSeason> available) {
+    final preferred = json['season']?.toString() ?? '2025-26';
+    final season = available.any((item) => item.id == preferred)
+        ? preferred
+        : (available.isNotEmpty ? available.first.id : '2025-26');
+    return _TeamSlot(season: season,
+        teamKey: json['team_key']?.toString());
+  }
+}
+
+
+class _SavedTeamView {
+  const _SavedTeamView({
+    required this.id,
+    required this.name,
+    required this.seasonType,
+    required this.category,
+    required this.lockSeasons,
+    required this.slots,
+  });
+
+  final String id;
+  final String name;
+  final String seasonType;
+  final String category;
+  final bool lockSeasons;
+  final List<Map<String, dynamic>> slots;
+
+  Map<String, dynamic> toJson() => {
+    'id': id, 'name': name, 'season_type': seasonType,
+    'category': category, 'lock_seasons': lockSeasons, 'slots': slots,
+  };
+
+  factory _SavedTeamView.fromJson(Map<String, dynamic> json) =>
+      _SavedTeamView(
+        id: json['id']?.toString() ?? '',
+        name: json['name']?.toString() ?? 'Team comparison',
+        seasonType: json['season_type']?.toString() ?? 'regular',
+        category: json['category']?.toString() ?? 'Overview',
+        lockSeasons: json['lock_seasons'] != false,
+        slots: [
+          for (final raw in json['slots'] as List? ?? const [])
+            if (raw is Map) Map<String, dynamic>.from(raw),
+        ],
+      );
 }
 
 class _TeamComparisonData {
@@ -649,7 +972,8 @@ class _TeamMetric {
       for (var index = 0; index < values.length; index++)
         if (values[index] != null) index: values[index]!,
     };
-    if (available.isEmpty) return const {};
+    // One observed value cannot establish a head-to-head winner.
+    if (available.length < 2) return const {};
     final best = higherIsBetter
         ? available.values.reduce(math.max)
         : available.values.reduce(math.min);
@@ -669,68 +993,121 @@ class _TeamMetric {
 List<_TeamRow> _teamRows(NbaTerminalSeedSnapshot snapshot) {
   final logsByTeam = <String, List<Map<String, dynamic>>>{};
   for (final log in snapshot.teamGameLogs) {
-    final key = _text(log['team_id']);
+    final key = _text(log['team_id'] ?? log['team_key']);
     if (key.isEmpty) continue;
     logsByTeam.putIfAbsent(key, () => []).add(log);
   }
 
-  final rows = <_TeamRow>[];
+  final teamsByKey = <String, Map<String, dynamic>>{};
+  for (final team in snapshot.teams) {
+    final key = _text(team['team_id'] ?? team['team_key'] ?? team['id']);
+    if (key.isNotEmpty) teamsByKey[key] = team;
+  }
+
+  // Canonical team-season rows are authoritative. When a season shard lacks
+  // them, recover discoverable teams from standings and actual game logs.
+  // Never fabricate zero-valued statistics from an absent data source.
+  final records = <String, Map<String, dynamic>>{};
   for (final record in snapshot.teamRecords) {
-    final key = _text(record['team_id']);
-    if (key.isEmpty) continue;
-    final games = _num(record['games']) ?? 0;
-    final wins = _num(record['wins']) ?? 0;
-    final losses = _num(record['losses']) ?? math.max(0, games - wins);
+    final key = _text(record['team_id'] ?? record['team_key']);
+    if (key.isNotEmpty) records[key] = record;
+  }
+  for (final standing in snapshot.standings) {
+    final key = _text(standing['team_id'] ?? standing['team_key']);
+    if (key.isNotEmpty) records.putIfAbsent(key, () => standing);
+  }
+  for (final key in logsByTeam.keys) {
+    records.putIfAbsent(key, () => teamsByKey[key] ?? {'team_id': key});
+  }
+  for (final entry in teamsByKey.entries) {
+    records.putIfAbsent(entry.key, () => entry.value);
+  }
+
+  final rows = <_TeamRow>[];
+  for (final entry in records.entries) {
+    final key = entry.key;
+    final record = entry.value;
+    final metadata = teamsByKey[key] ?? const <String, dynamic>{};
     final logs = logsByTeam[key] ?? const <Map<String, dynamic>>[];
+    final gamesFromRecord = _num(record['games'] ?? record['gp']);
+    final completeLogs = gamesFromRecord != null &&
+        gamesFromRecord > 0 && logs.length >= gamesFromRecord;
+    final games = gamesFromRecord;
+    final winsFromLog = logs.where((log) =>
+        _text(log['result']).toUpperCase().startsWith('W')).length.toDouble();
+    final lossesFromLog = logs.where((log) =>
+        _text(log['result']).toUpperCase().startsWith('L')).length.toDouble();
+    final knownResults = winsFromLog + lossesFromLog > 0;
+    final wins = _num(record['wins']) ??
+        (completeLogs && knownResults ? winsFromLog : null);
+    final losses = _num(record['losses']) ??
+        (completeLogs && knownResults ? lossesFromLog : null);
+    final winGames = (wins ?? 0) + (losses ?? 0);
+
     final totals = <String, double>{};
+    final covered = <String>{};
     for (final log in logs) {
       for (final field in _teamLogFields) {
-        totals[field] = (totals[field] ?? 0) + (_num(log[field]) ?? 0);
+        final number = _num(log[field]);
+        if (number == null) continue;
+        totals[field] = (totals[field] ?? 0) + number;
+        covered.add(field);
       }
     }
-    final denom = logs.isNotEmpty ? logs.length.toDouble() : (games > 0 ? games : 1);
-    final fgm = totals['field_goals_made'] ?? 0;
-    final fga = totals['field_goal_attempts'] ?? 0;
-    final threes = totals['three_pointers_made'] ?? 0;
-    final threeA = totals['three_point_attempts'] ?? 0;
-    final ftm = totals['free_throws_made'] ?? 0;
-    final fta = totals['free_throw_attempts'] ?? 0;
-    final pts = totals['points'] ?? (_num(record['points']) ?? 0);
-    final oppPts = totals['opponent_points'] ?? (_num(record['opponent_points']) ?? 0);
+
+    final denom = gamesFromRecord;
+    final pts = _num(record['points']) ??
+        (completeLogs && covered.contains('points') ? totals['points'] : null);
+    final opp = _num(record['opponent_points']) ??
+        (completeLogs && covered.contains('opponent_points')
+            ? totals['opponent_points'] : null);
+    final fgm = totals['field_goals_made'];
+    final fga = totals['field_goal_attempts'];
+    final threes = totals['three_pointers_made'];
+    final threeA = totals['three_point_attempts'];
+    final ftm = totals['free_throws_made'];
+    final fta = totals['free_throw_attempts'];
 
     final values = <String, double>{
-      'games': games,
-      'wins': wins,
-      'losses': losses,
-      'win_pct': games > 0 ? wins / games : 0,
+      if (wins != null && losses != null && winGames > 0)
+        'win_pct': wins / winGames,
       if (_num(record['pace']) != null) 'pace': _num(record['pace'])!,
-      if (_num(record['offensive_rating']) != null)
-        'ortg': _num(record['offensive_rating'])!,
-      if (_num(record['defensive_rating']) != null)
-        'drtg': _num(record['defensive_rating'])!,
-      if (_num(record['net_rating']) != null)
-        'net_rtg': _num(record['net_rating'])!,
+      if (_num(record['offensive_rating'] ?? record['ortg']) != null)
+        'ortg': _num(record['offensive_rating'] ?? record['ortg'])!,
+      if (_num(record['defensive_rating'] ?? record['drtg']) != null)
+        'drtg': _num(record['defensive_rating'] ?? record['drtg'])!,
+      if (_num(record['net_rating'] ?? record['net_rtg']) != null)
+        'net_rtg': _num(record['net_rating'] ?? record['net_rtg'])!,
       if (_num(record['srs']) != null) 'srs': _num(record['srs'])!,
-      'ppg': pts / denom,
-      'opp_ppg': oppPts / denom,
-      'point_diff': (pts - oppPts) / denom,
-      'fg_pct': fga > 0 ? fgm / fga : 0,
-      'three_pct': threeA > 0 ? threes / threeA : 0,
-      'ft_pct': fta > 0 ? ftm / fta : 0,
-      'efg_pct': fga > 0 ? (fgm + .5 * threes) / fga : 0,
-      'ts_pct': (fga + .44 * fta) > 0 ? pts / (2 * (fga + .44 * fta)) : 0,
-      for (final field in _teamLogFields)
-        '${field}_pg': (totals[field] ?? 0) / denom,
+      if (denom != null && denom > 0 && pts != null) 'ppg': pts / denom,
+      if (denom != null && denom > 0 && opp != null) 'opp_ppg': opp / denom,
+      if (denom != null && denom > 0 && pts != null && opp != null)
+        'point_diff': (pts - opp) / denom,
+      if (completeLogs && fga != null && fga > 0 && fgm != null)
+        'fg_pct': fgm / fga,
+      if (completeLogs && threeA != null && threeA > 0 && threes != null)
+        'three_pct': threes / threeA,
+      if (completeLogs && fta != null && fta > 0 && ftm != null)
+        'ft_pct': ftm / fta,
+      if (completeLogs && fga != null && fga > 0 && fgm != null &&
+          threes != null) 'efg_pct': (fgm + .5 * threes) / fga,
+      if (completeLogs && fga != null && fta != null &&
+          fga + .44 * fta > 0 && pts != null)
+        'ts_pct': pts / (2 * (fga + .44 * fta)),
+      if (completeLogs && denom != null && denom > 0)
+        for (final field in covered) '${field}_pg': totals[field]! / denom,
     };
-
-    rows.add(
-      _TeamRow(
-        teamKey: key,
-        name: _text(record['team_name'], key),
-        abbreviation: _text(record['team_abbreviation'], key),
-        values: values,
-      ),
-    );
+    if (games != null) values['games'] = games;
+    if (wins != null) values['wins'] = wins;
+    if (losses != null) values['losses'] = losses;
+    rows.add(_TeamRow(
+      teamKey: key,
+      name: _text(record['team_name'] ?? record['name'] ??
+          metadata['team_name'] ?? metadata['name'], key),
+      abbreviation: _text(record['team_abbreviation'] ??
+          record['abbreviation'] ?? metadata['abbreviation'], key),
+      values: values,
+    ));
   }
   rows.sort((a, b) => a.name.compareTo(b.name));
   return rows;
