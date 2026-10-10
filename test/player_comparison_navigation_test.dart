@@ -66,6 +66,14 @@ void main() {
     expect(team, contains('ComparisonEmptyState'));
     expect(team, contains('snapshot.standings'));
     expect(team, contains('snapshot.teamGameLogs'));
+    expect(team, contains('Season-relative team fingerprint'));
+    expect(team, contains('SharedPreferences'));
+    expect(team, contains('Saved comparisons'));
+    expect(team, contains('_SavedTeamView'));
+    expect(team, contains('Missing values are excluded'));
+    expect(team, contains('_seedInitialSelections'));
+    expect(player, contains('_seedInitialSelections'));
+    expect(team, contains('_percentile('));
     expect(team, contains('if (request != _requestSerial)'));
     expect(team, isNot(contains('height: 96')));
     expect(team, contains('_maxTeams = 5'));
