@@ -33,7 +33,7 @@ void main() {
 
   testWidgets('wide viewports place comparison cards on the same row',
       (tester) async {
-    await tester.view.setPhysicalSize(const Size(1800, 1100));
+    tester.view.physicalSize = const Size(1800, 1100);
     tester.view.devicePixelRatio = 1;
     addTearDown(() {
       tester.view.resetPhysicalSize();
