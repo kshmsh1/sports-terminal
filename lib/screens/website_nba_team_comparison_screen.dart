@@ -136,7 +136,6 @@ class _WebsiteNbaTeamComparisonScreenState
         ],
       ),
     );
-    controller.dispose();
     if (name == null || name.trim().isEmpty) return;
     final id = DateTime.now().microsecondsSinceEpoch.toString();
     _savedViews.add(_captureView(id, name.trim()));
@@ -779,7 +778,7 @@ class _TeamSeasonFingerprint extends StatelessWidget {
                         children: [
                           for (final team in selected)
                             SizedBox(
-                              width: math.max(130.0, cellWidth),
+                              width: cellWidth,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
