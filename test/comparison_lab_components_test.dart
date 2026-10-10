@@ -61,6 +61,12 @@ void main() {
 
   testWidgets('comparison table expands to the available width',
       (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: SizedBox(
