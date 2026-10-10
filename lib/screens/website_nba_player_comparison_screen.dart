@@ -52,6 +52,7 @@ class _WebsiteNbaPlayerComparisonScreenState
   String? _activeSavedViewId;
   late Future<_ComparisonData> _future;
   int _requestSerial = 0;
+  bool _seedInitialSelections = true;
 
   @override
   void initState() {
@@ -129,6 +130,9 @@ class _WebsiteNbaPlayerComparisonScreenState
       final rows = rowsBySeason[slot.season] ?? const <NbaStatsRow>[];
       if (rows.isEmpty) {
         slot.playerId = null;
+      } else if (!rows.any((row) => row.playerId == slot.playerId) &&
+          !_seedInitialSelections) {
+        slot.playerId = null;
       } else if (!rows.any((row) => row.playerId == slot.playerId)) {
         final used = <String>{
           for (var other = 0; other < _slots.length; other++)
@@ -141,6 +145,7 @@ class _WebsiteNbaPlayerComparisonScreenState
         ).playerId;
       }
     }
+    _seedInitialSelections = false;
     return _ComparisonData(rowsBySeason);
   }
 
@@ -149,14 +154,10 @@ class _WebsiteNbaPlayerComparisonScreenState
   void _setSeason(int index, String season) {
     if (_lockSeasons) {
       for (final slot in _slots) {
-        slot
-          ..season = season
-          ..playerId = null;
+        slot.season = season;
       }
     } else {
-      _slots[index]
-        ..season = season
-        ..playerId = null;
+      _slots[index].season = season;
     }
     _reload();
   }
@@ -271,6 +272,7 @@ class _WebsiteNbaPlayerComparisonScreenState
         _slots.add(_PlayerSlot(season: '2025-26'));
       }
       _activeSavedViewId = view.id;
+      _seedInitialSelections = false;
       _future = _loadData();
     });
   }
@@ -475,9 +477,6 @@ class _WebsiteNbaPlayerComparisonScreenState
           activeSavedViewId: _activeSavedViewId,
           onSeasonType: (value) {
             _seasonType = value;
-            for (final slot in _slots) {
-              slot.playerId = null;
-            }
             _reload();
           },
           onBasis: (value) {
@@ -490,9 +489,7 @@ class _WebsiteNbaPlayerComparisonScreenState
               if (value && _slots.isNotEmpty) {
                 final season = _slots.first.season;
                 for (final slot in _slots) {
-                  slot
-                    ..season = season
-                    ..playerId = null;
+                  slot.season = season;
                 }
                 _future = _loadData();
               }
