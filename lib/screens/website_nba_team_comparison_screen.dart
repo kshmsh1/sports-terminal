@@ -779,7 +779,7 @@ class _TeamSeasonFingerprint extends StatelessWidget {
                         children: [
                           for (final team in selected)
                             SizedBox(
-                              width: math.max(130, cellWidth),
+                              width: math.max(130.0, cellWidth),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -1073,7 +1073,8 @@ List<_TeamRow> _teamRows(NbaTerminalSeedSnapshot snapshot) {
       if (games != null) 'games': games,
       if (wins != null) 'wins': wins,
       if (losses != null) 'losses': losses,
-      if (winGames > 0) 'win_pct': wins! / winGames,
+      if (wins != null && losses != null && winGames > 0)
+        'win_pct': wins / winGames,
       if (_num(record['pace']) != null) 'pace': _num(record['pace'])!,
       if (_num(record['offensive_rating'] ?? record['ortg']) != null)
         'ortg': _num(record['offensive_rating'] ?? record['ortg'])!,
