@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_session.dart';
+import '../widgets/comparison_lab_components.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/website_nba_api_service.dart';
 import 'website_nba_entity_pages.dart';
@@ -50,6 +51,7 @@ class _WebsiteNbaPlayerComparisonScreenState
   bool _lockSeasons = true;
   String? _activeSavedViewId;
   late Future<_ComparisonData> _future;
+  int _requestSerial = 0;
 
   @override
   void initState() {
@@ -102,44 +104,41 @@ class _WebsiteNbaPlayerComparisonScreenState
   }
 
   Future<_ComparisonData> _loadData() async {
-    final uniqueSeasons = _slots.map((slot) => slot.season).toSet().toList();
+    // Capture request inputs and reject stale async selection updates.
+    final request = ++_requestSerial;
+    final seasonType = _seasonType;
+    final basis = _basis;
+    final seasons = _slots.map((slot) => slot.season).toSet().toList();
+    final snapshots = await Future.wait([
+      for (final season in seasons)
+        _api.seasonSnapshot(season,
+          seasonType: seasonType == NbaStatsSeasonType.playoffs
+              ? 'playoffs' : 'regular'),
+    ]);
     final rowsBySeason = <String, List<NbaStatsRow>>{};
-    for (final season in uniqueSeasons) {
-      final snapshot = await _api.seasonSnapshot(
-        season,
-        seasonType:
-            _seasonType == NbaStatsSeasonType.playoffs ? 'playoffs' : 'regular',
-      );
-      final rows = _engine.buildRows(
-        snapshot,
-        basis: _basis,
-        seasonType: _seasonType,
-      )..sort(
-          (a, b) =>
-              (b.value('pts') ?? -1).compareTo(a.value('pts') ?? -1),
-        );
-      rowsBySeason[season] = rows;
+    for (var index = 0; index < seasons.length; index++) {
+      final rows = _engine.buildRows(snapshots[index],
+          basis: basis, seasonType: seasonType)
+        ..sort((a, b) =>
+            (b.value('pts') ?? -1).compareTo(a.value('pts') ?? -1));
+      rowsBySeason[seasons[index]] = rows;
     }
-
+    if (request != _requestSerial) return _ComparisonData(rowsBySeason);
     for (var index = 0; index < _slots.length; index++) {
       final slot = _slots[index];
       final rows = rowsBySeason[slot.season] ?? const <NbaStatsRow>[];
       if (rows.isEmpty) {
         slot.playerId = null;
-        continue;
-      }
-      if (!rows.any((row) => row.playerId == slot.playerId)) {
+      } else if (!rows.any((row) => row.playerId == slot.playerId)) {
         final used = <String>{
           for (var other = 0; other < _slots.length; other++)
             if (other != index && _slots[other].season == slot.season)
               if (_slots[other].playerId != null) _slots[other].playerId!,
         };
-        slot.playerId = rows
-            .firstWhere(
-              (row) => !used.contains(row.playerId),
-              orElse: () => rows.first,
-            )
-            .playerId;
+        slot.playerId = rows.firstWhere(
+          (row) => !used.contains(row.playerId),
+          orElse: () => rows.first,
+        ).playerId;
       }
     }
     return _ComparisonData(rowsBySeason);
@@ -505,48 +504,44 @@ class _WebsiteNbaPlayerComparisonScreenState
           onDelete: _deleteSavedView,
         ),
         const SizedBox(height: 16),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var index = 0; index < _slots.length; index++) ...[
-                SizedBox(
-                  width: 292,
-                  child: _PlayerSelectorCard(
-                    label: 'Player ${String.fromCharCode(65 + index)}',
-                    accent: palette[index],
-                    season: _slots[index].season,
-                    seasons: _seasons,
-                    rows: data.rowsBySeason[_slots[index].season] ??
-                        const <NbaStatsRow>[],
-                    playerId: _slots[index].playerId,
-                    canRemove: _slots.length > 2,
-                    onSeason: (value) => _setSeason(index, value),
-                    onPlayer: (value) =>
-                        setState(() => _slots[index].playerId = value),
-                    onRemove: () => _removePlayer(index),
-                    onOpen: () {
-                      final row = _findRow(
-                        data.rowsBySeason[_slots[index].season],
-                        _slots[index].playerId,
-                      );
-                      if (row == null) return;
-                      openWebsiteNbaPlayerPage(
-                        context,
-                        session: widget.session,
-                        playerKey: row.playerId,
-                        playerName: row.player,
-                      );
-                    },
-                  ),
-                ),
-                if (index != _slots.length - 1) const SizedBox(width: 12),
-              ],
-            ],
-          ),
+        ComparisonSelectionLayout(
+          children: [
+            for (var index = 0; index < _slots.length; index++)
+              _PlayerSelectorCard(
+                key: ValueKey('player-slot-$index'),
+                label: 'Player ${String.fromCharCode(65 + index)}',
+                accent: palette[index],
+                season: _slots[index].season,
+                seasons: _seasons,
+                rows: data.rowsBySeason[_slots[index].season] ??
+                    const <NbaStatsRow>[],
+                playerId: _slots[index].playerId,
+                canRemove: _slots.length > 2,
+                onSeason: (value) => _setSeason(index, value),
+                onPlayer: (value) =>
+                    setState(() => _slots[index].playerId = value),
+                onRemove: () => _removePlayer(index),
+                onOpen: () {
+                  final row = _findRow(
+                    data.rowsBySeason[_slots[index].season],
+                    _slots[index].playerId,
+                  );
+                  if (row == null) return;
+                  openWebsiteNbaPlayerPage(
+                    context, session: widget.session,
+                    playerKey: row.playerId, playerName: row.player,
+                  );
+                },
+              ),
+          ],
         ),
         const SizedBox(height: 18),
+        if (selected.length < 2)
+          const ComparisonEmptyState(
+            title: 'Choose two player seasons',
+            message: 'Select a player in each card to begin. If a season has no available player data, try another season or segment.',
+            icon: Icons.people_outline_rounded,
+          ),
         if (selected.length >= 2) ...[
           _StandingsCard(standings: standings),
           const SizedBox(height: 16),
@@ -723,6 +718,7 @@ class _ControlBar extends StatelessWidget {
 
 class _PlayerSelectorCard extends StatelessWidget {
   const _PlayerSelectorCard({
+    super.key,
     required this.label,
     required this.accent,
     required this.season,
@@ -819,30 +815,17 @@ class _PlayerSelectorCard extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 14),
-                Container(
-                  height: 112,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: .09),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: accent.withValues(alpha: .25)),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.person_rounded, color: accent, size: 46),
-                      const SizedBox(height: 4),
-                      Text(
-                        'PLAYER IMAGE PLACEHOLDER',
-                        style: TextStyle(
-                          color: colors.onSurfaceVariant,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: .8,
-                        ),
-                      ),
+                Row(
+                  children: [
+                    for (final metric in const ['pts', 'reb', 'ast']) ...[
+                      if (metric != 'pts') const SizedBox(width: 6),
+                      Expanded(child: ComparisonMetricPill(
+                        label: metric.toUpperCase(),
+                        value: row?.value(metric)?.toStringAsFixed(1) ?? '—',
+                        accent: metric == 'pts' ? accent : null,
+                      )),
                     ],
-                  ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 if (row == null)
@@ -891,46 +874,34 @@ class _MetricTable extends StatelessWidget {
   final NbaStatsWorkstationEngine engine;
 
   @override
-  Widget build(BuildContext context) {
-    final minWidth = 170.0 + players.length * 170.0;
-    return Card(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.all(16),
-        child: SizedBox(
-          width: math.max(minWidth, MediaQuery.sizeOf(context).width - 90),
-          child: Table(
-            columnWidths: {
-              0: const FixedColumnWidth(150),
-              for (var index = 0; index < players.length; index++)
-                index + 1: const FlexColumnWidth(),
-            },
-            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-            children: [
-              TableRow(
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest
-                      .withValues(alpha: .35),
-                ),
-                children: [
-                  const _TableCellText('METRIC', bold: true),
-                  for (final player in players)
-                    _TableCellText(
-                      '${player.row.player}\n${player.season}',
-                      bold: true,
-                      color: player.color,
-                    ),
-                ],
+  Widget build(BuildContext context) => ComparisonTableViewport(
+        participants: players.length,
+        builder: (width) => Table(
+          columnWidths: {
+            0: const FixedColumnWidth(150),
+            for (var index = 0; index < players.length; index++)
+              index + 1: const FlexColumnWidth(),
+          },
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: [
+            TableRow(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest
+                    .withValues(alpha: .35),
               ),
-              for (final metric in metrics) _metricRow(context, metric),
-            ],
-          ),
+              children: [
+                const _TableCellText('METRIC', bold: true),
+                for (final player in players)
+                  _TableCellText(
+                    '${player.row.player}\n${player.season}',
+                    bold: true, color: player.color,
+                  ),
+              ],
+            ),
+            for (final metric in metrics) _metricRow(context, metric),
+          ],
         ),
-      ),
-    );
-  }
+      );
 
   TableRow _metricRow(BuildContext context, _CompareMetric metric) {
     final values = [for (final player in players) metric.value(player.row)];
