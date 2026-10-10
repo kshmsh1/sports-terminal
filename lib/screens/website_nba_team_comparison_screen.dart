@@ -34,6 +34,7 @@ class _WebsiteNbaTeamComparisonScreenState
   bool _lockSeasons = true;
   late Future<_TeamComparisonData> _future;
   int _requestSerial = 0;
+  bool _seedInitialSelections = true;
 
   @override
   void initState() {
@@ -75,6 +76,9 @@ class _WebsiteNbaTeamComparisonScreenState
       final rows = rowsBySeason[slot.season] ?? const <_TeamRow>[];
       if (rows.isEmpty) {
         slot.teamKey = null;
+      } else if (!rows.any((row) => row.teamKey == slot.teamKey) &&
+          !_seedInitialSelections) {
+        slot.teamKey = null;
       } else if (!rows.any((row) => row.teamKey == slot.teamKey)) {
         final used = <String>{
           for (var other = 0; other < _slots.length; other++)
@@ -87,6 +91,7 @@ class _WebsiteNbaTeamComparisonScreenState
         ).teamKey;
       }
     }
+    _seedInitialSelections = false;
     return _TeamComparisonData(rowsBySeason);
   }
 
@@ -95,14 +100,10 @@ class _WebsiteNbaTeamComparisonScreenState
   void _setSeason(int index, String season) {
     if (_lockSeasons) {
       for (final slot in _slots) {
-        slot
-          ..season = season
-          ..teamKey = null;
+        slot.season = season;
       }
     } else {
-      _slots[index]
-        ..season = season
-        ..teamKey = null;
+      _slots[index].season = season;
     }
     _reload();
   }
@@ -220,9 +221,6 @@ class _WebsiteNbaTeamComparisonScreenState
                   selected: {_seasonType},
                   onSelectionChanged: (value) {
                     _seasonType = value.first;
-                    for (final slot in _slots) {
-                      slot.teamKey = null;
-                    }
                     _reload();
                   },
                 ),
@@ -239,9 +237,7 @@ class _WebsiteNbaTeamComparisonScreenState
                       if (value && _slots.isNotEmpty) {
                         final season = _slots.first.season;
                         for (final slot in _slots) {
-                          slot
-                            ..season = season
-                            ..teamKey = null;
+                          slot.season = season;
                         }
                         _future = _loadData();
                       }
