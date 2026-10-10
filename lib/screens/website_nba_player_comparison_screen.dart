@@ -1254,7 +1254,8 @@ class _CompareMetric {
       for (var index = 0; index < values.length; index++)
         if (values[index] != null) index: values[index]!,
     };
-    if (available.isEmpty) return const {};
+    // One observed value cannot establish a head-to-head winner.
+    if (available.length < 2) return const {};
     final best = higherIsBetter
         ? available.values.reduce(math.max)
         : available.values.reduce(math.min);
