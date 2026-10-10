@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../models/app_session.dart';
+import '../widgets/comparison_lab_components.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
@@ -32,6 +33,7 @@ class _WebsiteNbaTeamComparisonScreenState
   String _category = 'Overview';
   bool _lockSeasons = true;
   late Future<_TeamComparisonData> _future;
+  int _requestSerial = 0;
 
   @override
   void initState() {
@@ -54,35 +56,35 @@ class _WebsiteNbaTeamComparisonScreenState
   }
 
   Future<_TeamComparisonData> _loadData() async {
+    final request = ++_requestSerial;
+    final seasonType = _seasonType;
+    final seasons = _slots.map((slot) => slot.season).toSet().toList();
+    final snapshots = await Future.wait([
+      for (final season in seasons)
+        _api.seasonSnapshot(season,
+          seasonType: seasonType == NbaStatsSeasonType.playoffs
+              ? 'playoffs' : 'regular'),
+    ]);
     final rowsBySeason = <String, List<_TeamRow>>{};
-    for (final season in _slots.map((slot) => slot.season).toSet()) {
-      final snapshot = await _api.seasonSnapshot(
-        season,
-        seasonType:
-            _seasonType == NbaStatsSeasonType.playoffs ? 'playoffs' : 'regular',
-      );
-      rowsBySeason[season] = _teamRows(snapshot);
+    for (var index = 0; index < seasons.length; index++) {
+      rowsBySeason[seasons[index]] = _teamRows(snapshots[index]);
     }
-
+    if (request != _requestSerial) return _TeamComparisonData(rowsBySeason);
     for (var index = 0; index < _slots.length; index++) {
       final slot = _slots[index];
       final rows = rowsBySeason[slot.season] ?? const <_TeamRow>[];
       if (rows.isEmpty) {
         slot.teamKey = null;
-        continue;
-      }
-      if (!rows.any((row) => row.teamKey == slot.teamKey)) {
+      } else if (!rows.any((row) => row.teamKey == slot.teamKey)) {
         final used = <String>{
           for (var other = 0; other < _slots.length; other++)
             if (other != index && _slots[other].season == slot.season)
               if (_slots[other].teamKey != null) _slots[other].teamKey!,
         };
-        slot.teamKey = rows
-            .firstWhere(
-              (row) => !used.contains(row.teamKey),
-              orElse: () => rows.first,
-            )
-            .teamKey;
+        slot.teamKey = rows.firstWhere(
+          (row) => !used.contains(row.teamKey),
+          orElse: () => rows.first,
+        ).teamKey;
       }
     }
     return _TeamComparisonData(rowsBySeason);
@@ -251,48 +253,45 @@ class _WebsiteNbaTeamComparisonScreenState
           ),
         ),
         const SizedBox(height: 16),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var index = 0; index < _slots.length; index++) ...[
-                SizedBox(
-                  width: 280,
-                  child: _TeamSelectorCard(
-                    label: 'Team ${String.fromCharCode(65 + index)}',
-                    accent: palette[index],
-                    season: _slots[index].season,
-                    seasons: _seasons,
-                    rows: data.rowsBySeason[_slots[index].season] ??
-                        const <_TeamRow>[],
-                    teamKey: _slots[index].teamKey,
-                    canRemove: _slots.length > 2,
-                    onSeason: (value) => _setSeason(index, value),
-                    onTeam: (value) =>
-                        setState(() => _slots[index].teamKey = value),
-                    onRemove: () => _removeTeam(index),
-                    onOpen: () {
-                      final row = _findTeam(
-                        data.rowsBySeason[_slots[index].season],
-                        _slots[index].teamKey,
-                      );
-                      if (row == null) return;
-                      openWebsiteNbaTeamPage(
-                        context,
-                        session: widget.session,
-                        teamKey: row.teamKey,
-                        teamName: row.name,
-                      );
-                    },
-                  ),
-                ),
-                if (index != _slots.length - 1) const SizedBox(width: 12),
-              ],
-            ],
-          ),
+        ComparisonSelectionLayout(
+          children: [
+            for (var index = 0; index < _slots.length; index++)
+              _TeamSelectorCard(
+                key: ValueKey('team-slot-$index'),
+                label: 'Team ${String.fromCharCode(65 + index)}',
+                accent: palette[index],
+                season: _slots[index].season,
+                seasons: _seasons,
+                rows: data.rowsBySeason[_slots[index].season] ??
+                    const <_TeamRow>[],
+                teamKey: _slots[index].teamKey,
+                canRemove: _slots.length > 2,
+                onSeason: (value) => _setSeason(index, value),
+                onTeam: (value) => setState(() => _slots[index].teamKey = value),
+                onRemove: () => _removeTeam(index),
+                onOpen: () {
+                  final row = _findTeam(
+                    data.rowsBySeason[_slots[index].season],
+                    _slots[index].teamKey,
+                  );
+                  if (row == null) return;
+                  openWebsiteNbaTeamPage(context, session: widget.session,
+                    teamKey: row.teamKey, teamName: row.name);
+                },
+              ),
+          ],
         ),
         const SizedBox(height: 18),
+        if (selected.length < 2)
+          ComparisonEmptyState(
+            title: selected.isEmpty
+                ? 'No comparable team records for these settings'
+                : 'Choose another team season',
+            message: selected.isEmpty
+                ? 'The selected season or playoff segment has no team records in the published static dataset. Try a different season or Regular Season. Missing statistics will not be displayed as zero.'
+                : 'Choose at least two teams to compare their available statistics.',
+            icon: Icons.groups_outlined,
+          ),
         if (selected.length >= 2) ...[
           Wrap(
             spacing: 8,
@@ -321,6 +320,7 @@ class _WebsiteNbaTeamComparisonScreenState
 
 class _TeamSelectorCard extends StatelessWidget {
   const _TeamSelectorCard({
+    super.key,
     required this.label,
     required this.accent,
     required this.season,
@@ -414,14 +414,22 @@ class _TeamSelectorCard extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 14),
-                Container(
-                  height: 96,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: .10),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.shield_outlined, size: 48, color: accent),
+                Row(
+                  children: [
+                    Expanded(child: ComparisonMetricPill(
+                      label: 'W–L',
+                      value: team == null || team.values['wins'] == null ||
+                              team.values['losses'] == null
+                          ? '—' : '${team.wins.round()}–${team.losses.round()}',
+                      accent: accent,
+                    )),
+                    const SizedBox(width: 8),
+                    Expanded(child: ComparisonMetricPill(
+                      label: 'WIN%',
+                      value: team?.values['win_pct'] == null
+                          ? '—' : '${(team!.winPct * 100).toStringAsFixed(1)}%',
+                    )),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 if (team != null) ...[
@@ -433,7 +441,9 @@ class _TeamSelectorCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${team.wins.round()}-${team.losses.round()} · ${(team.winPct * 100).toStringAsFixed(1)}%',
+                    team.values['win_pct'] == null
+                        ? 'Season statistics unavailable'
+                        : '${team.wins.round()}-${team.losses.round()} · ${(team.winPct * 100).toStringAsFixed(1)}%',
                     style: TextStyle(color: colors.onSurfaceVariant),
                   ),
                   Align(
@@ -460,42 +470,32 @@ class _TeamMetricTable extends StatelessWidget {
   final List<_TeamMetric> metrics;
 
   @override
-  Widget build(BuildContext context) {
-    final width = math.max(
-      180.0 + 170.0 * players.length,
-      MediaQuery.sizeOf(context).width - 90,
-    );
-    return Card(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.all(16),
-        child: SizedBox(
-          width: width,
-          child: Table(
-            columnWidths: {
-              0: const FixedColumnWidth(150),
-              for (var index = 0; index < players.length; index++)
-                index + 1: const FlexColumnWidth(),
-            },
-            children: [
-              TableRow(
-                children: [
-                  const _TeamCell('METRIC', bold: true),
-                  for (final team in players)
-                    _TeamCell(
-                      '${team.row.abbreviation}\n${team.season}',
-                      bold: true,
-                      color: team.color,
-                    ),
-                ],
+  Widget build(BuildContext context) => ComparisonTableViewport(
+        participants: players.length,
+        builder: (width) => Table(
+          columnWidths: {
+            0: const FixedColumnWidth(150),
+            for (var index = 0; index < players.length; index++)
+              index + 1: const FlexColumnWidth(),
+          },
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: [
+            TableRow(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest
+                    .withValues(alpha: .35),
               ),
-              for (final metric in metrics) _row(context, metric),
-            ],
-          ),
+              children: [
+                const _TeamCell('METRIC', bold: true),
+                for (final team in players)
+                  _TeamCell('${team.row.abbreviation}\n${team.season}',
+                    bold: true, color: team.color),
+              ],
+            ),
+            for (final metric in metrics) _row(context, metric),
+          ],
         ),
-      ),
-    );
-  }
+      );
 
   TableRow _row(BuildContext context, _TeamMetric metric) {
     final values = [for (final team in players) metric.value(team.row)];
