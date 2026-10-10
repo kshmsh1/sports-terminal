@@ -308,6 +308,12 @@ class _WebsiteNbaTeamComparisonScreenState
           ),
           const SizedBox(height: 14),
           _TeamMetricTable(players: selected, metrics: metrics),
+          const SizedBox(height: 16),
+          _TeamSeasonFingerprint(
+            selected: selected,
+            metrics: metrics,
+            rowsBySeason: data.rowsBySeason,
+          ),
           const SizedBox(height: 12),
           Text(
             '★ marks the most favorable available value among the selected teams. Lower defensive rating, turnovers, fouls and opponent scoring are treated as better.',
@@ -535,6 +541,111 @@ class _TeamMetricTable extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+
+class _TeamSeasonFingerprint extends StatelessWidget {
+  const _TeamSeasonFingerprint({
+    required this.selected,
+    required this.metrics,
+    required this.rowsBySeason,
+  });
+
+  final List<_SelectedTeam> selected;
+  final List<_TeamMetric> metrics;
+  final Map<String, List<_TeamRow>> rowsBySeason;
+
+  double? _percentile(_SelectedTeam selected, _TeamMetric metric) {
+    final actual = metric.value(selected.row);
+    if (actual == null || !actual.isFinite) return null;
+    final population = (rowsBySeason[selected.season] ?? const <_TeamRow>[])
+        .map(metric.value)
+        .whereType<double>()
+        .where((number) => number.isFinite)
+        .toList();
+    if (population.isEmpty) return null;
+    if (population.length == 1) return 50;
+    final behind = population.where((other) =>
+        metric.higherIsBetter ? other < actual : other > actual).length;
+    final tied = population.where((other) =>
+        (other - actual).abs() < 0.000001).length;
+    // Midrank handles statistical ties without declaring either team inferior.
+    return ((behind + (tied - 1) / 2) / (population.length - 1) * 100)
+        .clamp(0.0, 100.0).toDouble();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final eligible = metrics.where(
+      (metric) => selected.any((team) => _percentile(team, metric) != null),
+    ).toList();
+    if (eligible.isEmpty) return const SizedBox.shrink();
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Season-relative team fingerprint',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            Text('Percentiles are computed against teams in each selected season and segment. Missing values are excluded; higher percentile means a better relative rank.',
+              style: TextStyle(color: colors.onSurfaceVariant)),
+            const SizedBox(height: 16),
+            for (final metric in eligible)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: LayoutBuilder(builder: (context, constraints) {
+                  final columns = math.max(1,
+                    math.min(selected.length, (constraints.maxWidth / 208).floor()));
+                  final cellWidth = (constraints.maxWidth -
+                      92 - (columns - 1) * 10) / columns;
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(width: 92, child: Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: Text(metric.label, style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 12)),
+                      )),
+                      Expanded(child: Wrap(
+                        spacing: 10, runSpacing: 12,
+                        children: [
+                          for (final team in selected)
+                            SizedBox(
+                              width: math.max(130, cellWidth),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('${team.row.abbreviation} · ${team.season}: ${_percentile(team, metric)?.round().toString() ?? '—'}p',
+                                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 11.5,
+                                      fontWeight: FontWeight.w600)),
+                                  const SizedBox(height: 5),
+                                  LinearProgressIndicator(
+                                    value: (_percentile(team, metric) ?? 0) / 100,
+                                    minHeight: 8,
+                                    backgroundColor: team.color.withValues(alpha: .13),
+                                    valueColor: AlwaysStoppedAnimation(team.color),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      )),
+                    ],
+                  );
+                }),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
