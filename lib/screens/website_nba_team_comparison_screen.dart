@@ -1030,14 +1030,18 @@ List<_TeamRow> _teamRows(NbaTerminalSeedSnapshot snapshot) {
     final metadata = teamsByKey[key] ?? const <String, dynamic>{};
     final logs = logsByTeam[key] ?? const <Map<String, dynamic>>[];
     final gamesFromRecord = _num(record['games'] ?? record['gp']);
-    final games = gamesFromRecord ?? (logs.isEmpty ? null : logs.length.toDouble());
+    final completeLogs = gamesFromRecord != null &&
+        gamesFromRecord > 0 && logs.length >= gamesFromRecord;
+    final games = gamesFromRecord;
     final winsFromLog = logs.where((log) =>
         _text(log['result']).toUpperCase().startsWith('W')).length.toDouble();
     final lossesFromLog = logs.where((log) =>
         _text(log['result']).toUpperCase().startsWith('L')).length.toDouble();
     final knownResults = winsFromLog + lossesFromLog > 0;
-    final wins = _num(record['wins']) ?? (knownResults ? winsFromLog : null);
-    final losses = _num(record['losses']) ?? (knownResults ? lossesFromLog : null);
+    final wins = _num(record['wins']) ??
+        (completeLogs && knownResults ? winsFromLog : null);
+    final losses = _num(record['losses']) ??
+        (completeLogs && knownResults ? lossesFromLog : null);
     final winGames = (wins ?? 0) + (losses ?? 0);
 
     final totals = <String, double>{};
@@ -1051,11 +1055,12 @@ List<_TeamRow> _teamRows(NbaTerminalSeedSnapshot snapshot) {
       }
     }
 
-    final denom = logs.isNotEmpty ? logs.length.toDouble() : games;
-    final pts = covered.contains('points')
-        ? totals['points'] : _num(record['points']);
-    final opp = covered.contains('opponent_points')
-        ? totals['opponent_points'] : _num(record['opponent_points']);
+    final denom = gamesFromRecord;
+    final pts = _num(record['points']) ??
+        (completeLogs && covered.contains('points') ? totals['points'] : null);
+    final opp = _num(record['opponent_points']) ??
+        (completeLogs && covered.contains('opponent_points')
+            ? totals['opponent_points'] : null);
     final fgm = totals['field_goals_made'];
     final fga = totals['field_goal_attempts'];
     final threes = totals['three_pointers_made'];
@@ -1080,15 +1085,18 @@ List<_TeamRow> _teamRows(NbaTerminalSeedSnapshot snapshot) {
       if (denom != null && denom > 0 && opp != null) 'opp_ppg': opp / denom,
       if (denom != null && denom > 0 && pts != null && opp != null)
         'point_diff': (pts - opp) / denom,
-      if (fga != null && fga > 0 && fgm != null) 'fg_pct': fgm / fga,
-      if (threeA != null && threeA > 0 && threes != null)
+      if (completeLogs && fga != null && fga > 0 && fgm != null)
+        'fg_pct': fgm / fga,
+      if (completeLogs && threeA != null && threeA > 0 && threes != null)
         'three_pct': threes / threeA,
-      if (fta != null && fta > 0 && ftm != null) 'ft_pct': ftm / fta,
-      if (fga != null && fga > 0 && fgm != null && threes != null)
-        'efg_pct': (fgm + .5 * threes) / fga,
-      if (fga != null && fta != null && fga + .44 * fta > 0 && pts != null)
+      if (completeLogs && fta != null && fta > 0 && ftm != null)
+        'ft_pct': ftm / fta,
+      if (completeLogs && fga != null && fga > 0 && fgm != null &&
+          threes != null) 'efg_pct': (fgm + .5 * threes) / fga,
+      if (completeLogs && fga != null && fta != null &&
+          fga + .44 * fta > 0 && pts != null)
         'ts_pct': pts / (2 * (fga + .44 * fta)),
-      if (denom != null && denom > 0)
+      if (completeLogs && denom != null && denom > 0)
         for (final field in covered) '${field}_pg': totals[field]! / denom,
     };
     rows.add(_TeamRow(
