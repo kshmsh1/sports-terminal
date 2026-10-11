@@ -447,7 +447,7 @@ class _WebsiteNbaPlayerComparisonScreenState
           _SelectedPlayer(
             row: row,
             season: slot.season,
-            color: palette[index],
+            color: _comparisonTeamColor(row.team, palette[index]),
           ),
         );
       }
@@ -497,6 +497,7 @@ class _WebsiteNbaPlayerComparisonScreenState
         ),
         const SizedBox(height: 18),
         _ControlBar(
+          key: ValueKey('control-${_seasonType.name}-${_basis.name}'),
           seasonType: _seasonType,
           basis: _basis,
           lockSeasons: _lockSeasons,
@@ -1475,3 +1476,21 @@ final Map<String, List<String>> _customGroups = {
     'game_score_proxy',
   ],
 };
+
+// Stable team accents for the comparison workspace. Historic/combined teams
+// fall back to the existing participant palette.
+Color _comparisonTeamColor(String team, Color fallback) {
+  const colors = <String, int>{
+    'ATL': 0xFFE03A3E, 'BOS': 0xFF2A9D69, 'BKN': 0xFF9CA3AF,
+    'CHA': 0xFF42B4C8, 'CHI': 0xFFCE334E, 'CLE': 0xFF9C294A,
+    'DAL': 0xFF2586CC, 'DEN': 0xFFF2B33D, 'DET': 0xFFE04453,
+    'GSW': 0xFF3187E1, 'HOU': 0xFFE1364D, 'IND': 0xFFF1B53C,
+    'LAC': 0xFFDF314B, 'LAL': 0xFF9A70DC, 'MEM': 0xFF6F99D5,
+    'MIA': 0xFFD94558, 'MIL': 0xFF289A65, 'MIN': 0xFF5789BC,
+    'NOP': 0xFFC59A55, 'NYK': 0xFFF18A38, 'OKC': 0xFF339ED8,
+    'ORL': 0xFF3288DF, 'PHI': 0xFF347FCB, 'PHX': 0xFFD27B34,
+    'POR': 0xFFE4494C, 'SAC': 0xFF956BD0, 'SAS': 0xFFB2B8C4,
+    'TOR': 0xFFDC374C, 'UTA': 0xFF7975CA, 'WAS': 0xFF527CAD,
+  };
+  return colors.containsKey(team) ? Color(colors[team]!) : fallback;
+}
