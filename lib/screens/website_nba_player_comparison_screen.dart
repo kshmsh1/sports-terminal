@@ -656,6 +656,7 @@ class _WebsiteNbaPlayerComparisonScreenState
 
 class _ControlBar extends StatelessWidget {
   const _ControlBar({
+    super.key,
     required this.seasonType,
     required this.basis,
     required this.lockSeasons,
