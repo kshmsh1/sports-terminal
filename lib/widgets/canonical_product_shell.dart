@@ -305,7 +305,9 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
                   child: Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        maxWidth: _selected == 'trade' ? 1420 : 1320,
+                        maxWidth: _selected == 'trade' ? 1420 :
+                            (_selected == 'player-compare' || _selected == 'team-compare')
+                                ? 1760 : 1320,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,

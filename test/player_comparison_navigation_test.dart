@@ -8,6 +8,9 @@ void main() {
     final player = File(
       'lib/screens/website_nba_player_comparison_screen.dart',
     ).readAsStringSync();
+    final controls = File(
+      'lib/widgets/comparison_lab_controls.dart',
+    ).readAsStringSync();
     final team = File(
       'lib/screens/website_nba_team_comparison_screen.dart',
     ).readAsStringSync();
@@ -16,6 +19,7 @@ void main() {
     expect(shell, contains("id: 'team-compare'"));
     expect(shell, contains("'Compare'"));
     expect(shell, contains('_CompareMenu'));
+    expect(shell, contains('maxWidth: _selected == \'trade\''));
     expect(shell, contains('WebsiteNbaPlayerComparisonScreen'));
     expect(shell, contains('WebsiteNbaTeamComparisonScreen'));
     expect(shell, isNot(contains("id: 'compare'")));
@@ -30,7 +34,9 @@ void main() {
     expect(player, contains('winnerIndexes'));
     expect(player, contains('Icons.star_rounded'));
     expect(player, contains('most favorable available value'));
-    expect(player, contains('NbaStatsBasis.values'));
+    expect(player, contains('ComparisonRateBasisSelector'));
+    expect(player, contains('ComparisonSeasonTypeSelector'));
+    expect(controls, contains('NbaStatsBasis.values'));
     expect(player, contains('Regular Season'));
     expect(player, contains('Playoffs'));
     expect(player, contains("'Basic'"));
@@ -46,13 +52,35 @@ void main() {
     expect(player, contains('Saved views'));
     expect(player, contains('Save As'));
     expect(player, contains('_maxSavedViews = 5'));
-    expect(player, contains('PLAYER IMAGE PLACEHOLDER'));
+    expect(player, isNot(contains('PLAYER IMAGE PLACEHOLDER')));
+    expect(player, contains('ComparisonSelectionLayout'));
+    expect(player, contains('ComparisonTableViewport'));
+    expect(player, contains('ComparisonMetricPill'));
+    expect(player, contains('_requestSerial'));
+    expect(player, contains('if (request != _requestSerial)'));
+    expect(player, contains('ComparisonEmptyState'));
     expect(player, contains('WebsiteNbaApiService'));
     expect(player, contains('seasonSnapshot('));
     expect(player, isNot(contains('http://')));
     expect(player, isNot(contains('/v2/nba/history')));
 
     expect(team, contains('Team Comparison Lab'));
+    expect(team, contains('ComparisonSelectionLayout'));
+    expect(team, contains('ComparisonTableViewport'));
+    expect(team, contains('ComparisonMetricPill'));
+    expect(team, contains('ComparisonEmptyState'));
+    expect(team, contains('snapshot.standings'));
+    expect(team, contains('snapshot.teamGameLogs'));
+    expect(team, contains('Season-relative team fingerprint'));
+    expect(team, contains('SharedPreferences'));
+    expect(team, contains('Saved comparisons'));
+    expect(team, contains('_SavedTeamView'));
+    expect(team, contains('unavailable metrics are omitted'));
+    expect(team, contains('_seedInitialSelections'));
+    expect(player, contains('_seedInitialSelections'));
+    expect(team, contains('_percentile('));
+    expect(team, contains('if (request != _requestSerial)'));
+    expect(team, isNot(contains('height: 96')));
     expect(team, contains('_maxTeams = 5'));
     expect(team, contains('Add team'));
     expect(team, contains('Remove team'));
