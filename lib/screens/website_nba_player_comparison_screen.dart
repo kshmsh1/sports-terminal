@@ -472,7 +472,11 @@ class _WebsiteNbaPlayerComparisonScreenState
         // Keep toolbar and selection cards interactive while the newly
         // requested period loads; hide stale results until data catches up.
         if (_lastData != null) {
-          return _buildPage(context, _lastData!, updating: true);
+          final current = _lastData!;
+          final matches = current.seasonType == _seasonType &&
+              current.basis == _basis &&
+              _slots.every((slot) => current.rowsBySeason.containsKey(slot.season));
+          return _buildPage(context, current, updating: !matches);
         }
         return const SizedBox(
           height: 320,
@@ -588,15 +592,19 @@ class _WebsiteNbaPlayerComparisonScreenState
         if (stale)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 10),
-            child: Row(children: [
-              SizedBox(width: 16, height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2)),
-              SizedBox(width: 12),
-              Text('Loading comparison data for the selected segment…'),
-            ]),
+            child: Wrap(spacing: 12, runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                SizedBox(width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2)),
+                Text('Loading comparison data for the selected segment…'),
+              ],
+            ),
           ),
         if (_slots.length == 2)
-          Align(
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: Align(
             alignment: Alignment.centerRight,
             child: TextButton.icon(
               onPressed: () => setState(() {
@@ -607,6 +615,7 @@ class _WebsiteNbaPlayerComparisonScreenState
               icon: const Icon(Icons.swap_horiz_rounded, size: 18),
               label: const Text('Swap sides'),
             ),
+          ),
           ),
         const SizedBox(height: 10),
         Align(
@@ -663,7 +672,11 @@ class _WebsiteNbaPlayerComparisonScreenState
             icon: Icons.people_outline_rounded,
           ),
         if (selected.length >= 2) ...[
-          _StandingsCard(standings: standings),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: SizedBox(width: double.infinity,
+              child: _StandingsCard(standings: standings)),
+          ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 8,
@@ -687,6 +700,10 @@ class _WebsiteNbaPlayerComparisonScreenState
                 ),
             ],
           ),
+          const SizedBox(height: 8),
+          Text('${_seasonType == NbaStatsSeasonType.playoffs ? 'Playoffs' : 'Regular season'}  ·  ${_basis.label}  ·  ${selected.length} players',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+              color: colors.onSurfaceVariant)),
           const SizedBox(height: 14),
           if (selected.length == 2)
             ComparisonHeadToHead(
