@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_session.dart';
 import '../widgets/comparison_lab_components.dart';
+import '../widgets/comparison_lab_controls.dart';
 import '../widgets/comparison_lab_experience.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
@@ -780,48 +781,13 @@ class _ControlBar extends StatelessWidget {
             runSpacing: 10,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              SegmentedButton<NbaStatsSeasonType>(
-                segments: const [
-                  ButtonSegment(
-                    value: NbaStatsSeasonType.regular,
-                    label: Text('Regular Season'),
-                  ),
-                  ButtonSegment(
-                    value: NbaStatsSeasonType.playoffs,
-                    label: Text('Playoffs'),
-                  ),
-                ],
-                selected: {seasonType},
-                onSelectionChanged: (value) => onSeasonType(value.first),
+              ComparisonSeasonTypeSelector(
+                value: seasonType,
+                onChanged: onSeasonType,
               ),
-              SizedBox(
-                width: 165,
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Rate basis',
-                    isDense: true,
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<NbaStatsBasis>(
-                      value: basis,
-                      isDense: true,
-                      isExpanded: true,
-                      items: [
-                        for (final value in NbaStatsBasis.values)
-                          DropdownMenuItem(
-                            value: value,
-                            child: Text(value.label),
-                          ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null && value != basis) onBasis(value);
-                      },
-                    ),
-                  ),
-                ),
+              ComparisonRateBasisSelector(
+                value: basis,
+                onChanged: onBasis,
               ),
               FilterChip(
                 selected: lockSeasons,
