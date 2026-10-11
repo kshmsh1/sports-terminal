@@ -416,7 +416,21 @@ class _WebsiteNbaTeamComparisonScreenState
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
+        if (_slots.length == 2)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => setState(() {
+                final first = _slots[0];
+                _slots[0] = _slots[1];
+                _slots[1] = first;
+              }),
+              icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+              label: const Text('Swap sides'),
+            ),
+          ),
+        const SizedBox(height: 10),
         Align(
           alignment: Alignment.center,
           child: ConstrainedBox(
