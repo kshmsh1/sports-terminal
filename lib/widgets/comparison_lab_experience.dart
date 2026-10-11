@@ -216,9 +216,9 @@ class ComparisonHeadToHead extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Align(
-      alignment: Alignment.center,
+      alignment: Alignment.centerLeft,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1050),
+        constraints: const BoxConstraints(maxWidth: 1200),
         child: Card(
           margin: EdgeInsets.zero,
           clipBehavior: Clip.antiAlias,
@@ -415,9 +415,9 @@ class ComparisonFingerprintPanel extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final count = rows.first.entries.length;
     return Align(
-      alignment: Alignment.center,
+      alignment: Alignment.centerLeft,
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: count == 2 ? 1050 : 1800),
+        constraints: BoxConstraints(maxWidth: count == 2 ? 1200 : 1800),
         child: Card(
           margin: EdgeInsets.zero,
           child: Padding(
