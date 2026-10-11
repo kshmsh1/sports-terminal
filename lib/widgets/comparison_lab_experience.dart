@@ -72,8 +72,8 @@ class _ComparisonSearchDialogState extends State<_ComparisonSearchDialog> {
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
       child: SizedBox(
-        width: math.min(620, screen.width - 32),
-        height: math.min(650, screen.height * .82),
+        width: math.min(620.0, screen.width - 32),
+        height: math.min(650.0, screen.height * .82),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
