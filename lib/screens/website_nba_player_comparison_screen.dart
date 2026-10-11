@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_session.dart';
 import '../widgets/comparison_lab_components.dart';
+import '../widgets/comparison_lab_experience.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/website_nba_api_service.dart';
 import 'website_nba_entity_pages.dart';
@@ -145,6 +146,14 @@ class _WebsiteNbaPlayerComparisonScreenState
         ).playerId;
       }
     }
+    // A participant cannot occupy two slots in the same season/segment.
+    // Keep the first occurrence (also when loading an old saved preset).
+    final occupied = <String>{};
+    for (final slot in _slots) {
+      if (slot.playerId == null) continue;
+      final identity = '${slot.season}/${slot.playerId}';
+      if (!occupied.add(identity)) slot.playerId = null;
+    }
     _seedInitialSelections = false;
     return _ComparisonData(rowsBySeason);
   }
@@ -258,7 +267,7 @@ class _WebsiteNbaPlayerComparisonScreenState
         (item) => item.name == view.basis,
         orElse: () => NbaStatsBasis.perGame,
       );
-      _category = _categoryMetrics.containsKey(view.category)
+      _category = view.category == 'Custom' || _categoryMetrics.containsKey(view.category)
           ? view.category
           : 'Basic';
       _lockSeasons = view.lockSeasons;
@@ -501,7 +510,11 @@ class _WebsiteNbaPlayerComparisonScreenState
           onDelete: _deleteSavedView,
         ),
         const SizedBox(height: 16),
-        ComparisonSelectionLayout(
+        Align(
+          alignment: Alignment.center,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: _slots.length == 2 ? 1050 : 1800),
+            child: ComparisonSelectionLayout(
           children: [
             for (var index = 0; index < _slots.length; index++)
               _PlayerSelectorCard(
@@ -513,6 +526,11 @@ class _WebsiteNbaPlayerComparisonScreenState
                 rows: data.rowsBySeason[_slots[index].season] ??
                     const <NbaStatsRow>[],
                 playerId: _slots[index].playerId,
+                unavailableIds: {
+                  for (var other = 0; other < _slots.length; other++)
+                    if (other != index && _slots[other].season == _slots[index].season)
+                      if (_slots[other].playerId != null) _slots[other].playerId!,
+                },
                 canRemove: _slots.length > 2,
                 onSeason: (value) => _setSeason(index, value),
                 onPlayer: (value) =>
@@ -531,6 +549,8 @@ class _WebsiteNbaPlayerComparisonScreenState
                 },
               ),
           ],
+            ),
+          ),
         ),
         const SizedBox(height: 18),
         if (selected.length < 2)
@@ -565,7 +585,29 @@ class _WebsiteNbaPlayerComparisonScreenState
             ],
           ),
           const SizedBox(height: 14),
-          _MetricTable(players: selected, metrics: metrics, engine: _engine),
+          if (selected.length == 2)
+            ComparisonHeadToHead(
+              leftName: selected[0].row.player,
+              rightName: selected[1].row.player,
+              leftContext: '${selected[0].row.team} · ${selected[0].season}',
+              rightContext: '${selected[1].row.team} · ${selected[1].season}',
+              leftColor: selected[0].color,
+              rightColor: selected[1].color,
+              metrics: [
+                for (final metric in metrics)
+                  ComparisonDuelMetric(
+                    label: metric.label,
+                    leftValue: metric.value(selected[0].row),
+                    rightValue: metric.value(selected[1].row),
+                    leftDisplay: metric.format(metric.value(selected[0].row), _engine),
+                    rightDisplay: metric.format(metric.value(selected[1].row), _engine),
+                    higherIsBetter: metric.higherIsBetter,
+                    percent: metric.percent,
+                  ),
+              ],
+            )
+          else
+            _MetricTable(players: selected, metrics: metrics, engine: _engine),
           const SizedBox(height: 18),
           _PercentileCard(players: selected, metrics: metrics),
           const SizedBox(height: 12),
@@ -722,6 +764,7 @@ class _PlayerSelectorCard extends StatelessWidget {
     required this.seasons,
     required this.rows,
     required this.playerId,
+    required this.unavailableIds,
     required this.canRemove,
     required this.onSeason,
     required this.onPlayer,
@@ -735,6 +778,7 @@ class _PlayerSelectorCard extends StatelessWidget {
   final List<WebsiteNbaSeason> seasons;
   final List<NbaStatsRow> rows;
   final String? playerId;
+  final Set<String> unavailableIds;
   final bool canRemove;
   final ValueChanged<String> onSeason;
   final ValueChanged<String> onPlayer;
@@ -792,24 +836,35 @@ class _PlayerSelectorCard extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 12),
-                DropdownMenu<String>(
-                  key: ValueKey('$label-$season-$playerId'),
-                  initialSelection: playerId,
-                  enableFilter: true,
-                  enableSearch: true,
-                  expandedInsets: EdgeInsets.zero,
-                  label: const Text('Search player'),
-                  leadingIcon: const Icon(Icons.search_rounded),
-                  dropdownMenuEntries: [
-                    for (final player in rows)
-                      DropdownMenuEntry(
-                        value: player.playerId,
-                        label: '${player.player} · ${player.team}',
-                      ),
-                  ],
-                  onSelected: (value) {
-                    if (value != null) onPlayer(value);
-                  },
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: rows.isEmpty ? null : () async {
+                      final chosen = await showComparisonSearch(
+                        context,
+                        title: 'Select a player · $season',
+                        accent: accent,
+                        options: [
+                          for (final player in rows)
+                            ComparisonSearchOption(
+                              id: player.playerId,
+                              title: player.player,
+                              subtitle: '${player.team} · ${player.position} · $season',
+                              disabled: unavailableIds.contains(player.playerId),
+                            ),
+                        ],
+                      );
+                      if (chosen != null && context.mounted) onPlayer(chosen);
+                    },
+                    icon: const Icon(Icons.search_rounded, size: 19),
+                    label: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(row == null
+                          ? (rows.isEmpty ? 'No players available' : 'Search players')
+                          : '${row.player} · ${row.team}',
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 Row(
@@ -1019,81 +1074,25 @@ class _PercentileCard extends StatelessWidget {
   final List<_CompareMetric> metrics;
 
   @override
-  Widget build(BuildContext context) {
-    final available = metrics
-        .where(
-          (metric) => players.any((player) => metric.percentile(player.row) != null),
-        )
-        .toList();
-    if (available.isEmpty) return const SizedBox.shrink();
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Season-relative fingerprint',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 14),
-            for (final metric in available)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 90,
-                      child: Text(
-                        metric.label,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    Expanded(
-                      child: Wrap(
-                        spacing: 10,
-                        runSpacing: 8,
-                        children: [
-                          for (final player in players)
-                            SizedBox(
-                              width: 180,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${player.row.player}: ${metric.percentile(player.row)?.round() ?? '—'}p',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 11),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  LinearProgressIndicator(
-                                    value: ((metric.percentile(player.row) ?? 0)
-                                            .clamp(0, 100)) /
-                                        100,
-                                    minHeight: 7,
-                                    backgroundColor:
-                                        player.color.withValues(alpha: .10),
-                                    valueColor:
-                                        AlwaysStoppedAnimation(player.color),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
+  Widget build(BuildContext context) => ComparisonFingerprintPanel(
+    title: 'Season-relative fingerprint',
+    description: 'Each percentile is relative to that player’s selected season and segment. Comparisons across eras use separate reference populations.',
+    rows: [
+      for (final metric in metrics)
+        if (players.any((player) => metric.percentile(player.row) != null))
+          ComparisonFingerprintRow(
+            metric: metric.label,
+            entries: [
+              for (final player in players)
+                ComparisonFingerprintEntry(
+                  label: '${player.row.player} · ${player.season}',
+                  color: player.color,
+                  value: metric.percentile(player.row),
                 ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+            ],
+          ),
+    ],
+  );
 }
 
 class _ErrorCard extends StatelessWidget {
