@@ -5,7 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_session.dart';
+import '../widgets/comparison_lab_components.dart';
+import '../widgets/comparison_lab_controls.dart';
+import '../widgets/comparison_lab_experience.dart';
 import '../services/nba_stats_workstation_engine.dart';
+import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
 import 'website_nba_entity_pages.dart';
 
@@ -50,6 +54,11 @@ class _WebsiteNbaPlayerComparisonScreenState
   bool _lockSeasons = true;
   String? _activeSavedViewId;
   late Future<_ComparisonData> _future;
+  _ComparisonData? _lastData;
+  final Map<String, NbaTerminalSeedSnapshot> _snapshotCache = {};
+  final Map<String, List<NbaStatsRow>> _normalizedCache = {};
+  int _requestSerial = 0;
+  bool _seedInitialSelections = true;
 
   @override
   void initState() {
@@ -101,63 +110,109 @@ class _WebsiteNbaPlayerComparisonScreenState
     );
   }
 
-  Future<_ComparisonData> _loadData() async {
-    final uniqueSeasons = _slots.map((slot) => slot.season).toSet().toList();
+  String _snapshotKey(NbaStatsSeasonType type, String season) =>
+      '${type.name}/$season';
+
+  String _rowsKey(NbaStatsSeasonType type, NbaStatsBasis basis, String season) =>
+      '${type.name}/${basis.name}/$season';
+
+  _ComparisonData? _dataFromCache(
+      NbaStatsSeasonType type, NbaStatsBasis basis, List<String> seasons) {
+    if (seasons.any((season) =>
+        !_snapshotCache.containsKey(_snapshotKey(type, season)))) {
+      return null;
+    }
     final rowsBySeason = <String, List<NbaStatsRow>>{};
-    for (final season in uniqueSeasons) {
-      final snapshot = await _api.seasonSnapshot(
-        season,
-        seasonType:
-            _seasonType == NbaStatsSeasonType.playoffs ? 'playoffs' : 'regular',
-      );
-      final rows = _engine.buildRows(
-        snapshot,
-        basis: _basis,
-        seasonType: _seasonType,
-      )..sort(
-          (a, b) =>
-              (b.value('pts') ?? -1).compareTo(a.value('pts') ?? -1),
-        );
+    for (final season in seasons) {
+      final key = _rowsKey(type, basis, season);
+      var rows = _normalizedCache[key];
+      if (rows == null) {
+        rows = _engine.buildRows(
+          _snapshotCache[_snapshotKey(type, season)]!,
+          basis: basis,
+          seasonType: type,
+        )..sort((a, b) =>
+            (b.value('pts') ?? -1).compareTo(a.value('pts') ?? -1));
+        _normalizedCache[key] = rows;
+      }
       rowsBySeason[season] = rows;
     }
+    return _ComparisonData(rowsBySeason, type, basis);
+  }
 
+  /// Reuse static season snapshots when changing rate basis or returning to a
+  /// previously visited season. The controls never need to unmount.
+  void _queueDataUpdate() {
+    final seasons = _slots.map((slot) => slot.season).toSet().toList();
+    final cached = _dataFromCache(_seasonType, _basis, seasons);
+    if (cached != null) {
+      ++_requestSerial;
+      _lastData = cached;
+      _future = Future.value(cached);
+    } else {
+      _future = _loadData();
+    }
+  }
+
+  Future<_ComparisonData> _loadData() async {
+    final request = ++_requestSerial;
+    final seasonType = _seasonType;
+    final basis = _basis;
+    final seasons = _slots.map((slot) => slot.season).toSet().toList();
+    final missing = seasons.where((season) =>
+        !_snapshotCache.containsKey(_snapshotKey(seasonType, season))).toList();
+    final snapshots = await Future.wait([
+      for (final season in missing)
+        _api.seasonSnapshot(
+          season,
+          seasonType: seasonType == NbaStatsSeasonType.playoffs
+              ? 'playoffs'
+              : 'regular',
+        ),
+    ]);
+    for (var index = 0; index < missing.length; index++) {
+      _snapshotCache[_snapshotKey(seasonType, missing[index])] = snapshots[index];
+    }
+    final data = _dataFromCache(seasonType, basis, seasons)!;
+    if (request != _requestSerial) return data;
+
+    // Retain player identity when toggling Regular Season / Playoffs; a player
+    // missing in a segment can be reselected without losing the prior choice.
     for (var index = 0; index < _slots.length; index++) {
       final slot = _slots[index];
-      final rows = rowsBySeason[slot.season] ?? const <NbaStatsRow>[];
-      if (rows.isEmpty) {
-        slot.playerId = null;
-        continue;
-      }
-      if (!rows.any((row) => row.playerId == slot.playerId)) {
+      final rows = data.rowsBySeason[slot.season] ?? const <NbaStatsRow>[];
+      if (_seedInitialSelections && rows.isNotEmpty &&
+          !rows.any((row) => row.playerId == slot.playerId)) {
         final used = <String>{
           for (var other = 0; other < _slots.length; other++)
             if (other != index && _slots[other].season == slot.season)
               if (_slots[other].playerId != null) _slots[other].playerId!,
         };
-        slot.playerId = rows
-            .firstWhere(
-              (row) => !used.contains(row.playerId),
-              orElse: () => rows.first,
-            )
-            .playerId;
+        slot.playerId = rows.firstWhere(
+          (row) => !used.contains(row.playerId),
+          orElse: () => rows.first,
+        ).playerId;
       }
     }
-    return _ComparisonData(rowsBySeason);
+    final occupied = <String>{};
+    for (final slot in _slots) {
+      if (slot.playerId == null) continue;
+      final identity = '${slot.season}/${slot.playerId}';
+      if (!occupied.add(identity)) slot.playerId = null;
+    }
+    _seedInitialSelections = false;
+    return data;
   }
 
-  void _reload() => setState(() => _future = _loadData());
+  void _reload() => setState(_queueDataUpdate);
 
   void _setSeason(int index, String season) {
     if (_lockSeasons) {
       for (final slot in _slots) {
-        slot
-          ..season = season
-          ..playerId = null;
+        slot.season = season;
       }
     } else {
-      _slots[index]
-        ..season = season
-        ..playerId = null;
+      _slots[index].season = season;
     }
     _reload();
   }
@@ -167,7 +222,7 @@ class _WebsiteNbaPlayerComparisonScreenState
     final season = _slots.isEmpty ? '2025-26' : _slots.last.season;
     setState(() {
       _slots.add(_PlayerSlot(season: season));
-      _future = _loadData();
+      _queueDataUpdate();
     });
   }
 
@@ -175,7 +230,7 @@ class _WebsiteNbaPlayerComparisonScreenState
     if (_slots.length <= 2) return;
     setState(() {
       _slots.removeAt(index);
-      _future = _loadData();
+      _queueDataUpdate();
     });
   }
 
@@ -258,7 +313,7 @@ class _WebsiteNbaPlayerComparisonScreenState
         (item) => item.name == view.basis,
         orElse: () => NbaStatsBasis.perGame,
       );
-      _category = _categoryMetrics.containsKey(view.category)
+      _category = view.category == 'Custom' || _categoryMetrics.containsKey(view.category)
           ? view.category
           : 'Basic';
       _lockSeasons = view.lockSeasons;
@@ -272,7 +327,8 @@ class _WebsiteNbaPlayerComparisonScreenState
         _slots.add(_PlayerSlot(season: '2025-26'));
       }
       _activeSavedViewId = view.id;
-      _future = _loadData();
+      _seedInitialSelections = false;
+      _queueDataUpdate();
     });
   }
 
@@ -285,6 +341,7 @@ class _WebsiteNbaPlayerComparisonScreenState
 
   Future<void> _editCustomMetrics() async {
     final working = Set<String>.from(_customMetricKeys);
+    String search = '';
     final selected = await showModalBottomSheet<Set<String>>(
       context: context,
       isScrollControlled: true,
@@ -312,12 +369,27 @@ class _WebsiteNbaPlayerComparisonScreenState
                     ],
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: TextField(
+                    decoration: const InputDecoration(
+                      hintText: 'Search available metrics',
+                      prefixIcon: Icon(Icons.search_rounded),
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (value) =>
+                        setSheetState(() => search = value.trim().toLowerCase()),
+                  ),
+                ),
                 const Divider(height: 1),
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      for (final group in _customGroups.entries) ...[
+                      for (final group in _customGroups.entries)
+                        if (group.value.any((key) => _metricCatalog[key] != null &&
+                            (search.isEmpty || _metricCatalog[key]!.label.toLowerCase().contains(search) ||
+                                key.toLowerCase().contains(search)))) ...[
                         Padding(
                           padding: const EdgeInsets.only(top: 8, bottom: 8),
                           child: Text(
@@ -330,7 +402,9 @@ class _WebsiteNbaPlayerComparisonScreenState
                           runSpacing: 8,
                           children: [
                             for (final key in group.value)
-                              if (_metricCatalog[key] != null)
+                              if (_metricCatalog[key] != null &&
+                                  (search.isEmpty || _metricCatalog[key]!.label.toLowerCase().contains(search) ||
+                                      key.toLowerCase().contains(search)))
                                 FilterChip(
                                   selected: working.contains(key),
                                   label: Text(_metricCatalog[key]!.label),
@@ -387,22 +461,38 @@ class _WebsiteNbaPlayerComparisonScreenState
     return FutureBuilder<_ComparisonData>(
       future: _future,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const SizedBox(
-            height: 460,
-            child: Center(child: CircularProgressIndicator()),
-          );
+        if (snapshot.connectionState == ConnectionState.done &&
+            snapshot.hasData) {
+          _lastData = snapshot.data!;
+          return _buildPage(context, snapshot.data!);
         }
-        if (snapshot.hasError || snapshot.data == null) {
+        if (snapshot.connectionState == ConnectionState.done &&
+            snapshot.hasError) {
           return _ErrorCard(error: snapshot.error, onRetry: _reload);
         }
-        return _buildPage(context, snapshot.data!);
+        // Keep toolbar and selection cards interactive while the newly
+        // requested period loads; hide stale results until data catches up.
+        if (_lastData != null) {
+          final current = _lastData!;
+          final matches = current.seasonType == _seasonType &&
+              current.basis == _basis &&
+              _slots.every((slot) => current.rowsBySeason.containsKey(slot.season));
+          return _buildPage(context, current, updating: !matches);
+        }
+        return const SizedBox(
+          height: 320,
+          child: Center(child: CircularProgressIndicator()),
+        );
       },
     );
   }
 
-  Widget _buildPage(BuildContext context, _ComparisonData data) {
+  Widget _buildPage(BuildContext context, _ComparisonData data,
+      {bool updating = false}) {
     final colors = Theme.of(context).colorScheme;
+    final stale = updating || data.seasonType != _seasonType ||
+        data.basis != _basis ||
+        _slots.any((slot) => !data.rowsBySeason.containsKey(slot.season));
     final palette = <Color>[
       colors.primary,
       colors.tertiary,
@@ -414,12 +504,12 @@ class _WebsiteNbaPlayerComparisonScreenState
     for (var index = 0; index < _slots.length; index++) {
       final slot = _slots[index];
       final row = _findRow(data.rowsBySeason[slot.season], slot.playerId);
-      if (row != null) {
+      if (row != null && !stale) {
         selected.add(
           _SelectedPlayer(
             row: row,
             season: slot.season,
-            color: palette[index],
+            color: _comparisonTeamColor(row.team, palette[index]),
           ),
         );
       }
@@ -476,9 +566,6 @@ class _WebsiteNbaPlayerComparisonScreenState
           activeSavedViewId: _activeSavedViewId,
           onSeasonType: (value) {
             _seasonType = value;
-            for (final slot in _slots) {
-              slot.playerId = null;
-            }
             _reload();
           },
           onBasis: (value) {
@@ -491,11 +578,9 @@ class _WebsiteNbaPlayerComparisonScreenState
               if (value && _slots.isNotEmpty) {
                 final season = _slots.first.season;
                 for (final slot in _slots) {
-                  slot
-                    ..season = season
-                    ..playerId = null;
+                  slot.season = season;
                 }
-                _future = _loadData();
+                _queueDataUpdate();
               }
             });
           },
@@ -504,51 +589,95 @@ class _WebsiteNbaPlayerComparisonScreenState
           onApply: _applySavedView,
           onDelete: _deleteSavedView,
         ),
-        const SizedBox(height: 16),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var index = 0; index < _slots.length; index++) ...[
-                SizedBox(
-                  width: 292,
-                  child: _PlayerSelectorCard(
-                    label: 'Player ${String.fromCharCode(65 + index)}',
-                    accent: palette[index],
-                    season: _slots[index].season,
-                    seasons: _seasons,
-                    rows: data.rowsBySeason[_slots[index].season] ??
-                        const <NbaStatsRow>[],
-                    playerId: _slots[index].playerId,
-                    canRemove: _slots.length > 2,
-                    onSeason: (value) => _setSeason(index, value),
-                    onPlayer: (value) =>
-                        setState(() => _slots[index].playerId = value),
-                    onRemove: () => _removePlayer(index),
-                    onOpen: () {
-                      final row = _findRow(
-                        data.rowsBySeason[_slots[index].season],
-                        _slots[index].playerId,
-                      );
-                      if (row == null) return;
-                      openWebsiteNbaPlayerPage(
-                        context,
-                        session: widget.session,
-                        playerKey: row.playerId,
-                        playerName: row.player,
-                      );
-                    },
-                  ),
-                ),
-                if (index != _slots.length - 1) const SizedBox(width: 12),
+        const SizedBox(height: 12),
+        if (stale)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Wrap(spacing: 12, runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                SizedBox(width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2)),
+                Text('Loading comparison data for the selected segment…'),
               ],
-            ],
+            ),
+          ),
+        if (_slots.length == 2)
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => setState(() {
+                final first = _slots[0];
+                _slots[0] = _slots[1];
+                _slots[1] = first;
+              }),
+              icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+              label: const Text('Swap sides'),
+            ),
+          ),
+          ),
+        const SizedBox(height: 10),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: _slots.length == 2 ? 1200 : 1800),
+            child: ComparisonSelectionLayout(
+          children: [
+            for (var index = 0; index < _slots.length; index++)
+              _PlayerSelectorCard(
+                key: ValueKey('player-slot-$index'),
+                label: 'Player ${String.fromCharCode(65 + index)}',
+                accent: _comparisonTeamColor(
+                  _findRow(data.rowsBySeason[_slots[index].season],
+                      _slots[index].playerId)?.team ?? '', palette[index]),
+                busy: stale,
+                season: _slots[index].season,
+                seasons: _seasons,
+                rows: stale ? const <NbaStatsRow>[] :
+                    (data.rowsBySeason[_slots[index].season] ??
+                        const <NbaStatsRow>[]),
+                playerId: _slots[index].playerId,
+                unavailableIds: {
+                  for (var other = 0; other < _slots.length; other++)
+                    if (other != index && _slots[other].season == _slots[index].season)
+                      if (_slots[other].playerId != null) _slots[other].playerId!,
+                },
+                canRemove: _slots.length > 2,
+                onSeason: (value) => _setSeason(index, value),
+                onPlayer: (value) =>
+                    setState(() => _slots[index].playerId = value),
+                onRemove: () => _removePlayer(index),
+                onOpen: () {
+                  final row = _findRow(
+                    data.rowsBySeason[_slots[index].season],
+                    _slots[index].playerId,
+                  );
+                  if (row == null) return;
+                  openWebsiteNbaPlayerPage(
+                    context, session: widget.session,
+                    playerKey: row.playerId, playerName: row.player,
+                  );
+                },
+              ),
+          ],
+            ),
           ),
         ),
         const SizedBox(height: 18),
+        if (selected.length < 2 && !stale)
+          const ComparisonEmptyState(
+            title: 'Choose two player seasons',
+            message: 'Select a player in each card to begin. If a season has no available player data, try another season or segment.',
+            icon: Icons.people_outline_rounded,
+          ),
         if (selected.length >= 2) ...[
-          _StandingsCard(standings: standings),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: SizedBox(width: double.infinity,
+              child: _StandingsCard(standings: standings)),
+          ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 8,
@@ -572,8 +701,34 @@ class _WebsiteNbaPlayerComparisonScreenState
                 ),
             ],
           ),
+          const SizedBox(height: 8),
+          Text('${_seasonType == NbaStatsSeasonType.playoffs ? 'Playoffs' : 'Regular season'}  ·  ${_basis.label}  ·  ${selected.length} players',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+              color: colors.onSurfaceVariant)),
           const SizedBox(height: 14),
-          _MetricTable(players: selected, metrics: metrics, engine: _engine),
+          if (selected.length == 2)
+            ComparisonHeadToHead(
+              leftName: selected[0].row.player,
+              rightName: selected[1].row.player,
+              leftContext: '${selected[0].row.team} · ${selected[0].season}',
+              rightContext: '${selected[1].row.team} · ${selected[1].season}',
+              leftColor: selected[0].color,
+              rightColor: selected[1].color,
+              metrics: [
+                for (final metric in metrics)
+                  ComparisonDuelMetric(
+                    label: metric.label,
+                    leftValue: metric.value(selected[0].row),
+                    rightValue: metric.value(selected[1].row),
+                    leftDisplay: metric.format(metric.value(selected[0].row), _engine),
+                    rightDisplay: metric.format(metric.value(selected[1].row), _engine),
+                    higherIsBetter: metric.higherIsBetter,
+                    percent: metric.percent,
+                  ),
+              ],
+            )
+          else
+            _MetricTable(players: selected, metrics: metrics, engine: _engine),
           const SizedBox(height: 18),
           _PercentileCard(players: selected, metrics: metrics),
           const SizedBox(height: 12),
@@ -589,6 +744,7 @@ class _WebsiteNbaPlayerComparisonScreenState
 
 class _ControlBar extends StatelessWidget {
   const _ControlBar({
+    super.key,
     required this.seasonType,
     required this.basis,
     required this.lockSeasons,
@@ -625,36 +781,13 @@ class _ControlBar extends StatelessWidget {
             runSpacing: 10,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              SegmentedButton<NbaStatsSeasonType>(
-                segments: const [
-                  ButtonSegment(
-                    value: NbaStatsSeasonType.regular,
-                    label: Text('Regular Season'),
-                  ),
-                  ButtonSegment(
-                    value: NbaStatsSeasonType.playoffs,
-                    label: Text('Playoffs'),
-                  ),
-                ],
-                selected: {seasonType},
-                onSelectionChanged: (value) => onSeasonType(value.first),
+              ComparisonSeasonTypeSelector(
+                value: seasonType,
+                onChanged: onSeasonType,
               ),
-              SizedBox(
-                width: 165,
-                child: DropdownButtonFormField<NbaStatsBasis>(
-                  initialValue: basis,
-                  decoration: const InputDecoration(
-                    labelText: 'Rate basis',
-                    isDense: true,
-                  ),
-                  items: [
-                    for (final value in NbaStatsBasis.values)
-                      DropdownMenuItem(value: value, child: Text(value.label)),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) onBasis(value);
-                  },
-                ),
+              ComparisonRateBasisSelector(
+                value: basis,
+                onChanged: onBasis,
               ),
               FilterChip(
                 selected: lockSeasons,
@@ -723,12 +856,15 @@ class _ControlBar extends StatelessWidget {
 
 class _PlayerSelectorCard extends StatelessWidget {
   const _PlayerSelectorCard({
+    super.key,
     required this.label,
     required this.accent,
     required this.season,
     required this.seasons,
     required this.rows,
+    this.busy = false,
     required this.playerId,
+    required this.unavailableIds,
     required this.canRemove,
     required this.onSeason,
     required this.onPlayer,
@@ -741,7 +877,9 @@ class _PlayerSelectorCard extends StatelessWidget {
   final String season;
   final List<WebsiteNbaSeason> seasons;
   final List<NbaStatsRow> rows;
+  final bool busy;
   final String? playerId;
+  final Set<String> unavailableIds;
   final bool canRemove;
   final ValueChanged<String> onSeason;
   final ValueChanged<String> onPlayer;
@@ -799,54 +937,55 @@ class _PlayerSelectorCard extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 12),
-                DropdownMenu<String>(
-                  key: ValueKey('$label-$season-$playerId'),
-                  initialSelection: playerId,
-                  enableFilter: true,
-                  enableSearch: true,
-                  expandedInsets: EdgeInsets.zero,
-                  label: const Text('Search player'),
-                  leadingIcon: const Icon(Icons.search_rounded),
-                  dropdownMenuEntries: [
-                    for (final player in rows)
-                      DropdownMenuEntry(
-                        value: player.playerId,
-                        label: '${player.player} · ${player.team}',
-                      ),
-                  ],
-                  onSelected: (value) {
-                    if (value != null) onPlayer(value);
-                  },
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: busy || rows.isEmpty ? null : () async {
+                      final chosen = await showComparisonSearch(
+                        context,
+                        title: 'Select a player · $season',
+                        accent: accent,
+                        options: [
+                          for (final player in rows)
+                            ComparisonSearchOption(
+                              id: player.playerId,
+                              title: player.player,
+                              subtitle: '${player.team} · ${player.position} · $season',
+                              disabled: unavailableIds.contains(player.playerId),
+                            ),
+                        ],
+                      );
+                      if (chosen != null && context.mounted) onPlayer(chosen);
+                    },
+                    icon: const Icon(Icons.search_rounded, size: 19),
+                    label: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(row == null
+                          ? (busy ? 'Updating players…' :
+                              rows.isEmpty ? 'No players in this segment' : 'Search players')
+                          : '${row.player} · ${row.team}',
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 14),
-                Container(
-                  height: 112,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: .09),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: accent.withValues(alpha: .25)),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.person_rounded, color: accent, size: 46),
-                      const SizedBox(height: 4),
-                      Text(
-                        'PLAYER IMAGE PLACEHOLDER',
-                        style: TextStyle(
-                          color: colors.onSurfaceVariant,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: .8,
-                        ),
-                      ),
+                Row(
+                  children: [
+                    for (final metric in const ['pts', 'reb', 'ast']) ...[
+                      if (metric != 'pts') const SizedBox(width: 6),
+                      Expanded(child: ComparisonMetricPill(
+                        label: metric.toUpperCase(),
+                        value: row?.value(metric)?.toStringAsFixed(1) ?? '—',
+                        accent: metric == 'pts' ? accent : null,
+                      )),
                     ],
-                  ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 if (row == null)
-                  const Text('Choose a player')
+                  Text(busy ? 'Loading selected season…' :
+                      playerId == null ? 'Choose a player' :
+                      'Not in this season or segment — select another player')
                 else ...[
                   Text(
                     row.player,
@@ -891,46 +1030,34 @@ class _MetricTable extends StatelessWidget {
   final NbaStatsWorkstationEngine engine;
 
   @override
-  Widget build(BuildContext context) {
-    final minWidth = 170.0 + players.length * 170.0;
-    return Card(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.all(16),
-        child: SizedBox(
-          width: math.max(minWidth, MediaQuery.sizeOf(context).width - 90),
-          child: Table(
-            columnWidths: {
-              0: const FixedColumnWidth(150),
-              for (var index = 0; index < players.length; index++)
-                index + 1: const FlexColumnWidth(),
-            },
-            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-            children: [
-              TableRow(
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest
-                      .withValues(alpha: .35),
-                ),
-                children: [
-                  const _TableCellText('METRIC', bold: true),
-                  for (final player in players)
-                    _TableCellText(
-                      '${player.row.player}\n${player.season}',
-                      bold: true,
-                      color: player.color,
-                    ),
-                ],
+  Widget build(BuildContext context) => ComparisonTableViewport(
+        participants: players.length,
+        builder: (width) => Table(
+          columnWidths: {
+            0: const FixedColumnWidth(150),
+            for (var index = 0; index < players.length; index++)
+              index + 1: const FlexColumnWidth(),
+          },
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: [
+            TableRow(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest
+                    .withValues(alpha: .35),
               ),
-              for (final metric in metrics) _metricRow(context, metric),
-            ],
-          ),
+              children: [
+                const _TableCellText('METRIC', bold: true),
+                for (final player in players)
+                  _TableCellText(
+                    '${player.row.player}\n${player.season}',
+                    bold: true, color: player.color,
+                  ),
+              ],
+            ),
+            for (final metric in metrics) _metricRow(context, metric),
+          ],
         ),
-      ),
-    );
-  }
+      );
 
   TableRow _metricRow(BuildContext context, _CompareMetric metric) {
     final values = [for (final player in players) metric.value(player.row)];
@@ -1051,81 +1178,25 @@ class _PercentileCard extends StatelessWidget {
   final List<_CompareMetric> metrics;
 
   @override
-  Widget build(BuildContext context) {
-    final available = metrics
-        .where(
-          (metric) => players.any((player) => metric.percentile(player.row) != null),
-        )
-        .toList();
-    if (available.isEmpty) return const SizedBox.shrink();
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Season-relative fingerprint',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 14),
-            for (final metric in available)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 90,
-                      child: Text(
-                        metric.label,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    Expanded(
-                      child: Wrap(
-                        spacing: 10,
-                        runSpacing: 8,
-                        children: [
-                          for (final player in players)
-                            SizedBox(
-                              width: 180,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${player.row.player}: ${metric.percentile(player.row)?.round() ?? '—'}p',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 11),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  LinearProgressIndicator(
-                                    value: ((metric.percentile(player.row) ?? 0)
-                                            .clamp(0, 100)) /
-                                        100,
-                                    minHeight: 7,
-                                    backgroundColor:
-                                        player.color.withValues(alpha: .10),
-                                    valueColor:
-                                        AlwaysStoppedAnimation(player.color),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
+  Widget build(BuildContext context) => ComparisonFingerprintPanel(
+    title: 'Season-relative fingerprint',
+    description: 'Each percentile is relative to that player’s selected season and segment. Comparisons across eras use separate reference populations.',
+    rows: [
+      for (final metric in metrics)
+        if (players.any((player) => metric.percentile(player.row) != null))
+          ComparisonFingerprintRow(
+            metric: metric.label,
+            entries: [
+              for (final player in players)
+                ComparisonFingerprintEntry(
+                  label: '${player.row.player} · ${player.season}',
+                  color: player.color,
+                  value: metric.percentile(player.row),
                 ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+            ],
+          ),
+    ],
+  );
 }
 
 class _ErrorCard extends StatelessWidget {
@@ -1228,8 +1299,10 @@ class _SavedPlayerView {
 }
 
 class _ComparisonData {
-  const _ComparisonData(this.rowsBySeason);
+  const _ComparisonData(this.rowsBySeason, this.seasonType, this.basis);
   final Map<String, List<NbaStatsRow>> rowsBySeason;
+  final NbaStatsSeasonType seasonType;
+  final NbaStatsBasis basis;
 }
 
 class _SelectedPlayer {
@@ -1286,7 +1359,8 @@ class _CompareMetric {
       for (var index = 0; index < values.length; index++)
         if (values[index] != null) index: values[index]!,
     };
-    if (available.isEmpty) return const {};
+    // One observed value cannot establish a head-to-head winner.
+    if (available.length < 2) return const {};
     final best = higherIsBetter
         ? available.values.reduce(math.max)
         : available.values.reduce(math.min);
@@ -1475,3 +1549,23 @@ final Map<String, List<String>> _customGroups = {
     'game_score_proxy',
   ],
 };
+
+// Stable team accents for the comparison workspace. Historic/combined teams
+// fall back to the existing participant palette.
+Color _comparisonTeamColor(String team, Color fallback) {
+  const colors = <String, int>{
+    'ATL': 0xFFE03A3E, 'BOS': 0xFF2A9D69, 'BKN': 0xFF9CA3AF,
+    'CHA': 0xFF42B4C8, 'CHI': 0xFFCE334E, 'CLE': 0xFF9C294A,
+    'DAL': 0xFF2586CC, 'DEN': 0xFFF2B33D, 'DET': 0xFFE04453,
+    'GSW': 0xFF3187E1, 'HOU': 0xFFE1364D, 'IND': 0xFFF1B53C,
+    'LAC': 0xFFDF314B, 'LAL': 0xFF9A70DC, 'MEM': 0xFF6F99D5,
+    'MIA': 0xFFD94558, 'MIL': 0xFF289A65, 'MIN': 0xFF5789BC,
+    'NOP': 0xFFC59A55, 'NYK': 0xFFF18A38, 'OKC': 0xFF339ED8,
+    'ORL': 0xFF3288DF, 'PHI': 0xFF347FCB, 'PHX': 0xFFD27B34,
+    'POR': 0xFFE4494C, 'SAC': 0xFF956BD0, 'SAS': 0xFFB2B8C4,
+    'TOR': 0xFFDC374C, 'UTA': 0xFF7975CA, 'WAS': 0xFF527CAD,
+  };
+  final normalized = team.trim().toUpperCase();
+  final code = normalized.split(RegExp(r'[,/ ]')).first;
+  return colors.containsKey(code) ? Color(colors[code]!) : fallback;
+}

@@ -311,7 +311,10 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
                             ? 1420
                             : _selected == 'visualizations'
                                 ? 1880
-                                : 1320,
+                                : (_selected == 'player-compare' ||
+                                        _selected == 'team-compare')
+                                    ? 1760
+                                    : 1320,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
