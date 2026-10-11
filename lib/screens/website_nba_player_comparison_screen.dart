@@ -460,22 +460,34 @@ class _WebsiteNbaPlayerComparisonScreenState
     return FutureBuilder<_ComparisonData>(
       future: _future,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const SizedBox(
-            height: 460,
-            child: Center(child: CircularProgressIndicator()),
-          );
+        if (snapshot.connectionState == ConnectionState.done &&
+            snapshot.hasData) {
+          _lastData = snapshot.data!;
+          return _buildPage(context, snapshot.data!);
         }
-        if (snapshot.hasError || snapshot.data == null) {
+        if (snapshot.connectionState == ConnectionState.done &&
+            snapshot.hasError) {
           return _ErrorCard(error: snapshot.error, onRetry: _reload);
         }
-        return _buildPage(context, snapshot.data!);
+        // Keep toolbar and selection cards interactive while the newly
+        // requested period loads; hide stale results until data catches up.
+        if (_lastData != null) {
+          return _buildPage(context, _lastData!, updating: true);
+        }
+        return const SizedBox(
+          height: 320,
+          child: Center(child: CircularProgressIndicator()),
+        );
       },
     );
   }
 
-  Widget _buildPage(BuildContext context, _ComparisonData data) {
+  Widget _buildPage(BuildContext context, _ComparisonData data,
+      {bool updating = false}) {
     final colors = Theme.of(context).colorScheme;
+    final stale = updating || data.seasonType != _seasonType ||
+        data.basis != _basis ||
+        _slots.any((slot) => !data.rowsBySeason.containsKey(slot.season));
     final palette = <Color>[
       colors.primary,
       colors.tertiary,
@@ -487,7 +499,7 @@ class _WebsiteNbaPlayerComparisonScreenState
     for (var index = 0; index < _slots.length; index++) {
       final slot = _slots[index];
       final row = _findRow(data.rowsBySeason[slot.season], slot.playerId);
-      if (row != null) {
+      if (row != null && !stale) {
         selected.add(
           _SelectedPlayer(
             row: row,
@@ -542,7 +554,6 @@ class _WebsiteNbaPlayerComparisonScreenState
         ),
         const SizedBox(height: 18),
         _ControlBar(
-          key: ValueKey('control-${_seasonType.name}-${_basis.name}'),
           seasonType: _seasonType,
           basis: _basis,
           lockSeasons: _lockSeasons,
@@ -574,6 +585,16 @@ class _WebsiteNbaPlayerComparisonScreenState
           onDelete: _deleteSavedView,
         ),
         const SizedBox(height: 12),
+        if (stale)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Row(children: [
+              SizedBox(width: 16, height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2)),
+              SizedBox(width: 12),
+              Text('Loading comparison data for the selected segment…'),
+            ]),
+          ),
         if (_slots.length == 2)
           Align(
             alignment: Alignment.centerRight,
@@ -589,20 +610,24 @@ class _WebsiteNbaPlayerComparisonScreenState
           ),
         const SizedBox(height: 10),
         Align(
-          alignment: Alignment.center,
+          alignment: Alignment.centerLeft,
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: _slots.length == 2 ? 1050 : 1800),
+            constraints: BoxConstraints(maxWidth: _slots.length == 2 ? 1200 : 1800),
             child: ComparisonSelectionLayout(
           children: [
             for (var index = 0; index < _slots.length; index++)
               _PlayerSelectorCard(
                 key: ValueKey('player-slot-$index'),
                 label: 'Player ${String.fromCharCode(65 + index)}',
-                accent: palette[index],
+                accent: _comparisonTeamColor(
+                  _findRow(data.rowsBySeason[_slots[index].season],
+                      _slots[index].playerId)?.team ?? '', palette[index]),
+                busy: stale,
                 season: _slots[index].season,
                 seasons: _seasons,
-                rows: data.rowsBySeason[_slots[index].season] ??
-                    const <NbaStatsRow>[],
+                rows: stale ? const <NbaStatsRow>[] :
+                    (data.rowsBySeason[_slots[index].season] ??
+                        const <NbaStatsRow>[]),
                 playerId: _slots[index].playerId,
                 unavailableIds: {
                   for (var other = 0; other < _slots.length; other++)
@@ -631,7 +656,7 @@ class _WebsiteNbaPlayerComparisonScreenState
           ),
         ),
         const SizedBox(height: 18),
-        if (selected.length < 2)
+        if (selected.length < 2 && !stale)
           const ComparisonEmptyState(
             title: 'Choose two player seasons',
             message: 'Select a player in each card to begin. If a season has no available player data, try another season or segment.',
@@ -754,19 +779,31 @@ class _ControlBar extends StatelessWidget {
               ),
               SizedBox(
                 width: 165,
-                child: DropdownButtonFormField<NbaStatsBasis>(
-                  initialValue: basis,
+                child: InputDecorator(
                   decoration: const InputDecoration(
                     labelText: 'Rate basis',
                     isDense: true,
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 8),
                   ),
-                  items: [
-                    for (final value in NbaStatsBasis.values)
-                      DropdownMenuItem(value: value, child: Text(value.label)),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) onBasis(value);
-                  },
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<NbaStatsBasis>(
+                      value: basis,
+                      isDense: true,
+                      isExpanded: true,
+                      items: [
+                        for (final value in NbaStatsBasis.values)
+                          DropdownMenuItem(
+                            value: value,
+                            child: Text(value.label),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null && value != basis) onBasis(value);
+                      },
+                    ),
+                  ),
                 ),
               ),
               FilterChip(
@@ -842,6 +879,7 @@ class _PlayerSelectorCard extends StatelessWidget {
     required this.season,
     required this.seasons,
     required this.rows,
+    this.busy = false,
     required this.playerId,
     required this.unavailableIds,
     required this.canRemove,
@@ -856,6 +894,7 @@ class _PlayerSelectorCard extends StatelessWidget {
   final String season;
   final List<WebsiteNbaSeason> seasons;
   final List<NbaStatsRow> rows;
+  final bool busy;
   final String? playerId;
   final Set<String> unavailableIds;
   final bool canRemove;
@@ -918,7 +957,7 @@ class _PlayerSelectorCard extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: rows.isEmpty ? null : () async {
+                    onPressed: busy || rows.isEmpty ? null : () async {
                       final chosen = await showComparisonSearch(
                         context,
                         title: 'Select a player · $season',
@@ -939,7 +978,8 @@ class _PlayerSelectorCard extends StatelessWidget {
                     label: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(row == null
-                          ? (rows.isEmpty ? 'No players available' : 'Search players')
+                          ? (busy ? 'Updating players…' :
+                              rows.isEmpty ? 'No players in this segment' : 'Search players')
                           : '${row.player} · ${row.team}',
                           maxLines: 1, overflow: TextOverflow.ellipsis),
                     ),
@@ -960,7 +1000,9 @@ class _PlayerSelectorCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 if (row == null)
-                  const Text('Choose a player')
+                  Text(busy ? 'Loading selected season…' :
+                      playerId == null ? 'Choose a player' :
+                      'Not in this season or segment — select another player')
                 else ...[
                   Text(
                     row.player,
@@ -1540,5 +1582,7 @@ Color _comparisonTeamColor(String team, Color fallback) {
     'POR': 0xFFE4494C, 'SAC': 0xFF956BD0, 'SAS': 0xFFB2B8C4,
     'TOR': 0xFFDC374C, 'UTA': 0xFF7975CA, 'WAS': 0xFF527CAD,
   };
-  return colors.containsKey(team) ? Color(colors[team]!) : fallback;
+  final normalized = team.trim().toUpperCase();
+  final code = normalized.split(RegExp(r'[,/ ]')).first;
+  return colors.containsKey(code) ? Color(colors[code]!) : fallback;
 }
