@@ -579,7 +579,7 @@ class _WebsiteNbaPlayerComparisonScreenState
                 for (final slot in _slots) {
                   slot.season = season;
                 }
-                _future = _loadData();
+                _queueDataUpdate();
               }
             });
           },
