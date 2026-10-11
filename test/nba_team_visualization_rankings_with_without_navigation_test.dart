@@ -66,35 +66,67 @@ void main() {
     expect(repository, isNot(contains('Math.random')));
   });
 
-  test('visualization studio supports saved presets and analytical overlays', () {
+  test('visualization studio supports interactive analytical workflows', () {
     final alias = File(
       'lib/screens/website_nba_visualizations_screen.dart',
     ).readAsStringSync();
     final source = File(
       'lib/screens/website_nba_visualizations_v2_screen.dart',
     ).readAsStringSync();
+    final shell = File(
+      'lib/widgets/canonical_product_shell.dart',
+    ).readAsStringSync();
 
     expect(alias, contains("export 'website_nba_visualizations_v2_screen.dart'"));
     expect(source, contains('Visualization Studio'));
-    expect(source, contains("scatter('Scatterplot')"));
-    expect(source, contains("bubble('Bubble chart')"));
-    expect(source, contains("bar('Bar chart')"));
-    expect(source, contains("line('Line chart')"));
-    expect(source, contains("area('Area chart')"));
-    expect(source, contains("pie('Pie chart')"));
-    expect(source, contains("histogram('Histogram')"));
-    expect(source, contains("radar('Radar chart')"));
-    expect(source, contains('CustomPaint'));
+    expect(source, contains("scatter('Scatter')"));
+    expect(source, contains("bubble('Bubble')"));
+    expect(source, contains("bar('Player ranking')"));
+    expect(source, contains("histogram('Distribution')"));
+    expect(source, contains("box('Position box plot')"));
+    expect(source, contains("cumulative('Cumulative percentile')"));
+    expect(source, contains("radar('Player profile')"));
+    expect(source, isNot(contains("line('Line chart')")));
+    expect(source, isNot(contains("pie('Pie chart')")));
+    expect(source, contains('_InteractiveChartPanel'));
+    expect(source, contains('Hover/click · two-finger scroll to zoom · drag to pan'));
+    expect(source, contains('Swap axes'));
+    expect(source, isNot(contains('class _ChartLegend')));
+    expect(source, contains('_visualGroupColor'));
     expect(source, contains('WebsiteNbaApiService'));
     expect(source, contains('seasonSnapshot('));
     expect(source, contains('nba_visualization_presets_v1'));
     expect(source, contains('SharedPreferences'));
-    expect(source, contains('Save As'));
+    expect(source, contains('Save as'));
     expect(source, contains('Best-fit line'));
     expect(source, contains('Mean reference lines'));
-    expect(source, contains('Correlation (r)'));
+    expect(source, contains('CORRELATION'));
     expect(source, contains('R²'));
     expect(source, contains('_RegressionSummary'));
+    expect(source, contains('All eligible players'));
+    expect(source, contains('Compare with'));
+    expect(source, contains('_ProfileComparisonLegend'));
+    expect(source, contains('_ProfileMetricPanel'));
+    expect(source, contains('_BubbleSizeLegend'));
+    expect(source, contains('pointerSignalResolver.register('));
+    expect(source, contains('Autocomplete<_StudioPopulationChoice>'));
+    expect(source, contains('population_filter_key'));
+    expect(source, contains('team:'));
+    expect(source, contains('_defaultMinGames'));
+    expect(source, contains('labelDensity'));
+    expect(source, contains('_studioTicks('));
+    expect(source, contains('_zoomTo('));
+    expect(source, contains('_dragView('));
+    expect(source, contains('Reset view'));
+    expect(source, contains('Teams:'));
+    expect(source, contains('Team stints unavailable'));
+    expect(source, contains('_studioHasMetric'));
+    expect(source, contains('_snapshotFuture'));
+    expect(source, contains('Deterministic top-N selection'));
+    expect(source, contains("'histogram_bins': histogramBins"));
+    expect(source, contains("'radar_compare_player': radarComparePlayer"));
+    expect(shell, contains("_selected == 'visualizations'"));
+    expect(shell, contains('? 1880'));
   });
 
   test('rankings supports ordered drag-drop tiers and durable saved boards', () {

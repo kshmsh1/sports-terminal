@@ -134,6 +134,46 @@ void main() {
     expect(filtered.single.player, 'Alpha Guard');
   });
 
+  test('uses canonical historical shooting percentages when attempt totals are unavailable', () {
+    final source = NbaTerminalSeedSnapshot(
+      manifest: const {},
+      teams: const [],
+      players: const [],
+      games: const [],
+      teamRecords: const [],
+      teamGameLogs: const [],
+      playerSeasonTotals: const [
+        {
+          'player_id': 'historical',
+          'player_label': 'Historical Player',
+          'team_ids': 'ABC',
+          'games': 30,
+          'minutes': 900,
+          'points': 400,
+          'field_goal_percentage': .47,
+          'three_point_percentage': .35,
+          'free_throw_percentage': .79,
+          'true_shooting_percentage': .56,
+          'effective_field_goal_percentage': .51,
+        },
+      ],
+      playerLeaders: const {},
+      playerGameHighs: const {},
+      playerGameLogsTop: const [],
+      searchIndex: const [],
+      dataDictionary: const {},
+      validationReport: const {'status': 'pass'},
+      assetManifest: const {},
+    );
+
+    final row = engine.buildRows(source).single;
+    expect(row.value('fg_pct'), closeTo(.47, .0001));
+    expect(row.value('three_pct'), closeTo(.35, .0001));
+    expect(row.value('ft_pct'), closeTo(.79, .0001));
+    expect(row.value('ts_pct'), closeTo(.56, .0001));
+    expect(row.value('efg_pct'), closeTo(.51, .0001));
+  });
+
   test('computes direction-aware percentile ranks', () {
     final rows = engine.buildRows(snapshot());
     final alpha = rows.firstWhere((row) => row.playerId == 'alpha');

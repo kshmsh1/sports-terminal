@@ -281,7 +281,26 @@ def historical_seed_snapshot(
             team_filtered=False,
             combine_segments=season_type == "combined",
         )
+        # Preserve the actual team stints alongside one canonical player total.
+        # Aggregate abbreviations such as TOT/2TM/MULTI aren't franchises.
+        team_stints: dict[str, set[str]] = defaultdict(set)
+        for source_row in player_source_rows:
+            player_key = str(source_row.get("player_key") or "")
+            abbreviation = str(source_row.get("team_abbreviation") or "").strip()
+            if (
+                player_key
+                and abbreviation
+                and abbreviation.upper() not in {"TOT", "MULTI", "ALL"}
+                and not (abbreviation.upper().endswith("TM") and
+                         abbreviation[:-2].isdigit())
+            ):
+                team_stints[player_key].add(abbreviation)
+
         player_totals = [_player_seed_row(row) for row in collapsed]
+        for player_row in player_totals:
+            player_row["teams_played_for"] = sorted(
+                team_stints.get(str(player_row.get("player_id") or ""), set())
+            )
         players = [_player_profile(row) for row in collapsed]
 
         team_sql = """
