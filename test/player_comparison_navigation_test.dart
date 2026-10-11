@@ -8,6 +8,9 @@ void main() {
     final player = File(
       'lib/screens/website_nba_player_comparison_screen.dart',
     ).readAsStringSync();
+    final controls = File(
+      'lib/widgets/comparison_lab_controls.dart',
+    ).readAsStringSync();
     final team = File(
       'lib/screens/website_nba_team_comparison_screen.dart',
     ).readAsStringSync();
@@ -31,7 +34,9 @@ void main() {
     expect(player, contains('winnerIndexes'));
     expect(player, contains('Icons.star_rounded'));
     expect(player, contains('most favorable available value'));
-    expect(player, contains('NbaStatsBasis.values'));
+    expect(player, contains('ComparisonRateBasisSelector'));
+    expect(player, contains('ComparisonSeasonTypeSelector'));
+    expect(controls, contains('NbaStatsBasis.values'));
     expect(player, contains('Regular Season'));
     expect(player, contains('Playoffs'));
     expect(player, contains("'Basic'"));
