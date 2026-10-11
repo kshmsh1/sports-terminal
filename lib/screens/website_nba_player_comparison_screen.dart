@@ -8,6 +8,7 @@ import '../models/app_session.dart';
 import '../widgets/comparison_lab_components.dart';
 import '../widgets/comparison_lab_experience.dart';
 import '../services/nba_stats_workstation_engine.dart';
+import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
 import 'website_nba_entity_pages.dart';
 
@@ -52,6 +53,9 @@ class _WebsiteNbaPlayerComparisonScreenState
   bool _lockSeasons = true;
   String? _activeSavedViewId;
   late Future<_ComparisonData> _future;
+  _ComparisonData? _lastData;
+  final Map<String, NbaTerminalSeedSnapshot> _snapshotCache = {};
+  final Map<String, List<NbaStatsRow>> _normalizedCache = {};
   int _requestSerial = 0;
   bool _seedInitialSelections = true;
 
@@ -105,36 +109,79 @@ class _WebsiteNbaPlayerComparisonScreenState
     );
   }
 
+  String _snapshotKey(NbaStatsSeasonType type, String season) =>
+      '${type.name}/$season';
+
+  String _rowsKey(NbaStatsSeasonType type, NbaStatsBasis basis, String season) =>
+      '${type.name}/${basis.name}/$season';
+
+  _ComparisonData? _dataFromCache(
+      NbaStatsSeasonType type, NbaStatsBasis basis, List<String> seasons) {
+    if (seasons.any((season) =>
+        !_snapshotCache.containsKey(_snapshotKey(type, season)))) {
+      return null;
+    }
+    final rowsBySeason = <String, List<NbaStatsRow>>{};
+    for (final season in seasons) {
+      final key = _rowsKey(type, basis, season);
+      var rows = _normalizedCache[key];
+      if (rows == null) {
+        rows = _engine.buildRows(
+          _snapshotCache[_snapshotKey(type, season)]!,
+          basis: basis,
+          seasonType: type,
+        )..sort((a, b) =>
+            (b.value('pts') ?? -1).compareTo(a.value('pts') ?? -1));
+        _normalizedCache[key] = rows;
+      }
+      rowsBySeason[season] = rows;
+    }
+    return _ComparisonData(rowsBySeason, type, basis);
+  }
+
+  /// Reuse static season snapshots when changing rate basis or returning to a
+  /// previously visited season. The controls never need to unmount.
+  void _queueDataUpdate() {
+    final seasons = _slots.map((slot) => slot.season).toSet().toList();
+    final cached = _dataFromCache(_seasonType, _basis, seasons);
+    if (cached != null) {
+      ++_requestSerial;
+      _lastData = cached;
+      _future = Future.value(cached);
+    } else {
+      _future = _loadData();
+    }
+  }
+
   Future<_ComparisonData> _loadData() async {
-    // Capture request inputs and reject stale async selection updates.
     final request = ++_requestSerial;
     final seasonType = _seasonType;
     final basis = _basis;
     final seasons = _slots.map((slot) => slot.season).toSet().toList();
+    final missing = seasons.where((season) =>
+        !_snapshotCache.containsKey(_snapshotKey(seasonType, season))).toList();
     final snapshots = await Future.wait([
-      for (final season in seasons)
-        _api.seasonSnapshot(season,
+      for (final season in missing)
+        _api.seasonSnapshot(
+          season,
           seasonType: seasonType == NbaStatsSeasonType.playoffs
-              ? 'playoffs' : 'regular'),
+              ? 'playoffs'
+              : 'regular',
+        ),
     ]);
-    final rowsBySeason = <String, List<NbaStatsRow>>{};
-    for (var index = 0; index < seasons.length; index++) {
-      final rows = _engine.buildRows(snapshots[index],
-          basis: basis, seasonType: seasonType)
-        ..sort((a, b) =>
-            (b.value('pts') ?? -1).compareTo(a.value('pts') ?? -1));
-      rowsBySeason[seasons[index]] = rows;
+    for (var index = 0; index < missing.length; index++) {
+      _snapshotCache[_snapshotKey(seasonType, missing[index])] = snapshots[index];
     }
-    if (request != _requestSerial) return _ComparisonData(rowsBySeason);
+    final data = _dataFromCache(seasonType, basis, seasons)!;
+    if (request != _requestSerial) return data;
+
+    // Retain player identity when toggling Regular Season / Playoffs; a player
+    // missing in a segment can be reselected without losing the prior choice.
     for (var index = 0; index < _slots.length; index++) {
       final slot = _slots[index];
-      final rows = rowsBySeason[slot.season] ?? const <NbaStatsRow>[];
-      if (rows.isEmpty) {
-        slot.playerId = null;
-      } else if (!rows.any((row) => row.playerId == slot.playerId) &&
-          !_seedInitialSelections) {
-        slot.playerId = null;
-      } else if (!rows.any((row) => row.playerId == slot.playerId)) {
+      final rows = data.rowsBySeason[slot.season] ?? const <NbaStatsRow>[];
+      if (_seedInitialSelections && rows.isNotEmpty &&
+          !rows.any((row) => row.playerId == slot.playerId)) {
         final used = <String>{
           for (var other = 0; other < _slots.length; other++)
             if (other != index && _slots[other].season == slot.season)
@@ -146,8 +193,6 @@ class _WebsiteNbaPlayerComparisonScreenState
         ).playerId;
       }
     }
-    // A participant cannot occupy two slots in the same season/segment.
-    // Keep the first occurrence (also when loading an old saved preset).
     final occupied = <String>{};
     for (final slot in _slots) {
       if (slot.playerId == null) continue;
@@ -155,10 +200,10 @@ class _WebsiteNbaPlayerComparisonScreenState
       if (!occupied.add(identity)) slot.playerId = null;
     }
     _seedInitialSelections = false;
-    return _ComparisonData(rowsBySeason);
+    return data;
   }
 
-  void _reload() => setState(() => _future = _loadData());
+  void _reload() => setState(_queueDataUpdate);
 
   void _setSeason(int index, String season) {
     if (_lockSeasons) {
@@ -176,7 +221,7 @@ class _WebsiteNbaPlayerComparisonScreenState
     final season = _slots.isEmpty ? '2025-26' : _slots.last.season;
     setState(() {
       _slots.add(_PlayerSlot(season: season));
-      _future = _loadData();
+      _queueDataUpdate();
     });
   }
 
@@ -184,7 +229,7 @@ class _WebsiteNbaPlayerComparisonScreenState
     if (_slots.length <= 2) return;
     setState(() {
       _slots.removeAt(index);
-      _future = _loadData();
+      _queueDataUpdate();
     });
   }
 
@@ -282,7 +327,7 @@ class _WebsiteNbaPlayerComparisonScreenState
       }
       _activeSavedViewId = view.id;
       _seedInitialSelections = false;
-      _future = _loadData();
+      _queueDataUpdate();
     });
   }
 
@@ -1229,8 +1274,10 @@ class _SavedPlayerView {
 }
 
 class _ComparisonData {
-  const _ComparisonData(this.rowsBySeason);
+  const _ComparisonData(this.rowsBySeason, this.seasonType, this.basis);
   final Map<String, List<NbaStatsRow>> rowsBySeason;
+  final NbaStatsSeasonType seasonType;
+  final NbaStatsBasis basis;
 }
 
 class _SelectedPlayer {
