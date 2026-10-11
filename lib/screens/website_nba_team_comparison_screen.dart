@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../models/app_session.dart';
 import '../widgets/comparison_lab_components.dart';
+import '../widgets/comparison_lab_experience.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
@@ -209,6 +210,13 @@ class _WebsiteNbaTeamComparisonScreenState
         ).teamKey;
       }
     }
+    // Defend against legacy saved views containing the same team-season twice.
+    final occupied = <String>{};
+    for (final slot in _slots) {
+      if (slot.teamKey == null) continue;
+      final identity = '${slot.season}/${slot.teamKey}';
+      if (!occupied.add(identity)) slot.teamKey = null;
+    }
     _seedInitialSelections = false;
     return _TeamComparisonData(rowsBySeason);
   }
@@ -409,7 +417,11 @@ class _WebsiteNbaTeamComparisonScreenState
           ),
         ),
         const SizedBox(height: 16),
-        ComparisonSelectionLayout(
+        Align(
+          alignment: Alignment.center,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: _slots.length == 2 ? 1050 : 1800),
+            child: ComparisonSelectionLayout(
           children: [
             for (var index = 0; index < _slots.length; index++)
               _TeamSelectorCard(
@@ -421,6 +433,11 @@ class _WebsiteNbaTeamComparisonScreenState
                 rows: data.rowsBySeason[_slots[index].season] ??
                     const <_TeamRow>[],
                 teamKey: _slots[index].teamKey,
+                unavailableIds: {
+                  for (var other = 0; other < _slots.length; other++)
+                    if (other != index && _slots[other].season == _slots[index].season)
+                      if (_slots[other].teamKey != null) _slots[other].teamKey!,
+                },
                 canRemove: _slots.length > 2,
                 onSeason: (value) => _setSeason(index, value),
                 onTeam: (value) => setState(() => _slots[index].teamKey = value),
@@ -436,6 +453,8 @@ class _WebsiteNbaTeamComparisonScreenState
                 },
               ),
           ],
+            ),
+          ),
         ),
         const SizedBox(height: 18),
         if (selected.length < 2)
@@ -467,7 +486,29 @@ class _WebsiteNbaTeamComparisonScreenState
             ],
           ),
           const SizedBox(height: 14),
-          _TeamMetricTable(players: selected, metrics: metrics),
+          if (selected.length == 2)
+            ComparisonHeadToHead(
+              leftName: selected[0].row.name,
+              rightName: selected[1].row.name,
+              leftContext: selected[0].season,
+              rightContext: selected[1].season,
+              leftColor: selected[0].color,
+              rightColor: selected[1].color,
+              metrics: [
+                for (final metric in metrics)
+                  ComparisonDuelMetric(
+                    label: metric.label,
+                    leftValue: metric.value(selected[0].row),
+                    rightValue: metric.value(selected[1].row),
+                    leftDisplay: metric.format(metric.value(selected[0].row)),
+                    rightDisplay: metric.format(metric.value(selected[1].row)),
+                    higherIsBetter: metric.higherIsBetter,
+                    percent: metric.percent,
+                  ),
+              ],
+            )
+          else
+            _TeamMetricTable(players: selected, metrics: metrics),
           const SizedBox(height: 16),
           _TeamSeasonFingerprint(
             selected: selected,
@@ -494,6 +535,7 @@ class _TeamSelectorCard extends StatelessWidget {
     required this.seasons,
     required this.rows,
     required this.teamKey,
+    required this.unavailableIds,
     required this.canRemove,
     required this.onSeason,
     required this.onTeam,
@@ -507,6 +549,7 @@ class _TeamSelectorCard extends StatelessWidget {
   final List<WebsiteNbaSeason> seasons;
   final List<_TeamRow> rows;
   final String? teamKey;
+  final Set<String> unavailableIds;
   final bool canRemove;
   final ValueChanged<String> onSeason;
   final ValueChanged<String> onTeam;
@@ -562,25 +605,35 @@ class _TeamSelectorCard extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  key: ValueKey('$label-$season-$teamKey'),
-                  initialValue: teamKey,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Team',
-                    isDense: true,
-                  ),
-                  items: [
-                    for (final row in rows)
-                      DropdownMenuItem(
-                        value: row.teamKey,
-                        child: Text('${row.name} (${row.abbreviation})',
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: rows.isEmpty ? null : () async {
+                      final chosen = await showComparisonSearch(
+                        context,
+                        title: 'Select a team · $season',
+                        accent: accent,
+                        options: [
+                          for (final item in rows)
+                            ComparisonSearchOption(
+                              id: item.teamKey,
+                              title: item.name,
+                              subtitle: '${item.abbreviation} · $season',
+                              disabled: unavailableIds.contains(item.teamKey),
+                            ),
+                        ],
+                      );
+                      if (chosen != null && context.mounted) onTeam(chosen);
+                    },
+                    icon: const Icon(Icons.search_rounded, size: 19),
+                    label: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(team == null
+                          ? (rows.isEmpty ? 'No teams available' : 'Search teams')
+                          : '${team.name} · ${team.abbreviation}',
                           maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) onTeam(value);
-                  },
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 Row(
@@ -717,97 +770,42 @@ class _TeamSeasonFingerprint extends StatelessWidget {
   final List<_TeamMetric> metrics;
   final Map<String, List<_TeamRow>> rowsBySeason;
 
-  double? _percentile(_SelectedTeam selected, _TeamMetric metric) {
-    final actual = metric.value(selected.row);
-    if (actual == null || !actual.isFinite) return null;
-    final population = (rowsBySeason[selected.season] ?? const <_TeamRow>[])
-        .map(metric.value)
-        .whereType<double>()
-        .where((number) => number.isFinite)
-        .toList();
-    if (population.isEmpty) return null;
-    if (population.length == 1) return 50;
-    final behind = population.where((other) =>
-        metric.higherIsBetter ? other < actual : other > actual).length;
-    final tied = population.where((other) =>
-        (other - actual).abs() < 0.000001).length;
-    // Midrank handles statistical ties without declaring either team inferior.
-    return ((behind + (tied - 1) / 2) / (population.length - 1) * 100)
+  double? _percentile(_SelectedTeam team, _TeamMetric metric) {
+    final value = metric.value(team.row);
+    if (value == null || !value.isFinite) return null;
+    final values = (rowsBySeason[team.season] ?? const <_TeamRow>[])
+        .map(metric.value).whereType<double>()
+        .where((number) => number.isFinite).toList();
+    if (values.isEmpty) return null;
+    if (values.length == 1) return 50;
+    final behind = values.where((other) =>
+        metric.higherIsBetter ? other < value : other > value).length;
+    final tied = values.where((other) =>
+        (other - value).abs() < .000001).length;
+    return ((behind + (tied - 1) / 2) / (values.length - 1) * 100)
         .clamp(0.0, 100.0).toDouble();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final eligible = metrics.where(
-      (metric) => selected.any((team) => _percentile(team, metric) != null),
-    ).toList();
-    if (eligible.isEmpty) return const SizedBox.shrink();
-    final colors = Theme.of(context).colorScheme;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Season-relative team fingerprint',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w900)),
-            const SizedBox(height: 4),
-            Text('Percentiles are computed against teams in each selected season and segment. Missing values are excluded; higher percentile means a better relative rank.',
-              style: TextStyle(color: colors.onSurfaceVariant)),
-            const SizedBox(height: 16),
-            for (final metric in eligible)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: LayoutBuilder(builder: (context, constraints) {
-                  final columns = math.max(1,
-                    math.min(selected.length, (constraints.maxWidth / 208).floor()));
-                  final cellWidth = (constraints.maxWidth -
-                      92 - (columns - 1) * 10) / columns;
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(width: 92, child: Padding(
-                        padding: const EdgeInsets.only(top: 3),
-                        child: Text(metric.label, style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 12)),
-                      )),
-                      Expanded(child: Wrap(
-                        spacing: 10, runSpacing: 12,
-                        children: [
-                          for (final team in selected)
-                            SizedBox(
-                              width: cellWidth,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('${team.row.abbreviation} · ${team.season}: ${_percentile(team, metric)?.round().toString() ?? '—'}p',
-                                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 11.5,
-                                      fontWeight: FontWeight.w600)),
-                                  const SizedBox(height: 5),
-                                  LinearProgressIndicator(
-                                    value: (_percentile(team, metric) ?? 0) / 100,
-                                    minHeight: 8,
-                                    backgroundColor: team.color.withValues(alpha: .13),
-                                    valueColor: AlwaysStoppedAnimation(team.color),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      )),
-                    ],
-                  );
-                }),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => ComparisonFingerprintPanel(
+    title: 'Season-relative team fingerprint',
+    description: 'Percentiles use available teams in each selected season and segment. Higher is better; unavailable metrics are omitted.',
+    rows: [
+      for (final metric in metrics)
+        if (selected.any((team) => _percentile(team, metric) != null))
+          ComparisonFingerprintRow(
+            metric: metric.label,
+            entries: [
+              for (final team in selected)
+                ComparisonFingerprintEntry(
+                  label: '${team.row.abbreviation} · ${team.season}',
+                  color: team.color,
+                  value: _percentile(team, metric),
+                ),
+            ],
+          ),
+    ],
+  );
 }
 
 class _TeamCell extends StatelessWidget {
