@@ -295,6 +295,7 @@ class _WebsiteNbaPlayerComparisonScreenState
 
   Future<void> _editCustomMetrics() async {
     final working = Set<String>.from(_customMetricKeys);
+    String search = '';
     final selected = await showModalBottomSheet<Set<String>>(
       context: context,
       isScrollControlled: true,
@@ -322,12 +323,27 @@ class _WebsiteNbaPlayerComparisonScreenState
                     ],
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: TextField(
+                    decoration: const InputDecoration(
+                      hintText: 'Search available metrics',
+                      prefixIcon: Icon(Icons.search_rounded),
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (value) =>
+                        setSheetState(() => search = value.trim().toLowerCase()),
+                  ),
+                ),
                 const Divider(height: 1),
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      for (final group in _customGroups.entries) ...[
+                      for (final group in _customGroups.entries)
+                        if (group.value.any((key) => _metricCatalog[key] != null &&
+                            (search.isEmpty || _metricCatalog[key]!.label.toLowerCase().contains(search) ||
+                                key.toLowerCase().contains(search)))) ...[
                         Padding(
                           padding: const EdgeInsets.only(top: 8, bottom: 8),
                           child: Text(
@@ -340,7 +356,9 @@ class _WebsiteNbaPlayerComparisonScreenState
                           runSpacing: 8,
                           children: [
                             for (final key in group.value)
-                              if (_metricCatalog[key] != null)
+                              if (_metricCatalog[key] != null &&
+                                  (search.isEmpty || _metricCatalog[key]!.label.toLowerCase().contains(search) ||
+                                      key.toLowerCase().contains(search)))
                                 FilterChip(
                                   selected: working.contains(key),
                                   label: Text(_metricCatalog[key]!.label),
@@ -509,7 +527,21 @@ class _WebsiteNbaPlayerComparisonScreenState
           onApply: _applySavedView,
           onDelete: _deleteSavedView,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
+        if (_slots.length == 2)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => setState(() {
+                final first = _slots[0];
+                _slots[0] = _slots[1];
+                _slots[1] = first;
+              }),
+              icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+              label: const Text('Swap sides'),
+            ),
+          ),
+        const SizedBox(height: 10),
         Align(
           alignment: Alignment.center,
           child: ConstrainedBox(
