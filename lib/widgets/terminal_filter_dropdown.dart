@@ -27,9 +27,10 @@ class TerminalFilterDropdown extends StatelessWidget {
     final selectedValue = items.contains(value) ? value : items.first;
 
     return SizedBox(
+      key: ValueKey('terminal-filter-$label'),
       width: width,
       child: DropdownButtonFormField<String>(
-        key: ValueKey('terminal-filter-$label-$selectedValue'),
+        key: ValueKey('terminal-filter-selected-$label-$selectedValue'),
         initialValue: selectedValue,
         isExpanded: true,
         menuMaxHeight: 420,
