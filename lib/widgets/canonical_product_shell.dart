@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/app_session.dart';
 import '../screens/product_community_v2_screen.dart';
@@ -23,8 +24,7 @@ import '../screens/website_nba_with_without_screen.dart';
 import '../screens/website_sports_home_screen.dart';
 import '../services/product_local_store.dart';
 import '../services/website_nba_api_service.dart';
-
-const _brandBlue = Color(0xFF6674C7);
+import 'terminal_product_design.dart';
 
 /// Sole customer-facing Sports Terminal shell.
 ///
@@ -245,6 +245,7 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
       }
     }
     if (match == null || !match.enabled || match.builder == null) return;
+    if (id == _selected) return;
     setState(() => _selected = id);
   }
 
@@ -254,37 +255,20 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
       (item) => item.id == _selected,
       orElse: () => _items.first,
     );
-    final brightness = _darkMode ? Brightness.dark : Brightness.light;
-    final theme = ThemeData(
-      useMaterial3: true,
-      brightness: brightness,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: _brandBlue,
-        brightness: brightness,
-      ),
-      scaffoldBackgroundColor:
-          _darkMode ? const Color(0xFF0B111A) : const Color(0xFFF7F8FA),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        color: _darkMode ? const Color(0xFF141B25) : Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(
-            color: _darkMode ? const Color(0xFF263241) : const Color(0xFFE5E7EB),
-          ),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      dataTableTheme: const DataTableThemeData(
-        headingTextStyle: TextStyle(fontWeight: FontWeight.w800),
-      ),
-    );
+    final theme = TerminalProductDesign.theme(dark: _darkMode);
 
     return Theme(
       data: theme,
-      child: Scaffold(
+      child: CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.keyK, meta: true):
+              () => _openWorkspaceNavigator(context, _items, _selected, _select),
+          const SingleActivator(LogicalKeyboardKey.keyK, control: true):
+              () => _openWorkspaceNavigator(context, _items, _selected, _select),
+        },
+        child: Focus(
+          autofocus: true,
+          child: Scaffold(
         body: SafeArea(
           child: Column(
             children: [
@@ -299,11 +283,11 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
               ),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: _selected == 'trade'
-                      ? const EdgeInsets.fromLTRB(36, 18, 36, 28)
-                      : _selected == 'visualizations'
-                          ? const EdgeInsets.fromLTRB(24, 24, 24, 48)
-                          : const EdgeInsets.fromLTRB(20, 28, 20, 64),
+                  key: ValueKey('route-scroll-$_selected'),
+                  padding: TerminalProductDesign.pagePadding(
+                    viewportWidth: MediaQuery.sizeOf(context).width,
+                    route: _selected,
+                  ),
                   child: Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
@@ -342,6 +326,8 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
                 ),
               ),
             ],
+          ),
+        ),
           ),
         ),
       ),
@@ -611,37 +597,18 @@ class _TopNav extends StatelessWidget {
                           selected: selected == 'trade',
                           onSelect: onSelect,
                         ),
-                        PopupMenuButton<String>(
-                          tooltip: 'More',
-                          onSelected: onSelect,
-                          itemBuilder: (_) => [
-                            for (final entry in more)
-                              PopupMenuItem<String>(
-                                value: entry.id,
-                                enabled: entry.enabled,
-                                child: ListTile(
-                                  enabled: entry.enabled,
-                                  contentPadding: EdgeInsets.zero,
-                                  leading: Icon(entry.icon),
-                                  title: Text(entry.label),
-                                  subtitle: entry.enabled
-                                      ? null
-                                      : const Text('Display only — not connected'),
-                                  trailing: selected == entry.id
-                                      ? const Icon(Icons.check_rounded)
-                                      : null,
-                                ),
-                              ),
-                          ],
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text('More'),
-                                SizedBox(width: 2),
-                                Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-                              ],
+                        Tooltip(
+                          message: 'Explore Sports Terminal workspaces',
+                          child: TextButton.icon(
+                            onPressed: () => _openWorkspaceNavigator(
+                              context, items, selected, onSelect),
+                            icon: const Icon(Icons.grid_view_rounded, size: 17),
+                            label: Text(
+                              more.any((entry) => entry.id == selected)
+                                  ? 'More · ${_item(selected).label}'
+                                  : 'More',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
@@ -668,26 +635,10 @@ class _TopNav extends StatelessWidget {
                     onPressed: () => _openSearchDialog(context, session),
                     icon: const Icon(Icons.search_rounded),
                   ),
-                  PopupMenuButton<String>(
+                  IconButton(
                     tooltip: 'Navigation',
-                    onSelected: onSelect,
-                    itemBuilder: (_) => [
-                      for (final entry in primary)
-                        _mobileMenuItem(entry, selected),
-                      const PopupMenuItem<String>(
-                        enabled: false,
-                        child: Text(
-                          'COMPARE',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                      _mobileMenuItem(_item('player-compare'), selected),
-                      _mobileMenuItem(_item('team-compare'), selected),
-                      const PopupMenuDivider(),
-                      _mobileMenuItem(_item('trade'), selected),
-                      for (final entry in more)
-                        _mobileMenuItem(entry, selected),
-                    ],
+                    onPressed: () => _openWorkspaceNavigator(
+                      context, items, selected, onSelect),
                     icon: const Icon(Icons.menu_rounded),
                   ),
                 ],
@@ -729,24 +680,7 @@ class _TopNav extends StatelessWidget {
     );
   }
 
-  PopupMenuItem<String> _mobileMenuItem(
-    _Destination item,
-    String selectedId,
-  ) =>
-      PopupMenuItem<String>(
-        value: item.id,
-        enabled: item.enabled,
-        child: ListTile(
-          enabled: item.enabled,
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(item.icon),
-          title: Text(item.label),
-          subtitle: item.enabled ? null : const Text('Display only — not connected'),
-          trailing: selectedId == item.id
-              ? const Icon(Icons.check_rounded)
-              : null,
-        ),
-      );
+
 }
 
 class _NavButton extends StatelessWidget {
@@ -769,6 +703,8 @@ class _NavButton extends StatelessWidget {
         onPressed: item.enabled ? () => onSelect(item.id) : null,
         style: TextButton.styleFrom(
           foregroundColor: selected ? colors.primary : colors.onSurfaceVariant,
+          backgroundColor: selected ? colors.primary.withValues(alpha: .11) : null,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
           textStyle: TextStyle(
             fontSize: 13,
             fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
