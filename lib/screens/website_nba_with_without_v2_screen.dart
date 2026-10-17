@@ -317,7 +317,7 @@ class _WebsiteNbaWithWithoutScreenState
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 DropdownButton<String>(
-                  value: _season,
+                  value: _seasons.any((item) => item.id == _season) ? _season : null,
                   items: [
                     for (final season in _seasons)
                       DropdownMenuItem(value: season.id, child: Text(season.label)),
@@ -331,7 +331,7 @@ class _WebsiteNbaWithWithoutScreenState
                   },
                 ),
                 DropdownButton<String>(
-                  value: _team.isEmpty ? null : _team,
+                  value: data.teams.contains(_team) ? _team : null,
                   hint: const Text('Team'),
                   items: [
                     for (final team in data.teams)
@@ -339,10 +339,12 @@ class _WebsiteNbaWithWithoutScreenState
                   ],
                   onChanged: (value) {
                     if (value == null) return;
-                    _team = value;
-                    _playerOne = null;
-                    _playerTwo = null;
-                    _reload();
+                    setState(() {
+                      _team = value;
+                      _playerOne = null;
+                      _playerTwo = null;
+                      if (!stale) _reconcileSelection(data);
+                    });
                   },
                 ),
                 SegmentedButton<NbaStatsSeasonType>(
@@ -391,6 +393,9 @@ class _WebsiteNbaWithWithoutScreenState
           ),
         ),
         const SizedBox(height: 16),
+        if (stale) const Padding(
+          padding: EdgeInsets.symmetric(vertical: 12),
+          child: LinearProgressIndicator(minHeight: 3)),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(18),
@@ -456,12 +461,15 @@ class _WebsiteNbaWithWithoutScreenState
             sourceAvailable: data.splitSnapshot.available,
           ),
           const SizedBox(height: 12),
-          if (!data.splitSnapshot.available)
+          if (firstSplit == null || secondSplit == null) ...[
             _InfoCard(
-              '${data.splitSnapshot.message} Season baselines are source-backed; pair-split values remain blank until lineup stints or play-by-play are loaded.',
+              '${data.splitSnapshot.message.isEmpty ? 'Player-pair splits are not available for this selection.' : data.splitSnapshot.message} '
+              'Season baselines are source-backed; pair-split values remain blank until lineup stints or play-by-play are loaded.',
             ),
-          const SizedBox(height: 14),
-          LayoutBuilder(
+            const SizedBox(height: 14),
+            _SeasonBaselineComparison(first: first, second: second,
+                metrics: _metrics, engine: _engine, basis: _basis),
+          ] else LayoutBuilder(
             builder: (context, constraints) {
               final cards = [
                 _ShiftCard(
@@ -540,19 +548,80 @@ class _PlayerSelector extends StatelessWidget {
   final ValueChanged<String?> onChanged;
 
   @override
-  Widget build(BuildContext context) => DropdownButtonFormField<String>(
-        initialValue: value,
-        decoration: InputDecoration(labelText: label),
-        items: [
-          for (final row in rows)
-            if (row.playerId != excluded)
-              DropdownMenuItem(
-                value: row.playerId,
-                child: Text('${row.player} · ${row.position}'),
-              ),
-        ],
-        onChanged: onChanged,
-      );
+  Widget build(BuildContext context) {
+    final unique = <String, NbaStatsRow>{};
+    for (final row in rows) {
+      if (row.playerId != excluded) unique.putIfAbsent(row.playerId, () => row);
+    }
+    final safeValue = unique.containsKey(value) ? value : null;
+    return DropdownButtonFormField<String>(
+      key: ValueKey('$label-$safeValue-${unique.keys.join(',')}'),
+      initialValue: safeValue,
+      isExpanded: true,
+      decoration: InputDecoration(labelText: label),
+      items: [
+        for (final row in unique.values)
+          DropdownMenuItem(
+            value: row.playerId,
+            child: Text('${row.player} · ${row.position}',
+              maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: unique.isEmpty ? null : onChanged,
+    );
+  }
+}
+
+class _SeasonBaselineComparison extends StatelessWidget {
+  const _SeasonBaselineComparison({
+    required this.first, required this.second,
+    required this.metrics, required this.engine, required this.basis,
+  });
+  final NbaStatsRow first;
+  final NbaStatsRow second;
+  final Set<String> metrics;
+  final NbaStatsWorkstationEngine engine;
+  final NbaStatsBasis basis;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Card(child: Padding(
+      padding: const EdgeInsets.all(18),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text('Season baseline comparison',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w900)),
+        const SizedBox(height: 6),
+        Text('These are season-level ${basis.label.toLowerCase()} statistics, not '
+          'with/without splits. Pair effects cannot be calculated without lineup data.',
+          style: TextStyle(color: colors.onSurfaceVariant)),
+        const SizedBox(height: 16),
+        Row(children: [
+          Expanded(child: Text(first.player, maxLines: 2,
+            style: const TextStyle(fontWeight: FontWeight.w800))),
+          const SizedBox(width: 100, child: Text('METRIC', textAlign: TextAlign.center)),
+          Expanded(child: Text(second.player, textAlign: TextAlign.right, maxLines: 2,
+            style: const TextStyle(fontWeight: FontWeight.w800))),
+        ]),
+        const Divider(height: 20),
+        for (final key in metrics)
+          Padding(padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(children: [
+              Expanded(child: Text(engine.formatValue(key, first.value(key)),
+                textAlign: TextAlign.left,
+                style: const TextStyle(fontWeight: FontWeight.w700))),
+              SizedBox(width: 100, child: Text(engine.metric(key).shortLabel,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: colors.onSurfaceVariant))),
+              Expanded(child: Text(engine.formatValue(key, second.value(key)),
+                textAlign: TextAlign.right,
+                style: const TextStyle(fontWeight: FontWeight.w700))),
+            ]),
+          ),
+      ]),
+    ));
+  }
 }
 
 class _PairContextCard extends StatelessWidget {
@@ -845,9 +914,13 @@ class _ErrorCard extends StatelessWidget {
 
 List<NbaStatsRow> _rowsForTeam(List<NbaStatsRow> rows, String team) {
   if (team.isEmpty) return const [];
-  return rows
-      .where((row) => row.team.split(RegExp(r'[,/ ]+')).contains(team))
-      .toList(growable: false);
+  final unique = <String, NbaStatsRow>{};
+  for (final row in rows) {
+    if (row.team.split(RegExp(r'[,/ ]+')).contains(team)) {
+      unique.putIfAbsent(row.playerId, () => row);
+    }
+  }
+  return unique.values.toList(growable: false);
 }
 
 NbaStatsRow? _find(List<NbaStatsRow> rows, String? id) {
