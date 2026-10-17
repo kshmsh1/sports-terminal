@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/nba_stats_workstation_engine.dart';
+import '../services/nba_terminal_seed_repository.dart';
 import '../services/nba_with_without_repository.dart';
 import '../services/website_nba_api_service.dart';
 
@@ -32,12 +33,16 @@ class _WebsiteNbaWithWithoutScreenState
   List<WebsiteNbaSeason> _seasons = const [];
   String _season = '2025-26';
   NbaStatsSeasonType _seasonType = NbaStatsSeasonType.regular;
-  NbaStatsBasis _basis = NbaStatsBasis.per75;
+  NbaStatsBasis _basis = NbaStatsBasis.perGame;
   String _team = '';
   String? _playerOne;
   String? _playerTwo;
   final Set<String> _metrics = Set<String>.from(_defaultMetrics);
   late Future<_WithWithoutData> _future;
+  _WithWithoutData? _lastData;
+  final Map<String, NbaTerminalSeedSnapshot> _snapshotCache = {};
+  final Map<String, _WithWithoutData> _dataCache = {};
+  int _loadSerial = 0;
 
   static const _metricChoices = <String>[
     'pts',
@@ -71,56 +76,88 @@ class _WebsiteNbaWithWithoutScreenState
     return _load();
   }
 
-  Future<_WithWithoutData> _load() async {
-    final snapshot = await _api.seasonSnapshot(
-      _season,
-      seasonType:
-          _seasonType == NbaStatsSeasonType.playoffs ? 'playoffs' : 'regular',
-    );
-    final rows = _engine.buildRows(
-      snapshot,
-      basis: _basis,
-      seasonType: _seasonType,
-    )..sort((a, b) => (b.value('min') ?? 0).compareTo(a.value('min') ?? 0));
+  String _datasetKey(String season, NbaStatsSeasonType type) =>
+      '$season/${type.name}';
 
+  String _dataKey(String season, NbaStatsSeasonType type, NbaStatsBasis basis) =>
+      '$season/${type.name}/${basis.name}';
+
+  Future<_WithWithoutData> _load() async {
+    final serial = ++_loadSerial;
+    final season = _season;
+    final type = _seasonType;
+    final basis = _basis;
+    final rawKey = _datasetKey(season, type);
+    final cacheKey = _dataKey(season, type, basis);
+    final old = _dataCache[cacheKey];
+    if (old != null) {
+      if (serial == _loadSerial) _reconcileSelection(old);
+      return old;
+    }
+    var snapshot = _snapshotCache[rawKey];
+    snapshot ??= await _api.seasonSnapshot(
+      season,
+      seasonType: type == NbaStatsSeasonType.playoffs ? 'playoffs' : 'regular',
+    );
+    _snapshotCache[rawKey] = snapshot;
+    final rows = _engine.buildRows(
+      snapshot, basis: basis, seasonType: type,
+    )..sort((a, b) => (b.value('gp') ?? 0).compareTo(a.value('gp') ?? 0));
     final teams = <String>{};
     for (final row in rows) {
       for (final token in row.team.split(RegExp(r'[,/ ]+'))) {
-        if (token.isNotEmpty && token != '—' && token.length <= 4) {
+        if (token.isNotEmpty && token != '—' && token != 'TOT' &&
+            !RegExp(r'^\d+TM$').hasMatch(token) && token.length <= 4) {
           teams.add(token);
         }
       }
     }
     final orderedTeams = teams.toList()..sort();
-    if (_team.isEmpty || !orderedTeams.contains(_team)) {
-      _team = orderedTeams.isEmpty ? '' : orderedTeams.first;
+    final splitSnapshot = await _splits.load(
+      season,
+      seasonType: type == NbaStatsSeasonType.playoffs ? 'playoffs' : 'regular',
+    );
+    final data = _WithWithoutData(
+      rows: rows, teams: orderedTeams, splitSnapshot: splitSnapshot,
+      season: season, seasonType: type, basis: basis,
+    );
+    _dataCache[cacheKey] = data;
+    if (serial == _loadSerial) _reconcileSelection(data);
+    return data;
+  }
+
+  void _reconcileSelection(_WithWithoutData data) {
+    if (_team.isEmpty || !data.teams.contains(_team)) {
+      _team = data.teams.isEmpty ? '' : data.teams.first;
     }
-    final teamRows = _rowsForTeam(rows, _team);
+    final teamRows = _rowsForTeam(data.rows, _team);
     final ids = teamRows.map((row) => row.playerId).toSet();
     if (_playerOne == null || !ids.contains(_playerOne)) {
       _playerOne = teamRows.isEmpty ? null : teamRows.first.playerId;
     }
-    if (_playerTwo == null ||
-        !ids.contains(_playerTwo) ||
-        _playerTwo == _playerOne) {
-      _playerTwo = teamRows
-          .map((row) => row.playerId)
-          .firstWhere((id) => id != _playerOne, orElse: () => '');
-      if (_playerTwo!.isEmpty) _playerTwo = null;
+    if (_playerTwo == null || !ids.contains(_playerTwo) ||
+        _playerOne == _playerTwo) {
+      _playerTwo = null;
+      for (final row in teamRows) {
+        if (row.playerId != _playerOne) {
+          _playerTwo = row.playerId;
+          break;
+        }
+      }
     }
-    final splitSnapshot = await _splits.load(
-      _season,
-      seasonType:
-          _seasonType == NbaStatsSeasonType.playoffs ? 'playoffs' : 'regular',
-    );
-    return _WithWithoutData(
-      rows: rows,
-      teams: orderedTeams,
-      splitSnapshot: splitSnapshot,
-    );
   }
 
-  void _reload() => setState(() => _future = _load());
+  void _reload() => setState(() {
+    final cached = _dataCache[_dataKey(_season, _seasonType, _basis)];
+    if (cached != null) {
+      ++_loadSerial;
+      _reconcileSelection(cached);
+      _lastData = cached;
+      _future = Future.value(cached);
+    } else {
+      _future = _load();
+    }
+  });
 
   void _swapPlayers() {
     if (_playerOne == null || _playerTwo == null) return;
@@ -214,22 +251,24 @@ class _WebsiteNbaWithWithoutScreenState
     return FutureBuilder<_WithWithoutData>(
       future: _future,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const SizedBox(
-            height: 520,
-            child: Center(child: CircularProgressIndicator()),
-          );
+        if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+          _lastData = snapshot.data!;
+          return _buildPage(context, snapshot.data!);
         }
-        if (snapshot.hasError || snapshot.data == null) {
+        if (snapshot.connectionState == ConnectionState.done && snapshot.hasError) {
           return _ErrorCard(error: snapshot.error, onRetry: _reload);
         }
-        return _buildPage(context, snapshot.data!);
+        if (_lastData != null) return _buildPage(context, _lastData!, busy: true);
+        return const SizedBox(height: 330,
+          child: Center(child: CircularProgressIndicator()));
       },
     );
   }
 
-  Widget _buildPage(BuildContext context, _WithWithoutData data) {
-    final teamRows = _rowsForTeam(data.rows, _team);
+  Widget _buildPage(BuildContext context, _WithWithoutData data, {bool busy = false}) {
+    final stale = busy || data.season != _season ||
+        data.seasonType != _seasonType || data.basis != _basis;
+    final teamRows = stale ? const <NbaStatsRow>[] : _rowsForTeam(data.rows, _team);
     final first = _find(teamRows, _playerOne);
     final second = _find(teamRows, _playerTwo);
     final firstSplit = first == null || second == null
@@ -279,7 +318,7 @@ class _WebsiteNbaWithWithoutScreenState
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 DropdownButton<String>(
-                  value: _season,
+                  value: _seasons.any((item) => item.id == _season) ? _season : null,
                   items: [
                     for (final season in _seasons)
                       DropdownMenuItem(value: season.id, child: Text(season.label)),
@@ -287,13 +326,11 @@ class _WebsiteNbaWithWithoutScreenState
                   onChanged: (value) {
                     if (value == null) return;
                     _season = value;
-                    _playerOne = null;
-                    _playerTwo = null;
                     _reload();
                   },
                 ),
                 DropdownButton<String>(
-                  value: _team.isEmpty ? null : _team,
+                  value: data.teams.contains(_team) ? _team : null,
                   hint: const Text('Team'),
                   items: [
                     for (final team in data.teams)
@@ -301,10 +338,12 @@ class _WebsiteNbaWithWithoutScreenState
                   ],
                   onChanged: (value) {
                     if (value == null) return;
-                    _team = value;
-                    _playerOne = null;
-                    _playerTwo = null;
-                    _reload();
+                    setState(() {
+                      _team = value;
+                      _playerOne = null;
+                      _playerTwo = null;
+                      if (!stale) _reconcileSelection(data);
+                    });
                   },
                 ),
                 SegmentedButton<NbaStatsSeasonType>(
@@ -321,8 +360,6 @@ class _WebsiteNbaWithWithoutScreenState
                   selected: {_seasonType},
                   onSelectionChanged: (value) {
                     _seasonType = value.first;
-                    _playerOne = null;
-                    _playerTwo = null;
                     _reload();
                   },
                 ),
@@ -353,6 +390,9 @@ class _WebsiteNbaWithWithoutScreenState
           ),
         ),
         const SizedBox(height: 16),
+        if (stale) const Padding(
+          padding: EdgeInsets.symmetric(vertical: 12),
+          child: LinearProgressIndicator(minHeight: 3)),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(18),
@@ -418,12 +458,15 @@ class _WebsiteNbaWithWithoutScreenState
             sourceAvailable: data.splitSnapshot.available,
           ),
           const SizedBox(height: 12),
-          if (!data.splitSnapshot.available)
+          if (firstSplit == null || secondSplit == null) ...[
             _InfoCard(
-              '${data.splitSnapshot.message} Season baselines are source-backed; pair-split values remain blank until lineup stints or play-by-play are loaded.',
+              '${data.splitSnapshot.message.isEmpty ? 'Player-pair splits are not available for this selection.' : data.splitSnapshot.message} '
+              'Season baselines are source-backed; pair-split values remain blank until lineup stints or play-by-play are loaded.',
             ),
-          const SizedBox(height: 14),
-          LayoutBuilder(
+            const SizedBox(height: 14),
+            _SeasonBaselineComparison(first: first, second: second,
+                metrics: _metrics, engine: _engine, basis: _basis),
+          ] else LayoutBuilder(
             builder: (context, constraints) {
               final cards = [
                 _ShiftCard(
@@ -473,11 +516,17 @@ class _WithWithoutData {
     required this.rows,
     required this.teams,
     required this.splitSnapshot,
+    required this.season,
+    required this.seasonType,
+    required this.basis,
   });
 
   final List<NbaStatsRow> rows;
   final List<String> teams;
   final NbaWithWithoutSnapshot splitSnapshot;
+  final String season;
+  final NbaStatsSeasonType seasonType;
+  final NbaStatsBasis basis;
 }
 
 class _PlayerSelector extends StatelessWidget {
@@ -496,19 +545,80 @@ class _PlayerSelector extends StatelessWidget {
   final ValueChanged<String?> onChanged;
 
   @override
-  Widget build(BuildContext context) => DropdownButtonFormField<String>(
-        initialValue: value,
-        decoration: InputDecoration(labelText: label),
-        items: [
-          for (final row in rows)
-            if (row.playerId != excluded)
-              DropdownMenuItem(
-                value: row.playerId,
-                child: Text('${row.player} · ${row.position}'),
-              ),
-        ],
-        onChanged: onChanged,
-      );
+  Widget build(BuildContext context) {
+    final unique = <String, NbaStatsRow>{};
+    for (final row in rows) {
+      if (row.playerId != excluded) unique.putIfAbsent(row.playerId, () => row);
+    }
+    final safeValue = unique.containsKey(value) ? value : null;
+    return DropdownButtonFormField<String>(
+      key: ValueKey('$label-$safeValue-${unique.keys.join(',')}'),
+      initialValue: safeValue,
+      isExpanded: true,
+      decoration: InputDecoration(labelText: label),
+      items: [
+        for (final row in unique.values)
+          DropdownMenuItem(
+            value: row.playerId,
+            child: Text('${row.player} · ${row.position}',
+              maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: unique.isEmpty ? null : onChanged,
+    );
+  }
+}
+
+class _SeasonBaselineComparison extends StatelessWidget {
+  const _SeasonBaselineComparison({
+    required this.first, required this.second,
+    required this.metrics, required this.engine, required this.basis,
+  });
+  final NbaStatsRow first;
+  final NbaStatsRow second;
+  final Set<String> metrics;
+  final NbaStatsWorkstationEngine engine;
+  final NbaStatsBasis basis;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Card(child: Padding(
+      padding: const EdgeInsets.all(18),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text('Season baseline comparison',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w900)),
+        const SizedBox(height: 6),
+        Text('These are season-level ${basis.label.toLowerCase()} statistics, not '
+          'with/without splits. Pair effects cannot be calculated without lineup data.',
+          style: TextStyle(color: colors.onSurfaceVariant)),
+        const SizedBox(height: 16),
+        Row(children: [
+          Expanded(child: Text(first.player, maxLines: 2,
+            style: const TextStyle(fontWeight: FontWeight.w800))),
+          const SizedBox(width: 100, child: Text('METRIC', textAlign: TextAlign.center)),
+          Expanded(child: Text(second.player, textAlign: TextAlign.right, maxLines: 2,
+            style: const TextStyle(fontWeight: FontWeight.w800))),
+        ]),
+        const Divider(height: 20),
+        for (final key in metrics)
+          Padding(padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(children: [
+              Expanded(child: Text(engine.formatValue(key, first.value(key)),
+                textAlign: TextAlign.left,
+                style: const TextStyle(fontWeight: FontWeight.w700))),
+              SizedBox(width: 100, child: Text(engine.metric(key).shortLabel,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: colors.onSurfaceVariant))),
+              Expanded(child: Text(engine.formatValue(key, second.value(key)),
+                textAlign: TextAlign.right,
+                style: const TextStyle(fontWeight: FontWeight.w700))),
+            ]),
+          ),
+      ]),
+    ));
+  }
 }
 
 class _PairContextCard extends StatelessWidget {
@@ -801,9 +911,13 @@ class _ErrorCard extends StatelessWidget {
 
 List<NbaStatsRow> _rowsForTeam(List<NbaStatsRow> rows, String team) {
   if (team.isEmpty) return const [];
-  return rows
-      .where((row) => row.team.split(RegExp(r'[,/ ]+')).contains(team))
-      .toList(growable: false);
+  final unique = <String, NbaStatsRow>{};
+  for (final row in rows) {
+    if (row.team.split(RegExp(r'[,/ ]+')).contains(team)) {
+      unique.putIfAbsent(row.playerId, () => row);
+    }
+  }
+  return unique.values.toList(growable: false);
 }
 
 NbaStatsRow? _find(List<NbaStatsRow> rows, String? id) {
