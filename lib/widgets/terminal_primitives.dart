@@ -20,13 +20,14 @@ class TerminalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: terminalPanel,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: terminalBorder),
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colors.outline.withValues(alpha: .8)),
       ),
       child: child,
     );
@@ -45,17 +46,19 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
+          style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 8),
         Text(
           subtitle,
-          style: const TextStyle(color: Color(0xFF9AA7B6), fontSize: 15, height: 1.4),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant, height: 1.4),
         ),
       ],
     );
@@ -74,16 +77,19 @@ class InfoPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF152235),
+        color: colors.primary.withValues(alpha: .10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFF385A86)),
+        border: Border.all(color: colors.primary.withValues(alpha: .24)),
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          color: color == terminalAccent ? colors.primary : color,
+          fontSize: 12, fontWeight: FontWeight.w700),
       ),
     );
   }
