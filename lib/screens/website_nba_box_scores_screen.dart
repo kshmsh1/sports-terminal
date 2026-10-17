@@ -265,21 +265,14 @@ class _WebsiteNbaBoxScoresScreenState extends State<WebsiteNbaBoxScoresScreen> {
   Future<void> _openGame(
     BuildContext context,
     Map<String, dynamic> game,
-  ) async {
-    final key = _text(game['game_key']);
-    Map<String, dynamic>? detail;
-    Object? error;
-    try {
-      detail = await _api.gameDetail(key);
-    } catch (caught) {
-      error = caught;
-    }
-    if (!context.mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (_) => _BoxScoreDialog(game: game, detail: detail, error: error),
-    );
-  }
+  ) => showDialog<void>(
+    context: context,
+    builder: (_) => _BoxScoreDetailLoader(
+      game: game,
+      api: _api,
+    ),
+  );
+
 }
 
 class _GameRow extends StatelessWidget {
@@ -336,6 +329,55 @@ class _GameRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Open the modal before I/O begins so clicks always receive immediate feedback.
+class _BoxScoreDetailLoader extends StatefulWidget {
+  const _BoxScoreDetailLoader({required this.game, required this.api});
+  final Map<String, dynamic> game;
+  final WebsiteNbaApiService api;
+
+  @override
+  State<_BoxScoreDetailLoader> createState() => _BoxScoreDetailLoaderState();
+}
+
+class _BoxScoreDetailLoaderState extends State<_BoxScoreDetailLoader> {
+  late Future<Map<String, dynamic>> _detail;
+
+  @override
+  void initState() {
+    super.initState();
+    _detail = widget.api.gameDetail(_text(widget.game['game_key']));
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      FutureBuilder<Map<String, dynamic>>(
+        future: _detail,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return Dialog(
+              child: SizedBox(width: 520, height: 220,
+                child: Column(mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 18),
+                    Text('Loading ${_team(widget.game, away: true)} at '
+                         '${_team(widget.game, away: false)}…'),
+                    const SizedBox(height: 8),
+                    TextButton(onPressed: () => Navigator.pop(context),
+                      child: const Text('Close')),
+                  ]),
+              ),
+            );
+          }
+          return _BoxScoreDialog(
+            game: widget.game,
+            detail: snapshot.data,
+            error: snapshot.error,
+          );
+        },
+      );
 }
 
 class _BoxScoreDialog extends StatelessWidget {
