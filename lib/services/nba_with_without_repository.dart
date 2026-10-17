@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'sports_terminal_static_config.dart';
+
 class NbaWithWithoutSplit {
   const NbaWithWithoutSplit({
     required this.team,
@@ -85,7 +87,7 @@ class NbaWithWithoutRepository {
     final cached = _cache[key];
     if (cached != null) return cached;
     final uri = Uri.base.resolve(
-      'data/nba_static/lineups/$season/$segment/with_without.json',
+      sportsTerminalStaticPath('lineups/$season/$segment/with_without.json'),
     );
     try {
       final response = await _client.get(uri).timeout(const Duration(seconds: 5));
@@ -106,7 +108,20 @@ class NbaWithWithoutRepository {
           message: 'With/without dataset is unavailable (${response.statusCode}).',
         );
       }
-      final decoded = jsonDecode(response.body);
+      // Flutter dev servers and SPA hosts can return index.html with HTTP 200
+      // when an optional JSON shard is absent. Treat that as missing data,
+      // not a parser failure or a user-visible stack trace.
+      final body = response.body.trimLeft();
+      if (body.startsWith('<') ||
+          (!body.startsWith('{') && !body.startsWith('['))) {
+        return _cache[key] = const NbaWithWithoutSnapshot(
+          available: false,
+          source: '',
+          rows: [],
+          message: 'Lineup split data has not been published for this season and segment.',
+        );
+      }
+      final decoded = jsonDecode(body);
       if (decoded is! Map) {
         return _cache[key] = const NbaWithWithoutSnapshot(
           available: false,
@@ -148,7 +163,7 @@ class NbaWithWithoutRepository {
         available: false,
         source: '',
         rows: const [],
-        message: 'With/without static file could not be read: $error',
+        message: 'Lineup split data could not be loaded. Verify the static data assets and try again.',
       );
     }
   }
