@@ -107,7 +107,7 @@ class _WebsiteNbaWithWithoutScreenState
     for (final row in rows) {
       for (final token in row.team.split(RegExp(r'[,/ ]+'))) {
         if (token.isNotEmpty && token != '—' && token != 'TOT' &&
-            !RegExp(r'^\d+TM\$').hasMatch(token) && token.length <= 4) {
+            !RegExp(r'^\d+TM$').hasMatch(token) && token.length <= 4) {
           teams.add(token);
         }
       }
