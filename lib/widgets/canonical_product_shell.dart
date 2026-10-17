@@ -536,7 +536,7 @@ class _TopNav extends StatelessWidget {
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final compact = constraints.maxWidth < 900;
+            final compact = constraints.maxWidth < 1280;
             return Row(
               children: [
                 InkWell(
@@ -576,6 +576,21 @@ class _TopNav extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (compact && constraints.maxWidth >= 440) ...[
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      _item(selected).label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: colors.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
                 if (!compact) ...[
                   const SizedBox(width: 16),
                   Expanded(
@@ -1001,17 +1016,21 @@ class _NbaSearchDialogState extends State<_NbaSearchDialog> {
   Widget build(BuildContext context) => AlertDialog(
         title: const Text('Search NBA players and teams'),
         content: SizedBox(
-          width: 620,
-          height: 470,
+          width: (MediaQuery.sizeOf(context).width - 68)
+              .clamp(0.0, 620.0).toDouble(),
+          height: (MediaQuery.sizeOf(context).height - 180)
+              .clamp(200.0, 470.0).toDouble(),
           child: Column(
             children: [
               TextField(
                 controller: _controller,
                 autofocus: true,
+                textInputAction: TextInputAction.search,
                 onChanged: _search,
                 decoration: const InputDecoration(
                   prefixIcon: Icon(Icons.search_rounded),
                   hintText: 'Jayson Tatum, Boston Celtics…',
+                  labelText: 'Player or team search',
                 ),
               ),
               const SizedBox(height: 12),
@@ -1032,7 +1051,11 @@ class _NbaSearchDialogState extends State<_NbaSearchDialog> {
                           }
                           if (snapshot.hasError || snapshot.data == null) {
                             return Center(
-                              child: Text('Static search unavailable: ${snapshot.error}'),
+                              child: const TerminalEmptyState(
+                                title: 'Search temporarily unavailable',
+                                message: 'The local player and team index could not be read.',
+                                icon: Icons.warning_amber_rounded,
+                              ),
                             );
                           }
                           final groups = _map(snapshot.data!['groups']);
