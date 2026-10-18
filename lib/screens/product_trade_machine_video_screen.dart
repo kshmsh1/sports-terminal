@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/nba_complete_draft_asset_repository.dart';
 import '../services/nba_contract_status_reference_2026.dart';
+import '../services/nba_exhibit_contract_reference_2026.dart';
 import '../services/nba_future_draft_asset_repository.dart';
 import '../services/nba_league_environment_2026.dart';
 import '../services/nba_team_cap_reference_2026.dart';
@@ -1063,6 +1064,16 @@ class _ProductTradeMachineVideoScreenState
                   .forTeam(team, '2026-27')
                   .any((player) => player.player == item.player),
             )
+            .length +
+        NbaExhibitContractReference202627.forTeam(team)
+            .where(
+              (item) =>
+                  !data
+                      .forTeam(team, '2026-27')
+                      .any((player) => player.player == item.player) &&
+                  !NbaTwoWayContractReference202627.forTeam(team)
+                      .any((player) => player.player == item.player),
+            )
             .length;
     final pickCount =
         draftAssets.where((asset) => asset.team == team).length;
@@ -1335,6 +1346,16 @@ class _ProductTradeMachineVideoScreenState
             !players.any((player) => player.player == item.player))
         .toList();
 
+    final exhibits = NbaExhibitContractReference202627.forTeam(team)
+        .where((item) =>
+            query.isEmpty || item.player.toLowerCase().contains(query))
+        .where((item) =>
+            _positionFilter == 'All' || item.position == _positionFilter)
+        .where((item) =>
+            !players.any((player) => player.player == item.player) &&
+            !twoWays.any((player) => player.player == item.player))
+        .toList();
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final minimumWidth = constraints.maxWidth < 840 ? 840.0 : constraints.maxWidth;
@@ -1356,7 +1377,9 @@ class _ProductTradeMachineVideoScreenState
                 for (final player in players) _playerRow(context, player),
                 for (final player in twoWays)
                   _twoWayPlayerRow(context, player),
-                if (players.isEmpty && twoWays.isEmpty)
+                for (final player in exhibits)
+                  _exhibitPlayerRow(context, player),
+                if (players.isEmpty && twoWays.isEmpty && exhibits.isEmpty)
                   _empty('No roster players match this search.'),
               ],
             ),
@@ -1424,6 +1447,97 @@ class _ProductTradeMachineVideoScreenState
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 _tag(context, 'Two-Way'),
+                const SizedBox(width: 6),
+                SizedBox(
+                  width: 118,
+                  child: _routeControl(
+                    assetId: assetId,
+                    originTeam: player.team,
+                    enabled: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _exhibitPlayerRow(
+    BuildContext context,
+    NbaExhibitContractRecord player,
+  ) {
+    final assetId =
+        'exhibit-${player.exhibit}:${player.team}:${player.player.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-')}';
+    final routedTo = _routes[assetId];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: routedTo != null
+            ? const Color(0xFF2E7D32).withValues(alpha: .08)
+            : null,
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 240,
+            child: Row(
+              children: [
+                _initialAvatar(context, player.player),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        player.player,
+                        style: TextStyle(
+                          color: _tmTextStrong,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Text(
+                        '${player.position} · Exhibit ${player.exhibit}',
+                        style: TextStyle(fontSize: 10, color: _tmTextSoft),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Text(
+              _money(player.value),
+              style: TextStyle(
+                color: _tmTextStrong,
+                fontWeight: FontWeight.w700,
+                fontSize: 11,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              'Signed ${_displayRestrictionDate(player.signedDate)}',
+              style: TextStyle(
+                color: _tmTextSoft,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 210,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _tag(context, 'Exhibit ${player.exhibit}'),
                 const SizedBox(width: 6),
                 SizedBox(
                   width: 118,
@@ -1676,15 +1790,19 @@ class _ProductTradeMachineVideoScreenState
           ),
         if (rights.isEmpty)
           _empty(
-            'No source-certified draft-rights records are installed for $team yet. The tab stays source-gated rather than inventing rights.',
+            NbaTradeSupplementalAssets202627.draftRightsCertifiedForTeam(team)
+                ? 'No draft rights are listed for $team in the supplied 2026–27 reference table.'
+                : 'No source-certified draft-rights records are installed for $team yet.',
           ),
       ],
     );
   }
 
   Widget _cashTab(BuildContext context, String team) {
-    final reference = NbaCashTradeReference202627.teams[team];
-    final available = reference?.availableToSend ?? 0;
+    const annualLimit = 8495000.0;
+    final source = NbaTeamFinancialReference202627.forTeam(team);
+    final secondApronBlocked = (source?.secondApronSpace ?? 0) < 0;
+    final available = secondApronBlocked ? 0.0 : annualLimit;
     final destinations = _teams.where((item) => item != team).toList();
     final destination = _cashDestinations[team];
     final amount = (_cashAmounts[team] ?? 0).clamp(0, available).toDouble();
@@ -1696,7 +1814,7 @@ class _ProductTradeMachineVideoScreenState
           context,
           title: 'Cash considerations',
           subtitle:
-              'Annual send capacity remaining: ${_money(available)} · receive capacity: ${_money(reference?.availableToReceive ?? 0)}',
+              '2026–27 annual cash limit: ${_money(annualLimit)} · sending and receiving limits are separate',
         ),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
@@ -1774,10 +1892,15 @@ class _ProductTradeMachineVideoScreenState
               ],
             ),
           ),
-        if (reference?.sendRestrictedAboveSecondApron == true)
+        if (secondApronBlocked)
           const Text(
-            'Source note: cash sending is restricted while this team is above the second apron.',
+            'This team is above the second apron and cannot send cash in a trade.',
             style: TextStyle(color: Color(0xFFD58B45), fontSize: 11),
+          )
+        else
+          Text(
+            'Cash does not affect team salary. Max send: ${_money(annualLimit)} · Max receive: ${_money(annualLimit)}.',
+            style: TextStyle(color: _tmTextSoft, fontSize: 11),
           ),
       ],
     );
@@ -1812,10 +1935,12 @@ class _ProductTradeMachineVideoScreenState
             ),
           ),
         for (final item in rights) _freeAgentRow(context, item),
-        if (rights.isEmpty)
+        if (allRights.isEmpty)
           _empty(
-            'No source-certified free-agent rights are installed for $team yet.',
-          ),
+            'Free-agent market data is supplied separately from tradeable Bird-rights / cap-hold data. The 2026–27 market table does not provide the cap holds, Bird-right classifications, or sign-and-trade salary bounds needed to create additional legal trade assets for $team.',
+          )
+        else if (rights.isEmpty)
+          _empty('No free-agent rights match this search.'),
       ],
     );
   }
@@ -3574,10 +3699,8 @@ class _ProductTradeMachineVideoScreenState
               },
               standardRosterPlayers:
                   source?.standardRoster ?? _standardRosterCount(team, data),
-              cashSentThisSeason: NbaCashTradeReference202627.limit -
-                  (NbaCashTradeReference202627.teams[team]?.availableToSend ??
-                      NbaCashTradeReference202627.limit),
-              cashLimitThisSeason: NbaCashTradeReference202627.limit,
+              cashSentThisSeason: 0,
+              cashLimitThisSeason: 8495000,
             );
           })(),
       },

@@ -22,7 +22,7 @@ class NbaTwoWayContractReference202627 {
   static const double twoWaySalary = 678882;
   static const double exhibit10ProtectionMaximum = 91000;
 
-  /// User-supplied current two-way contract status, normalized 2026-09-20.
+  /// User-supplied current two-way contract status, refreshed 2026-10-06.
   static const List<NbaTwoWayContractRecord> records = [
     NbaTwoWayContractRecord(team:'ATL', player:'RayJ Dennis', position:'PG', lengthYears:2, signedDate:'2025-12-31', gLeagueTeam:'College Park Skyhawks'),
     NbaTwoWayContractRecord(team:'ATL', player:'Keshon Gilbert', position:'G', lengthYears:1, signedDate:'2026-03-04', gLeagueTeam:'College Park Skyhawks'),
@@ -44,14 +44,14 @@ class NbaTwoWayContractReference202627 {
     NbaTwoWayContractRecord(team:'DAL', player:'Tobi Lawal', position:'F', lengthYears:1, signedDate:'2026-07-03', gLeagueTeam:'Texas Legends'),
     NbaTwoWayContractRecord(team:'DAL', player:'John Poulakidas', position:'G', lengthYears:2, signedDate:'2026-02-28', gLeagueTeam:'Texas Legends'),
     NbaTwoWayContractRecord(team:'DEN', player:'Bryce Hopkins', position:'F', lengthYears:1, signedDate:'2026-08-25', gLeagueTeam:'Grand Rapids Gold'),
-    NbaTwoWayContractRecord(team:'DEN', player:'K.J. Simpson', position:'PG', lengthYears:2, signedDate:'2026-02-19', gLeagueTeam:'Grand Rapids Gold'),
+    NbaTwoWayContractRecord(team:'DEN', player:'Ryan Nembhard', position:'PG', lengthYears:1, signedDate:'2026-09-30', gLeagueTeam:'Grand Rapids Gold'),
     NbaTwoWayContractRecord(team:'DEN', player:'Cam Whitmore', position:'SF', lengthYears:1, signedDate:'2026-09-18', gLeagueTeam:'Grand Rapids Gold'),
     NbaTwoWayContractRecord(team:'DET', player:'Elijah Harkless', position:'PG', lengthYears:1, signedDate:'2026-07-08', gLeagueTeam:'Motor City Cruise'),
     NbaTwoWayContractRecord(team:'DET', player:'Isaac Jones', position:'C', lengthYears:2, signedDate:'2026-02-09', gLeagueTeam:'Motor City Cruise'),
     NbaTwoWayContractRecord(team:'DET', player:'Ugonna Onyenso', position:'C', lengthYears:2, signedDate:'2026-07-02', gLeagueTeam:'Motor City Cruise'),
     NbaTwoWayContractRecord(team:'GSW', player:'L.J. Cryer', position:'PG', lengthYears:2, signedDate:'2025-12-02', gLeagueTeam:'Santa Cruz Warriors'),
-    NbaTwoWayContractRecord(team:'GSW', player:'Malevy Leons', position:'PF', lengthYears:2, signedDate:'2025-12-08', gLeagueTeam:'Santa Cruz Warriors'),
-    NbaTwoWayContractRecord(team:'HOU', player:'Rafael Castro', position:'C', lengthYears:2, signedDate:'2026-04-26', gLeagueTeam:'Rio Grande Valley Vipers'),
+    NbaTwoWayContractRecord(team:'GSW', player:'Graham Ike', position:'F', lengthYears:2, signedDate:'2026-09-21', gLeagueTeam:'Santa Cruz Warriors'),
+    NbaTwoWayContractRecord(team:'HOU', player:'Quadir Copeland', position:'F', lengthYears:1, signedDate:'2026-07-07', gLeagueTeam:'Rio Grande Valley Vipers'),
     NbaTwoWayContractRecord(team:'HOU', player:'Quadir Copeland', position:'F', lengthYears:1, signedDate:'2026-07-07', gLeagueTeam:'Rio Grande Valley Vipers'),
     NbaTwoWayContractRecord(team:'HOU', player:'Sean Pedulla', position:'G', lengthYears:1, signedDate:'2026-08-17', gLeagueTeam:'Rio Grande Valley Vipers'),
     NbaTwoWayContractRecord(team:'IND', player:'Kobe Brown', position:'PF', lengthYears:1, signedDate:'2026-07-09', gLeagueTeam:'Noblesville Boom'),
@@ -74,7 +74,7 @@ class NbaTwoWayContractReference202627 {
     NbaTwoWayContractRecord(team:'MIN', player:'Zyon Pullin', position:'PG', lengthYears:2, signedDate:'2026-03-01', gLeagueTeam:'Iowa Wolves'),
     NbaTwoWayContractRecord(team:'MIN', player:'Rocco Zikarsky', position:'C', lengthYears:2, signedDate:'2025-07-09', gLeagueTeam:'Iowa Wolves'),
     NbaTwoWayContractRecord(team:'NOP', player:'Malik Dia', position:'F', lengthYears:1, signedDate:'2026-08-18', gLeagueTeam:'Laketown Squadron'),
-    NbaTwoWayContractRecord(team:'NOP', player:'Jaron Pierre Jr.', position:'F', lengthYears:1, signedDate:'2026-07-24', gLeagueTeam:'Laketown Squadron'),
+    NbaTwoWayContractRecord(team:'NOP', player:'Jeron Pierre Jr.', position:'F', lengthYears:1, signedDate:'2026-07-24', gLeagueTeam:'Laketown Squadron'),
     NbaTwoWayContractRecord(team:'OKC', player:'Brooks Barnhizer', position:'SF', lengthYears:1, signedDate:'2026-07-03', gLeagueTeam:'Oklahoma City Blue'),
     NbaTwoWayContractRecord(team:'OKC', player:'Josh Dix', position:'SG', lengthYears:1, signedDate:'2026-07-03', gLeagueTeam:'Oklahoma City Blue'),
     NbaTwoWayContractRecord(team:'OKC', player:'Otega Oweh', position:'SG', lengthYears:1, signedDate:'2026-07-03', gLeagueTeam:'Oklahoma City Blue'),
@@ -94,7 +94,9 @@ class NbaTwoWayContractReference202627 {
     NbaTwoWayContractRecord(team:'SAS', player:'Maliq Brown', position:'PG', lengthYears:1, signedDate:'2026-07-03', gLeagueTeam:'Austin Spurs'),
     NbaTwoWayContractRecord(team:'SAS', player:"Ja'Kobi Gillespie", position:'SG', lengthYears:1, signedDate:'2026-07-03', gLeagueTeam:'Austin Spurs'),
     NbaTwoWayContractRecord(team:'SAS', player:'David Jones-Garcia', position:'SF', lengthYears:1, signedDate:'2026-07-22', gLeagueTeam:'Austin Spurs'),
-    NbaTwoWayContractRecord(team:'TOR', player:'Jaden Bradley', position:'SG', lengthYears:1, signedDate:'2026-07-04', gLeagueTeam:'Raptors 905'),
+    NbaTwoWayContractRecord(team:'TOR', player:'Chucky Hepburn', position:'G', lengthYears:1, signedDate:'2026-06-25', gLeagueTeam:'Raptors 905'),
+    NbaTwoWayContractRecord(team:'TOR', player:'Trey Jemison', position:'PF', lengthYears:1, signedDate:'2026-08-05', gLeagueTeam:'Raptors 905'),
+    NbaTwoWayContractRecord(team:'TOR', player:'Malachi Smith', position:'G', lengthYears:1, signedDate:'2026-09-21', gLeagueTeam:'Raptors 905'),
     NbaTwoWayContractRecord(team:'TOR', player:'Chucky Hepburn', position:'G', lengthYears:1, signedDate:'2026-06-25', gLeagueTeam:'Raptors 905'),
     NbaTwoWayContractRecord(team:'TOR', player:'Trey Jemison', position:'PF', lengthYears:1, signedDate:'2026-08-05', gLeagueTeam:'Raptors 905'),
     NbaTwoWayContractRecord(team:'UTA', player:'Trey Alexander', position:'SG', lengthYears:1, signedDate:'2026-07-05', gLeagueTeam:'Salt Lake City Stars'),
