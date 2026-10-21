@@ -161,6 +161,26 @@ class NbaEvidenceResearchEngine {
     }
 
     final metric = metricCandidates.first.key;
+    // Never silently discard a numeric filter against another statistic.
+    // Unsupported comparisons must abstain instead of overstating the cohort.
+    for (final match in RegExp(
+      r'\\b(?:at least|minimum of|over|under|less than|more than)\\s+\\d+(?:\\.\\d+)?\\s+([a-z0-9%\\-]+)',
+    ).allMatches(normalized)) {
+      final word = match.group(1)!;
+      final leading = match.group(0)!.split(RegExp(r'\\s+')).first;
+      if (leading == 'over' || leading == 'under' ||
+          leading == 'less' || leading == 'more') {
+        return unsupported('Strict numeric inequalities are not implemented for this query family.');
+      }
+      final gamesToken = word == 'games' || word == 'game' || word == 'gp';
+      final metricToken = _metrics[metric]!.any(
+        (alias) => alias.startsWith(word) || alias == word,
+      );
+      if (!gamesToken && !metricToken) {
+        return unsupported('Additional statistic thresholds require a multi-metric query planner. '
+            'This query would otherwise silently omit a filter.');
+      }
+    }
     final limitMatch = RegExp(r'\btop\s+(\d+)\b')
         .firstMatch(normalized);
     final limit = (int.tryParse(limitMatch?.group(1) ?? '') ?? 10)
