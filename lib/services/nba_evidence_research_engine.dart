@@ -164,10 +164,10 @@ class NbaEvidenceResearchEngine {
     // Never silently discard a numeric filter against another statistic.
     // Unsupported comparisons must abstain instead of overstating the cohort.
     for (final match in RegExp(
-      r'\\b(?:at least|minimum of|over|under|less than|more than)\\s+\\d+(?:\\.\\d+)?\\s+([a-z0-9%\\-]+)',
+      r'\b(?:at least|minimum of|over|under|less than|more than)\s+\d+(?:\.\d+)?\s+([a-z0-9%\-]+)',
     ).allMatches(normalized)) {
       final word = match.group(1)!;
-      final leading = match.group(0)!.split(RegExp(r'\\s+')).first;
+      final leading = match.group(0)!.split(RegExp(r'\s+')).first;
       if (leading == 'over' || leading == 'under' ||
           leading == 'less' || leading == 'more') {
         return unsupported('Strict numeric inequalities are not implemented for this query family.');
