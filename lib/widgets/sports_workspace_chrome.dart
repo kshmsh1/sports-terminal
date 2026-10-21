@@ -389,10 +389,13 @@ class _WorkspaceTopbar extends StatelessWidget {
             icon: const Icon(Icons.grid_view_rounded),
           )
         else
-          OutlinedButton.icon(
-            onPressed: onCommand,
-            icon: const Icon(Icons.grid_view_rounded, size: 17),
-            label: const Text('Jump to workspace  ⌘K'),
+          Tooltip(
+            message: 'Jump to workspace (Cmd/Ctrl + K)',
+            child: OutlinedButton.icon(
+              onPressed: onCommand,
+              icon: const Icon(Icons.grid_view_rounded, size: 17),
+              label: const Text('Jump to workspace  ⌘K'),
+            ),
           ),
         const SizedBox(width: 6),
         if (compact)
