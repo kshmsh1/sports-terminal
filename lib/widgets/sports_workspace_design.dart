@@ -3,24 +3,24 @@ import 'package:flutter/material.dart';
 /// Sports Terminal / Workspace design language.
 ///
 /// Product chrome is deliberately neutral; league/team/player colors remain
-/// available for real data. Bright chartreuse is reserved for navigation and
-/// actions, never for "positive performance" or statistical meaning.
+/// available for real data. The original indigo-blue is the navigation
+/// accent; chart colors continue to communicate statistical meaning.
 abstract final class SportsWorkspaceDesign {
-  static const canvasDark = Color(0xFF0D1215);
-  static const sidebarDark = Color(0xFF11181A);
-  static const surfaceDark = Color(0xFF182023);
-  static const strokeDark = Color(0xFF303A3C);
-  static const textDark = Color(0xFFF2F3EC);
-  static const secondaryDark = Color(0xFFABB9B5);
-  static const accentDark = Color(0xFFC7EF77);
+  static const canvasDark = Color(0xFF0B111A);
+  static const sidebarDark = Color(0xFF101823);
+  static const surfaceDark = Color(0xFF141D29);
+  static const strokeDark = Color(0xFF2B3849);
+  static const textDark = Color(0xFFE9EDF7);
+  static const secondaryDark = Color(0xFFB7C2D5);
+  static const accentDark = Color(0xFFAAB8FF);
 
-  static const canvasLight = Color(0xFFF4F5F0);
-  static const sidebarLight = Color(0xFFEAEEE7);
+  static const canvasLight = Color(0xFFF7F8FC);
+  static const sidebarLight = Color(0xFFF0F2F9);
   static const surfaceLight = Color(0xFFFFFFFF);
-  static const strokeLight = Color(0xFFD6DCD4);
-  static const textLight = Color(0xFF17241E);
-  static const secondaryLight = Color(0xFF52645B);
-  static const accentLight = Color(0xFF3F6322);
+  static const strokeLight = Color(0xFFD8DFEA);
+  static const textLight = Color(0xFF17223B);
+  static const secondaryLight = Color(0xFF4D5A73);
+  static const accentLight = Color(0xFF5363B5);
 
   static Color canvas(bool dark) => dark ? canvasDark : canvasLight;
   static Color sidebar(bool dark) => dark ? sidebarDark : sidebarLight;
@@ -46,8 +46,10 @@ abstract final class SportsWorkspaceDesign {
       onSurfaceVariant: dark ? secondaryDark : secondaryLight,
       outline: stroke(dark),
       surfaceContainer: sidebar(dark),
+      surfaceContainerLowest: canvas(dark),
+      surfaceContainerLow: dark ? const Color(0xFF111A27) : const Color(0xFFF0F3FA),
       surfaceContainerHigh:
-          dark ? const Color(0xFF222D2F) : const Color(0xFFE5EBE4),
+          dark ? const Color(0xFF223047) : const Color(0xFFE8ECF7),
     );
     final outline = OutlineInputBorder(
       borderSide: BorderSide(color: colors.outline),
@@ -100,7 +102,26 @@ abstract final class SportsWorkspaceDesign {
         ),
         labelStyle: TextStyle(color: colors.onSurfaceVariant),
       ),
-      chipTheme: base.chipTheme.copyWith(
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: colors.onSurface),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: colors.onSurface,
+          side: BorderSide(color: colors.outline),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          foregroundColor: colors.onPrimary,
+          backgroundColor: colors.primary,
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: colors.surface,
+        textStyle: TextStyle(color: colors.onSurface),
+      ),
+            chipTheme: base.chipTheme.copyWith(
         backgroundColor: colors.surface,
         side: BorderSide(color: colors.outline),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
