@@ -106,6 +106,23 @@ void main() {
     expect(plan.metric, isEmpty);
   });
 
+  test('does not silently ignore thresholds on a different statistic', () {
+    final plan = engine.parse(
+      'Top 5 players in points with at least 8 assists in 2025-26',
+      defaultSeason: '2025-26',
+    );
+    expect(plan.supported, isFalse);
+    expect(plan.explanation, contains('multi-metric'));
+  });
+
+  test('strict over and under language is not converted to inclusive >=', () {
+    final plan = engine.parse(
+      'Top 5 in rebounds with over 10 rebounds in 2025-26',
+      defaultSeason: '2025-26',
+    );
+    expect(plan.supported, isFalse);
+  });
+
   test('lowest ranking sorts in ascending order', () {
     final plan = engine.parse(
       'Top 3 lowest turnovers in 2024-25 with at least 20 games',
