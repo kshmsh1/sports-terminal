@@ -522,6 +522,7 @@ class _TopNav extends StatelessWidget {
     final primary = <_Destination>[
       _item('sports'),
       _item('nba-home'),
+      _item('research'),
       _item('stats'),
       _item('advanced'),
     ];
@@ -534,7 +535,6 @@ class _TopNav extends StatelessWidget {
       _item('with-without'),
       _item('rankings'),
       _item('front-office'),
-      _item('research'),
       _item('community'),
       _item('python-lab'),
       _item('excel-workspace'),
