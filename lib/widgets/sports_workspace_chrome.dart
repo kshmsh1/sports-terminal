@@ -149,8 +149,8 @@ class _WorkspaceTopNavigation extends StatelessWidget {
         border: Border(bottom: BorderSide(color: colors.outline)),
       ),
       child: LayoutBuilder(builder: (context, box) {
-        final full = box.maxWidth >= 1350;
-        final medium = box.maxWidth >= 820;
+        final full = box.maxWidth >= 1500;
+        final medium = box.maxWidth >= 1220;
         return Padding(
           padding: EdgeInsets.symmetric(horizontal: medium ? 24 : 12),
           child: Row(children: [
