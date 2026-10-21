@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/website_nba_api_service.dart';
+import '../widgets/nba_ask_research_panel.dart';
 
 class WebsiteNbaResearchScreen extends StatefulWidget {
   const WebsiteNbaResearchScreen({super.key});
@@ -42,13 +43,19 @@ class _WebsiteNbaResearchScreenState extends State<WebsiteNbaResearchScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Research starts from the same immutable historical NBA corpus used by Home, Stats, Advanced Stats, and canonical player/team pages. Historical facts are not fetched from a runtime NBA API.',
+          'Ask supported questions about historical NBA player-season statistics and inspect the qualifying rows, calculation and dataset path. Complex questions needing tracking or live observations are explicitly declined.',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: colors.onSurfaceVariant,
                 height: 1.45,
               ),
         ),
         const SizedBox(height: 24),
+        const NbaAskResearchPanel(),
+        const SizedBox(height: 26),
+        Text('Data coverage and methodology',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w900)),
+        const SizedBox(height: 12),
         FutureBuilder<_ResearchCoverage>(
           future: _future,
           builder: (context, snapshot) {
