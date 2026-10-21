@@ -375,20 +375,22 @@ class _GameCard extends StatelessWidget {
             final details = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [
-                  Text('${_text(game['season_id'])} · ${_gameSegment(game)}',
-                    style: TextStyle(color: colors.onSurfaceVariant,
-                      fontSize: 11, fontWeight: FontWeight.w700)),
-                  if (available) ...[
-                    const SizedBox(width: 9),
-                    Icon(Icons.check_circle_outline_rounded,
-                      size: 16, color: colors.primary),
-                    const SizedBox(width: 3),
-                    Text('Player stats', style: TextStyle(
-                      color: colors.primary, fontSize: 11,
-                      fontWeight: FontWeight.w700)),
-                  ],
-                ]),
+                Wrap(spacing: 9, runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text('${_text(game['season_id'])} · ${_gameSegment(game)}',
+                      style: TextStyle(color: colors.onSurfaceVariant,
+                        fontSize: 11, fontWeight: FontWeight.w700)),
+                    if (available)
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.check_circle_outline_rounded,
+                          size: 16, color: colors.primary),
+                        const SizedBox(width: 3),
+                        Text('Player stats', style: TextStyle(
+                          color: colors.primary, fontSize: 11,
+                          fontWeight: FontWeight.w700)),
+                      ]),
+                  ]),
                 const SizedBox(height: 8),
                 Text('${_team(game, away: true)}  @  ${_team(game, away: false)}',
                   maxLines: 2, overflow: TextOverflow.ellipsis,
@@ -432,9 +434,12 @@ class _GameCard extends StatelessWidget {
                     Row(children: [
                       score,
                       const Spacer(),
-                      Text(available ? 'Open player stats' : 'Game details',
-                        style: TextStyle(color: colors.primary,
-                          fontWeight: FontWeight.w800, fontSize: 12)),
+                      Flexible(child: Text(
+                         available ? 'Open player stats' : 'Game details',
+                         overflow: TextOverflow.ellipsis,
+                         maxLines: 1,
+                         style: TextStyle(color: colors.primary,
+                           fontWeight: FontWeight.w800, fontSize: 12))),
                       const SizedBox(width: 4),
                       Icon(Icons.arrow_forward_rounded,
                         color: colors.primary, size: 17),
