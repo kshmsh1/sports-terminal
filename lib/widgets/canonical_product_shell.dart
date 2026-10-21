@@ -20,11 +20,11 @@ import '../screens/website_nba_stats_screen.dart';
 import '../screens/website_nba_team_comparison_screen.dart';
 import '../screens/website_nba_visualizations_screen.dart';
 import '../screens/website_nba_with_without_screen.dart';
-import '../screens/website_sports_home_screen.dart';
+import '../screens/sports_workspace_overview.dart';
 import '../services/product_local_store.dart';
 import '../services/website_nba_api_service.dart';
-
-const _brandBlue = Color(0xFF6674C7);
+import 'sports_workspace_chrome.dart';
+import 'sports_workspace_design.dart';
 
 /// Sole customer-facing Sports Terminal shell.
 ///
@@ -52,9 +52,10 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
   List<_Destination> get _items => [
         _Destination(
           id: 'sports',
-          label: 'Sports',
+          label: 'Overview',
           icon: Icons.public_rounded,
-          builder: () => WebsiteSportsHomeScreen(
+          builder: () => SportsWorkspaceOverview(
+            onOpenRoute: _select,
             onOpenNba: () => _select('nba-home'),
           ),
         ),
@@ -248,103 +249,91 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
     setState(() => _selected = id);
   }
 
+  String _navigationGroup(String id) {
+    const sections = <String, List<String>>{
+      'Start': ['sports'],
+      'Basketball': [
+        'nba-home', 'live-games', 'box-scores', 'media-feed',
+      ],
+      'Research & analysis': [
+        'research', 'stats', 'advanced', 'visualizations',
+        'player-compare', 'team-compare', 'with-without', 'rankings',
+      ],
+      'Front office': ['trade', 'financials', 'front-office'],
+      'Community': ['community', 'profile'],
+      'More': [
+        'python-lab', 'excel-workspace', 'about', 'contact',
+        'privacy', 'terms', 'sitemap', 'accessibility', 'data-policy',
+      ],
+    };
+    for (final group in sections.entries) {
+      if (group.value.contains(id)) return group.key;
+    }
+    return 'More';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final selected = _items.firstWhere(
+    final destinations = _items;
+    final selected = destinations.firstWhere(
       (item) => item.id == _selected,
-      orElse: () => _items.first,
-    );
-    final brightness = _darkMode ? Brightness.dark : Brightness.light;
-    final theme = ThemeData(
-      useMaterial3: true,
-      brightness: brightness,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: _brandBlue,
-        brightness: brightness,
-      ),
-      scaffoldBackgroundColor:
-          _darkMode ? const Color(0xFF0B111A) : const Color(0xFFF7F8FA),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        color: _darkMode ? const Color(0xFF141B25) : Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(
-            color: _darkMode ? const Color(0xFF263241) : const Color(0xFFE5E7EB),
-          ),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      dataTableTheme: const DataTableThemeData(
-        headingTextStyle: TextStyle(fontWeight: FontWeight.w800),
-      ),
+      orElse: () => destinations.first,
     );
 
     return Theme(
-      data: theme,
-      child: Scaffold(
-        body: SafeArea(
-          child: Column(
-            children: [
-              _TopNav(
-                session: widget.session,
-                items: _items,
-                selected: _selected,
-                dark: _darkMode,
-                onSelect: _select,
-                onTheme: _toggleTheme,
-                onSignOut: widget.onSignOut,
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: _selected == 'trade'
-                      ? const EdgeInsets.fromLTRB(36, 18, 36, 28)
-                      : _selected == 'visualizations'
-                          ? const EdgeInsets.fromLTRB(24, 24, 24, 48)
-                          : const EdgeInsets.fromLTRB(20, 28, 20, 64),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: _selected == 'trade'
-                            ? 1420
-                            : _selected == 'visualizations'
-                                ? 1880
-                                : (_selected == 'player-compare' ||
-                                        _selected == 'team-compare')
-                                    ? 1760
-                                    : 1320,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (_selected == 'trade')
-                            ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight:
-                                    (MediaQuery.sizeOf(context).height - 92)
-                                        .clamp(0.0, double.infinity)
-                                        .toDouble(),
-                              ),
-                              child: selected.builder!(),
-                            )
-                          else
-                            selected.builder!(),
-                          if (_selected != 'trade') ...[
-                            const SizedBox(height: 56),
-                            _SiteFooter(onSelect: _select),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
+      data: SportsWorkspaceDesign.theme(_darkMode),
+      child: Builder(builder: (context) => SportsWorkspaceChrome(
+        session: widget.session,
+        selected: _selected,
+        darkMode: _darkMode,
+        items: [
+          for (final item in destinations)
+            WorkspaceNavItem(
+              id: item.id,
+              label: item.label,
+              icon: item.icon,
+              group: _navigationGroup(item.id),
+              enabled: item.enabled,
+            ),
+        ],
+        onSelect: _select,
+        onTheme: _toggleTheme,
+        onSearchPeople: () => _openSearchDialog(context, widget.session),
+        onSignOut: widget.onSignOut,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            key: ValueKey('workspace-scroll-$_selected'),
+            padding: SportsWorkspaceDesign.gutters(
+              constraints.maxWidth, _selected),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: SportsWorkspaceDesign.maxContentWidth(_selected),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (_selected == 'trade')
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: (MediaQuery.sizeOf(context).height - 110)
+                              .clamp(0.0, double.infinity).toDouble(),
+                        ),
+                        child: selected.builder!(),
+                      )
+                    else
+                      selected.builder!(),
+                    if (_selected != 'trade') ...[
+                      const SizedBox(height: 54),
+                      _SiteFooter(onSelect: _select),
+                    ],
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -492,352 +481,6 @@ class _FooterLink extends StatelessWidget {
       );
 }
 
-class _TopNav extends StatelessWidget {
-  const _TopNav({
-    required this.session,
-    required this.items,
-    required this.selected,
-    required this.dark,
-    required this.onSelect,
-    required this.onTheme,
-    required this.onSignOut,
-  });
-
-  final AppSession session;
-  final List<_Destination> items;
-  final String selected;
-  final bool dark;
-  final ValueChanged<String> onSelect;
-  final VoidCallback onTheme;
-  final VoidCallback onSignOut;
-
-  _Destination _item(String id) => items.firstWhere((item) => item.id == id);
-
-  bool get _compareSelected =>
-      selected == 'player-compare' || selected == 'team-compare';
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final primary = <_Destination>[
-      _item('sports'),
-      _item('nba-home'),
-      _item('stats'),
-      _item('advanced'),
-    ];
-    final more = <_Destination>[
-      _item('financials'),
-      _item('live-games'),
-      _item('box-scores'),
-      _item('media-feed'),
-      _item('visualizations'),
-      _item('with-without'),
-      _item('rankings'),
-      _item('front-office'),
-      _item('research'),
-      _item('community'),
-      _item('python-lab'),
-      _item('excel-workspace'),
-    ];
-
-    return Material(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: Container(
-        height: 68,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = constraints.maxWidth < 900;
-            return Row(
-              children: [
-                InkWell(
-                  onTap: () => onSelect('sports'),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: colors.primaryContainer,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          'ST',
-                          style: TextStyle(
-                            color: colors.primary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                      if (constraints.maxWidth >= 680) ...[
-                        const SizedBox(width: 10),
-                        const Text(
-                          'Sports Terminal',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -.3,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                if (!compact) ...[
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        for (final entry in primary)
-                          _NavButton(
-                            item: entry,
-                            selected: selected == entry.id,
-                            onSelect: onSelect,
-                          ),
-                        _CompareMenu(
-                          selected: _compareSelected,
-                          onSelect: onSelect,
-                        ),
-                        _NavButton(
-                          item: _item('trade'),
-                          selected: selected == 'trade',
-                          onSelect: onSelect,
-                        ),
-                        PopupMenuButton<String>(
-                          tooltip: 'More',
-                          onSelected: onSelect,
-                          itemBuilder: (_) => [
-                            for (final entry in more)
-                              PopupMenuItem<String>(
-                                value: entry.id,
-                                enabled: entry.enabled,
-                                child: ListTile(
-                                  enabled: entry.enabled,
-                                  contentPadding: EdgeInsets.zero,
-                                  leading: Icon(entry.icon),
-                                  title: Text(entry.label),
-                                  subtitle: entry.enabled
-                                      ? null
-                                      : const Text('Display only — not connected'),
-                                  trailing: selected == entry.id
-                                      ? const Icon(Icons.check_rounded)
-                                      : null,
-                                ),
-                              ),
-                          ],
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text('More'),
-                                SizedBox(width: 2),
-                                Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 220,
-                    height: 40,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _openSearchDialog(context, session),
-                      icon: const Icon(Icons.search_rounded, size: 18),
-                      label: const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text('Search players & teams'),
-                      ),
-                    ),
-                  ),
-                ] else ...[
-                  const Spacer(),
-                  IconButton(
-                    tooltip: 'Search NBA players and teams',
-                    onPressed: () => _openSearchDialog(context, session),
-                    icon: const Icon(Icons.search_rounded),
-                  ),
-                  PopupMenuButton<String>(
-                    tooltip: 'Navigation',
-                    onSelected: onSelect,
-                    itemBuilder: (_) => [
-                      for (final entry in primary)
-                        _mobileMenuItem(entry, selected),
-                      const PopupMenuItem<String>(
-                        enabled: false,
-                        child: Text(
-                          'COMPARE',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                      _mobileMenuItem(_item('player-compare'), selected),
-                      _mobileMenuItem(_item('team-compare'), selected),
-                      const PopupMenuDivider(),
-                      _mobileMenuItem(_item('trade'), selected),
-                      for (final entry in more)
-                        _mobileMenuItem(entry, selected),
-                    ],
-                    icon: const Icon(Icons.menu_rounded),
-                  ),
-                ],
-                IconButton(
-                  tooltip: dark ? 'Light mode' : 'Dark mode',
-                  onPressed: onTheme,
-                  icon: Icon(
-                    dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  tooltip: session.displayName,
-                  onSelected: (value) {
-                    if (value == 'profile') onSelect('profile');
-                    if (value == 'sign-out') onSignOut();
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'profile', child: Text('Profile')),
-                    PopupMenuItem(value: 'sign-out', child: Text('Sign out')),
-                  ],
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: colors.primaryContainer,
-                    child: Text(
-                      _initials(session.displayName),
-                      style: TextStyle(
-                        color: colors.primary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  PopupMenuItem<String> _mobileMenuItem(
-    _Destination item,
-    String selectedId,
-  ) =>
-      PopupMenuItem<String>(
-        value: item.id,
-        enabled: item.enabled,
-        child: ListTile(
-          enabled: item.enabled,
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(item.icon),
-          title: Text(item.label),
-          subtitle: item.enabled ? null : const Text('Display only — not connected'),
-          trailing: selectedId == item.id
-              ? const Icon(Icons.check_rounded)
-              : null,
-        ),
-      );
-}
-
-class _NavButton extends StatelessWidget {
-  const _NavButton({
-    required this.item,
-    required this.selected,
-    required this.onSelect,
-  });
-
-  final _Destination item;
-  final bool selected;
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 1),
-      child: TextButton(
-        onPressed: item.enabled ? () => onSelect(item.id) : null,
-        style: TextButton.styleFrom(
-          foregroundColor: selected ? colors.primary : colors.onSurfaceVariant,
-          textStyle: TextStyle(
-            fontSize: 13,
-            fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
-          ),
-        ),
-        child: Text(item.label),
-      ),
-    );
-  }
-}
-
-class _CompareMenu extends StatelessWidget {
-  const _CompareMenu({required this.selected, required this.onSelect});
-
-  final bool selected;
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return PopupMenuButton<String>(
-      tooltip: 'Compare',
-      onSelected: onSelect,
-      itemBuilder: (_) => const [
-        PopupMenuItem(
-          value: 'player-compare',
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.people_alt_outlined),
-            title: Text('Player Compare'),
-            subtitle: Text('2–5 players · cross-era · custom metrics'),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'team-compare',
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.groups_2_outlined),
-            title: Text('Team Compare'),
-            subtitle: Text('2–5 teams · season and playoff comparisons'),
-          ),
-        ),
-      ],
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Compare',
-              style: TextStyle(
-                color: selected ? colors.primary : colors.onSurfaceVariant,
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
-              ),
-            ),
-            const SizedBox(width: 2),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 18,
-              color: selected ? colors.primary : colors.onSurfaceVariant,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 Future<void> _openSearchDialog(BuildContext context, AppSession session) {
   return showDialog<void>(
     context: context,
@@ -876,8 +519,8 @@ class _NbaSearchDialogState extends State<_NbaSearchDialog> {
   Widget build(BuildContext context) => AlertDialog(
         title: const Text('Search NBA players and teams'),
         content: SizedBox(
-          width: 620,
-          height: 470,
+          width: (MediaQuery.sizeOf(context).width - 72).clamp(0.0, 620.0).toDouble(),
+          height: (MediaQuery.sizeOf(context).height - 170).clamp(180.0, 470.0).toDouble(),
           child: Column(
             children: [
               TextField(
@@ -1012,16 +655,6 @@ class _Destination {
   final IconData icon;
   final Widget Function()? builder;
   final bool enabled;
-}
-
-String _initials(String value) {
-  final parts = value
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((part) => part.isNotEmpty)
-      .take(2);
-  final result = parts.map((part) => part.substring(0, 1).toUpperCase()).join();
-  return result.isEmpty ? 'ST' : result;
 }
 
 Map<String, dynamic> _map(Object? value) {
