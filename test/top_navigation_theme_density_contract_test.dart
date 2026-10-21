@@ -10,7 +10,7 @@ void main() {
     expect(shell, contains('SportsWorkspaceDesign.maxContentWidth'));
     expect(chrome, contains('class _WorkspaceTopNavigation'));
     expect(chrome, contains('class _WorkspaceCommandDialog'));
-    expect(chrome, contains('final full = box.maxWidth >= 1350'));
+    expect(chrome, contains('final full = box.maxWidth >= 1500'));
     expect(chrome, contains("tooltip: 'Navigation'"));
     expect(chrome, contains('LogicalKeyboardKey.keyK'));
     expect(File('lib/widgets/connected_role_terminal_shell.dart').existsSync(), isFalse);
