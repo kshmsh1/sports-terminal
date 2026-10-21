@@ -63,21 +63,21 @@ abstract final class SportsWorkspaceDesign {
         bodyColor: colors.onSurface,
         displayColor: colors.onSurface,
       ).copyWith(
-        headlineLarge: const TextStyle(
+        headlineLarge: TextStyle(color: colors.onSurface,
           fontSize: 38, height: 1.09, fontWeight: FontWeight.w800,
           letterSpacing: -1.35,
         ),
-        headlineMedium: const TextStyle(
+        headlineMedium: TextStyle(color: colors.onSurface,
           fontSize: 30, height: 1.15, fontWeight: FontWeight.w800,
           letterSpacing: -.75,
         ),
-        titleLarge: const TextStyle(
+        titleLarge: TextStyle(color: colors.onSurface,
           fontSize: 21, height: 1.25, fontWeight: FontWeight.w800,
           letterSpacing: -.3,
         ),
-        bodyMedium: const TextStyle(fontSize: 14, height: 1.5),
-        bodyLarge: const TextStyle(fontSize: 16, height: 1.5),
-        labelLarge: const TextStyle(fontWeight: FontWeight.w700),
+        bodyMedium: TextStyle(color: colors.onSurface,fontSize: 14, height: 1.5),
+        bodyLarge: TextStyle(color: colors.onSurface,fontSize: 16, height: 1.5),
+        labelLarge: TextStyle(color: colors.onSurface,fontWeight: FontWeight.w700),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
