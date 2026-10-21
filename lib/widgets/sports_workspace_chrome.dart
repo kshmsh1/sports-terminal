@@ -281,7 +281,7 @@ class _TopNavLink extends StatelessWidget {
       ),
       child: Text(label,
         style: TextStyle(fontWeight: active
-            ? FontWeight.w900 : FontWeight.w650, fontSize: 13)),
+            ? FontWeight.w900 : FontWeight.w600, fontSize: 13)),
     );
   }
 }
@@ -324,7 +324,7 @@ class _TopNavMenu extends StatelessWidget {
           Text(label, style: TextStyle(
             color: active ? colors.primary : colors.onSurface,
             fontSize: 13, fontWeight: active
-                ? FontWeight.w900 : FontWeight.w650)),
+                ? FontWeight.w900 : FontWeight.w600)),
           const SizedBox(width: 4),
           Icon(Icons.keyboard_arrow_down_rounded,
             size: 17, color: active ? colors.primary : colors.onSurfaceVariant),
