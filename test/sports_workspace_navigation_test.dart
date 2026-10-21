@@ -63,7 +63,7 @@ void main() {
       lessThan(SportsWorkspaceDesign.gutters(1400, 'stats').left));
   });
 
-  testWidgets('desktop rail exposes grouped navigation and disabled tools', (
+  testWidgets('desktop has top navigation and grouped research menu', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1600, 920);
@@ -74,22 +74,26 @@ void main() {
     await tester.pumpWidget(testApp((value) => opened = value));
     await tester.pumpAndSettle();
 
+    expect(find.text('Sports Terminal'), findsOneWidget);
+    expect(find.text('Analyze'), findsOneWidget);
+    expect(find.text('Overview'), findsOneWidget);
+    await tester.tap(find.text('Analyze'));
+    await tester.pumpAndSettle();
     expect(find.text('Research'), findsOneWidget);
-    expect(find.text('Research & analysis'.toUpperCase()), findsOneWidget);
-    expect(find.text('Trade Machine'), findsOneWidget);
     await tester.tap(find.text('Research'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(opened, 'research');
+    expect(tester.takeException(), isNull);
   });
 
-  testWidgets('mobile screen opens navigation drawer and destination', (tester) async {
+  testWidgets('mobile top menu opens a research destination', (tester) async {
     tester.view.physicalSize = const Size(420, 850);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     String? opened;
     await tester.pumpWidget(testApp((value) => opened = value));
-    await tester.tap(find.byTooltip('Open navigation'));
+    await tester.tap(find.byTooltip('Navigation'));
     await tester.pumpAndSettle();
     expect(find.text('Research'), findsOneWidget);
     await tester.tap(find.text('Research'));
