@@ -1,5 +1,3 @@
-import 'dart:ui' show FontFeature;
-
 import 'package:flutter/material.dart';
 
 import '../services/website_nba_api_service.dart';
@@ -78,7 +76,7 @@ class _WebsiteNbaBoxScoresScreenState extends State<WebsiteNbaBoxScoresScreen> {
     final query = _search.text.trim().toLowerCase();
     final filtered = archive.games.where((game) {
       if (_season != 'All' && _text(game['season_id']) != _season) return false;
-      final type = _segment(game);
+      final type = _gameSegment(game);
       if (_segment != 'All' && _segment != type) return false;
       if (_detailsOnly && game['box_score_available'] != true) return false;
       if (query.isEmpty) return true;
@@ -373,7 +371,7 @@ class _GameCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
-                  Text('${_text(game['season_id'])} · ${_segment(game)}',
+                  Text('${_text(game['season_id'])} · ${_gameSegment(game)}',
                     style: TextStyle(color: colors.onSurfaceVariant,
                       fontSize: 11, fontWeight: FontWeight.w700)),
                   if (available) ...[
@@ -561,7 +559,7 @@ class _GameDetailState extends State<_GameDetail> {
                 style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 5),
               Text('${_day(displayGame['game_date'])} · '
-                '${_text(displayGame['season_id'])} · ${_segment(displayGame)}',
+                '${_text(displayGame['season_id'])} · ${_gameSegment(displayGame)}',
                 style: TextStyle(color: colors.onSurfaceVariant,
                   fontSize: 12)),
             ])),
@@ -741,7 +739,6 @@ class _PlayerBoxTable extends StatelessWidget {
     if (rows.isEmpty) return const Center(
       child: Text('No player minutes recorded for this team.'));
     return Scrollbar(
-      thumbVisibility: true,
       child: SingleChildScrollView(
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -850,7 +847,7 @@ String _team(Map<String, dynamic> game, {required bool away}) {
     _text(game['${prefix}_team_abbreviation'], 'Team'));
 }
 
-String _segment(Map<String, dynamic> game) =>
+String _gameSegment(Map<String, dynamic> game) =>
   _text(game['season_type']).toLowerCase().contains('play')
       ? 'Playoffs' : 'Regular Season';
 
