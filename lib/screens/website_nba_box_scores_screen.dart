@@ -4,7 +4,12 @@ import '../services/website_nba_api_service.dart';
 
 /// Source-bound historical game explorer. No live network requests are made.
 class WebsiteNbaBoxScoresScreen extends StatefulWidget {
-  const WebsiteNbaBoxScoresScreen({super.key});
+  const WebsiteNbaBoxScoresScreen({
+    super.key,
+    this.api = const WebsiteNbaApiService(),
+  });
+
+  final WebsiteNbaApiService api;
 
   @override
   State<WebsiteNbaBoxScoresScreen> createState() => _WebsiteNbaBoxScoresScreenState();
@@ -12,7 +17,7 @@ class WebsiteNbaBoxScoresScreen extends StatefulWidget {
 
 class _WebsiteNbaBoxScoresScreenState extends State<WebsiteNbaBoxScoresScreen> {
   static const _pageSize = 20;
-  final _api = const WebsiteNbaApiService();
+  WebsiteNbaApiService get _api => widget.api;
   final _search = TextEditingController();
   late Future<_GameArchive> _archive;
   String _season = 'All';
