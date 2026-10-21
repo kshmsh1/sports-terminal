@@ -125,8 +125,10 @@ void main() {
     expect(source, contains('Deterministic top-N selection'));
     expect(source, contains("'histogram_bins': histogramBins"));
     expect(source, contains("'radar_compare_player': radarComparePlayer"));
-    expect(shell, contains("_selected == 'visualizations'"));
-    expect(shell, contains('? 1880'));
+    final design = File('lib/widgets/sports_workspace_design.dart').readAsStringSync();
+    expect(shell, contains('SportsWorkspaceDesign.maxContentWidth(_selected)'));
+    expect(design, contains("case 'visualizations':"));
+    expect(design, contains('return 1900;'));
   });
 
   test('rankings supports ordered drag-drop tiers and durable saved boards', () {
