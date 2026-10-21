@@ -122,7 +122,7 @@ class _SportsWorkspaceChromeState extends State<SportsWorkspaceChrome> {
                 child: Column(children: [
                   _WorkspaceTopbar(
                     active: _active,
-                    compact: viewport < 690,
+                    compact: viewport < 1100,
                     hasPersistentNav: useRail,
                     onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
                     onCommand: _command,
