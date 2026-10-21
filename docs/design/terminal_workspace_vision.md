@@ -28,11 +28,13 @@ Merely adding more cards, gradients, purple highlights, rounded pills, or AI cha
 |---|---|---|---|---|
 | Broadcast | Big typography, immersive imagery, editorial story cards, vivid league palette | Great for scores and casual fans | Distracts from dense research; cannot make unsourced live visuals credible | Use on selected NBA/game landing sections |
 | Quant Terminal | Graphite grid, dense tables, tiny metadata and status ribbon, information everywhere | Very efficient for power analysts | Visually exhausting for new users; poor mobile ergonomics; can become a Bloomberg imitation | Use inside advanced workbenches only |
-| **Editorial Instrument** | Swiss-style alignment, warm neutral canvas, restrained chartreuse actions, asymmetric overview, persistent research nav | Balance: fast scan, distinctive craft, high density where appropriate | Requires more than palette changes: consistent page hierarchies | **Chosen** |
+| **Editorial Instrument** | Swiss-style alignment, midnight-blue canvas, indigo action blue, asymmetric overview, contextual top navigation | Balance: fast scan, distinctive craft, high density where appropriate | Requires more than palette changes: consistent page hierarchies | **Chosen** |
 
 The interface should feel serious enough for an analyst and approachable enough for a sports fan. It should be built as an original system, not resemble Blitz's chat-first black/red page or an imitation Bloomberg terminal.
 
 ## 3. Structural navigation model
+
+**Revision after product review:** Keep task-based groups, but return them to the top navigation. Desktop displays Overview, NBA, Analyze, Trade Machine and More; medium widths show a compressed version; mobile uses a grouped popover. The command palette remains on Cmd/Ctrl+K. No permanent sidebar or rail is used.
 
 ```text
 SPORTS TERMINAL
@@ -62,7 +64,7 @@ SPORTS TERMINAL
    └─ About / Contact / Policy / Accessibility / Methodology
 ```
 
-Desktop 1280+ gets a 252px persistent sidebar; medium desktops from 980 use a 76px icon rail to protect data density. Smaller widths use a navigation drawer, not a horizontal menu that scrolls into oblivion. Cmd/Ctrl+K opens a searchable workspace dialog; player/team search is a **separate** source-backed entity lookup. The selected route is always represented by a visible icon+label or by an explicit compact topbar context.
+Desktop uses a top group menu, transitioning to a compact top group menu and then a mobile overflow menu. Cmd/Ctrl+K opens a searchable workspace dialog; player/team search is a **separate** source-backed entity lookup. The blue accent indicates selection and is independent of team/stat colors.
 
 ## 4. Visual system
 
@@ -70,15 +72,15 @@ Desktop 1280+ gets a 252px persistent sidebar; medium desktops from 980 use a 76
 
 | Token | Dark | Light | Role |
 |---|---|---|---|
-| Canvas | #0D1215 | #F4F5F0 | Primary working background |
-| Sidebar | #11181A | #EAEEE7 | Navigation plane |
-| Surface | #182023 | #FFFFFF | Data cards and sheets |
-| Border | #303A3C | #D6DCD4 | Divisions without heavy shadows |
-| Text | #F2F3EC | #17241E | High-contrast main copy |
-| Subtext | #ABB9B5 | #52645B | Secondary contextual copy |
-| Action | #C7EF77 | #3F6322 | Active navigation / primary call to action |
+| Canvas | #0B111A | #F7F8FC | Primary working background |
+| Sidebar | #101823 | #F0F2F9 | Navigation plane |
+| Surface | #141D29 | #FFFFFF | Data cards and sheets |
+| Border | #2B3849 | #D8DFEA | Divisions without heavy shadows |
+| Text | #E9EDF7 | #17223B | High-contrast main copy |
+| Subtext | #B7C2D5 | #4D5A73 | Secondary contextual copy |
+| Action | #AAB8FF | #5363B5 | Active navigation / primary call to action |
 
-Use the lime only for **interaction state and action**, never to encode a player, team, winner, statistical increase, profitability, injury, or validity. Sports/team colors remain semantic inside charts, comparisons, and standings. Alert/error/success colors must use separate accessible tokens.
+Use blue only for **interaction state and action**, never to encode a player, team, winner, statistical increase, profitability, injury, or validity. Sports/team colors remain semantic inside charts, comparisons, and standings. Alert/error/success colors must use separate accessible tokens.
 
 - Typography: geometric sans using native material font stack; compact uppercase kicker for route/section identity; tabular figures for table metrics.
 - Rhythm: 4/8/12/16/24/32/48px, with different density modes per screen.
@@ -121,8 +123,8 @@ Use the lime only for **interaction state and action**, never to encode a player
 ## 6. Implementation status and constraints
 
 ### Implemented in this PR
-- New token foundation in `sports_workspace_design.dart`.
-- Responsive sidebar, collapsible rail, mobile drawer, command palette, context topbar in `sports_workspace_chrome.dart`.
+- Revised blue/indigo token foundation in `sports_workspace_design.dart`.
+- Responsive top navigation, grouped menus, command palette and mobile overflow navigation in `sports_workspace_chrome.dart`.
 - New overview page in `sports_workspace_overview.dart`, with working tools and local archive season count.
 - Centralized route inventory still owned by `CanonicalProductShell`; original NBA page builders unchanged.
 - Existing player/team search remains operational and independent from workspace navigation.
@@ -143,3 +145,9 @@ Use the lime only for **interaction state and action**, never to encode a player
 
 ### Next round
 Design high-fidelity, code-backed compositions for the 4 most structurally different workspaces (Research, Stats, Visualization, Trade Machine), test the design system there, then migrate the remainder. Do not call the redesign complete after merely changing the shell.
+
+## 8. Box Scores / game center revision
+
+The archive is now a dedicated game-discovery workspace: indexed game count, genuinely materialized player-box-score count, latest indexed game date, query/season/segment filters and a detailed-only switch. Date-grouped game cards display legible scores, winner emphasis and explicit player-data availability. The game-detail modal provides an immediate loading state, a match scoreboard, team-specific player tables, numeric sort selectors, and an expandable group for rows without recorded minutes.
+
+No live games or missing player values are synthesized. Local static files remain the single runtime source; missing is distinct from zero. The current revision uses the original Sports Terminal indigo/blue accents, restores accessible text colors and makes no changes to font families. This is a design review branch, not an automatic merge of PR #63, which contains overlapping game-screen modifications.
