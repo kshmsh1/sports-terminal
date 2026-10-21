@@ -3,15 +3,15 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('canonical product has task-oriented responsive workspace navigation', () {
+  test('canonical product uses top navigation and a command palette', () {
     final shell = File('lib/widgets/canonical_product_shell.dart').readAsStringSync();
     final chrome = File('lib/widgets/sports_workspace_chrome.dart').readAsStringSync();
     expect(shell, contains('SportsWorkspaceChrome('));
     expect(shell, contains('SportsWorkspaceDesign.maxContentWidth'));
-    expect(chrome, contains('class _WorkspaceNavigation'));
+    expect(chrome, contains('class _WorkspaceTopNavigation'));
     expect(chrome, contains('class _WorkspaceCommandDialog'));
-    expect(chrome, contains('final useRail = viewport >= 980'));
-    expect(chrome, contains("tooltip: 'Open navigation'"));
+    expect(chrome, contains('final full = box.maxWidth >= 1350'));
+    expect(chrome, contains("tooltip: 'Navigation'"));
     expect(chrome, contains('LogicalKeyboardKey.keyK'));
     expect(File('lib/widgets/connected_role_terminal_shell.dart').existsSync(), isFalse);
   });
@@ -49,7 +49,7 @@ void main() {
     ).readAsStringSync();
 
     expect(File('lib/widgets/sports_workspace_chrome.dart').readAsStringSync(), contains("'Search players & teams'"));
-    expect(source, contains("'More'"));
+    expect(File('lib/widgets/sports_workspace_chrome.dart').readAsStringSync(), contains("'More'"));
     expect(File('lib/widgets/role_research_augmented_shell.dart').existsSync(), isFalse);
     expect(File('lib/widgets/launch_role_product_shell.dart').existsSync(), isFalse);
   });
