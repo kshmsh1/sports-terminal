@@ -44,10 +44,6 @@ void main() {
   });
 
   test('deleted research sidebar shell stays out of the canonical product', () {
-    final source = File(
-      'lib/widgets/canonical_product_shell.dart',
-    ).readAsStringSync();
-
     expect(File('lib/widgets/sports_workspace_chrome.dart').readAsStringSync(), contains("'Search players & teams'"));
     expect(File('lib/widgets/sports_workspace_chrome.dart').readAsStringSync(), contains("'More'"));
     expect(File('lib/widgets/role_research_augmented_shell.dart').existsSync(), isFalse);
