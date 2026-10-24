@@ -409,8 +409,9 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     SizedBox(
-                      width: 145,
+                      width: 164,
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         key: ValueKey('season/$_season'),
                         menuMaxHeight: 360,
                         initialValue: _season,
@@ -613,6 +614,7 @@ class _StringDropdown extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
         width: width,
         child: DropdownButtonFormField<String>(
+          isExpanded: true,
           key: ValueKey('$label/$value'),
           menuMaxHeight: 360,
           initialValue: values.contains(value) ? value : values.first,
@@ -646,8 +648,9 @@ class _MinimumDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: 104,
+        width: 116,
         child: DropdownButtonFormField<int>(
+          isExpanded: true,
           key: ValueKey('$label/$value'),
           initialValue: values.contains(value) ? value : values.first,
           decoration: InputDecoration(labelText: label, isDense: true),
