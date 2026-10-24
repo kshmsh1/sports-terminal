@@ -532,6 +532,13 @@ _Metric _catalogMetric(String key) {
     for (final childKey in metric.children) _catalogMetric(childKey),
   ];
   final engineKey = metric.engineKey;
+  // Rebound rates use per-game labels, but abbreviate as ORB/DRB
+  // on totals and normalized bases rather than ORPG/36 or DRPG/100.
+  final rateStem = switch (key) {
+    'oreb' => 'ORB',
+    'dreb' => 'DRB',
+    _ => metric.shortLabel,
+  };
   final rateSensitive = engineKey != null &&
       const {
         'min','pts','ast','reb','oreb','dreb','stl','blk','tov','pf',
@@ -542,8 +549,8 @@ _Metric _catalogMetric(String key) {
     key,
     metric.shortLabel,
     metric.description,
-    totalLabel: rateSensitive ? metric.shortLabel : null,
-    rateAbbreviation: metric.shortLabel,
+    totalLabel: rateSensitive ? rateStem : null,
+    rateAbbreviation: rateStem,
     rateSensitive: rateSensitive,
     percent: metric.format == NbaTerminalMetricFormat.percent,
     signed: metric.format == NbaTerminalMetricFormat.signed,
