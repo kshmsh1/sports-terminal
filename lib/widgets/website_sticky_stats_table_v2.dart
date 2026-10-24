@@ -10,6 +10,7 @@ class WebsiteStickyStatsColumn {
     this.onTap,
     this.backgroundColor,
     this.foregroundColor,
+    this.expandedTint = false,
   });
 
   final Widget label;
@@ -18,6 +19,7 @@ class WebsiteStickyStatsColumn {
   final VoidCallback? onTap;
   final Color? backgroundColor;
   final Color? foregroundColor;
+  final bool expandedTint;
 }
 
 /// Compact horizontally scrollable website table with a frozen first column
@@ -35,6 +37,7 @@ class WebsiteStickyStatsTable extends StatefulWidget {
     this.firstColumnWidth = 185,
     this.stripeRows = true,
     this.borderRadius = 14,
+    this.highlightedRows = const <int>{},
   });
 
   final List<WebsiteStickyStatsColumn> columns;
@@ -45,6 +48,7 @@ class WebsiteStickyStatsTable extends StatefulWidget {
   final double firstColumnWidth;
   final bool stripeRows;
   final double borderRadius;
+  final Set<int> highlightedRows;
 
   @override
   State<WebsiteStickyStatsTable> createState() =>
@@ -130,10 +134,21 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
     final totalHeight =
         widget.headerHeight + widget.rows.length * widget.rowHeight;
 
-    Color bodyColor(int rowIndex, Color? explicit) {
-      if (explicit != null) return explicit;
-      if (!widget.stripeRows || rowIndex.isEven) return bodySurface;
-      return alternateSurface;
+    Color bodyColor(int rowIndex, Color? explicit, bool expandedTint) {
+      final base = explicit ??
+          (!widget.stripeRows || rowIndex.isEven
+              ? bodySurface : alternateSurface);
+      final withColumn = expandedTint
+          ? Color.alphaBlend(
+              colors.primary.withValues(alpha:
+                theme.brightness == Brightness.dark ? .085 : .045), base)
+          : base;
+      return widget.highlightedRows.contains(rowIndex)
+          ? Color.alphaBlend(
+              colors.primary.withValues(alpha:
+                theme.brightness == Brightness.dark ? .12 : .09),
+              withColumn)
+          : withColumn;
     }
 
     Widget cell({
@@ -144,6 +159,7 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
       int rowIndex = 0,
       Color? backgroundColor,
       Color? foregroundColor,
+      bool expandedTint = false,
       Alignment alignment = Alignment.centerLeft,
       VoidCallback? onTap,
     }) {
@@ -156,7 +172,7 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
         decoration: BoxDecoration(
           color: headerCell
               ? (backgroundColor ?? headerSurface)
-              : bodyColor(rowIndex, backgroundColor),
+              : bodyColor(rowIndex, backgroundColor, expandedTint),
         ),
         child: DefaultTextStyle.merge(
           style: TextStyle(
@@ -261,6 +277,7 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
                                   rowIndex: rowIndex,
                                   backgroundColor:
                                       widget.columns[index].backgroundColor,
+                                  expandedTint: widget.columns[index].expandedTint,
                                   foregroundColor:
                                       widget.columns[index].foregroundColor,
                                   alignment: widget.columns[index].numeric
@@ -303,18 +320,26 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
           ),
         );
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(widget.borderRadius),
-      child: ColoredBox(
-        color: bodySurface,
-        child: SizedBox(
-          height: totalHeight,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              frozenColumn(),
-              Expanded(child: scrollingColumns()),
-            ],
+    // Only paint as far as the final statistic. When the available page is
+    // wider than the actual columns, do not leave a solid empty table slab.
+    final intrinsicWidth = widget.firstColumnWidth + remainingWidth;
+    return LayoutBuilder(
+      builder: (context, constraints) => SizedBox(
+        width: math.min(constraints.maxWidth, intrinsicWidth),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(widget.borderRadius),
+          child: ColoredBox(
+            color: bodySurface,
+            child: SizedBox(
+              height: totalHeight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  frozenColumn(),
+                  Expanded(child: scrollingColumns()),
+                ],
+              ),
+            ),
           ),
         ),
       ),

@@ -18,7 +18,9 @@ void main() {
         File('lib/screens/website_sports_home_screen.dart').readAsStringSync();
 
     expect(shell, contains("String _selected = 'sports';"));
-    expect(shell, contains('WebsiteSportsHomeScreen('));
+    expect(shell, contains('SportsWorkspaceOverview('));
+    final overview = File('lib/screens/sports_workspace_overview.dart').readAsStringSync();
+    expect(overview, contains('WebsiteSportsHomeScreen('));
     expect(shell, contains("_select('nba-home')"));
 
     for (final league in const [
@@ -91,14 +93,14 @@ void main() {
       contains("id: 'excel-workspace',\n          label: 'Excel Workspace'"),
     );
     expect(source, contains('enabled: false'));
-    expect(source, contains('Display only — not connected'));
+    expect(File('lib/widgets/sports_workspace_chrome.dart').readAsStringSync(), contains('Icons.lock_outline_rounded'));
   });
 
   test('normal header has canonical static player and team search', () {
     final source =
         File('lib/widgets/canonical_product_shell.dart').readAsStringSync();
 
-    expect(source, contains('Search players & teams'));
+    expect(File('lib/widgets/sports_workspace_chrome.dart').readAsStringSync(), contains('Search players & teams'));
     expect(source, contains('WebsiteNbaApiService'));
     expect(source, contains('searchEntities(query)'));
     expect(source, contains('openWebsiteNbaPlayerPage('));

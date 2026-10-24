@@ -1,11 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../models/app_session.dart';
 import '../services/nba_stats_metric_catalog.dart';
 import '../services/nba_stats_workstation_engine.dart';
+import '../services/nba_stats_team_stints.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
 import '../widgets/nba_percentage_heat_cell.dart';
@@ -17,9 +17,10 @@ import 'website_nba_entity_pages.dart';
 // source-aware family set stays in sync with the underlying data model.
 
 class WebsiteNbaAdvancedStatsScreen extends StatefulWidget {
-  const WebsiteNbaAdvancedStatsScreen({super.key, required this.session});
+  const WebsiteNbaAdvancedStatsScreen({super.key, required this.session, this.api = const WebsiteNbaApiService()});
 
   final AppSession session;
+  final WebsiteNbaApiService api;
 
   @override
   State<WebsiteNbaAdvancedStatsScreen> createState() =>
@@ -28,7 +29,7 @@ class WebsiteNbaAdvancedStatsScreen extends StatefulWidget {
 
 class _WebsiteNbaAdvancedStatsScreenState
     extends State<WebsiteNbaAdvancedStatsScreen> {
-  final _api = const WebsiteNbaApiService();
+  WebsiteNbaApiService get _api => widget.api;
   final _engine = const NbaStatsWorkstationEngine();
   final _search = TextEditingController();
 
@@ -47,6 +48,10 @@ class _WebsiteNbaAdvancedStatsScreenState
   String _sortKey = 'pts';
   bool _descending = true;
   final Set<String> _expanded = <String>{};
+  final Set<String> _expandedPlayers = <String>{};
+  final Map<String, List<NbaStatsRow>> _stints = {};
+  final Set<String> _loadingStints = {};
+  final Set<String> _failedStints = {};
   int _pageSize = 20;
   int _page = 1;
 
@@ -124,6 +129,77 @@ class _WebsiteNbaAdvancedStatsScreenState
       _minMpg = 20;
       _page = 1;
     });
+  }
+
+  String _playerKey(NbaStatsRow row) =>
+      '$_season/${_seasonType.name}/${_basis.name}/${row.playerId}';
+
+  Future<void> _toggleTeamStints(NbaStatsRow row) async {
+    final key = _playerKey(row);
+    if (_expandedPlayers.contains(key)) {
+      setState(() => _expandedPlayers.remove(key));
+      return;
+    }
+    setState(() => _expandedPlayers.add(key));
+    if (_stints.containsKey(key) || _loadingStints.contains(key) ||
+        _failedStints.contains(key)) return;
+    _loadingStints.add(key);
+    try {
+      final dossier = await _api.playerDossier(row.playerId);
+      final stints = sourceBackedTeamStints(
+        dossier: dossier, playerId: row.playerId, playerName: row.player,
+        seasonId: _season, seasonType: _seasonType, basis: _basis);
+      if (!mounted) return;
+      setState(() { _stints[key] = stints; _loadingStints.remove(key); });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() { _failedStints.add(key); _loadingStints.remove(key); });
+    }
+  }
+
+  List<Widget> _statCells(NbaStatsRow row,
+      List<_VisibleMetric> visibleMetrics, ColorScheme colors,
+      {bool child = false}) {
+    return [
+      Padding(
+        padding: EdgeInsets.only(left: child ? 18 : 0),
+        child: Row(children: [
+          if (!child && isMultiTeamStatsRow(row))
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints(minHeight: 28, minWidth: 28),
+              padding: EdgeInsets.zero,
+              tooltip: _expandedPlayers.contains(_playerKey(row))
+                  ? 'Collapse ${row.player} team stats'
+                  : 'Expand ${row.player} team stats',
+              onPressed: () => _toggleTeamStints(row),
+              icon: Icon(_expandedPlayers.contains(_playerKey(row))
+                  ? Icons.keyboard_arrow_down_rounded
+                  : Icons.keyboard_arrow_right_rounded,
+                size: 19, color: colors.primary))
+          else if (child)
+            Icon(Icons.subdirectory_arrow_right_rounded, size: 16,
+              color: colors.primary),
+          if (child) const SizedBox(width: 3),
+          Expanded(child: InkWell(
+            onTap: () => openWebsiteNbaPlayerPage(context,
+              session: widget.session, playerKey: row.playerId,
+              playerName: row.player),
+            child: Text(row.player, maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: colors.primary,
+                fontWeight: child ? FontWeight.w500 : FontWeight.w700)),
+          )),
+        ]),
+      ),
+      _TeamLink(session: widget.session, row: row),
+      Text(row.position, maxLines: 1, overflow: TextOverflow.ellipsis),
+      for (final item in visibleMetrics)
+        _AdvancedMetricValueCell(
+          metric: item.metric,
+          value: _metricValue(row, item.metric.key, _basis),
+          basis: _basis),
+    ];
   }
 
   List<_VisibleMetric> _visibleMetrics(_Category category) {
@@ -209,21 +285,12 @@ class _WebsiteNbaAdvancedStatsScreenState
       seasonType: _seasonType,
     );
     final query = _search.text.trim().toLowerCase();
-    final teams = <String>{'All'};
-    for (final row in rows) {
-      teams.addAll(
-        row.team
-            .split(RegExp(r'[,/ ]+'))
-            .where((item) => item.isNotEmpty && item != '—'),
-      );
-    }
     final filtered = rows.where((row) {
       if (query.isNotEmpty &&
           !'${row.player} ${row.team} ${row.position}'
               .toLowerCase()
               .contains(query)) return false;
-      if (_team != 'All' &&
-          !row.team.split(RegExp(r'[,/ ]+')).contains(_team)) return false;
+      if (!statsRowMatchesTeam(row, _team)) return false;
       if (_position != 'All' && !_matchesPosition(row.position, _position)) {
         return false;
       }
@@ -260,12 +327,8 @@ class _WebsiteNbaAdvancedStatsScreenState
           }),
         );
 
-    final childTint = Theme.of(context).brightness == Brightness.dark
-        ? colors.primaryContainer.withValues(alpha: .27)
-        : colors.primaryContainer.withValues(alpha: .48);
-
     final tableColumns = <WebsiteStickyStatsColumn>[
-      const WebsiteStickyStatsColumn(label: Text('Player'), width: 164),
+      const WebsiteStickyStatsColumn(label: Text('Player'), width: 200),
       const WebsiteStickyStatsColumn(label: Text('Team'), width: 58),
       const WebsiteStickyStatsColumn(label: Text('Position'), width: 72),
       for (final item in visibleMetrics)
@@ -273,7 +336,7 @@ class _WebsiteNbaAdvancedStatsScreenState
           label: _metricHeader(item.metric),
           width: _metricColumnWidth(item.metric, _basis, child: item.child),
           numeric: true,
-          backgroundColor: item.child ? childTint : null,
+          expandedTint: item.child,
           onTap: () => setState(() {
             if (_sortKey == item.metric.key) {
               _descending = !_descending;
@@ -286,36 +349,35 @@ class _WebsiteNbaAdvancedStatsScreenState
         ),
     ];
 
-    final tableRows = <List<Widget>>[
-      for (final row in paged)
-        [
-          InkWell(
-            onTap: () => openWebsiteNbaPlayerPage(
-              context,
-              session: widget.session,
-              playerKey: row.playerId,
-              playerName: row.player,
-            ),
-            child: Text(
-              row.player,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: colors.primary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          _TeamLink(session: widget.session, row: row),
-          Text(row.position, maxLines: 1, overflow: TextOverflow.ellipsis),
-          for (final item in visibleMetrics)
-            _AdvancedMetricValueCell(
-              metric: item.metric,
-              value: _metricValue(row, item.metric.key, _basis),
-              basis: _basis,
-            ),
-        ],
-    ];
+    final tableRows = <List<Widget>>[];
+    final highlightedRows = <int>{};
+    for (final row in paged) {
+      tableRows.add(_statCells(row, visibleMetrics, colors));
+      if (!_expandedPlayers.contains(_playerKey(row))) continue;
+      final key = _playerKey(row);
+      final stints = _stints[key];
+      if (stints != null && stints.isNotEmpty) {
+        for (final stint in stints) {
+          highlightedRows.add(tableRows.length);
+          tableRows.add(_statCells(stint, visibleMetrics, colors, child: true));
+        }
+      } else {
+        highlightedRows.add(tableRows.length);
+        final message = _failedStints.contains(key)
+            ? 'Team stats unavailable from the historical file'
+            : stints != null
+                ? 'No separate source-backed team rows available'
+                : 'Loading team stats…';
+        tableRows.add([
+          Padding(padding: const EdgeInsets.only(left: 16),
+            child: Text(message, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant))),
+          const SizedBox.shrink(),
+          const SizedBox.shrink(),
+          for (final _ in visibleMetrics) const SizedBox.shrink(),
+        ]);
+      }
+    }
 
     return Center(
       child: ConstrainedBox(
@@ -324,9 +386,7 @@ class _WebsiteNbaAdvancedStatsScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Advanced Stats', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -1)),
-            const SizedBox(height: 8),
-            Text('Deep player statistics organized by basketball questions, with explicit source boundaries and stable rate conversions.', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: colors.onSurfaceVariant, height: 1.45)),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(14),
@@ -336,8 +396,11 @@ class _WebsiteNbaAdvancedStatsScreenState
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     SizedBox(
-                      width: 140,
+                      width: 164,
                       child: DropdownButtonFormField<String>(
+                        key: ValueKey('season/$_season'),
+                        isExpanded: true,
+                        menuMaxHeight: 360,
                         initialValue: _season,
                         decoration: const InputDecoration(labelText: 'Season', isDense: true),
                         items: [for (final item in _seasons) DropdownMenuItem(value: item.id, child: Text(item.id))],
@@ -359,6 +422,8 @@ class _WebsiteNbaAdvancedStatsScreenState
                     SizedBox(
                       width: 165,
                       child: DropdownButtonFormField<NbaStatsBasis>(
+                        key: ValueKey('basis/${_basis.name}'),
+                        isExpanded: true,
                         initialValue: _basis,
                         decoration: const InputDecoration(labelText: 'Rate', isDense: true),
                         items: [for (final item in NbaStatsBasis.values) DropdownMenuItem(value: item, child: Text(item.label))],
@@ -371,14 +436,12 @@ class _WebsiteNbaAdvancedStatsScreenState
                         },
                       ),
                     ),
-                    _StringDropdown(label: 'Stat group', value: _category, values: [for (final item in _categories) item.name], width: 245, onChanged: _selectCategory),
                     SizedBox(width: 220, child: TextField(controller: _search, onChanged: (_) => setState(() => _page = 1), decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'Search players', isDense: true))),
-                    _StringDropdown(label: 'Team', value: _team, values: teams.toList()..sort(), onChanged: (value) => setState(() { _team = value; _page = 1; })),
+                    _StringDropdown(label: 'Team', value: _team, values: _nbaTeamFilterOptions, onChanged: (value) => setState(() { _team = value; _page = 1; })),
                     _StringDropdown(label: 'Position', value: _position, values: const ['All', 'PG', 'SG', 'SF', 'PF', 'C'], width: 112, onChanged: (value) => setState(() { _position = value; _page = 1; })),
                     _MinimumDropdown(label: 'GP', value: _minGp, values: const [50,65,60,40,30,20,10,0], onChanged: (value) => setState(() { _minGp = value; _page = 1; })),
                     _MinimumDropdown(label: 'MPG', value: _minMpg, values: const [0,30,25,20,15,10], onChanged: (value) => setState(() { _minMpg = value; _page = 1; })),
                     TextButton.icon(onPressed: _resetFilters, icon: const Icon(Icons.restart_alt_rounded, size: 18), label: const Text('Reset filters')),
-                    OutlinedButton.icon(onPressed: () => _copyCsv(context, filtered, visibleMetrics), icon: const Icon(Icons.copy_all_outlined, size: 18), label: const Text('Copy CSV')),
                   ],
                 ),
               ),
@@ -386,16 +449,13 @@ class _WebsiteNbaAdvancedStatsScreenState
             const SizedBox(height: 14),
             SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [for (final item in _categories) Padding(padding: const EdgeInsets.only(right: 7), child: ChoiceChip(label: Text(item.name), selected: item.name == _category, onSelected: (_) => _selectCategory(item.name)))])),
             const SizedBox(height: 10),
-            Text(definition.description, style: TextStyle(color: colors.onSurfaceVariant, height: 1.4)),
-            const SizedBox(height: 4),
-            Text(_basisDescription(_basis), style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
             const SizedBox(height: 12),
             pager(),
             const SizedBox(height: 8),
             if (filtered.isEmpty)
               _EmptyCard(_seasonType == NbaStatsSeasonType.playoffs ? 'No playoff rows match these filters for $_season.' : 'No regular-season rows match these filters for $_season.')
             else
-              WebsiteStickyStatsTable(columns: tableColumns, rows: tableRows, firstColumnWidth: 164, headerHeight: 46, rowHeight: 40),
+              WebsiteStickyStatsTable(columns: tableColumns, rows: tableRows, firstColumnWidth: 200, headerHeight: 46, rowHeight: 40, highlightedRows: highlightedRows),
             const SizedBox(height: 8),
             pager(),
             const SizedBox(height: 16),
@@ -406,16 +466,7 @@ class _WebsiteNbaAdvancedStatsScreenState
     );
   }
 
-  Future<void> _copyCsv(BuildContext context, List<NbaStatsRow> rows, List<_VisibleMetric> metrics) async {
-    final header = ['Player','Team','Position',...metrics.map((item) => item.metric.displayLabel(_basis))];
-    final lines = <String>[_csvLine(header)];
-    for (final row in rows) {
-      lines.add(_csvLine([row.player,row.team,row.position,for (final item in metrics) _formatMetric(_metricValue(row, item.metric.key, _basis),item.metric,_basis)]));
-    }
-    await Clipboard.setData(ClipboardData(text: lines.join('\n')));
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Copied ${rows.length} filtered rows as CSV.')));
-  }
+
 }
 
 class _AdvancedMetricValueCell extends StatelessWidget {
@@ -450,13 +501,13 @@ class _TeamLink extends StatelessWidget {
 class _StringDropdown extends StatelessWidget {
   const _StringDropdown({required this.label,required this.value,required this.values,required this.onChanged,this.width = 124});
   final String label; final String value; final List<String> values; final ValueChanged<String> onChanged; final double width;
-  @override Widget build(BuildContext context) => SizedBox(width: width, child: DropdownButtonFormField<String>(initialValue: values.contains(value) ? value : values.first, decoration: InputDecoration(labelText: label, isDense: true), items: [for (final item in values) DropdownMenuItem(value: item, child: Text(item, overflow: TextOverflow.ellipsis))], onChanged: (next) { if (next != null) onChanged(next); }));
+  @override Widget build(BuildContext context) => SizedBox(width: width, child: DropdownButtonFormField<String>(key: ValueKey('$label/$value'), isExpanded: true, menuMaxHeight: 360, initialValue: values.contains(value) ? value : values.first, decoration: InputDecoration(labelText: label, isDense: true), items: [for (final item in values) DropdownMenuItem(value: item, child: Text(item, overflow: TextOverflow.ellipsis))], onChanged: (next) { if (next != null) onChanged(next); }));
 }
 
 class _MinimumDropdown extends StatelessWidget {
   const _MinimumDropdown({required this.label,required this.value,required this.values,required this.onChanged});
   final String label; final int value; final List<int> values; final ValueChanged<int> onChanged;
-  @override Widget build(BuildContext context) => SizedBox(width: 104, child: DropdownButtonFormField<int>(initialValue: values.contains(value) ? value : values.first, decoration: InputDecoration(labelText: label, isDense: true), items: [for (final item in values) DropdownMenuItem(value: item, child: Text(item == 0 ? 'Any' : '$item+'))], onChanged: (next) { if (next != null) onChanged(next); }));
+  @override Widget build(BuildContext context) => SizedBox(width: 116, child: DropdownButtonFormField<int>(key: ValueKey('$label/$value'), isExpanded: true, initialValue: values.contains(value) ? value : values.first, decoration: InputDecoration(labelText: label, isDense: true), items: [for (final item in values) DropdownMenuItem(value: item, child: Text(item == 0 ? 'Any' : '$item+'))], onChanged: (next) { if (next != null) onChanged(next); }));
 }
 
 class _VisibleMetric { const _VisibleMetric(this.metric,this.child); final _Metric metric; final bool child; }
@@ -481,6 +532,13 @@ _Metric _catalogMetric(String key) {
     for (final childKey in metric.children) _catalogMetric(childKey),
   ];
   final engineKey = metric.engineKey;
+  // Rebound rates use per-game labels, but abbreviate as ORB/DRB
+  // on totals and normalized bases rather than ORPG/36 or DRPG/100.
+  final rateStem = switch (key) {
+    'oreb' => 'ORB',
+    'dreb' => 'DRB',
+    _ => metric.shortLabel,
+  };
   final rateSensitive = engineKey != null &&
       const {
         'min','pts','ast','reb','oreb','dreb','stl','blk','tov','pf',
@@ -491,8 +549,8 @@ _Metric _catalogMetric(String key) {
     key,
     metric.shortLabel,
     metric.description,
-    totalLabel: rateSensitive ? metric.shortLabel : null,
-    rateAbbreviation: metric.shortLabel,
+    totalLabel: rateSensitive ? rateStem : null,
+    rateAbbreviation: rateStem,
     rateSensitive: rateSensitive,
     percent: metric.format == NbaTerminalMetricFormat.percent,
     signed: metric.format == NbaTerminalMetricFormat.signed,
@@ -537,7 +595,7 @@ final _categories = <_Category>[
     const _Metric('gp','GP','Games played.',integer:true),
     countMetric('min','MPG','Minutes','MIN','Minutes played.'),
     countMetric('pts','PPG','Points','PTS','Points scored.'),
-    countMetric('reb','RPG','Rebounds','REB','Total rebounds.',children:[childCount('oreb','ORB','Offensive Rebounds','OREB','Offensive rebounds.'),childCount('dreb','DREB','Defensive Rebounds','DREB','Defensive rebounds.')]),
+    countMetric('reb','RPG','Rebounds','REB','Total rebounds.',children:[childCount('oreb','ORPG','Offensive Rebounds','OREB','Offensive rebounds.'),childCount('dreb','DRPG','Defensive Rebounds','DREB','Defensive rebounds.')]),
     countMetric('ast','APG','Assists','AST','Assists.'),
     countMetric('stl','SPG','Steals','STL','Steals.'),
     countMetric('blk','BPG','Blocks','BLK','Blocks.'),
@@ -547,7 +605,7 @@ final _categories = <_Category>[
     _Metric('three_pct','3P%','Three-point percentage.',percent:true,children:[childCount('three_pm','3PM','Three-Pointers Made','3PM','Three-pointers made.'),childCount('three_pa','3PA','Three-Point Attempts','3PA','Three-point attempts.')]),
     _Metric('ft_pct','FT%','Free-throw percentage.',percent:true,children:[childCount('ftm','FTM','Free Throws Made','FTM','Free throws made.'),childCount('fta','FTA','Free Throw Attempts','FTA','Free-throw attempts.')]),
     const _Metric('per','PER','Player Efficiency Rating.'),
-    const _Metric('bpm','BPM','Box Plus/Minus.',signed:true,children:[_Metric('obpm','Offensive BPM','Offensive Box Plus/Minus.',signed:true),_Metric('dbpm','Defensive BPM','Defensive Box Plus/Minus.',signed:true)]),
+    const _Metric('bpm','BPM','Box Plus/Minus.',signed:true,children:[_Metric('obpm','OBPM','Offensive Box Plus/Minus.',signed:true),_Metric('dbpm','DBPM','Defensive Box Plus/Minus.',signed:true)]),
     const _Metric('vorp','VORP','Value Over Replacement Player.'),
     _catalogMetric('ws'),
   ]),
@@ -636,4 +694,11 @@ double? _metricValue(NbaStatsRow row,String key,NbaStatsBasis basis){
 
 String _formatMetric(double? value,_Metric metric,NbaStatsBasis basis){if(value==null||value.isNaN||value.isInfinite)return '—';if(metric.percent)return '${(value*100).toStringAsFixed(metric.decimals)}%';if(metric.integer)return value.round().toString();if(metric.signed)return '${value>=0?'+':''}${value.toStringAsFixed(metric.decimals)}';return value.toStringAsFixed(metric.decimals);}
 String _basisDescription(NbaStatsBasis basis)=>switch(basis){NbaStatsBasis.perGame=>'Per-game values.',NbaStatsBasis.totals=>'Season totals.',NbaStatsBasis.per36=>'Per 36 minutes.',NbaStatsBasis.per48=>'Per 48 minutes.',NbaStatsBasis.per75=>'Per 75 possessions.',NbaStatsBasis.per100=>'Per 100 possessions.'};
-String _csvLine(List<Object?> values)=>values.map((value){final text=value?.toString()??'';return '"${text.replaceAll('"','""')}"';}).join(',');
+
+const _nbaTeamFilterOptions = <String>[
+  'All',
+  'ATL', 'BOS', 'BKN', 'CHA', 'CHI', 'CLE', 'DAL', 'DEN', 'DET', 'GSW',
+  'HOU', 'IND', 'LAC', 'LAL', 'MEM', 'MIA', 'MIL', 'MIN', 'NOP', 'NYK',
+  'OKC', 'ORL', 'PHI', 'PHX', 'POR', 'SAC', 'SAS', 'TOR', 'UTA', 'WAS',
+  '2TM', '3TM', '4TM',
+];
