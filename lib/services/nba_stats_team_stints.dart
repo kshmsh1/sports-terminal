@@ -43,6 +43,7 @@ List<NbaStatsRow> sourceBackedTeamStints({
   required String playerName,
   required String seasonId,
   required NbaStatsSeasonType seasonType,
+  NbaStatsBasis basis = NbaStatsBasis.perGame,
 }) {
   final source = dossier['seasons'];
   if (source is! List) return const [];
@@ -88,7 +89,7 @@ List<NbaStatsRow> sourceBackedTeamStints({
   });
   final normalized = const NbaStatsWorkstationEngine().buildRows(
     snapshot,
-    basis: NbaStatsBasis.perGame,
+    basis: basis,
     seasonType: seasonType,
   )..sort((a, b) => a.team.compareTo(b.team));
   return normalized;
