@@ -648,6 +648,7 @@ class _MinimumDropdown extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
         width: 104,
         child: DropdownButtonFormField<int>(
+          key: ValueKey('$label/$value'),
           initialValue: values.contains(value) ? value : values.first,
           decoration: InputDecoration(labelText: label, isDense: true),
           items: [
