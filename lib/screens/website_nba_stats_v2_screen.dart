@@ -1,10 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../models/app_session.dart';
 import '../services/nba_stats_workstation_engine.dart';
+import '../services/nba_stats_team_stints.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
 import '../widgets/nba_percentage_heat_cell.dart';
@@ -13,16 +13,21 @@ import '../widgets/website_sticky_stats_table.dart';
 import 'website_nba_entity_pages.dart';
 
 class WebsiteNbaStatsScreen extends StatefulWidget {
-  const WebsiteNbaStatsScreen({super.key, required this.session});
+  const WebsiteNbaStatsScreen({
+    super.key,
+    required this.session,
+    this.api = const WebsiteNbaApiService(),
+  });
 
   final AppSession session;
+  final WebsiteNbaApiService api;
 
   @override
   State<WebsiteNbaStatsScreen> createState() => _WebsiteNbaStatsScreenState();
 }
 
 class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
-  final _api = const WebsiteNbaApiService();
+  WebsiteNbaApiService get _api => widget.api;
   final _engine = const NbaStatsWorkstationEngine();
   final _search = TextEditingController();
 
@@ -39,6 +44,10 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
   String _sortKey = 'pts';
   bool _descending = true;
   final Set<String> _expanded = <String>{};
+  final Set<String> _expandedPlayers = <String>{};
+  final Map<String, List<NbaStatsRow>> _stints = {};
+  final Set<String> _loadingStints = {};
+  final Set<String> _failedStints = {};
   int _pageSize = 20;
   int _page = 1;
 
@@ -105,6 +114,93 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
       _minMpg = 20;
       _page = 1;
     });
+  }
+
+  String _playerKey(NbaStatsRow row) =>
+      '$_season/${_seasonType.name}/${row.playerId}';
+
+  Future<void> _toggleTeamStints(NbaStatsRow row) async {
+    final key = _playerKey(row);
+    if (_expandedPlayers.contains(key)) {
+      setState(() => _expandedPlayers.remove(key));
+      return;
+    }
+    setState(() => _expandedPlayers.add(key));
+    if (_stints.containsKey(key) || _loadingStints.contains(key) ||
+        _failedStints.contains(key)) return;
+    _loadingStints.add(key);
+    try {
+      final dossier = await _api.playerDossier(row.playerId);
+      final stints = sourceBackedTeamStints(
+        dossier: dossier,
+        playerId: row.playerId,
+        playerName: row.player,
+        seasonId: _season,
+        seasonType: _seasonType,
+      );
+      if (!mounted) return;
+      setState(() {
+        _stints[key] = stints;
+        _loadingStints.remove(key);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _failedStints.add(key);
+        _loadingStints.remove(key);
+      });
+    }
+  }
+
+  List<Widget> _statCells(NbaStatsRow row,
+      List<_VisibleColumn> visibleColumns, ColorScheme colors,
+      {bool child = false}) {
+    return [
+      Padding(
+        padding: EdgeInsets.only(left: child ? 18 : 0),
+        child: Row(children: [
+          if (!child && isMultiTeamStatsRow(row))
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints(minHeight: 28, minWidth: 28),
+              padding: EdgeInsets.zero,
+              tooltip: _expandedPlayers.contains(_playerKey(row))
+                  ? 'Collapse ${row.player} team stats'
+                  : 'Expand ${row.player} team stats',
+              onPressed: () => _toggleTeamStints(row),
+              icon: Icon(_expandedPlayers.contains(_playerKey(row))
+                  ? Icons.keyboard_arrow_down_rounded
+                  : Icons.keyboard_arrow_right_rounded,
+                  size: 19, color: colors.primary),
+            )
+          else if (child)
+            Icon(Icons.subdirectory_arrow_right_rounded,
+                size: 16, color: colors.primary),
+          if (child) const SizedBox(width: 3),
+          Expanded(
+            child: InkWell(
+              onTap: () => openWebsiteNbaPlayerPage(
+                context,
+                session: widget.session,
+                playerKey: row.playerId,
+                playerName: row.player,
+              ),
+              child: Text(row.player,
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: colors.primary,
+                  fontWeight: child ? FontWeight.w500 : FontWeight.w700)),
+            ),
+          ),
+        ]),
+      ),
+      _TeamLink(session: widget.session, row: row),
+      Text(row.position, maxLines: 1, overflow: TextOverflow.ellipsis),
+      for (final visible in visibleColumns)
+        _StatValueCell(
+          column: visible.column,
+          value: row.value(visible.column.key),
+        ),
+    ];
   }
 
   List<_VisibleColumn> _visibleColumns() {
@@ -189,15 +285,6 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
       seasonType: _seasonType,
     );
     final query = _search.text.trim().toLowerCase();
-    final teams = <String>{'All'};
-    for (final row in rows) {
-      teams.addAll(
-        row.team
-            .split(RegExp(r'[,/ ]+'))
-            .where((item) => item.isNotEmpty && item != '—'),
-      );
-    }
-
     final filtered = rows.where((row) {
       if (query.isNotEmpty &&
           !'${row.player} ${row.team} ${row.position}'
@@ -205,10 +292,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
               .contains(query)) {
         return false;
       }
-      if (_team != 'All' &&
-          !row.team.split(RegExp(r'[,/ ]+')).contains(_team)) {
-        return false;
-      }
+      if (!statsRowMatchesTeam(row, _team)) return false;
       if (_position != 'All' && !_matchesPosition(row.position, _position)) {
         return false;
       }
@@ -236,10 +320,6 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
     final start = (safePage - 1) * _pageSize;
     final paged = filtered.skip(start).take(_pageSize).toList();
     final visibleColumns = _visibleColumns();
-    final childTint = Theme.of(context).brightness == Brightness.dark
-        ? colors.primaryContainer.withValues(alpha: .25)
-        : colors.primaryContainer.withValues(alpha: .45);
-
     Widget pager() => WebsitePagination(
           totalItems: filtered.length,
           pageSize: _pageSize,
@@ -252,7 +332,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
         );
 
     final tableColumns = <WebsiteStickyStatsColumn>[
-      const WebsiteStickyStatsColumn(label: Text('Player'), width: 164),
+      const WebsiteStickyStatsColumn(label: Text('Player'), width: 200),
       const WebsiteStickyStatsColumn(label: Text('Team'), width: 58),
       const WebsiteStickyStatsColumn(label: Text('Position'), width: 72),
       for (final visible in visibleColumns)
@@ -260,7 +340,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
           label: _columnHeader(visible.column),
           width: _statColumnWidth(visible.column, child: visible.child),
           numeric: true,
-          backgroundColor: visible.child ? childTint : null,
+          expandedTint: visible.child,
           onTap: () => setState(() {
             if (_sortKey == visible.column.key) {
               _descending = !_descending;
@@ -273,35 +353,38 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
         ),
     ];
 
-    final tableRows = <List<Widget>>[
-      for (final row in paged)
-        [
-          InkWell(
-            onTap: () => openWebsiteNbaPlayerPage(
-              context,
-              session: widget.session,
-              playerKey: row.playerId,
-              playerName: row.player,
-            ),
-            child: Text(
-              row.player,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: colors.primary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+    final tableRows = <List<Widget>>[];
+    final highlightedRows = <int>{};
+    for (final row in paged) {
+      tableRows.add(_statCells(row, visibleColumns, colors));
+      if (!_expandedPlayers.contains(_playerKey(row))) continue;
+      final key = _playerKey(row);
+      final stints = _stints[key];
+      if (stints != null && stints.isNotEmpty) {
+        for (final stint in stints) {
+          highlightedRows.add(tableRows.length);
+          tableRows.add(_statCells(stint, visibleColumns, colors, child: true));
+        }
+      } else {
+        final message = _failedStints.contains(key)
+            ? 'Team stats unavailable from the historical file'
+            : stints != null
+                ? 'No separate source-backed team rows available'
+                : 'Loading team stats…';
+        highlightedRows.add(tableRows.length);
+        tableRows.add([
+          Padding(
+            padding: const EdgeInsets.only(left: 16),
+            child: Text(message, overflow: TextOverflow.ellipsis,
+                maxLines: 1, style: TextStyle(fontSize: 10,
+                  color: colors.onSurfaceVariant)),
           ),
-          _TeamLink(session: widget.session, row: row),
-          Text(row.position, maxLines: 1, overflow: TextOverflow.ellipsis),
-          for (final visible in visibleColumns)
-            _StatValueCell(
-              column: visible.column,
-              value: row.value(visible.column.key),
-            ),
-        ],
-    ];
+          const SizedBox.shrink(),
+          const SizedBox.shrink(),
+          for (final _ in visibleColumns) const SizedBox.shrink(),
+        ]);
+      }
+    }
 
     return Center(
       child: ConstrainedBox(
@@ -316,15 +399,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
                     letterSpacing: -1,
                   ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Conventional NBA player statistics with qualification filters, sortable columns and direct player and team navigation.',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: colors.onSurfaceVariant,
-                    height: 1.45,
-                  ),
-            ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 16),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(14),
@@ -336,6 +411,8 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
                     SizedBox(
                       width: 145,
                       child: DropdownButtonFormField<String>(
+                        key: ValueKey('season/$_season'),
+                        menuMaxHeight: 360,
                         initialValue: _season,
                         decoration: const InputDecoration(
                           labelText: 'Season',
@@ -385,7 +462,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
                     _StringDropdown(
                       label: 'Team',
                       value: _team,
-                      values: teams.toList()..sort(),
+                      values: _nbaTeamFilterOptions,
                       onChanged: (value) => setState(() {
                         _team = value;
                         _page = 1;
@@ -423,24 +500,9 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
                       icon: const Icon(Icons.restart_alt_rounded, size: 18),
                       label: const Text('Reset filters'),
                     ),
-                    OutlinedButton.icon(
-                      onPressed: () =>
-                          _copyCsv(context, filtered, visibleColumns),
-                      icon: const Icon(Icons.copy_all_outlined, size: 18),
-                      label: const Text('Copy CSV'),
-                    ),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _seasonType == NbaStatsSeasonType.regular
-                  ? 'Default qualification: 50+ games and 20+ MPG. Use the triangle beside RPG, FG%, 3P% or FT% to reveal component columns.'
-                  : 'Playoff statistics use the same immutable static season files as the regular-season table. The GP filter opens automatically for postseason samples; the default minutes qualification remains 20+ MPG.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
             ),
             const SizedBox(height: 12),
             pager(),
@@ -455,55 +517,20 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
               WebsiteStickyStatsTable(
                 columns: tableColumns,
                 rows: tableRows,
-                firstColumnWidth: 164,
+                firstColumnWidth: 200,
+                highlightedRows: highlightedRows,
                 headerHeight: 43,
                 rowHeight: 40,
               ),
             const SizedBox(height: 8),
             pager(),
-            const SizedBox(height: 14),
-            Text(
-              'Historical rows are served directly from the precompiled local NBA corpus. No runtime NBA.com request is required to browse regular-season or playoff tables.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                    height: 1.45,
-                  ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Future<void> _copyCsv(
-    BuildContext context,
-    List<NbaStatsRow> rows,
-    List<_VisibleColumn> columns,
-  ) async {
-    final header = [
-      'Player',
-      'Team',
-      'Position',
-      ...columns.map((item) => item.column.label),
-    ];
-    final lines = <String>[_csvLine(header)];
-    for (final row in rows) {
-      lines.add(
-        _csvLine([
-          row.player,
-          row.team,
-          row.position,
-          for (final item in columns)
-            _format(row.value(item.column.key), item.column),
-        ]),
-      );
-    }
-    await Clipboard.setData(ClipboardData(text: lines.join('\n')));
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Copied ${rows.length} filtered rows as CSV.')),
-    );
-  }
+
 }
 
 class _StatValueCell extends StatelessWidget {
@@ -586,6 +613,8 @@ class _StringDropdown extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
         width: width,
         child: DropdownButtonFormField<String>(
+          key: ValueKey('$label/$value'),
+          menuMaxHeight: 360,
           initialValue: values.contains(value) ? value : values.first,
           decoration: InputDecoration(labelText: label, isDense: true),
           items: [
@@ -666,8 +695,8 @@ const _baseColumns = <_StatColumn>[
     'reb',
     'RPG',
     children: [
-      _StatColumn('oreb', 'ORB'),
-      _StatColumn('dreb', 'DRB'),
+      _StatColumn('oreb', 'ORPG'),
+      _StatColumn('dreb', 'DRPG'),
     ],
   ),
   _StatColumn('ast', 'APG'),
@@ -793,7 +822,11 @@ String _format(double? value, _StatColumn column) {
   return value.toStringAsFixed(1);
 }
 
-String _csvLine(List<Object?> values) => values.map((value) {
-      final text = value?.toString() ?? '';
-      return '"${text.replaceAll('"', '""')}"';
-    }).join(',');
+
+const _nbaTeamFilterOptions = <String>[
+  'All',
+  'ATL', 'BOS', 'BKN', 'CHA', 'CHI', 'CLE', 'DAL', 'DEN', 'DET', 'GSW',
+  'HOU', 'IND', 'LAC', 'LAL', 'MEM', 'MIA', 'MIL', 'MIN', 'NOP', 'NYK',
+  'OKC', 'ORL', 'PHI', 'PHX', 'POR', 'SAC', 'SAS', 'TOR', 'UTA', 'WAS',
+  '2TM', '3TM', '4TM',
+];
