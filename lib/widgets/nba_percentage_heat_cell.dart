@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 enum NbaPercentageHeatMetric {
   fieldGoal,
   threePoint,
+  twoPoint,
+  rimFieldGoal,
+  midrangeFieldGoal,
   freeThrow,
   effectiveFieldGoal,
   trueShooting,
@@ -69,6 +72,21 @@ Color? nbaPercentageHeatColor(
       if (value >= .45) return green;
       if (value >= .40) return darkYellow;
       return maroon;
+    case NbaPercentageHeatMetric.twoPoint:
+      if (value >= .60) return darkGreen;
+      if (value >= .55) return green;
+      if (value >= .50) return darkYellow;
+      return maroon;
+    case NbaPercentageHeatMetric.rimFieldGoal:
+      if (value >= .70) return darkGreen;
+      if (value >= .65) return green;
+      if (value >= .58) return darkYellow;
+      return maroon;
+    case NbaPercentageHeatMetric.midrangeFieldGoal:
+      if (value >= .48) return darkGreen;
+      if (value >= .42) return green;
+      if (value >= .37) return darkYellow;
+      return maroon;
     case NbaPercentageHeatMetric.threePoint:
       if (value >= .40) return darkGreen;
       if (value >= .355) return green;
@@ -125,6 +143,13 @@ NbaPercentageHeatMetric? nbaPercentageHeatMetricForKey(String key) {
     case 'field_goal_percentage':
     case 'clutch_fg_pct':
       return NbaPercentageHeatMetric.fieldGoal;
+    case 'two_pct':
+    case 'two_point_pct':
+      return NbaPercentageHeatMetric.twoPoint;
+    case 'rim_fg_pct':
+      return NbaPercentageHeatMetric.rimFieldGoal;
+    case 'midrange_fg_pct':
+      return NbaPercentageHeatMetric.midrangeFieldGoal;
     case 'three_pct':
     case 'fg3_pct':
     case 'three_point_pct':
