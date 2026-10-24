@@ -148,12 +148,12 @@ void main() {
 
     await tester.tap(find.byTooltip('Expand Anfernee Simons team stats'));
     await tester.pumpAndSettle();
-    expect(find.text('BOS'), findsOneWidget);
+    expect(find.text('BOS'), findsNWidgets(2));
     expect(find.text('POR'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Collapse Anfernee Simons team stats'));
     await tester.pumpAndSettle();
-    expect(find.text('BOS'), findsNothing);
+    expect(find.text('BOS'), findsOneWidget);
     expect(find.text('POR'), findsNothing);
     expect(tester.takeException(), isNull);
   });
