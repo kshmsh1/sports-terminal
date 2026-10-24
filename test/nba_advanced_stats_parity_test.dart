@@ -136,6 +136,16 @@ void main() {
     expect(find.text('Stat group'), findsNothing);
     expect(find.byTooltip('Expand Anfernee Simons team stats'), findsOneWidget);
 
+    // Franchise filters must include full-season 2TM records whose
+    // source-provided teams_played_for contains the selected franchise.
+    await tester.tap(
+      find.widgetWithText(DropdownButtonFormField<String>, 'All').first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('BOS').last);
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Expand Anfernee Simons team stats'), findsOneWidget);
+
     await tester.tap(find.byTooltip('Expand Anfernee Simons team stats'));
     await tester.pumpAndSettle();
     expect(find.text('BOS'), findsOneWidget);
