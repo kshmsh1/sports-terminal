@@ -3,17 +3,16 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('canonical product shell owns desktop top navigation', () {
-    final source = File(
-      'lib/widgets/canonical_product_shell.dart',
-    ).readAsStringSync();
-
-    expect(source, contains('class _TopNav'));
-    expect(source, contains('height: 68'));
-    expect(source, contains('for (final entry in primary)'));
-    expect(source, contains('final compact = constraints.maxWidth < 900'));
-    expect(source, contains("tooltip: 'Navigation'"));
-    expect(source, isNot(contains('width: 288')));
+  test('canonical product uses top navigation and a command palette', () {
+    final shell = File('lib/widgets/canonical_product_shell.dart').readAsStringSync();
+    final chrome = File('lib/widgets/sports_workspace_chrome.dart').readAsStringSync();
+    expect(shell, contains('SportsWorkspaceChrome('));
+    expect(shell, contains('SportsWorkspaceDesign.maxContentWidth'));
+    expect(chrome, contains('class _WorkspaceTopNavigation'));
+    expect(chrome, contains('class _WorkspaceCommandDialog'));
+    expect(chrome, contains('final full = box.maxWidth >= 1500'));
+    expect(chrome, contains("tooltip: 'Navigation'"));
+    expect(chrome, contains('LogicalKeyboardKey.keyK'));
     expect(File('lib/widgets/connected_role_terminal_shell.dart').existsSync(), isFalse);
   });
 
@@ -45,12 +44,8 @@ void main() {
   });
 
   test('deleted research sidebar shell stays out of the canonical product', () {
-    final source = File(
-      'lib/widgets/canonical_product_shell.dart',
-    ).readAsStringSync();
-
-    expect(source, contains("'Search players & teams'"));
-    expect(source, contains("'More'"));
+    expect(File('lib/widgets/sports_workspace_chrome.dart').readAsStringSync(), contains("'Search players & teams'"));
+    expect(File('lib/widgets/sports_workspace_chrome.dart').readAsStringSync(), contains("'More'"));
     expect(File('lib/widgets/role_research_augmented_shell.dart').existsSync(), isFalse);
     expect(File('lib/widgets/launch_role_product_shell.dart').existsSync(), isFalse);
   });

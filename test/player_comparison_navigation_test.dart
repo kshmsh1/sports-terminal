@@ -17,9 +17,9 @@ void main() {
 
     expect(shell, contains("id: 'player-compare'"));
     expect(shell, contains("id: 'team-compare'"));
-    expect(shell, contains("'Compare'"));
-    expect(shell, contains('_CompareMenu'));
-    expect(shell, contains('maxWidth: _selected == \'trade\''));
+    expect(shell, contains("'Research & analysis'"));
+    expect(shell, contains("'player-compare', 'team-compare'"));
+    expect(shell, contains('SportsWorkspaceDesign.maxContentWidth(_selected)'));
     expect(shell, contains('WebsiteNbaPlayerComparisonScreen'));
     expect(shell, contains('WebsiteNbaTeamComparisonScreen'));
     expect(shell, isNot(contains("id: 'compare'")));
