@@ -154,7 +154,24 @@ void main() {
       (column) => column.label is Text &&
           (column.label as Text).data == 'Contested Shots PG',
     );
-    expect(contestedShots.width, lessThan(166));
+    // Flutter tests use the wider Ahem font: measure its actual glyphs
+    // rather than enforcing a hard-coded pixel width meant for the web font.
+    final context = tester.element(find.byType(WebsiteNbaAdvancedStatsScreen));
+    final headerPainter = TextPainter(
+      text: TextSpan(
+        text: (contestedShots.label as Text).data!,
+        style: DefaultTextStyle.of(context).style.copyWith(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    expect(contestedShots.width, greaterThan(headerPainter.width + 10));
+    expect(contestedShots.width, lessThan(headerPainter.width + 25));
+    headerPainter.dispose();
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('Overview'));
     await tester.pumpAndSettle();
