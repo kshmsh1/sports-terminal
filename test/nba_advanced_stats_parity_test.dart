@@ -7,6 +7,7 @@ import 'package:sports_terminal/services/nba_terminal_seed_repository.dart';
 import 'package:sports_terminal/services/website_nba_api_service.dart';
 import 'package:sports_terminal/services/nba_stats_metric_catalog.dart';
 import 'package:sports_terminal/widgets/nba_percentage_heat_cell.dart';
+import 'package:sports_terminal/widgets/website_sticky_stats_table.dart';
 import 'package:sports_terminal/widgets/sports_workspace_design.dart';
 
 class _AdvancedArchive extends WebsiteNbaApiService {
@@ -135,6 +136,28 @@ void main() {
     expect(find.text('Copy CSV'), findsNothing);
     expect(find.text('Stat group'), findsNothing);
     expect(find.byTooltip('Expand Anfernee Simons team stats'), findsOneWidget);
+
+    // Column sizing should follow rendered header widths, not broad
+    // character-count estimates. Preserve the original table typography.
+    final overview = tester.widget<WebsiteStickyStatsTable>(
+      find.byType(WebsiteStickyStatsTable),
+    );
+    expect(overview.columns[3].width, lessThan(78)); // GP
+    expect(overview.columns[4].width, lessThan(78)); // MPG
+    expect(overview.columns[5].width, lessThan(78)); // PPG
+    await tester.tap(find.text('Defensive / Hustle'));
+    await tester.pumpAndSettle();
+    final defense = tester.widget<WebsiteStickyStatsTable>(
+      find.byType(WebsiteStickyStatsTable),
+    );
+    final contestedShots = defense.columns.singleWhere(
+      (column) => column.label is Text &&
+          (column.label as Text).data == 'Contested Shots PG',
+    );
+    expect(contestedShots.width, lessThan(166));
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Overview'));
+    await tester.pumpAndSettle();
 
     // Franchise filters must include full-season 2TM records whose
     // source-provided teams_played_for contains the selected franchise.
