@@ -334,7 +334,8 @@ class _WebsiteNbaAdvancedStatsScreenState
       for (final item in visibleMetrics)
         WebsiteStickyStatsColumn(
           label: _metricHeader(item.metric),
-          width: _metricColumnWidth(item.metric, _basis, child: item.child),
+          width: _metricColumnWidth(context, item.metric, _basis,
+              child: item.child),
           numeric: true,
           expandedTint: item.child,
           onTap: () => setState(() {
@@ -666,11 +667,39 @@ final _categories = <_Category>[
   ]),
 ];
 
-double _metricColumnWidth(_Metric metric, NbaStatsBasis basis, {required bool child}) {
+/// Use the rendered header's actual glyph width instead of multiplying its
+/// character count by a worst-case width. This removes surplus horizontal
+/// whitespace without changing any table font sizes or truncating headings.
+double _metricColumnWidth(
+  BuildContext context,
+  _Metric metric,
+  NbaStatsBasis basis, {
+  required bool child,
+}) {
   final label = metric.displayLabel(basis);
-  final arrowAllowance = metric.children.isEmpty ? 0.0 : 32.0;
-  final estimated = label.length * 7.8 + 26 + arrowAllowance;
-  return math.max(child ? 72.0 : 78.0, math.min(estimated, 320.0));
+  final textPainter = TextPainter(
+    text: TextSpan(
+      text: label,
+      style: DefaultTextStyle.of(context).style.copyWith(
+        fontSize: 12.5, // Matches WebsiteStickyStatsTable's header style.
+        fontWeight: FontWeight.w800,
+      ),
+    ),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  final headingWidth = textPainter.width;
+  textPainter.dispose();
+
+  // Expanded headers carry a 26px chevron. Leave the table's 5px of
+  // horizontal cell padding on each side, plus a small readability buffer.
+  final chevronWidth = metric.children.isEmpty ? 0.0 : 26.0;
+  final headerWidth = headingWidth + chevronWidth + (child ? 14.0 : 16.0);
+
+  // Also reserve room for full numeric values and colored percentage pills.
+  final valueMinimum = metric.percent ? 74.0 : (child ? 66.0 : 64.0);
+  return math.max(valueMinimum, math.min(headerWidth, 320.0));
 }
 
 class _StatGlossary extends StatelessWidget {
