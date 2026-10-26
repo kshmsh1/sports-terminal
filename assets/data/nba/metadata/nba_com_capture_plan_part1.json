@@ -17,7 +17,7 @@
     "Raw responses, normalized tables, request parameters, schemas, row counts, source hashes and validation status are persisted locally before static materialization.",
     "User-supplied row ceilings are sanity bounds, not expected row counts.",
     "Empty historical responses are recorded as unavailable/empty and are not fabricated.",
-    "Sports Terminal browser/runtime never calls stats.nba.com; collection is a one-time/local acquisition step and the website reads generated static files."
+    "Arcside browser/runtime never calls stats.nba.com; collection is a one-time/local acquisition step and the website reads generated static files."
   ],
   "surfaces": [
     {
