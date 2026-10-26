@@ -23,7 +23,7 @@ const informationArchitectureItems = <InformationArchitectureItem>[
     priority: 'P0',
     status: 'In progress',
     examples: 'NBA, G League, Summer League, Draft Combine',
-    notes: 'Defines the basketball ecosystem that Sports Terminal will organize before expanding into other sports.',
+    notes: 'Defines the basketball ecosystem that Arcside will organize before expanding into other sports.',
   ),
   InformationArchitectureItem(
     area: 'Team directory',

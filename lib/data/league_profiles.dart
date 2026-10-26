@@ -8,7 +8,7 @@ const leagueProfiles = <LeagueProfile>[
     level: 'Primary professional league',
     priority: 0,
     status: 'Active build focus',
-    description: 'The first and highest-priority league for Sports Terminal. All core architecture should be proven against NBA use cases before expanding outward.',
+    description: 'The first and highest-priority league for Arcside. All core architecture should be proven against NBA use cases before expanding outward.',
     relationshipToNba: 'Core league',
     dataPosture: 'Stable reference data connected. Historical statistics, player identity, awards, drafts, transactions, contracts, and game data are planned.',
   ),

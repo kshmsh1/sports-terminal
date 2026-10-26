@@ -137,7 +137,7 @@ class _WebsiteNbaTeamDetailScreenState
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Sports Terminal')),
+        appBar: AppBar(title: const Text('Arcside')),
         body: FutureBuilder<_TeamDetailData>(
           future: _future,
           builder: (context, snapshot) {
