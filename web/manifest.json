@@ -1,11 +1,11 @@
 {
-    "name": "sports_terminal",
-    "short_name": "sports_terminal",
+    "name": "Arcside",
+    "short_name": "Arcside",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Arcside — sports data, research, and analysis.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
