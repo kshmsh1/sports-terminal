@@ -26,7 +26,7 @@ import '../services/website_nba_api_service.dart';
 
 const _brandBlue = Color(0xFF6674C7);
 
-/// Sole customer-facing Sports Terminal shell.
+/// Sole customer-facing Arcside shell.
 ///
 /// Customer-facing sports data is served from the local static corpus.
 /// Remote sports/social/product API calls are disabled at runtime.
@@ -432,7 +432,7 @@ class _SiteFooter extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'SPORTS TERMINAL',
+                'ARCSIDE',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w900,
@@ -449,7 +449,7 @@ class _SiteFooter extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                '© 2026 Sports Terminal. Independent product; not affiliated with or endorsed by the NBA or other leagues unless expressly stated.',
+                '© 2026 Arcside. Independent product; not affiliated with or endorsed by the NBA or other leagues unless expressly stated.',
                 style: TextStyle(
                   color: colors.onSurfaceVariant,
                   fontSize: 11,
@@ -579,7 +579,7 @@ class _TopNav extends StatelessWidget {
                       if (constraints.maxWidth >= 680) ...[
                         const SizedBox(width: 10),
                         const Text(
-                          'Sports Terminal',
+                          'Arcside',
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w900,
