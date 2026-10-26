@@ -204,7 +204,7 @@ class _ProductProfileV3ScreenState extends State<ProductProfileV3Screen> {
       await _cache();
       if (!mounted) return;
       setState(() => saving = false);
-      _message('Profile saved to your Sports Terminal account.');
+      _message('Profile saved to your Arcside account.');
       return;
     }
     await _cache();

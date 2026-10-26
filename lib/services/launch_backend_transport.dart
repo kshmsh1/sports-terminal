@@ -22,7 +22,7 @@ class LaunchBackendResponse {
 /// Compatibility transport retained for callers that still understand the
 /// former backend-sync contract.
 ///
-/// Runtime network synchronization is intentionally disabled. Sports Terminal
+/// Runtime network synchronization is intentionally disabled. Arcside
 /// now operates from static snapshots and local persistence only.
 class LaunchBackendTransport {
   const LaunchBackendTransport({
@@ -64,7 +64,7 @@ class LaunchBackendTransport {
     return const LaunchBackendResponse(
       available: false,
       error:
-          'Runtime backend/network synchronization is disabled. Sports Terminal uses static snapshots and local persistence.',
+          'Runtime backend/network synchronization is disabled. Arcside uses static snapshots and local persistence.',
     );
   }
 }

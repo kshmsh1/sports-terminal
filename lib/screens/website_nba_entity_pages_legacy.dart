@@ -86,7 +86,7 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Sports Terminal')),
+        appBar: AppBar(title: const Text('Arcside')),
         body: FutureBuilder<_PlayerPageData>(
           future: _future,
           builder: (context, snapshot) {
@@ -263,7 +263,7 @@ class _WebsiteNbaTeamPageState extends State<WebsiteNbaTeamPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Sports Terminal')),
+        appBar: AppBar(title: const Text('Arcside')),
         body: FutureBuilder<Map<String, dynamic>>(
           future: _future,
           builder: (context, snapshot) {

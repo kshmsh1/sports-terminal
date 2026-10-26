@@ -56,7 +56,7 @@ class _SessionRestoreScreen extends StatelessWidget {
             CircularProgressIndicator(color: Color(0xFF8AB4F8)),
             SizedBox(height: 14),
             Text(
-              'Restoring Sports Terminal session…',
+              'Restoring Arcside session…',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,

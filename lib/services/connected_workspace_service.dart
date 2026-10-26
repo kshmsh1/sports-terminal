@@ -74,7 +74,7 @@ class ConnectedWorkbook {
     final requested = json['active_sheet']?.toString() ?? sheets.keys.first;
     final active = sheets.containsKey(requested) ? requested : sheets.keys.first;
     return ConnectedWorkbook(
-      title: json['title']?.toString() ?? 'Sports Terminal Workbook',
+      title: json['title']?.toString() ?? 'Arcside Workbook',
       activeSheet: active,
       sheets: sheets,
       version: (json['version'] as num?)?.toInt() ?? 0,
@@ -331,7 +331,7 @@ class ConnectedWorkspaceService {
       fallback: 'Watchlist',
     );
     return ConnectedWorkbook(
-      title: 'Sports Terminal Workbook',
+      title: 'Arcside Workbook',
       activeSheet: sheet.isEmpty ? 'Watchlist' : sheet,
       sheets: {sheet.isEmpty ? 'Watchlist' : sheet: cells},
       version: 0,

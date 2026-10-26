@@ -603,7 +603,7 @@ class _CommunityHero extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'SPORTS TERMINAL / COMMUNITY',
+                        'ARCSIDE / COMMUNITY',
                         style: TextStyle(
                           color: _cBlue,
                           fontSize: 10,
@@ -622,7 +622,7 @@ class _CommunityHero extends StatelessWidget {
                       ),
                       SizedBox(height: 7),
                       Text(
-                        'Follow league, analytics, transaction, draft, history, fantasy and all 30 team communities. Rank threads by Hot, New, Top or Controversial; save research-worthy discussions; build reputation; and participate under the same report, block, mute, sanction and audit controls as the rest of Sports Terminal.',
+                        'Follow league, analytics, transaction, draft, history, fantasy and all 30 team communities. Rank threads by Hot, New, Top or Controversial; save research-worthy discussions; build reputation; and participate under the same report, block, mute, sanction and audit controls as the rest of Arcside.',
                         style: TextStyle(color: _cMuted, height: 1.5),
                       ),
                     ],
@@ -1233,7 +1233,7 @@ class _NetworkPrinciples extends StatelessWidget {
               _SectionLabel('NETWORK DESIGN'),
               SizedBox(height: 6),
               Text(
-                'Sports Terminal community ranking is bounded and auditable rather than an opaque engagement maximizer. Blocks are bilateral for conversation visibility, mutes remove authors from feeds, sanctions can prevent publication, reports enter a moderation queue, and moderation actions are written to the platform audit log.',
+                'Arcside community ranking is bounded and auditable rather than an opaque engagement maximizer. Blocks are bilateral for conversation visibility, mutes remove authors from feeds, sanctions can prevent publication, reports enter a moderation queue, and moderation actions are written to the platform audit log.',
                 style: TextStyle(color: _cMuted, height: 1.5),
               ),
             ],

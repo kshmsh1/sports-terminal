@@ -20,7 +20,7 @@ class NbaXTimeline extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Text(
-                'Third-party social embeds are disabled in the static Sports Terminal runtime. @$handle ($displayName) remains available as descriptive source metadata only.',
+                'Third-party social embeds are disabled in the static Arcside runtime. @$handle ($displayName) remains available as descriptive source metadata only.',
                 textAlign: TextAlign.center,
               ),
             ),

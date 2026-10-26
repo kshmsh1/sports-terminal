@@ -434,7 +434,7 @@ class _ProductPersistedProfileScreenState
                         Text(
                           memberships.isEmpty
                               ? 'Follow communities and contribute to earn server-backed reputation and community badges.'
-                              : 'Member of ${memberships.length} Sports Terminal communities. Reputation badges are calculated from published contribution history rather than being user-editable.',
+                              : 'Member of ${memberships.length} Arcside communities. Reputation badges are calculated from published contribution history rather than being user-editable.',
                           style: const TextStyle(color: _muted, height: 1.45),
                         ),
                       ],

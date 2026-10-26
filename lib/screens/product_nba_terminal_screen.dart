@@ -482,7 +482,7 @@ class _ProductNbaTerminalScreenState extends State<ProductNbaTerminalScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'SPORTS TERMINAL · NBA',
+                  'ARCSIDE · NBA',
                   style: TextStyle(
                     color: _tText,
                     fontSize: 17,

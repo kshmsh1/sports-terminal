@@ -6,7 +6,7 @@
     "Raw source responses are archived before any metric transformation.",
     "Collection failures are recorded and do not erase previously successful scopes.",
     "The collector is deliberately rate-limited and should not run in CI against stats.nba.com.",
-    "Only deterministic metric recipes may populate the Sports Terminal overlay."
+    "Only deterministic metric recipes may populate the Arcside overlay."
   ],
   "endpoints": [
     {

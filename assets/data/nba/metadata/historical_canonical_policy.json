@@ -1,7 +1,7 @@
 {
   "version": 1,
   "canonicalSchemaVersion": "2026.08.07.1",
-  "description": "Source precedence, identity, season normalization and conflict policy for the Sports Terminal historical NBA canonical warehouse.",
+  "description": "Source precedence, identity, season normalization and conflict policy for the Arcside historical NBA canonical warehouse.",
   "sourcePriority": {
     "identity": [
       "wyatt_nbadb",

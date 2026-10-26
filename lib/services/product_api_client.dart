@@ -160,7 +160,7 @@ class ProductApiClient {
   String _pathWithQuery(String path, Map<String, String> params) => path;
 
   Never _networkDisabled() => throw const ProductApiException(
-        'Runtime product API calls are disabled. Sports Terminal is static/local-only.',
+        'Runtime product API calls are disabled. Arcside is static/local-only.',
         0,
       );
 

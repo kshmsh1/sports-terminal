@@ -134,7 +134,7 @@ class _ProductTradeMachineCompleteScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'SPORTS TERMINAL / FRONT OFFICE',
+            'ARCSIDE / FRONT OFFICE',
             style: TextStyle(
               color: _cyan,
               fontSize: 10,
@@ -1149,7 +1149,7 @@ class _ProductTradeMachineCompleteScreenState
           ),
           SizedBox(height: 7),
           Text(
-            'Sports Terminal uses the frozen 2026-27 front-office dataset as its transaction authority: salary sheets, guarantees, trade eligibility, kickers, draft rights, TPE/DPE balances, signing exceptions, hard-cap triggers, cash limits and tax context. The Trade Machine makes its determination from those static records and the selected transaction date; no live API calls are used.',
+            'Arcside uses the frozen 2026-27 front-office dataset as its transaction authority: salary sheets, guarantees, trade eligibility, kickers, draft rights, TPE/DPE balances, signing exceptions, hard-cap triggers, cash limits and tax context. The Trade Machine makes its determination from those static records and the selected transaction date; no live API calls are used.',
             style: TextStyle(color: _muted, height: 1.45),
           ),
         ],

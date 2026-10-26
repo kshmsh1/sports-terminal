@@ -157,7 +157,7 @@ class _Overview extends StatelessWidget {
             ),
             SizedBox(height: 16),
             Text(
-              'Sports Terminal',
+              'Arcside',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 34,
@@ -349,7 +349,7 @@ class _Form extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Both agreements are required. Sports Terminal records the accepted legal-document version and acceptance timestamp with account creation.',
+                'Both agreements are required. Arcside records the accepted legal-document version and acceptance timestamp with account creation.',
                 style: TextStyle(
                   color: terminalTextMuted,
                   fontSize: 11,
@@ -395,8 +395,8 @@ class _Form extends StatelessWidget {
                       ),
                 label: Text(
                   createAccount
-                      ? 'Create Sports Terminal account'
-                      : 'Enter Sports Terminal',
+                      ? 'Create Arcside account'
+                      : 'Enter Arcside',
                 ),
               ),
             ),

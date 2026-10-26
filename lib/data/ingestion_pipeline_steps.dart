@@ -41,7 +41,7 @@ const ingestionPipelineSteps = <IngestionPipelineStep>[
     title: 'Normalize records',
     owner: 'Scripts',
     status: 'Planned',
-    description: 'Map source fields to Sports Terminal models such as PlayerProfile, Team, Season, and PlayerStatLine.',
+    description: 'Map source fields to Arcside models such as PlayerProfile, Team, Season, and PlayerStatLine.',
   ),
   IngestionPipelineStep(
     step: 5,

@@ -22,7 +22,7 @@ class ProductBackendSyncScreen extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Sports Terminal no longer connects the customer application to a runtime backend API. User preferences and prototype workspace state are stored locally, while sports datasets are served from reviewed static snapshots.',
+          'Arcside no longer connects the customer application to a runtime backend API. User preferences and prototype workspace state are stored locally, while sports datasets are served from reviewed static snapshots.',
           style: TextStyle(color: colors.onSurfaceVariant, height: 1.5),
         ),
         const SizedBox(height: 18),

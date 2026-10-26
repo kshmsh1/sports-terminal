@@ -98,7 +98,7 @@ class WebsiteSportsHomeScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
           ),
           child: const Text(
-            'Data rule: unavailable leagues remain unavailable. Sports Terminal does not synthesize standings, players, schedules, or statistics for a league before a real dataset is connected.',
+            'Data rule: unavailable leagues remain unavailable. Arcside does not synthesize standings, players, schedules, or statistics for a league before a real dataset is connected.',
           ),
         ),
       ],
@@ -115,7 +115,7 @@ class _WebsiteLeagueHomePlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Sports Terminal')),
+      appBar: AppBar(title: const Text('Arcside')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 36, 24, 72),
         child: Center(
@@ -155,7 +155,7 @@ class _WebsiteLeagueHomePlaceholder extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          'This is the permanent ${league.name} home route. No players, teams, standings, schedules, or statistics are displayed until Sports Terminal has a real source-backed ${league.name} dataset.',
+                          'This is the permanent ${league.name} home route. No players, teams, standings, schedules, or statistics are displayed until Arcside has a real source-backed ${league.name} dataset.',
                           style: const TextStyle(height: 1.45),
                         ),
                       ],

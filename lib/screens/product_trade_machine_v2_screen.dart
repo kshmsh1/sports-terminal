@@ -253,7 +253,7 @@ class _ProductTradeMachineV2ScreenState
                           const SizedBox(height: 7),
                           Text(
                             frontOffice.remoteAvailable
-                                ? 'Contract, team-position and draft-asset rows are read from the Sports Terminal front-office registry when present. Every record keeps its source_status, and missing player contracts fall back to a clearly modeled salary proxy rather than pretending the number is verified.'
+                                ? 'Contract, team-position and draft-asset rows are read from the Arcside front-office registry when present. Every record keeps its source_status, and missing player contracts fall back to a clearly modeled salary proxy rather than pretending the number is verified.'
                                 : 'The front-office registry is offline or empty, so this scenario is using modeled player salary fallbacks and draft placeholders. Salary matching can be explored, but execution-grade approval requires verified contract, team-position, exception and pick records.',
                             style: const TextStyle(color: _tMuted, height: 1.5),
                           ),

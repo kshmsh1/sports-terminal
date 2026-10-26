@@ -17,7 +17,7 @@ class ProductStrategyMapScreen extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
       _HeroBand(),
       SizedBox(height: 18),
-      _SectionHeader('What we are trying to beat', 'A competitor-informed product map that turns the fragmented NBA tool market into Sports Terminal build targets.'),
+      _SectionHeader('What we are trying to beat', 'A competitor-informed product map that turns the fragmented NBA tool market into Arcside build targets.'),
       SizedBox(height: 12),
       _CompetitorGrid(),
       SizedBox(height: 18),
@@ -50,7 +50,7 @@ class _HeroBand extends StatelessWidget {
           const SizedBox(
             width: 850,
             child: Text(
-              'Sports Terminal should not become another isolated stats site. It should absorb the jobs users hire StatMuse, NBA.com/stats, Cleaning the Glass, PBP Stats, cap/trade tools, fantasy tools, and community products for, then connect all of them through player, team, game, workspace, article, scenario, and community objects.',
+              'Arcside should not become another isolated stats site. It should absorb the jobs users hire StatMuse, NBA.com/stats, Cleaning the Glass, PBP Stats, cap/trade tools, fantasy tools, and community products for, then connect all of them through player, team, game, workspace, article, scenario, and community objects.',
               style: TextStyle(color: Color(0xFFEAF2FF), fontSize: 16, height: 1.45, fontWeight: FontWeight.w600),
             ),
           ),
@@ -105,7 +105,7 @@ class _PillarGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _Surface(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const _SectionHeader('Sports Terminal product pillars', 'The actual features that should make switching between competitor sites unnecessary.'),
+          const _SectionHeader('Arcside product pillars', 'The actual features that should make switching between competitor sites unnecessary.'),
           const SizedBox(height: 14),
           LayoutBuilder(builder: (context, constraints) {
             final width = constraints.maxWidth < 800 ? constraints.maxWidth : (constraints.maxWidth - 18) / 2;

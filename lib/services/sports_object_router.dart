@@ -10,7 +10,7 @@ class SportsObjectRouter {
     required List<Map<String, dynamic>> rows,
     required String targetRoute,
     String? packageId,
-    String sourceSnapshot = 'Local Sports Terminal asset',
+    String sourceSnapshot = 'Local Arcside asset',
     String readinessState = 'Ready',
     String filterSummary = 'No filters',
     String rowKey = '',
@@ -94,7 +94,7 @@ class SportsObjectRouter {
   String generatedPython(RoutePayload payload) {
     final variable = pythonVariableName(payload);
     final escapedLabel = payload.displayLabel.replaceAll('"', '\\"');
-    return '''# Sports Terminal structured package
+    return '''# Arcside structured package
 # Source: $escapedLabel
 # Rows: ${payload.rowCount} | Columns: ${payload.columnCount}
 

@@ -274,7 +274,7 @@ class _WorkbookTitleBar extends StatelessWidget {
         const SizedBox(width: 10),
         const Icon(Icons.save_outlined, color: Colors.white70, size: 18),
         const Spacer(),
-        Text('$sheet — Sports Terminal Workbook', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+        Text('$sheet — Arcside Workbook', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
         const Spacer(),
         Container(
           width: 250,
@@ -527,7 +527,7 @@ class _WorkspaceStatusBar extends StatelessWidget {
 }
 
 Map<String, String> _watchlistTemplate() => {
-      'A1': 'Sports Terminal Workbook',
+      'A1': 'Arcside Workbook',
       'A2': 'Player',
       'B2': 'Team',
       'C2': 'PPG',

@@ -4,7 +4,7 @@ import 'registry_screen_factory.dart';
 class PlatformEndgameScreen extends RegistryScreenFactory {
   const PlatformEndgameScreen({super.key}) : super(
     title: 'Platform Endgame',
-    subtitle: 'North-star architecture for making Sports Terminal an operating system for sports rather than a searchable reference site.',
+    subtitle: 'North-star architecture for making Arcside an operating system for sports rather than a searchable reference site.',
     items: platformEndgameItems,
     searchHint: 'Search endgame, workspace, network, UI...',
     leadTitle: 'Endgame Principle',

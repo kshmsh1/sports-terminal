@@ -129,7 +129,7 @@ class NbaLiveGameService {
     final response = await _client.get(uri).timeout(const Duration(seconds: 8));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw NbaLiveGameException(
-        '2026-27 schedule snapshot is unavailable (${response.statusCode}). Run the Sports Terminal launcher once to materialize it.',
+        '2026-27 schedule snapshot is unavailable (${response.statusCode}). Run the Arcside launcher once to materialize it.',
       );
     }
     final decoded = jsonDecode(response.body);
@@ -157,7 +157,7 @@ class NbaLiveGameService {
     return result;
   }
 
-  /// Live network access is deliberately disabled. Sports Terminal runtime data
+  /// Live network access is deliberately disabled. Arcside runtime data
   /// is snapshot-only; callers receive no mutable scoreboard overlay.
   Future<Map<String, NbaLiveGameState>> todayScoreboard() async => const {};
 

@@ -230,7 +230,7 @@ class _ProductHistoricalPlayerDossierState
             if (populatedKeys.isEmpty)
               _HistoricalPanel(
                 child: Text(
-                  '${family.label} does not have authoritative canonical fields for this player/era. The category remains visible so Sports Terminal never implies that modern tracking or model data exists historically when it does not.',
+                  '${family.label} does not have authoritative canonical fields for this player/era. The category remains visible so Arcside never implies that modern tracking or model data exists historically when it does not.',
                   style: const TextStyle(color: _hMuted, height: 1.5),
                 ),
               )

@@ -17,7 +17,7 @@ class ModuleInventoryScreen extends StatelessWidget {
       children: [
         const SectionHeader(
           title: 'Terminal Module Inventory',
-          subtitle: 'The working product map for Sports Terminal. Individual tabs are not meant to be comprehensive yet; this inventory tracks the larger terminal we are building toward.',
+          subtitle: 'The working product map for Arcside. Individual tabs are not meant to be comprehensive yet; this inventory tracks the larger terminal we are building toward.',
         ),
         const SizedBox(height: 22),
         LayoutBuilder(

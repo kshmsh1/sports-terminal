@@ -18,7 +18,7 @@ class DatasetRegistryScreen extends StatelessWidget {
       children: [
         const SectionHeader(
           title: 'Dataset Registry',
-          subtitle: 'The operational map of every dataset Sports Terminal needs, where it should live, how it should refresh, and what source posture it requires.',
+          subtitle: 'The operational map of every dataset Arcside needs, where it should live, how it should refresh, and what source posture it requires.',
         ),
         const SizedBox(height: 22),
         LayoutBuilder(

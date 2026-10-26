@@ -42,7 +42,7 @@ class _SportsTerminalAppState extends State<SportsTerminalApp> {
       controller: routePayloadController,
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'Sports Terminal',
+        title: 'Arcside',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
             seedColor: const Color(0xFF8AB4F8),

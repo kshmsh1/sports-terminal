@@ -115,7 +115,7 @@ class _ProductTradeMachine2026ScreenState extends State<ProductTradeMachine2026S
               _panelBox(Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('SPORTS TERMINAL / FRONT OFFICE',
+                  const Text('ARCSIDE / FRONT OFFICE',
                       style: TextStyle(color: _cyan, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.1)),
                   const SizedBox(height: 7),
                   const Text('NBA Trade Machine',

@@ -969,7 +969,7 @@ Filter: ${payload.filterSummary}
 Generated notebook code now references st.active_payload_dataframe().''';
 }
 
-const _starterCode = '''# Sports Terminal connected notebook
+const _starterCode = '''# Arcside connected notebook
 # Publish a package from Object Router or Cap Lab, then click
 # "Generate from package" to bind the active dataset.
 
