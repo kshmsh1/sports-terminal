@@ -13,7 +13,7 @@ class IngestionPipelineScreen extends StatelessWidget {
       children: [
         const SectionHeader(
           title: 'Ingestion Pipeline',
-          subtitle: 'The planned path for moving from official or licensed sources into normalized Sports Terminal data without coupling the UI to any single provider.',
+          subtitle: 'The planned path for moving from official or licensed sources into normalized Arcside data without coupling the UI to any single provider.',
         ),
         const SizedBox(height: 22),
         TerminalCard(

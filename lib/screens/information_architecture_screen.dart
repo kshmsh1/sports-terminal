@@ -17,7 +17,7 @@ class InformationArchitectureScreen extends StatelessWidget {
       children: [
         const SectionHeader(
           title: 'Information Architecture',
-          subtitle: 'The comprehensive map of what Sports Terminal needs to organize beyond simple box-score statistics.',
+          subtitle: 'The comprehensive map of what Arcside needs to organize beyond simple box-score statistics.',
         ),
         const SizedBox(height: 22),
         LayoutBuilder(

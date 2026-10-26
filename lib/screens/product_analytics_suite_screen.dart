@@ -1244,7 +1244,7 @@ class _MethodologyGate extends StatelessWidget {
   Widget build(BuildContext context) => _ToolSurface(
     title: tool,
     subtitle:
-        'The interface contract is reserved, but Sports Terminal will not publish synthetic tracking or RAPM output.',
+        'The interface contract is reserved, but Arcside will not publish synthetic tracking or RAPM output.',
     controls: const [],
     child: const Column(
       children: [

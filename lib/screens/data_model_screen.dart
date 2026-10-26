@@ -16,7 +16,7 @@ class DataModelScreen extends StatelessWidget {
       children: [
         const SectionHeader(
           title: 'Data Model',
-          subtitle: 'The internal object map that lets Sports Terminal organize teams, seasons, players, rosters, games, awards, drafts, and transactions before every source is connected.',
+          subtitle: 'The internal object map that lets Arcside organize teams, seasons, players, rosters, games, awards, drafts, and transactions before every source is connected.',
         ),
         const SizedBox(height: 22),
         LayoutBuilder(

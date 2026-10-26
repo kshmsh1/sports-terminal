@@ -18,7 +18,7 @@ class DataRoadmapScreen extends StatelessWidget {
       children: [
         const SectionHeader(
           title: 'NBA Data Roadmap',
-          subtitle: 'A source-aware map of the information Sports Terminal needs before it becomes a full historical NBA terminal.',
+          subtitle: 'A source-aware map of the information Arcside needs before it becomes a full historical NBA terminal.',
         ),
         const SizedBox(height: 22),
         LayoutBuilder(

@@ -31,7 +31,7 @@ class MediaResearchScreen extends StatelessWidget {
       title: 'Media & Research',
       subtitle: 'Future research workspace for source-linked articles, reports, internal notes, clips, documents, entity links, and narrative timelines.',
       leadTitle: 'Research Layer Principle',
-      leadBody: 'Sports Terminal should eventually organize not only stats but also the evidence and narrative context around teams, players, games, transactions, and eras.',
+      leadBody: 'Arcside should eventually organize not only stats but also the evidence and narrative context around teams, players, games, transactions, and eras.',
       items: mediaWorkspaceItems,
       extraPanel: _ConceptPanel(title: 'Media Templates', rows: [for (final item in mediaTemplateItems) [item.contentType, item.status, item.entityLinks, item.requiredMetadata, item.displayUse, item.description]], columns: const ['Content Type', 'Status', 'Entity Links', 'Required Metadata', 'Display Use', 'Description']),
     );

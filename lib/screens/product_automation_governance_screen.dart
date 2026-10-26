@@ -237,7 +237,7 @@ class _ProductAutomationGovernanceScreenState
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
               SizedBox(height: 8),
               Text(
-                'Rules, schedules, invitations, export requests, delivery queues and audit records are implemented in the Sports Terminal control plane. External email, webhook, storage and payment providers remain provider-neutral until credentials are configured.',
+                'Rules, schedules, invitations, export requests, delivery queues and audit records are implemented in the Arcside control plane. External email, webhook, storage and payment providers remain provider-neutral until credentials are configured.',
               ),
             ],
           ),
