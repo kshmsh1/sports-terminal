@@ -545,7 +545,7 @@ class _WebsiteNbaGamePageState extends State<WebsiteNbaGamePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sports Terminal · Game')),
+      appBar: AppBar(title: const Text('Arcside · Game')),
       body: FutureBuilder<_GamePagePayload>(
         future: _future,
         builder: (context, snapshot) {
@@ -709,7 +709,7 @@ class _WebsiteNbaGamePageState extends State<WebsiteNbaGamePage> {
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Text(
-                      'Possession-level play-by-play has not been materialized for this game. The game and box score remain canonical static data; Sports Terminal does not invent missing events.',
+                      'Possession-level play-by-play has not been materialized for this game. The game and box score remain canonical static data; Arcside does not invent missing events.',
                       style: TextStyle(color: colors.onSurfaceVariant, height: 1.5),
                     ),
                   ),

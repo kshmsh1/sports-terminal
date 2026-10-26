@@ -744,7 +744,7 @@ class _StatsError extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Sports Terminal could not read its precompiled static NBA season file. ${error ?? ''}',
+                    'Arcside could not read its precompiled static NBA season file. ${error ?? ''}',
                   ),
                   const SizedBox(height: 18),
                   OutlinedButton.icon(

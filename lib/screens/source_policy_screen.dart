@@ -13,7 +13,7 @@ class SourcePolicyScreen extends StatelessWidget {
       children: [
         const SectionHeader(
           title: 'Source Policy',
-          subtitle: 'Internal guardrails for how Sports Terminal handles official, public, licensed, manual, and modeled data.',
+          subtitle: 'Internal guardrails for how Arcside handles official, public, licensed, manual, and modeled data.',
         ),
         const SizedBox(height: 22),
         TerminalCard(
@@ -26,7 +26,7 @@ class SourcePolicyScreen extends StatelessWidget {
               ),
               SizedBox(height: 10),
               Text(
-                'Sports Terminal can be built before every data feed is solved, but product-facing screens must never present fake values as real statistics. Missing data displays as blank. Estimated data must be labeled. Source metadata must travel with every dataset.',
+                'Arcside can be built before every data feed is solved, but product-facing screens must never present fake values as real statistics. Missing data displays as blank. Estimated data must be labeled. Source metadata must travel with every dataset.',
                 style: TextStyle(color: terminalTextSoft, fontSize: 15, height: 1.45),
               ),
             ],

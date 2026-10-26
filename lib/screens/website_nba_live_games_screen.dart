@@ -100,7 +100,7 @@ class _WebsiteNbaLiveGamesScreenState extends State<WebsiteNbaLiveGamesScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'The season schedule is a locally materialized snapshot. Sports Terminal does not make live score or box-score API calls at runtime.',
+          'The season schedule is a locally materialized snapshot. Arcside does not make live score or box-score API calls at runtime.',
           style: TextStyle(color: colors.onSurfaceVariant),
         ),
         const SizedBox(height: 18),

@@ -24,7 +24,7 @@ class ProductHomeScreen extends StatelessWidget {
           _HeroPanel(
             eyebrow: 'Welcome back, ${session.displayName}',
             title: 'Your sports home base, not an endless terminal menu.',
-            body: 'Sports Terminal is now organized around the experience users will actually see: personalized NBA data, fantasy workflows, community, articles, workspace, messages, profile, and a separate admin/internal area.',
+            body: 'Arcside is now organized around the experience users will actually see: personalized NBA data, fantasy workflows, community, articles, workspace, messages, profile, and a separate admin/internal area.',
             primaryAction: 'Open NBA Hub',
             secondaryAction: 'Review Admin Console',
           ),
@@ -34,7 +34,7 @@ class ProductHomeScreen extends StatelessWidget {
             _Metric('Teams', '${data.teams.length}', 'league coverage'),
             _Metric('Data health', data.validationStatus.toUpperCase(), 'seed validation'),
           ]),
-          _SectionTitle('Today on Sports Terminal', 'A friendlier landing page that pulls the product together.'),
+          _SectionTitle('Today on Arcside', 'A friendlier landing page that pulls the product together.'),
           _FeatureGrid(cards: const [
             _FeatureCardData(Icons.sports_basketball_outlined, 'NBA hub', 'Browse teams, players, games, leaders, and generated 2024-25 data from one readable league page.'),
             _FeatureCardData(Icons.groups_outlined, 'Community', 'Forums, discussions, team rooms, comments, and moderation workflows are now first-class product areas.'),
@@ -211,7 +211,7 @@ class ProductArticlesScreen extends StatelessWidget {
         title: 'Starter content plan',
         columns: ['Content type', 'Examples', 'Needed for launch'],
         rows: [
-          ['Platform', 'What is Sports Terminal?', 'Yes'],
+          ['Platform', 'What is Arcside?', 'Yes'],
           ['NBA explainers', 'How to read team splits and player roles', 'Yes'],
           ['Fantasy', 'Weekly waiver and watchlist posts', 'Later'],
           ['Community', 'Featured user posts', 'Later'],
@@ -446,7 +446,7 @@ _LegalContent _legalContent(String kind) {
         ['Trust & safety', 'Community reports, harassment, impersonation, privacy, or moderation appeals.'],
       ]);
     default:
-      return const _LegalContent('About', 'About Sports Terminal', 'Sports Terminal is being built as a modern sports intelligence and community platform: deep data, friendly workflows, fantasy tools, community, content, workspaces, and admin-grade operations.', 'Public-ready', 'About page structure', [
+      return const _LegalContent('About', 'About Arcside', 'Arcside is being built as a modern sports intelligence and community platform: deep data, friendly workflows, fantasy tools, community, content, workspaces, and admin-grade operations.', 'Public-ready', 'About page structure', [
         ['Mission', 'Make high-quality sports data, analysis, discussion, and workflows accessible to fans, fantasy players, creators, and operators.'],
         ['Product', 'NBA-first platform with player/team/game pages, community, articles, fantasy tools, workspace, and internal/admin tools.'],
         ['Data philosophy', 'Start with a validated historical warehouse, then add current-season updates and live integrations over time.'],

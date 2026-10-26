@@ -29,7 +29,7 @@ class WebsiteNbaMediaFeedScreen extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'A reference directory of high-signal NBA reporting sources. Sports Terminal does not embed, poll, fetch, cache, or reproduce third-party social feeds at runtime.',
+          'A reference directory of high-signal NBA reporting sources. Arcside does not embed, poll, fetch, cache, or reproduce third-party social feeds at runtime.',
           style: TextStyle(color: colors.onSurfaceVariant),
         ),
         const SizedBox(height: 18),

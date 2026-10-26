@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'product_trade_machine_video_screen.dart';
 
-/// Stable public shell entry point for the Sports Terminal NBA Trade Machine.
+/// Stable public shell entry point for the Arcside NBA Trade Machine.
 ///
 /// The Trade Machine inherits the terminal's global theme. The terminal itself
 /// defaults to dark mode, so this page opens dark by default and follows the
