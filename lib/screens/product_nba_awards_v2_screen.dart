@@ -233,7 +233,7 @@ class _ProductNbaAwardsVotingScreenState
             const _Section('SOURCE LABEL AUDIT'),
             const SizedBox(height: 7),
             Text(
-              '$count canonical award records do not yet map cleanly into the Sports Terminal taxonomy. They remain preserved rather than being silently discarded.',
+              '$count canonical award records do not yet map cleanly into the Arcside taxonomy. They remain preserved rather than being silently discarded.',
               style: const TextStyle(color: _aMuted, height: 1.45),
             ),
             if (rows.isNotEmpty) ...[

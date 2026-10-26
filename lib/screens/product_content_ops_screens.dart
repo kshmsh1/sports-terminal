@@ -35,7 +35,7 @@ class ProductArticlesArenaScreen extends StatelessWidget {
           _TwoColumn(
             left: _FeatureStory(
               title: 'Featured template',
-              headline: leader == null ? 'How to read a Sports Terminal player page' : 'Why ${_txt(leader['player_label'])} jumps off the 2024-25 scoring board',
+              headline: leader == null ? 'How to read a Arcside player page' : 'Why ${_txt(leader['player_label'])} jumps off the 2024-25 scoring board',
               kicker: 'NBA DATA EXPLAINER',
               body: 'A launch-ready content layer should let the team turn live product data into readable analysis, then attach that writing to player, team, fantasy, and community pages.',
             ),
@@ -43,7 +43,7 @@ class ProductArticlesArenaScreen extends StatelessWidget {
               padding: EdgeInsets.zero,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const _PanelHeader('Editorial queue', 'Static prototype of the CMS pipeline.'),
-                const _ArticleRow('Platform', 'What is Sports Terminal?', 'Founder post', 'Draft'),
+                const _ArticleRow('Platform', 'What is Arcside?', 'Founder post', 'Draft'),
                 const _ArticleRow('NBA', 'How to use player pages without drowning in tables', 'Explainer', 'Ready'),
                 const _ArticleRow('Fantasy', 'Building a first watchlist from 2024-25 data', 'Fantasy', 'Draft'),
                 _ArticleRow('Game', 'What a game page should show after final buzzer', 'Product', game == null ? 'Planned' : _txt(game['game_id'])),
@@ -107,7 +107,7 @@ class _ProductMessagesArenaScreenState extends State<ProductMessagesArenaScreen>
             _RoomHeader(thread: thread),
             const SizedBox(height: 18),
             _Bubble(author: 'Keshav', text: thread.preview, self: true),
-            const _Bubble(author: 'Sports Terminal', text: 'This is the right shape for the UI, but launch needs a real messaging backend, read state, block/report controls, and notification delivery.', self: false),
+            const _Bubble(author: 'Arcside', text: 'This is the right shape for the UI, but launch needs a real messaging backend, read state, block/report controls, and notification delivery.', self: false),
             const _Bubble(author: 'Moderator note', text: 'Every messaging surface should connect to safety tooling from day one.', self: false),
             const SizedBox(height: 16),
             Container(

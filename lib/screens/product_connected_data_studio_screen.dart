@@ -475,7 +475,7 @@ class _Status extends StatelessWidget {
       );
 }
 
-const _starter = """# Sports Terminal Python Lab
+const _starter = """# Arcside Python Lab
 # Routed rows are available through the sandbox data helpers.
 values = numeric('PTS')
 result = {

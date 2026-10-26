@@ -91,7 +91,7 @@ class _ProductConnectedWorkspaceScreenState
     if (current == null || saving) return;
     final titled = current.copyWith(
       title: titleController.text.trim().isEmpty
-          ? 'Sports Terminal Workbook'
+          ? 'Arcside Workbook'
           : titleController.text.trim(),
     );
     setState(() {
