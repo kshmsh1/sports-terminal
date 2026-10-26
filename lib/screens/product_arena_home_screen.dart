@@ -91,7 +91,7 @@ class _ArenaHero extends StatelessWidget {
         Positioned(right: 125, bottom: -70, child: _GlowBall(size: 150, color: _orange.withValues(alpha: 0.22))),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Wrap(spacing: 10, runSpacing: 10, children: [
-            _GlassPill('SPORTS TERMINAL'),
+            _GlassPill('ARCSIDE'),
             _GlassPill('NBA 2024-25 DATA READY'),
             _GlassPill('${data.games.length} GAMES'),
             _GlassPill('${_compact(data.playByPlayEvents)} PBP EVENTS'),
