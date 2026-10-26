@@ -17,7 +17,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('Sports Terminal'), findsWidgets);
+    expect(find.text('Arcside'), findsWidgets);
     expect(find.text('Sign in'), findsWidgets);
     expect(find.text('Create account'), findsWidgets);
   });
