@@ -1,9 +1,9 @@
-# Sports Terminal
+# Arcside
 
 > **Source availability:** This repository is publicly viewable, but the source is not open-source. Reuse, redistribution, derivative products, or commercial deployment are not permitted except as described in the repository license. Local/raw datasets and generated warehouses are intentionally excluded from version control.
 
 
-Sports Terminal is a multi-sport web product with an NBA-first data platform. After login, users land on a league-selection home. NBA is the first fully enabled league; NFL, NHL, MLB, MLS, F1, Premier League, WNBA, ATP, WTA, PGA and IPL remain explicit future league surfaces until source-backed datasets are added.
+Arcside is a multi-sport web product with an NBA-first data platform. After login, users land on a league-selection home. NBA is the first fully enabled league; NFL, NHL, MLB, MLS, F1, Premier League, WNBA, ATP, WTA, PGA and IPL remain explicit future league surfaces until source-backed datasets are added.
 
 ## NBA website
 
@@ -91,7 +91,7 @@ The read path remains static-first. Mutable Front Office state can be published 
 
 ## Data policy
 
-Sports Terminal does not add fake production data to make screens appear complete.
+Arcside does not add fake production data to make screens appear complete.
 
 - Source-backed data may be shown.
 - Missing values remain null or visibly unavailable rather than invented zeroes.

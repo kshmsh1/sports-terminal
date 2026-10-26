@@ -41,7 +41,7 @@ class SportsTerminalStaticJsonLoader {
       final decodedBytes = GZipDecoder().decodeBytes(response.bodyBytes);
       final decoded = jsonDecode(utf8.decode(decodedBytes));
       if (decoded is! Map) {
-        throw FormatException('Invalid Sports Terminal bundle: $bundleName');
+        throw FormatException('Invalid Arcside bundle: $bundleName');
       }
       payload = decoded.map((key, value) => MapEntry(key.toString(), value));
       _remember(bucket, payload);
@@ -51,7 +51,7 @@ class SportsTerminalStaticJsonLoader {
 
     if (!payload.containsKey(logicalRelative)) {
       throw FormatException(
-        'Sports Terminal bundle is missing $logicalRelative (bucket $bucket)',
+        'Arcside bundle is missing $logicalRelative (bucket $bucket)',
       );
     }
     return payload[logicalRelative];

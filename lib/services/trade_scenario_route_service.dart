@@ -68,7 +68,7 @@ class TradeScenarioRouteService {
       sourceObjectType: 'TradeScenario',
       rows: rows,
       targetRoute: targetRoute,
-      sourceSnapshot: 'Sports Terminal Trade Machine · ${scenario.operatingSeason}',
+      sourceSnapshot: 'Arcside Trade Machine · ${scenario.operatingSeason}',
       readinessState: report.isValid ? (report.requiresReview ? 'Valid with review flags' : 'Structurally valid') : 'Invalid',
       rowKey: 'record_type',
       preferredColumns: const [
