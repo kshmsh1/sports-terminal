@@ -4,11 +4,12 @@ Part 1 is a capture-driven historical acquisition layer for the NBA.com Stats re
 
 ## Scope
 
-The plan in `assets/data/nba/metadata/nba_com_capture_plan_part1.json` expands the supplied request contracts into **84 distinct variants** across **80 NBA seasons (1946-47 through 2025-26)** and **Regular Season + Playoffs**, for **13,440 auditable scopes** before endpoint availability is considered.
+The plan in `assets/data/nba/metadata/nba_com_capture_plan_part1.json` expands the supplied request contracts into **85 distinct variants** across **80 NBA seasons (1946-47 through 2025-26)** and **Regular Season + Playoffs**, for **13,600 auditable scopes** before endpoint availability is considered.
 
 Covered families:
 
 - player traditional box scores (`leaguegamelog`)
+- player bio, draft attributes and season efficiency (`leaguedashplayerbiostats`)
 - player shot locations (Base and Opponent; 5-foot, 8-foot and zone views)
 - player clutch (Base, Advanced, Misc, Scoring, Usage)
 - Synergy play types (11 play types × offensive/defensive)
@@ -16,7 +17,7 @@ Covered families:
 - player defense dashboard (6 distance/category views)
 - player shot dashboard (General, Shot Clock, Dribbles, Touch Time, Closest Defender, Closest Defender 10+)
 - player game logs (Base, Advanced, Misc, Scoring, Usage)
-- player hustle
+- player hustle (including split contested shots, screen-assist points, loose-ball/box-out splits and native rates)
 
 The collector does **not** impose guessed historical start seasons. It probes the configured 1946-47→2025-26 range and records empty/unavailable scopes instead of fabricating data.
 
@@ -41,6 +42,42 @@ bash scripts/fetch_nba_com_historical_stats.sh --surface players_synergy --start
 ```
 
 The acquisition layer rate-limits requests, retries transient failures, records unsupported historical scopes as unavailable, stops after repeated transport rejection, validates result-set names and user-supplied row ceilings, and writes an incremental `raw/nba_com_stats/coverage.json` so interrupted runs can resume safely.
+
+## Focused bio + hustle historical acquisition
+
+The 2025-26 regular-season/playoff request contracts and headers are captured
+in the plan. This change **does not** assert NBA.com has served or that the
+local warehouse already contains any historical player rows. Run the offline
+collector from a network where NBA.com is reachable (subject to source terms):
+
+```bash
+bash scripts/fetch_nba_com_historical_stats.sh \
+  --surface players_bio \
+  --surface players_hustle \
+  --start 1946-47 --end 2025-26
+
+python tools/audit_nba_com_historical_capture.py
+bash scripts/open_terminal.sh --rebuild-static
+```
+
+The collector preserves Regular Season and Playoffs separately, saves raw
+source responses before normalization, and resumes successful snapshots.
+The supported historical seasons are established from actual source responses,
+not guessed. Unsupported years remain empty/unavailable, never fabricated.
+The plan has an explicit 2025-26 upper bound and does not collect 2026-27.
+
+For each successfully matched player-season row, the enrichment step maps
+NBA.com bio age, height (inches), weight (pounds), draft information,
+OREB%, DREB%, AST%, TS%, usage and net rating alongside all 28 hustle
+source fields. Existing historical season box-score counts remain authoritative,
+while bio-only GP/PTS/REB/AST values are retained for audit rather than
+silently overwriting them. College and country appear in Physical Profile;
+NBA.com height text, original fields and source parameters remain preserved
+in the nested source payload.
+
+Hustle tracking uses its own source `G` for per-game denominators, not
+the player's canonical season games. The player and team box-out rebound
+rates remain separate. Field-level non-availability is `—`, not zero.
 
 ## Local capture layout
 
