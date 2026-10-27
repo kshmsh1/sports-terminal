@@ -86,7 +86,7 @@ const nbaTerminalStatFamilies = <NbaTerminalStatFamily>[
     label: 'Hustle Breakdown',
     description: 'NBA.com tracked contested shots, deflections, loose balls, screens and box outs.',
     metrics: [
-      'hustle_gp', 'hustle_mpg', 'contested_shots_pg', 'deflections_pg',
+      'hustle_gp', 'hustle_minutes', 'hustle_mpg', 'contested_shots_pg', 'deflections_pg',
       'charges_drawn_pg', 'screen_apg', 'loose_balls_recovered_pg', 'box_outs_pg',
     ],
     expansionOverrides: {
@@ -303,6 +303,7 @@ final List<NbaTerminalMetric> nbaTerminalMetrics = [
   _m('contested_shots_pg', 'Contested Shots Per Game', 'Contested Shots PG', 'Defense', 'Opponent shot attempts contested by the player per game.', raw: ['contested_shots_per_game', 'contested_shots_pg'], providerNative: true),
   _m('loose_balls_recovered_pg', 'Loose Balls Recovered Per Game', 'Loose Balls Recovered PG', 'Defense', 'Loose balls recovered by the player per game.', raw: ['loose_balls_recovered_per_game', 'loose_balls_recovered_pg'], providerNative: true),
   _m('hustle_gp', 'Hustle Games', 'HUSTLE GP', 'Defense', 'Games with NBA.com hustle tracking; may differ from season games.', raw: ['hustle_gp'], format: NbaTerminalMetricFormat.integer, providerNative: true),
+  _m('hustle_minutes', 'Hustle Minutes', 'HUSTLE MIN', 'Defense', 'Total minutes in NBA.com hustle tracking for the selected season and season type.', raw: ['hustle_minutes'], providerNative: true),
   _m('hustle_mpg', 'Hustle Minutes Per Game', 'HUSTLE MPG', 'Defense', 'Tracked minutes divided by hustle games.', raw: ['hustle_mpg'], providerNative: true),
   _m('contested_twos_pg', 'Contested Two-Point Shots Per Game', '2PT CONT PG', 'Defense', 'Tracked two-point shots contested per hustle game.', raw: ['contested_twos_pg'], providerNative: true),
   _m('contested_threes_pg', 'Contested Three-Point Shots Per Game', '3PT CONT PG', 'Defense', 'Tracked three-point shots contested per hustle game.', raw: ['contested_threes_pg'], providerNative: true),
