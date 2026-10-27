@@ -315,38 +315,83 @@ class _WebsiteNbaAdvancedStatsScreenState
         ),
     ];
 
+    final stintTint = Color.alphaBlend(
+      colors.primary.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? .15 : .07),
+      colors.surface,
+    );
+    final stintAlternateTint = Color.alphaBlend(
+      colors.primary.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? .21 : .12),
+      colors.surface,
+    );
+    var childNumber = 0;
+    final rowBackgrounds = <Color?>[
+      for (final entry in visibleRows)
+        if (entry.isChild)
+          ((childNumber++).isEven ? stintTint : stintAlternateTint)
+        else null,
+    ];
+
     final tableRows = <List<Widget>>[
-      for (final row in paged)
+      for (final entry in visibleRows)
         [
-          InkWell(
-            onTap: () => openWebsiteNbaPlayerPage(
-              context,
-              session: widget.session,
-              playerKey: row.playerId,
-              playerName: row.player,
-            ),
-            child: Text(
-              row.player,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: colors.primary,
-                fontWeight: FontWeight.w700,
+          Row(
+            children: [
+              if (entry.isChild)
+                const SizedBox(width: 28)
+              else if (entry.canExpand)
+                InkWell(
+                  onTap: () => setState(() {
+                    if (!_expandedPlayers.add(entry.row.playerId)) {
+                      _expandedPlayers.remove(entry.row.playerId);
+                    }
+                  }),
+                  child: Tooltip(
+                    message: _expandedPlayers.contains(entry.row.playerId)
+                        ? 'Collapse team rows' : 'Expand team rows',
+                    child: Icon(
+                      _expandedPlayers.contains(entry.row.playerId)
+                          ? Icons.arrow_drop_down_rounded
+                          : Icons.arrow_right_rounded,
+                      size: 27,
+                      color: colors.primary,
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(width: 28),
+              Expanded(
+                child: InkWell(
+                  onTap: () => openWebsiteNbaPlayerPage(
+                    context,
+                    session: widget.session,
+                    playerKey: entry.row.playerId,
+                    playerName: entry.row.player,
+                  ),
+                  child: Text(
+                    entry.isChild ? '↳ ${entry.row.player}' : entry.row.player,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: entry.isChild ? colors.onSurface : colors.primary,
+                      fontWeight: entry.isChild ? FontWeight.w600 : FontWeight.w700,
+                    ),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-          _TeamLink(session: widget.session, row: row),
-          Text(row.position, maxLines: 1, overflow: TextOverflow.ellipsis),
+          _TeamLink(session: widget.session, row: entry.row),
+          Text(entry.row.position, maxLines: 1, overflow: TextOverflow.ellipsis),
           for (final item in visibleMetrics)
             _AdvancedMetricValueCell(
               metric: item.metric,
-              value: _metricValue(row, item.metric.key, _basis),
-              textValue: item.metric.textValue ? _metricTextValue(row, item.metric.key) : null,
+              value: _metricValue(entry.row, item.metric.key, _basis),
+              textValue: item.metric.textValue
+                  ? _metricTextValue(entry.row, item.metric.key) : null,
               basis: _basis,
             ),
         ],
     ];
-
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1900),
@@ -425,7 +470,7 @@ class _WebsiteNbaAdvancedStatsScreenState
             if (filtered.isEmpty)
               _EmptyCard(_seasonType == NbaStatsSeasonType.playoffs ? 'No playoff rows match these filters for $_season.' : 'No regular-season rows match these filters for $_season.')
             else
-              WebsiteStickyStatsTable(columns: tableColumns, rows: tableRows, firstColumnWidth: 164, headerHeight: 46, rowHeight: 40),
+              WebsiteStickyStatsTable(columns: tableColumns, rows: tableRows, rowBackgrounds: rowBackgrounds, firstColumnWidth: 164, headerHeight: 46, rowHeight: 40),
             const SizedBox(height: 8),
             pager(),
             const SizedBox(height: 16),
