@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/historical_nba_repository.dart';
+import '../services/nba_stat_display_format.dart';
 import '../services/nba_stats_metric_catalog.dart';
 import '../services/nba_stats_workstation_engine.dart';
 
@@ -892,6 +893,7 @@ String _historicalFormat(
       '${value >= 0 ? '+' : ''}${value.toStringAsFixed(metric.decimals)}',
     NbaTerminalMetricFormat.seconds => '${value.toStringAsFixed(metric.decimals)}s',
     NbaTerminalMetricFormat.inches => '${value.toStringAsFixed(metric.decimals)} in',
+    NbaTerminalMetricFormat.feetInches => nbaFormatFeetInches(value),
     NbaTerminalMetricFormat.pounds => '${value.toStringAsFixed(metric.decimals)} lb',
     NbaTerminalMetricFormat.decimal => value.toStringAsFixed(metric.decimals),
   };
