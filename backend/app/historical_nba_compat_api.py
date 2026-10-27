@@ -284,6 +284,9 @@ def historical_seed_snapshot(
         # Preserve the actual team stints alongside one canonical player total.
         # Aggregate abbreviations such as TOT/2TM/MULTI aren't franchises.
         team_stints: dict[str, set[str]] = defaultdict(set)
+        # Store actual team-specific canonical season rows in the parent snapshot.
+        # The UI must never derive traded stints by dividing the combined total.
+        source_stints: dict[tuple[str, str], dict[str, dict[str, Any]]] = defaultdict(dict)
         for source_row in player_source_rows:
             player_key = str(source_row.get("player_key") or "")
             abbreviation = str(source_row.get("team_abbreviation") or "").strip()
@@ -295,12 +298,40 @@ def historical_seed_snapshot(
                          abbreviation[:-2].isdigit())
             ):
                 team_stints[player_key].add(abbreviation)
+                segment = str(source_row.get("season_type") or "").strip().lower()
+                key = (player_key, segment)
+                existing = source_stints[key].get(abbreviation)
+                # Prefer a fully populated canonical source rather than
+                # accidentally summing duplicate variants of the same stint.
+                if existing is None or (
+                    sum(v is not None for v in source_row.values()),
+                    int(source_row.get("source_count") or 0),
+                ) > (
+                    sum(v is not None for v in existing.values()),
+                    int(existing.get("source_count") or 0),
+                ):
+                    source_stints[key][abbreviation] = source_row
 
         player_totals = [_player_seed_row(row) for row in collapsed]
         for player_row in player_totals:
+            player_key = str(player_row.get("player_id") or "")
             player_row["teams_played_for"] = sorted(
-                team_stints.get(str(player_row.get("player_id") or ""), set())
+                team_stints.get(player_key, set())
             )
+            segment = str(player_row.get("season_type") or "").strip().lower()
+            stints = source_stints.get((player_key, segment), {})
+            # Only an actual multi-team player receives expandable children.
+            # Keep regular-season and playoff stints strictly separated.
+            if len(stints) >= 2:
+                player_row["team_stints"] = [
+                    _player_seed_row(stints[abbreviation])
+                    for abbreviation in sorted(stints)
+                ]
+                # Some historical canonical sources use TOT/MULTI rather than
+                # the familiar 2TM/3TM/4TM for a combined player row.
+                combined_label = str(player_row.get("team_ids") or "").upper()
+                if combined_label in {"TOT", "MULTI"} and len(stints) <= 4:
+                    player_row["team_ids"] = f"{len(stints)}TM"
         players = [_player_profile(row) for row in collapsed]
 
         team_sql = """

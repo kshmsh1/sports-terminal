@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/app_session.dart';
+import '../services/nba_stat_display_format.dart';
 import '../services/nba_stats_metric_catalog.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
@@ -47,6 +48,7 @@ class _WebsiteNbaAdvancedStatsScreenState
   String _sortKey = 'pts';
   bool _descending = true;
   final Set<String> _expanded = <String>{};
+  final Set<String> _expandedPlayers = <String>{};
   int _pageSize = 20;
   int _page = 1;
 
@@ -89,6 +91,7 @@ class _WebsiteNbaAdvancedStatsScreenState
       if (resetTeam) _team = 'All';
       _page = 1;
       _snapshotFuture = _loadSnapshot();
+      _expandedPlayers.clear();
     });
   }
 
@@ -101,6 +104,7 @@ class _WebsiteNbaAdvancedStatsScreenState
       _team = 'All';
       _page = 1;
       _snapshotFuture = _loadSnapshot();
+      _expandedPlayers.clear();
     });
   }
 
@@ -209,21 +213,26 @@ class _WebsiteNbaAdvancedStatsScreenState
       seasonType: _seasonType,
     );
     final query = _search.text.trim().toLowerCase();
-    final teams = <String>{'All'};
+    final realTeams = <String>{};
+    final combinedLabels = <String>{};
     for (final row in rows) {
-      teams.addAll(
-        row.team
-            .split(RegExp(r'[,/ ]+'))
-            .where((item) => item.isNotEmpty && item != '—'),
-      );
+      for (final team in _playerTeams(row)) {
+        if (_isCombinedTeamLabel(team)) combinedLabels.add(team);
+        else realTeams.add(team);
+      }
     }
+    final teamValues = [
+      'All',
+      ...(realTeams.toList()..sort()),
+      for (final label in const ['2TM', '3TM', '4TM'])
+        if (combinedLabels.contains(label)) label,
+    ];
     final filtered = rows.where((row) {
       if (query.isNotEmpty &&
-          !'${row.player} ${row.team} ${row.position}'
-              .toLowerCase()
-              .contains(query)) return false;
+          !'${row.player} ${row.team} ${row.position} ${_playerTeams(row).join(' ')}'
+              .toLowerCase().contains(query)) return false;
       if (_team != 'All' &&
-          !row.team.split(RegExp(r'[,/ ]+')).contains(_team)) return false;
+          row.team != _team && !_playerTeams(row).contains(_team)) return false;
       if (_position != 'All' && !_matchesPosition(row.position, _position)) {
         return false;
       }
@@ -256,6 +265,18 @@ class _WebsiteNbaAdvancedStatsScreenState
     if (safePage != _page) _page = safePage;
     final start = (safePage - 1) * _pageSize;
     final paged = filtered.skip(start).take(_pageSize).toList();
+    // Parents control sorting and pagination; their actual stints expand
+    // underneath without becoming separate leaderboard entries.
+    final visibleRows = <_PlayerDisplayRow>[];
+    for (final parent in paged) {
+      final stints = _engine.teamStintRows(parent, basis: _basis);
+      visibleRows.add(_PlayerDisplayRow(parent, canExpand: stints.isNotEmpty));
+      if (_expandedPlayers.contains(parent.playerId)) {
+        for (final stint in stints) {
+          visibleRows.add(_PlayerDisplayRow(stint, isChild: true));
+        }
+      }
+    }
 
     Widget pager() => WebsitePagination(
           totalItems: filtered.length,
@@ -294,38 +315,83 @@ class _WebsiteNbaAdvancedStatsScreenState
         ),
     ];
 
+    final stintTint = Color.alphaBlend(
+      colors.primary.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? .15 : .07),
+      colors.surface,
+    );
+    final stintAlternateTint = Color.alphaBlend(
+      colors.primary.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? .21 : .12),
+      colors.surface,
+    );
+    var childNumber = 0;
+    final rowBackgrounds = <Color?>[
+      for (final entry in visibleRows)
+        if (entry.isChild)
+          ((childNumber++).isEven ? stintTint : stintAlternateTint)
+        else null,
+    ];
+
     final tableRows = <List<Widget>>[
-      for (final row in paged)
+      for (final entry in visibleRows)
         [
-          InkWell(
-            onTap: () => openWebsiteNbaPlayerPage(
-              context,
-              session: widget.session,
-              playerKey: row.playerId,
-              playerName: row.player,
-            ),
-            child: Text(
-              row.player,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: colors.primary,
-                fontWeight: FontWeight.w700,
+          Row(
+            children: [
+              if (entry.isChild)
+                const SizedBox(width: 28)
+              else if (entry.canExpand)
+                InkWell(
+                  onTap: () => setState(() {
+                    if (!_expandedPlayers.add(entry.row.playerId)) {
+                      _expandedPlayers.remove(entry.row.playerId);
+                    }
+                  }),
+                  child: Tooltip(
+                    message: _expandedPlayers.contains(entry.row.playerId)
+                        ? 'Collapse team rows' : 'Expand team rows',
+                    child: Icon(
+                      _expandedPlayers.contains(entry.row.playerId)
+                          ? Icons.arrow_drop_down_rounded
+                          : Icons.arrow_right_rounded,
+                      size: 27,
+                      color: colors.primary,
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(width: 28),
+              Expanded(
+                child: InkWell(
+                  onTap: () => openWebsiteNbaPlayerPage(
+                    context,
+                    session: widget.session,
+                    playerKey: entry.row.playerId,
+                    playerName: entry.row.player,
+                  ),
+                  child: Text(
+                    entry.isChild ? '↳ ${entry.row.player}' : entry.row.player,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: entry.isChild ? colors.onSurface : colors.primary,
+                      fontWeight: entry.isChild ? FontWeight.w600 : FontWeight.w700,
+                    ),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-          _TeamLink(session: widget.session, row: row),
-          Text(row.position, maxLines: 1, overflow: TextOverflow.ellipsis),
+          _TeamLink(session: widget.session, row: entry.row),
+          Text(entry.row.position, maxLines: 1, overflow: TextOverflow.ellipsis),
           for (final item in visibleMetrics)
             _AdvancedMetricValueCell(
               metric: item.metric,
-              value: _metricValue(row, item.metric.key, _basis),
-              textValue: item.metric.textValue ? _metricTextValue(row, item.metric.key) : null,
+              value: _metricValue(entry.row, item.metric.key, _basis),
+              textValue: item.metric.textValue
+                  ? _metricTextValue(entry.row, item.metric.key) : null,
               basis: _basis,
             ),
         ],
     ];
-
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1900),
@@ -382,7 +448,7 @@ class _WebsiteNbaAdvancedStatsScreenState
                     ),
                     _StringDropdown(label: 'Stat group', value: _category, values: [for (final item in _categories) item.name], width: 245, onChanged: _selectCategory),
                     SizedBox(width: 220, child: TextField(controller: _search, onChanged: (_) => setState(() => _page = 1), decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'Search players', isDense: true))),
-                    _StringDropdown(label: 'Team', value: _team, values: teams.toList()..sort(), onChanged: (value) => setState(() { _team = value; _page = 1; })),
+                    _StringDropdown(label: 'Team', value: _team, values: teamValues, onChanged: (value) => setState(() { _team = value; _page = 1; })),
                     _StringDropdown(label: 'Position', value: _position, values: const ['All', 'PG', 'SG', 'SF', 'PF', 'C'], width: 112, onChanged: (value) => setState(() { _position = value; _page = 1; })),
                     _MinimumDropdown(label: 'GP', value: _minGp, values: const [50,65,60,40,30,20,10,0], onChanged: (value) => setState(() { _minGp = value; _page = 1; })),
                     _MinimumDropdown(label: 'MPG', value: _minMpg, values: const [0,30,25,20,15,10], onChanged: (value) => setState(() { _minMpg = value; _page = 1; })),
@@ -404,7 +470,7 @@ class _WebsiteNbaAdvancedStatsScreenState
             if (filtered.isEmpty)
               _EmptyCard(_seasonType == NbaStatsSeasonType.playoffs ? 'No playoff rows match these filters for $_season.' : 'No regular-season rows match these filters for $_season.')
             else
-              WebsiteStickyStatsTable(columns: tableColumns, rows: tableRows, firstColumnWidth: 164, headerHeight: 46, rowHeight: 40),
+              WebsiteStickyStatsTable(columns: tableColumns, rows: tableRows, rowBackgrounds: rowBackgrounds, firstColumnWidth: 164, headerHeight: 46, rowHeight: 40),
             const SizedBox(height: 8),
             pager(),
             const SizedBox(height: 16),
@@ -419,7 +485,20 @@ class _WebsiteNbaAdvancedStatsScreenState
     final header = ['Player','Team','Position',...metrics.map((item) => item.metric.displayLabel(_basis))];
     final lines = <String>[_csvLine(header)];
     for (final row in rows) {
-      lines.add(_csvLine([row.player,row.team,row.position,for (final item in metrics) item.metric.textValue ? _metricTextValue(row, item.metric.key) : _formatMetric(_metricValue(row, item.metric.key, _basis),item.metric,_basis)]));
+      final exportedRows = <NbaStatsRow>[
+        row,
+        if (_expandedPlayers.contains(row.playerId))
+          ..._engine.teamStintRows(row, basis: _basis),
+      ];
+      for (final entry in exportedRows) {
+        lines.add(_csvLine([
+          entry.player, entry.team, entry.position,
+          for (final item in metrics)
+            item.metric.textValue
+                ? _metricTextValue(entry, item.metric.key)
+                : _formatMetric(_metricValue(entry, item.metric.key, _basis), item.metric, _basis),
+        ]));
+      }
     }
     await Clipboard.setData(ClipboardData(text: lines.join('\n')));
     if (!context.mounted) return;
@@ -470,12 +549,49 @@ class _MinimumDropdown extends StatelessWidget {
   @override Widget build(BuildContext context) => SizedBox(width: 104, child: DropdownButtonFormField<int>(initialValue: values.contains(value) ? value : values.first, decoration: InputDecoration(labelText: label, isDense: true), items: [for (final item in values) DropdownMenuItem(value: item, child: Text(item == 0 ? 'Any' : '$item+'))], onChanged: (next) { if (next != null) onChanged(next); }));
 }
 
+class _PlayerDisplayRow {
+  const _PlayerDisplayRow(this.row, {this.isChild = false, this.canExpand = false});
+  final NbaStatsRow row;
+  final bool isChild;
+  final bool canExpand;
+}
+
+bool _isCombinedTeamLabel(String value) =>
+    RegExp(r'^[234]TM$', caseSensitive: false).hasMatch(value);
+
+Set<String> _playerTeams(NbaStatsRow row) {
+  final teams = <String>{};
+  final source = row.raw['teams_played_for'];
+  if (source is List) {
+    for (final item in source) {
+      final team = item.toString().trim();
+      if (team.isNotEmpty && team != '—') teams.add(team);
+    }
+  }
+  teams.addAll(row.team.split(RegExp(r'[,/ ]+')).where(
+    (item) => item.isNotEmpty && item != '—',
+  ));
+  return teams;
+}
+
 class _VisibleMetric { const _VisibleMetric(this.metric,this.child); final _Metric metric; final bool child; }
 class _Category { const _Category(this.name,this.description,this.metrics); final String name; final String description; final List<_Metric> metrics; }
 class _Metric {
   const _Metric(this.key,this.label,this.glossary,{this.totalLabel,this.rateAbbreviation,this.rateSensitive=false,this.percent=false,this.signed=false,this.integer=false,this.textValue=false,this.decimals=1,this.children=const []});
   final String key; final String label; final String glossary; final String? totalLabel; final String? rateAbbreviation; final bool rateSensitive; final bool percent; final bool signed; final bool integer; final bool textValue; final int decimals; final List<_Metric> children;
-  String displayLabel(NbaStatsBasis basis) { if (!rateSensitive) return label; final stem = rateAbbreviation ?? label.replaceAll(' PG','').replaceAll('PG',''); switch (basis) { case NbaStatsBasis.perGame: return label; case NbaStatsBasis.totals: return totalLabel ?? stem; case NbaStatsBasis.per36: return '$stem/36'; case NbaStatsBasis.per48: return '$stem/48'; case NbaStatsBasis.per75: return '$stem/75'; case NbaStatsBasis.per100: return '$stem/100'; } }
+  String displayLabel(NbaStatsBasis basis) {
+    if (!rateSensitive) return nbaTitleCaseStatLabel(label);
+    final stem = rateAbbreviation ?? label.replaceAll(' PG', '').replaceAll('PG', '');
+    final resolved = switch (basis) {
+      NbaStatsBasis.perGame => label,
+      NbaStatsBasis.totals => totalLabel ?? stem,
+      NbaStatsBasis.per36 => '$stem/36',
+      NbaStatsBasis.per48 => '$stem/48',
+      NbaStatsBasis.per75 => '$stem/75',
+      NbaStatsBasis.per100 => '$stem/100',
+    };
+    return nbaTitleCaseStatLabel(resolved);
+  }
 }
 
 _Metric countMetric(String key,String perGameLabel,String totalLabel,String abbreviation,String glossary,{List<_Metric> children=const []}) => _Metric(key,perGameLabel,glossary,totalLabel:totalLabel,rateAbbreviation:abbreviation,rateSensitive:true,children:children);
@@ -657,6 +773,6 @@ double? _metricValue(NbaStatsRow row,String key,NbaStatsBasis basis){
   return _resolver.value(row, key) ?? row.value(key);
 }
 
-String _formatMetric(double? value,_Metric metric,NbaStatsBasis basis){if(value==null||value.isNaN||value.isInfinite)return '—';if(metric.percent)return '${(value*100).toStringAsFixed(metric.decimals)}%';if(metric.integer)return value.round().toString();if(metric.signed)return '${value>=0?'+':''}${value.toStringAsFixed(metric.decimals)}';return value.toStringAsFixed(metric.decimals);}
+String _formatMetric(double? value,_Metric metric,NbaStatsBasis basis){if(value==null||value.isNaN||value.isInfinite)return '—';if(metric.key == 'height')return nbaFormatFeetInches(value);if(metric.percent)return '${(value*100).toStringAsFixed(metric.decimals)}%';if(metric.integer)return value.round().toString();if(metric.signed)return '${value>=0?'+':''}${value.toStringAsFixed(metric.decimals)}';return value.toStringAsFixed(metric.decimals);}
 String _basisDescription(NbaStatsBasis basis)=>switch(basis){NbaStatsBasis.perGame=>'Per-game values.',NbaStatsBasis.totals=>'Season totals.',NbaStatsBasis.per36=>'Per 36 minutes.',NbaStatsBasis.per48=>'Per 48 minutes.',NbaStatsBasis.per75=>'Per 75 possessions.',NbaStatsBasis.per100=>'Per 100 possessions.'};
 String _csvLine(List<Object?> values)=>values.map((value){final text=value?.toString()??'';return '"${text.replaceAll('"','""')}"';}).join(',');

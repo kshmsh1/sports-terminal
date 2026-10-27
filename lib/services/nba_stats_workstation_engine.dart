@@ -534,6 +534,34 @@ class NbaStatsWorkstationEngine {
     return _attachPercentiles(rows);
   }
 
+  /// Return only recorded team-specific season rows for a traded player.
+  /// Never invent team splits by dividing the combined player total.
+  List<NbaStatsRow> teamStintRows(
+    NbaStatsRow parent, {
+    NbaStatsBasis basis = NbaStatsBasis.perGame,
+  }) {
+    final source = parent.raw['team_stints'];
+    if (source is! List) return const [];
+    final normalized = <NbaStatsRow>[];
+    final seenTeams = <String>{};
+    for (final item in source) {
+      if (item is! Map) continue;
+      final raw = item.map((key, value) => MapEntry(key.toString(), value));
+      final playerId = _text(_first(raw, const ['player_id', 'id']));
+      final team = _text(_first(raw, const ['team_ids', 'team_abbreviation']));
+      if (playerId != parent.playerId ||
+          team.isEmpty ||
+          !RegExp(r'^[A-Za-z]{2,4}$').hasMatch(team) ||
+          !seenTeams.add(team.toUpperCase())) {
+        continue;
+      }
+      final stint = _normalize(raw, parent.raw, basis);
+      if (stint.team != team) continue;
+      normalized.add(stint);
+    }
+    return normalized.length >= 2 ? normalized : const [];
+  }
+
   List<NbaStatsRow> filterRows(
     List<NbaStatsRow> rows,
     NbaStatsFilters filters, {

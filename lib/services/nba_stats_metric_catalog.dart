@@ -1,4 +1,5 @@
 import 'nba_stats_workstation_engine.dart';
+import 'nba_stat_display_format.dart';
 
 enum NbaTerminalMetricFormat {
   decimal,
@@ -7,6 +8,7 @@ enum NbaTerminalMetricFormat {
   signed,
   seconds,
   inches,
+  feetInches,
   pounds,
 }
 
@@ -489,7 +491,7 @@ final List<NbaTerminalMetric> nbaTerminalMetrics = [
   _m('draft_year', 'NBA Draft Year', 'DRAFT YR', 'Physical', 'Year selected in the NBA draft, where applicable.', raw: ['draft_year'], format: NbaTerminalMetricFormat.integer, providerNative: true),
   _m('draft_round', 'NBA Draft Round', 'DRAFT RD', 'Physical', 'Round selected in the NBA draft, where applicable.', raw: ['draft_round'], format: NbaTerminalMetricFormat.integer, providerNative: true),
   _m('draft_number', 'NBA Draft Pick', 'DRAFT #', 'Physical', 'Overall selection number in the NBA draft, where applicable.', raw: ['draft_number'], format: NbaTerminalMetricFormat.integer, providerNative: true),
-  _m('height', 'Height', 'HEIGHT', 'Physical', 'Measured player height.', raw: ['height_inches', 'height'], format: NbaTerminalMetricFormat.inches, providerNative: true),
+  _m('height', 'Height', 'HEIGHT', 'Physical', 'Measured player height.', raw: ['height_inches', 'height'], format: NbaTerminalMetricFormat.feetInches, providerNative: true),
   _m('weight', 'Weight', 'WEIGHT', 'Physical', 'Measured player weight.', raw: ['weight_lbs', 'weight'], format: NbaTerminalMetricFormat.pounds, providerNative: true),
   _m('wingspan', 'Wingspan', 'WINGSPAN', 'Physical', 'Measured fingertip-to-fingertip wingspan.', raw: ['wingspan_inches', 'wingspan'], format: NbaTerminalMetricFormat.inches, providerNative: true),
   _m('standing_reach', 'Standing Reach', 'ST REACH', 'Physical', 'Measured standing reach.', raw: ['standing_reach_inches', 'standing_reach'], format: NbaTerminalMetricFormat.inches, providerNative: true),
@@ -598,6 +600,8 @@ class NbaTerminalMetricResolver {
         return '${resolved.toStringAsFixed(metric.decimals)}s';
       case NbaTerminalMetricFormat.inches:
         return '${resolved.toStringAsFixed(metric.decimals)} in';
+      case NbaTerminalMetricFormat.feetInches:
+        return nbaFormatFeetInches(resolved);
       case NbaTerminalMetricFormat.pounds:
         return '${resolved.toStringAsFixed(metric.decimals)} lb';
       case NbaTerminalMetricFormat.decimal:

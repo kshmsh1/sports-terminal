@@ -166,6 +166,56 @@ def main() -> int:
         assert payload["player_game_highs"]["p_star"]["max_points"] == 32, payload["player_game_highs"]
         assert payload["manifest"]["warehouseBuild"]["playByPlayEventsNormalized"] == 250000, payload["manifest"]
 
+        # Combined totals retain the authentic individual team source rows.
+        with sqlite3.connect(database) as db:
+            db.execute("""
+                INSERT INTO canon_fact_player_season
+                (fact_key,player_key,season_id,league_id,season_type,
+                 team_key,team_abbreviation,position,age,games,minutes,pts,reb,ast,bpm,source_count)
+                VALUES ('ps_traded_b','p_star','2023-24','NBA','regular',
+                        't_b','BBB','PG',28,15,500,400,65,110,4.1,2)
+            """)
+            db.execute("""
+                INSERT INTO canon_fact_player_season
+                (fact_key,player_key,season_id,league_id,season_type,
+                 team_key,team_abbreviation,position,age,games,minutes,pts,reb,ast,bpm,source_count)
+                VALUES ('ps_traded_total','p_star','2023-24','NBA','regular',
+                        NULL,'2TM','PG',28,90,3200,2300,515,730,6.1,2)
+            """)
+            db.execute("""
+                INSERT INTO canon_fact_player_season
+                (fact_key,player_key,season_id,league_id,season_type,
+                 team_key,team_abbreviation,position,age,games,minutes,pts,source_count)
+                VALUES ('ps_post','p_star','2023-24','NBA','playoffs',
+                        't_a','AAA','PG',28,5,175,123,2)
+            """)
+            db.commit()
+        traded = compat.historical_seed_snapshot(
+            season="2023-24", league="NBA", season_type="regular",
+            include_game_logs=False, player_log_limit=0,
+        )
+        traded_star = next(
+            row for row in traded["player_season_totals"]
+            if row["player_id"] == "p_star"
+        )
+        assert traded_star["team_ids"] == "2TM", traded_star
+        assert traded_star["points"] == 2300, traded_star
+        assert traded_star["teams_played_for"] == ["AAA", "BBB"], traded_star
+        stints = traded_star["team_stints"]
+        assert [row["team_ids"] for row in stints] == ["AAA", "BBB"], stints
+        assert [row["points"] for row in stints] == [1900, 400], stints
+        assert [row["avg_bpm"] for row in stints] == [6.7, 4.1], stints
+        post = compat.historical_seed_snapshot(
+            season="2023-24", league="NBA", season_type="playoffs",
+            include_game_logs=False, player_log_limit=0,
+        )
+        playoff_star = next(
+            row for row in post["player_season_totals"]
+            if row["player_id"] == "p_star"
+        )
+        assert playoff_star["games"] == 5, playoff_star
+        assert "team_stints" not in playoff_star, playoff_star
+
         # Route composition is separately enforced by the deep historical research
         # contract against app.main_launch. Here we assert the compatibility router
         # itself exposes the original-seed projection endpoint so this test remains

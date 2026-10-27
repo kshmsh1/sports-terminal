@@ -17,7 +17,7 @@ BACKEND = ROOT / "backend"
 if str(BACKEND) not in sys.path:
     sys.path.insert(0, str(BACKEND))
 
-COMPILER_VERSION = 2
+COMPILER_VERSION = 3
 NBA_FIRST_START_YEAR = 1946
 NBA_LAST_START_YEAR = 2025
 DEFAULT_DB = ROOT / "data/warehouse/nba_history.sqlite"
