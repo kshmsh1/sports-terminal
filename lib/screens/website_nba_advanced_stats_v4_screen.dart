@@ -235,6 +235,14 @@ class _WebsiteNbaAdvancedStatsScreenState
     final definition = _categories.firstWhere((item) => item.name == _category);
     final visibleMetrics = _visibleMetrics(definition);
     filtered.sort((a, b) {
+      if (_sortKey == 'bio_college' || _sortKey == 'bio_country') {
+        final leftText = _metricTextValue(a, _sortKey);
+        final rightText = _metricTextValue(b, _sortKey);
+        if (leftText == '—') return rightText == '—' ? 0 : 1;
+        if (rightText == '—') return -1;
+        final comparison = leftText.toLowerCase().compareTo(rightText.toLowerCase());
+        return _descending ? -comparison : comparison;
+      }
       final left = _metricValue(a, _sortKey, _basis);
       final right = _metricValue(b, _sortKey, _basis);
       if (left == null && right == null) return a.player.compareTo(b.player);
@@ -272,7 +280,7 @@ class _WebsiteNbaAdvancedStatsScreenState
         WebsiteStickyStatsColumn(
           label: _metricHeader(item.metric),
           width: _metricColumnWidth(item.metric, _basis, child: item.child),
-          numeric: true,
+          numeric: !item.metric.textValue,
           backgroundColor: item.child ? childTint : null,
           onTap: () => setState(() {
             if (_sortKey == item.metric.key) {
@@ -312,6 +320,7 @@ class _WebsiteNbaAdvancedStatsScreenState
             _AdvancedMetricValueCell(
               metric: item.metric,
               value: _metricValue(row, item.metric.key, _basis),
+              textValue: item.metric.textValue ? _metricTextValue(row, item.metric.key) : null,
               basis: _basis,
             ),
         ],
@@ -410,7 +419,7 @@ class _WebsiteNbaAdvancedStatsScreenState
     final header = ['Player','Team','Position',...metrics.map((item) => item.metric.displayLabel(_basis))];
     final lines = <String>[_csvLine(header)];
     for (final row in rows) {
-      lines.add(_csvLine([row.player,row.team,row.position,for (final item in metrics) _formatMetric(_metricValue(row, item.metric.key, _basis),item.metric,_basis)]));
+      lines.add(_csvLine([row.player,row.team,row.position,for (final item in metrics) item.metric.textValue ? _metricTextValue(row, item.metric.key) : _formatMetric(_metricValue(row, item.metric.key, _basis),item.metric,_basis)]));
     }
     await Clipboard.setData(ClipboardData(text: lines.join('\n')));
     if (!context.mounted) return;
@@ -419,13 +428,15 @@ class _WebsiteNbaAdvancedStatsScreenState
 }
 
 class _AdvancedMetricValueCell extends StatelessWidget {
-  const _AdvancedMetricValueCell({required this.metric, required this.value, required this.basis});
+  const _AdvancedMetricValueCell({required this.metric, required this.value, required this.basis, this.textValue});
   final _Metric metric;
   final double? value;
+  final String? textValue;
   final NbaStatsBasis basis;
   @override
   Widget build(BuildContext context) {
-    final text = Text(_formatMetric(value, metric, basis), maxLines: 1, overflow: TextOverflow.ellipsis);
+    final text = Text(metric.textValue ? (textValue ?? '—') : _formatMetric(value, metric, basis), maxLines: 1, overflow: TextOverflow.ellipsis);
+    if (metric.textValue) return text;
     final heat = nbaPercentageHeatMetricForKey(metric.key);
     if (heat == null) return text;
     return Align(alignment: Alignment.centerRight, child: NbaPercentageHeatCell(metric: heat, value: value, child: text));
@@ -462,8 +473,8 @@ class _MinimumDropdown extends StatelessWidget {
 class _VisibleMetric { const _VisibleMetric(this.metric,this.child); final _Metric metric; final bool child; }
 class _Category { const _Category(this.name,this.description,this.metrics); final String name; final String description; final List<_Metric> metrics; }
 class _Metric {
-  const _Metric(this.key,this.label,this.glossary,{this.totalLabel,this.rateAbbreviation,this.rateSensitive=false,this.percent=false,this.signed=false,this.integer=false,this.decimals=1,this.children=const []});
-  final String key; final String label; final String glossary; final String? totalLabel; final String? rateAbbreviation; final bool rateSensitive; final bool percent; final bool signed; final bool integer; final int decimals; final List<_Metric> children;
+  const _Metric(this.key,this.label,this.glossary,{this.totalLabel,this.rateAbbreviation,this.rateSensitive=false,this.percent=false,this.signed=false,this.integer=false,this.textValue=false,this.decimals=1,this.children=const []});
+  final String key; final String label; final String glossary; final String? totalLabel; final String? rateAbbreviation; final bool rateSensitive; final bool percent; final bool signed; final bool integer; final bool textValue; final int decimals; final List<_Metric> children;
   String displayLabel(NbaStatsBasis basis) { if (!rateSensitive) return label; final stem = rateAbbreviation ?? label.replaceAll(' PG','').replaceAll('PG',''); switch (basis) { case NbaStatsBasis.perGame: return label; case NbaStatsBasis.totals: return totalLabel ?? stem; case NbaStatsBasis.per36: return '$stem/36'; case NbaStatsBasis.per48: return '$stem/48'; case NbaStatsBasis.per75: return '$stem/75'; case NbaStatsBasis.per100: return '$stem/100'; } }
 }
 
@@ -510,6 +521,10 @@ _Category _catalogCategory(String familyId, {String? label}) {
     [
       for (final key in family.metrics)
         _catalogMetricWithExpansion(key, family.expansionOverrides[key]),
+      if (familyId == 'physical') ...[
+        const _Metric('bio_college', 'College', 'College attended, as reported by NBA.com.', textValue: true),
+        const _Metric('bio_country', 'Country', 'Country reported by NBA.com.', textValue: true),
+      ],
     ],
   );
 }
@@ -570,6 +585,7 @@ final _categories = <_Category>[
     _catalogMetric('unassisted_ppg'),
   ]),
   _catalogCategory('defense_hustle'),
+  _catalogCategory('hustle_detail'),
   _catalogCategory('playmaking'),
   _catalogCategory('rebounding'),
   _catalogCategory('impact'),
@@ -610,6 +626,7 @@ final _categories = <_Category>[
 
 double _metricColumnWidth(_Metric metric, NbaStatsBasis basis, {required bool child}) {
   final label = metric.displayLabel(basis);
+  if (metric.textValue) return 175.0;
   final arrowAllowance = metric.children.isEmpty ? 0.0 : 32.0;
   final estimated = label.length * 7.8 + 26 + arrowAllowance;
   return math.max(child ? 72.0 : 78.0, math.min(estimated, 320.0));
@@ -626,6 +643,12 @@ class _ErrorState extends StatelessWidget { const _ErrorState({required this.err
 class _EmptyCard extends StatelessWidget { const _EmptyCard(this.message); final String message; @override Widget build(BuildContext context)=>Card(child:Padding(padding:const EdgeInsets.all(20),child:Text(message))); }
 
 bool _matchesPosition(String value,String wanted){final positions=RegExp(r'PG|SG|SF|PF|C').allMatches(value.toUpperCase()).map((m)=>m.group(0)).whereType<String>().toSet();return positions.contains(wanted.toUpperCase());}
+
+String _metricTextValue(NbaStatsRow row, String key) {
+  final raw = row.raw[key];
+  final text = raw?.toString().trim() ?? '';
+  return text.isEmpty ? '—' : text;
+}
 
 double? _metricValue(NbaStatsRow row,String key,NbaStatsBasis basis){
   // Engine-backed counting metrics are already normalized to the selected basis.
