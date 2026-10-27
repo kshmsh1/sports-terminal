@@ -29,6 +29,7 @@ class WebsiteStickyStatsTable extends StatefulWidget {
     super.key,
     required this.columns,
     required this.rows,
+    this.rowBackgrounds = const [],
     this.headerHeight = 46,
     this.rowHeight = 46,
     this.maxBodyHeight = 560,
@@ -39,6 +40,8 @@ class WebsiteStickyStatsTable extends StatefulWidget {
 
   final List<WebsiteStickyStatsColumn> columns;
   final List<List<Widget>> rows;
+  /// Optional explicit background colors for individual data rows.
+  final List<Color?> rowBackgrounds;
   final double headerHeight;
   final double rowHeight;
   final double maxBodyHeight;
@@ -131,6 +134,10 @@ class _WebsiteStickyStatsTableState extends State<WebsiteStickyStatsTable> {
         widget.headerHeight + widget.rows.length * widget.rowHeight;
 
     Color bodyColor(int rowIndex, Color? explicit) {
+      if (rowIndex < widget.rowBackgrounds.length &&
+          widget.rowBackgrounds[rowIndex] != null) {
+        return widget.rowBackgrounds[rowIndex]!;
+      }
       if (explicit != null) return explicit;
       if (!widget.stripeRows || rowIndex.isEven) return bodySurface;
       return alternateSurface;
