@@ -41,15 +41,15 @@ def main() -> None:
     assert summary["first_season"] == "1946-47", summary
     assert summary["last_season"] == "2025-26", summary
     assert summary["seasons"] == 80, summary
-    assert summary["surfaces"] == 9, summary
-    assert summary["variants"] == 84, summary
-    assert summary["planned_scopes"] == 13440, summary
+    assert summary["surfaces"] == 10, summary
+    assert summary["variants"] == 85, summary
+    assert summary["planned_scopes"] == 13600, summary
 
     by_key = {surface.key: surface for surface in surfaces}
     assert set(by_key) == {
         "players_boxscores_traditional", "players_shot_locations", "players_clutch",
         "players_synergy", "players_tracking", "players_defense_dashboard",
-        "players_shot_dashboard", "players_game_logs", "players_hustle",
+        "players_shot_dashboard", "players_game_logs", "players_hustle", "players_bio",
     }
     assert len(by_key["players_tracking"].variants) == 12
     assert len(by_key["players_synergy"].variants) == 22
@@ -59,6 +59,16 @@ def main() -> None:
     league = by_key["players_boxscores_traditional"]
     url = fetcher.request_url(league, league.variants[0], "1946-47", "Playoffs")
     assert "Season=1946-47" in url and "SeasonType=Playoffs" in url and "PlayerOrTeam=P" in url, url
+    bio = by_key["players_bio"]
+    bio_url = fetcher.request_url(bio, bio.variants[0], "2025-26", "Playoffs")
+    assert "SeasonType=Playoffs" in bio_url, bio_url
+    assert "Season=2025-26" in bio_url and "PerMode=Totals" in bio_url, bio_url
+    assert "leaguedashplayerbiostats" in bio_url, bio_url
+    hustle = by_key["players_hustle"]
+    hustle_url = fetcher.request_url(hustle, hustle.variants[0], "2025-26", "Regular Season")
+    assert "leaguehustlestatsplayer" in hustle_url, hustle_url
+    assert "SeasonType=Regular+Season" in hustle_url, hustle_url
+
     synergy = by_key["players_synergy"]
     transition_def = next(item for item in synergy.variants if item.key == "transition_defensive")
     url = fetcher.request_url(synergy, transition_def, "2025-26", "Regular Season")
@@ -166,8 +176,64 @@ def main() -> None:
             season_type="Regular Season", url="https://stats.nba.com/isolation", raw=json.dumps(iso_payload).encode(), payload=iso_payload,
         )
 
+        bio_headers = [
+            "PLAYER_ID", "PLAYER_NAME", "TEAM_ID", "TEAM_ABBREVIATION",
+            "AGE", "PLAYER_HEIGHT", "PLAYER_HEIGHT_INCHES", "PLAYER_WEIGHT",
+            "COLLEGE", "COUNTRY", "DRAFT_YEAR", "DRAFT_ROUND", "DRAFT_NUMBER",
+            "GP", "PTS", "REB", "AST", "NET_RATING", "OREB_PCT", "DREB_PCT",
+            "USG_PCT", "TS_PCT", "AST_PCT",
+        ]
+        for season_type, net, country in [
+            ("Regular Season", 5.7, "United States"),
+            ("Playoffs", -3.2, "Canada"),
+        ]:
+            bio_payload = result_payload(
+                "LeagueDashPlayerBioStats", bio_headers,
+                [[1, "Fixture Star", 10, "FIX", 26, "6-8", 80, 225,
+                  "Test University", country, "2021", "1", "14",
+                  10 if season_type == "Regular Season" else 2, 200, 80, 55,
+                  net, .081, .214, .254, .603, .299]],
+                resource="leaguedashplayerbiostats",
+            )
+            bio_meta = fetcher.write_capture(
+                output=raw, surface=bio, variant=bio.variants[0], season="2025-26",
+                season_type=season_type, url="https://stats.nba.com/fixture-bio",
+                raw=json.dumps(bio_payload).encode(), payload=bio_payload,
+            )
+            assert bio_meta["validation_status"] == "success", bio_meta
+
+        hustle_headers = [
+            "PLAYER_ID", "PLAYER_NAME", "TEAM_ID", "TEAM_ABBREVIATION", "AGE",
+            "G", "MIN", "CONTESTED_SHOTS", "CONTESTED_SHOTS_2PT",
+            "CONTESTED_SHOTS_3PT", "DEFLECTIONS", "CHARGES_DRAWN",
+            "SCREEN_ASSISTS", "SCREEN_AST_PTS", "OFF_LOOSE_BALLS_RECOVERED",
+            "DEF_LOOSE_BALLS_RECOVERED", "LOOSE_BALLS_RECOVERED",
+            "PCT_LOOSE_BALLS_RECOVERED_OFF", "PCT_LOOSE_BALLS_RECOVERED_DEF",
+            "OFF_BOXOUTS", "DEF_BOXOUTS", "BOX_OUT_PLAYER_TEAM_REBS",
+            "BOX_OUT_PLAYER_REBS", "BOX_OUTS", "PCT_BOX_OUTS_OFF",
+            "PCT_BOX_OUTS_DEF", "PCT_BOX_OUTS_TEAM_REB", "PCT_BOX_OUTS_REB",
+        ]
+        for season_type, games, deflections in [
+            ("Regular Season", 10, 35),
+            ("Playoffs", 2, 9),
+        ]:
+            hustle_payload = result_payload(
+                "HustleStatsPlayer", hustle_headers,
+                [[1, "Fixture Star", 10, "FIX", 26, games, 290 if games == 10 else 76,
+                  60, 40, 20, deflections, 3, 8, 21, 4, 6, 10,
+                  .4, .6, 12, 18, 20, 13, 30, .4, .6, 2/3, 13/30]],
+                resource="leaguehustlestatsplayer",
+            )
+            hustle_meta = fetcher.write_capture(
+                output=raw, surface=hustle, variant=hustle.variants[0],
+                season="2025-26", season_type=season_type,
+                url="https://stats.nba.com/fixture-hustle",
+                raw=json.dumps(hustle_payload).encode(), payload=hustle_payload,
+            )
+            assert hustle_meta["validation_status"] == "success", hustle_meta
+
         manifest = materializer.materialize(raw, static)
-        assert manifest["success_scopes"] == 4, manifest
+        assert manifest["success_scopes"] == 8, manifest
         surface_file = static / "nba_com/surfaces/players_boxscores_traditional/default/2025-26/regular.json"
         assert surface_file.is_file(), surface_file
         game_index = static / "nba_com/player_game_logs/2025-26/regular/index.json"
@@ -200,7 +266,7 @@ def main() -> None:
         assert merged_box[0]["nba_com_box_score"] is True, merged_box[0]
 
         enriched = enricher.enrich_corpus(static, roots=[raw], force=True)
-        assert enriched["matched_source_rows"] == 2, enriched
+        assert enriched["matched_source_rows"] == 6, enriched
         snapshot = json.loads((season_dir / "regular.json").read_text())
         enrichment_meta = snapshot["nba_com_part1_enrichment"]
         assert enrichment_meta["unmatched_rows"] == 0, enrichment_meta
@@ -211,12 +277,38 @@ def main() -> None:
         assert abs(row["potential_apg"] - 7.0) < 1e-9, row
         assert abs(row["adjusted_assist_ratio"] - 0.04) < 1e-9, row
         assert abs(row["isolation_ppp"] - 1.11) < 1e-9, row
+        assert row["bio_college"] == "Test University", row
+        assert row["bio_country"] == "United States", row
+        assert row["height_inches"] == 80, row
+        assert row["weight_lbs"] == 225, row
+        assert row["draft_year"] == 2021, row
+        assert row["draft_round"] == 1, row
+        assert row["draft_number"] == 14, row
+        assert abs(row["usage"] - .254) < 1e-9, row
+        assert abs(row["ast_pct"] - .299) < 1e-9, row
+        assert abs(row["net_rating"] - 5.7) < 1e-9, row
+        assert abs(row["hustle_mpg"] - 29.0) < 1e-9, row
+        assert abs(row["deflections_pg"] - 3.5) < 1e-9, row
+        assert abs(row["contested_twos_pg"] - 4.0) < 1e-9, row
+        assert abs(row["contested_threes_pg"] - 2.0) < 1e-9, row
+        assert abs(row["screen_assist_points_pg"] - 2.1) < 1e-9, row
+        assert abs(row["off_loose_balls_recovered_pg"] - .4) < 1e-9, row
+        assert abs(row["def_loose_balls_recovered_pg"] - .6) < 1e-9, row
+        assert abs(row["box_out_team_rebounds_pg"] - 2.0) < 1e-9, row
+        assert abs(row["box_out_player_rebounds_pg"] - 1.3) < 1e-9, row
+        assert abs(row["box_out_team_reb_pct"] - 2/3) < 1e-9, row
+        assert abs(row["box_out_pct"] - 13/30) < 1e-9, row
 
         playoff_snapshot = json.loads((season_dir / "playoffs.json").read_text())
         playoff_rows = playoff_snapshot["player_season_totals"]
         assert len(playoff_rows) == 1, playoff_rows
         playoff_row = playoff_rows[0]
         assert playoff_row["season_type"] == "playoffs", playoff_row
+        assert playoff_row["bio_country"] == "Canada", playoff_row
+        assert abs(playoff_row["net_rating"] - (-3.2)) < 1e-9, playoff_row
+        assert abs(playoff_row["deflections_pg"] - 4.5) < 1e-9, playoff_row
+        assert "players_bio/default" in playoff_row["nba_com_part1_sources"]
+        assert "players_hustle/default" in playoff_row["nba_com_part1_sources"]
         assert playoff_row["games"] == 2, playoff_row
         assert abs(playoff_row["minutes"] - 76.0) < 1e-9, playoff_row
         assert abs(playoff_row["points"] - 54.0) < 1e-9, playoff_row
@@ -276,6 +368,21 @@ def main() -> None:
         )
         assert abs(row["box_out_pct"] - 0.73) < 1e-9, row
         assert abs(row["box_outs_pg"] - 2.5) < 1e-9, row
+        # Do not substitute the TEAM rebound rate for the PLAYER rebound rate.
+        missing = {"games": 4}
+        enricher.apply_metrics(
+            missing, "players_hustle", "default",
+            {"G": 0, "DEFLECTIONS": 4, "PCT_BOX_OUTS_TEAM_REB": .8},
+        )
+        assert "deflections_pg" not in missing, missing
+        assert "box_out_pct" not in missing, missing
+        assert missing["box_out_team_reb_pct"] == .8, missing
+        enricher.apply_metrics(
+            missing, "players_bio", "default",
+            {"AGE": None, "DRAFT_YEAR": "Undrafted", "COUNTRY": "France"},
+        )
+        assert "age" not in missing and "draft_year" not in missing, missing
+        assert missing["bio_country"] == "France", missing
 
         assert "players_tracking/passing" in row["nba_com_part1_sources"]
         assert row["nba_com_part1"]["players_synergy"]["isolation_offensive"]["PPP"] == 1.11
