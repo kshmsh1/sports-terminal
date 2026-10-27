@@ -557,7 +557,24 @@ class _PlayerDisplayRow {
 }
 
 bool _isCombinedTeamLabel(String value) =>
-    RegExp(r'^[234]TMthis.metric,this.child); final _Metric metric; final bool child; }
+    RegExp(r'^[234]TM$', caseSensitive: false).hasMatch(value);
+
+Set<String> _playerTeams(NbaStatsRow row) {
+  final teams = <String>{};
+  final source = row.raw['teams_played_for'];
+  if (source is List) {
+    for (final item in source) {
+      final team = item.toString().trim();
+      if (team.isNotEmpty && team != '—') teams.add(team);
+    }
+  }
+  teams.addAll(row.team.split(RegExp(r'[,/ ]+')).where(
+    (item) => item.isNotEmpty && item != '—',
+  ));
+  return teams;
+}
+
+class _VisibleMetric { const _VisibleMetric(this.metric,this.child); final _Metric metric; final bool child; }
 class _Category { const _Category(this.name,this.description,this.metrics); final String name; final String description; final List<_Metric> metrics; }
 class _Metric {
   const _Metric(this.key,this.label,this.glossary,{this.totalLabel,this.rateAbbreviation,this.rateSensitive=false,this.percent=false,this.signed=false,this.integer=false,this.textValue=false,this.decimals=1,this.children=const []});
@@ -757,212 +774,5 @@ double? _metricValue(NbaStatsRow row,String key,NbaStatsBasis basis){
 }
 
 String _formatMetric(double? value,_Metric metric,NbaStatsBasis basis){if(value==null||value.isNaN||value.isInfinite)return '—';if(metric.key == 'height')return nbaFormatFeetInches(value);if(metric.percent)return '${(value*100).toStringAsFixed(metric.decimals)}%';if(metric.integer)return value.round().toString();if(metric.signed)return '${value>=0?'+':''}${value.toStringAsFixed(metric.decimals)}';return value.toStringAsFixed(metric.decimals);}
-String _basisDescription(NbaStatsBasis basis)=>switch(basis){NbaStatsBasis.perGame=>'Per-game values.',NbaStatsBasis.totals=>'Season totals.',NbaStatsBasis.per36=>'Per 36 minutes.',NbaStatsBasis.per48=>'Per 48 minutes.',NbaStatsBasis.per75=>'Per 75 possessions.',NbaStatsBasis.per100=>'Per 100 possessions.'};
-String _csvLine(List<Object?> values)=>values.map((value){final text=value?.toString()??'';return '"${text.replaceAll('"','""')}"';}).join(',');
-, caseSensitive: false).hasMatch(value);
-
-Set<String> _playerTeams(NbaStatsRow row) {
-  final teams = <String>{};
-  final source = row.raw['teams_played_for'];
-  if (source is List) {
-    for (final item in source) {
-      final team = item.toString().trim();
-      if (team.isNotEmpty && team != '—') teams.add(team);
-    }
-  }
-  teams.addAll(row.team.split(RegExp(r'[,/ ]+')).where(
-    (item) => item.isNotEmpty && item != '—',
-  ));
-  return teams;
-}
-
-class _VisibleMetric { const _VisibleMetric(this.metric,this.child); final _Metric metric; final bool child; }
-class _Category { const _Category(this.name,this.description,this.metrics); final String name; final String description; final List<_Metric> metrics; }
-class _Metric {
-  const _Metric(this.key,this.label,this.glossary,{this.totalLabel,this.rateAbbreviation,this.rateSensitive=false,this.percent=false,this.signed=false,this.integer=false,this.textValue=false,this.decimals=1,this.children=const []});
-  final String key; final String label; final String glossary; final String? totalLabel; final String? rateAbbreviation; final bool rateSensitive; final bool percent; final bool signed; final bool integer; final bool textValue; final int decimals; final List<_Metric> children;
-  String displayLabel(NbaStatsBasis basis) { if (!rateSensitive) return label; final stem = rateAbbreviation ?? label.replaceAll(' PG','').replaceAll('PG',''); switch (basis) { case NbaStatsBasis.perGame: return label; case NbaStatsBasis.totals: return totalLabel ?? stem; case NbaStatsBasis.per36: return '$stem/36'; case NbaStatsBasis.per48: return '$stem/48'; case NbaStatsBasis.per75: return '$stem/75'; case NbaStatsBasis.per100: return '$stem/100'; } }
-}
-
-_Metric countMetric(String key,String perGameLabel,String totalLabel,String abbreviation,String glossary,{List<_Metric> children=const []}) => _Metric(key,perGameLabel,glossary,totalLabel:totalLabel,rateAbbreviation:abbreviation,rateSensitive:true,children:children);
-_Metric childCount(String key,String label,String totalLabel,String abbreviation,String glossary) => _Metric(key,label,glossary,totalLabel:totalLabel,rateAbbreviation:abbreviation,rateSensitive:true);
-
-final _resolver = const NbaTerminalMetricResolver();
-
-_Metric _catalogMetric(String key) {
-  final metric = nbaTerminalMetricByKey[key];
-  if (metric == null) {
-    return _Metric(key, key.toUpperCase(), 'Source-backed metric.');
-  }
-  final children = [
-    for (final childKey in metric.children) _catalogMetric(childKey),
-  ];
-  final engineKey = metric.engineKey;
-  final rateSensitive = engineKey != null &&
-      const {
-        'min','pts','ast','reb','oreb','dreb','stl','blk','tov','pf',
-        'fgm','fga','two_pm','two_pa','three_pm','three_pa','ftm','fta',
-        'plus_minus','stocks','defense_events','possessions_proxy','game_score_proxy'
-      }.contains(engineKey);
-  return _Metric(
-    key,
-    metric.shortLabel,
-    metric.description,
-    totalLabel: rateSensitive ? metric.shortLabel : null,
-    rateAbbreviation: metric.shortLabel,
-    rateSensitive: rateSensitive,
-    percent: metric.format == NbaTerminalMetricFormat.percent,
-    signed: metric.format == NbaTerminalMetricFormat.signed,
-    integer: metric.format == NbaTerminalMetricFormat.integer,
-    decimals: metric.decimals,
-    children: children,
-  );
-}
-
-_Category _catalogCategory(String familyId, {String? label}) {
-  final family = nbaTerminalFamily(familyId);
-  return _Category(
-    label ?? family.label,
-    family.description,
-    [
-      for (final key in family.metrics)
-        _catalogMetricWithExpansion(key, family.expansionOverrides[key]),
-      if (familyId == 'physical') ...[
-        const _Metric('bio_college', 'College', 'College attended, as reported by NBA.com.', textValue: true),
-        const _Metric('bio_country', 'Country', 'Country reported by NBA.com.', textValue: true),
-      ],
-    ],
-  );
-}
-
-_Metric _catalogMetricWithExpansion(String key, List<String>? overrideChildren) {
-  final base = _catalogMetric(key);
-  if (overrideChildren == null || overrideChildren.isEmpty) return base;
-  return _Metric(
-    base.key,
-    base.label,
-    base.glossary,
-    totalLabel: base.totalLabel,
-    rateAbbreviation: base.rateAbbreviation,
-    rateSensitive: base.rateSensitive,
-    percent: base.percent,
-    signed: base.signed,
-    integer: base.integer,
-    decimals: base.decimals,
-    children: [for (final childKey in overrideChildren) _catalogMetric(childKey)],
-  );
-}
-
-final _categories = <_Category>[
-  _Category('Overview','Core production, traditional shooting efficiency and headline impact measures.',[
-    const _Metric('gp','GP','Games played.',integer:true),
-    countMetric('min','MPG','Minutes','MIN','Minutes played.'),
-    countMetric('pts','PPG','Points','PTS','Points scored.'),
-    countMetric('reb','RPG','Rebounds','REB','Total rebounds.',children:[childCount('oreb','ORB','Offensive Rebounds','OREB','Offensive rebounds.'),childCount('dreb','DREB','Defensive Rebounds','DREB','Defensive rebounds.')]),
-    countMetric('ast','APG','Assists','AST','Assists.'),
-    countMetric('stl','SPG','Steals','STL','Steals.'),
-    countMetric('blk','BPG','Blocks','BLK','Blocks.'),
-    countMetric('tov','TPG','Turnovers','TOV','Turnovers.'),
-    countMetric('pf','PF PG','Personal Fouls','PF','Personal fouls.'),
-    _Metric('fg_pct','FG%','Field-goal percentage.',percent:true,children:[childCount('fgm','FGM','Field Goals Made','FGM','Field goals made.'),childCount('fga','FGA','Field Goal Attempts','FGA','Field-goal attempts.')]),
-    _Metric('three_pct','3P%','Three-point percentage.',percent:true,children:[childCount('three_pm','3PM','Three-Pointers Made','3PM','Three-pointers made.'),childCount('three_pa','3PA','Three-Point Attempts','3PA','Three-point attempts.')]),
-    _Metric('ft_pct','FT%','Free-throw percentage.',percent:true,children:[childCount('ftm','FTM','Free Throws Made','FTM','Free throws made.'),childCount('fta','FTA','Free Throw Attempts','FTA','Free-throw attempts.')]),
-    const _Metric('per','PER','Player Efficiency Rating.'),
-    const _Metric('bpm','BPM','Box Plus/Minus.',signed:true,children:[_Metric('obpm','Offensive BPM','Offensive Box Plus/Minus.',signed:true),_Metric('dbpm','Defensive BPM','Defensive Box Plus/Minus.',signed:true)]),
-    const _Metric('vorp','VORP','Value Over Replacement Player.'),
-    _catalogMetric('ws'),
-  ]),
-  _Category('Shooting & Efficiency','Shooting percentages, shot-location efficiency and possession efficiency in one consolidated view.',[
-    _Metric('fg_pct','FG%','Field-goal percentage.',percent:true,children:[childCount('fgm','FGM','Field Goals Made','FGM','Field goals made.'),childCount('fga','FGA','Field Goal Attempts','FGA','Field-goal attempts.')]),
-    _catalogMetric('two_pct'),
-    _Metric('three_pct','3P%','Three-point percentage.',percent:true,children:[childCount('three_pm','3PM','Three-Pointers Made','3PM','Three-pointers made.'),childCount('three_pa','3PA','Three-Point Attempts','3PA','Three-point attempts.')]),
-    _Metric('ft_pct','FT%','Free-throw percentage.',percent:true,children:[childCount('ftm','FTM','Free Throws Made','FTM','Free throws made.'),childCount('fta','FTA','Free Throw Attempts','FTA','Free-throw attempts.')]),
-    _catalogMetric('rim_fg_pct'),
-    _catalogMetric('midrange_fg_pct'),
-    const _Metric('efg_pct','eFG%','Effective field-goal percentage.',percent:true),
-    const _Metric('ts_pct','TS%','True shooting percentage.',percent:true),
-    _catalogMetric('ftr'),
-    _catalogMetric('three_par'),
-    _catalogMetric('pps'),
-    _catalogMetric('pie'),
-    _catalogMetric('assisted_fg_pct'),
-    _catalogMetric('unassisted_fg_pct'),
-    _catalogMetric('assisted_ppg'),
-    _catalogMetric('unassisted_ppg'),
-  ]),
-  _catalogCategory('defense_hustle'),
-  _catalogCategory('hustle_detail'),
-  _catalogCategory('playmaking'),
-  _catalogCategory('rebounding'),
-  _catalogCategory('impact'),
-  _catalogCategory('aggregate'),
-  _catalogCategory('movement'),
-  _catalogCategory('clutch'),
-  _catalogCategory('shot_profile'),
-  _catalogCategory('play_type'),
-  _Category(
-    'Isolation',
-    'Isolation scoring efficiency and nearby self-creation context.',
-    [
-      _catalogMetric('isolation_ppp'),
-      _catalogMetric('usage'),
-      _catalogMetric('unassisted_fg_pct'),
-      _catalogMetric('unassisted_ppg'),
-      _catalogMetric('drive_ppg'),
-      _catalogMetric('drive_apg'),
-    ],
-  ),
-  _catalogCategory('gravity_creation'),
-  _catalogCategory('physical'),
-  _catalogCategory('discipline'),
-  _catalogCategory('availability'),
-  _Category('Rate Adjusted','Core counting production on the selected rate basis.',[
-    countMetric('min','MPG','Minutes','MIN','Minutes played.'),
-    countMetric('pts','PPG','Points','PTS','Points.'),
-    countMetric('reb','RPG','Rebounds','REB','Rebounds.'),
-    countMetric('ast','APG','Assists','AST','Assists.'),
-    countMetric('stl','SPG','Steals','STL','Steals.'),
-    countMetric('blk','BPG','Blocks','BLK','Blocks.'),
-    countMetric('tov','TPG','Turnovers','TOV','Turnovers.'),
-    countMetric('fgm','FGM PG','Field Goals Made','FGM','Field goals made.'),
-    countMetric('three_pm','3PM PG','Three-Pointers Made','3PM','Three-pointers made.'),
-    countMetric('ftm','FTM PG','Free Throws Made','FTM','Free throws made.'),
-  ]),
-];
-
-double _metricColumnWidth(_Metric metric, NbaStatsBasis basis, {required bool child}) {
-  final label = metric.displayLabel(basis);
-  if (metric.textValue) return 175.0;
-  final arrowAllowance = metric.children.isEmpty ? 0.0 : 32.0;
-  final estimated = label.length * 7.8 + 26 + arrowAllowance;
-  return math.max(child ? 72.0 : 78.0, math.min(estimated, 320.0));
-}
-
-class _StatGlossary extends StatelessWidget {
-  const _StatGlossary({required this.category, required this.basis});
-  final _Category category; final NbaStatsBasis basis;
-  @override Widget build(BuildContext context) => ExpansionTile(title: const Text('Stat Glossary'), children: [for (final metric in category.metrics) ListTile(title: Text(metric.displayLabel(basis)), subtitle: Text(metric.glossary))]);
-}
-
-class _Loading extends StatelessWidget { const _Loading(); @override Widget build(BuildContext context) => const SizedBox(height:360, child:Center(child:CircularProgressIndicator())); }
-class _ErrorState extends StatelessWidget { const _ErrorState({required this.error,required this.onRetry}); final Object? error; final VoidCallback onRetry; @override Widget build(BuildContext context)=>Center(child:Card(child:Padding(padding:const EdgeInsets.all(24),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Advanced Stats source unavailable'),const SizedBox(height:8),Text('${error ?? ''}'),const SizedBox(height:12),OutlinedButton(onPressed:onRetry,child:const Text('Retry'))])))); }
-class _EmptyCard extends StatelessWidget { const _EmptyCard(this.message); final String message; @override Widget build(BuildContext context)=>Card(child:Padding(padding:const EdgeInsets.all(20),child:Text(message))); }
-
-bool _matchesPosition(String value,String wanted){final positions=RegExp(r'PG|SG|SF|PF|C').allMatches(value.toUpperCase()).map((m)=>m.group(0)).whereType<String>().toSet();return positions.contains(wanted.toUpperCase());}
-
-String _metricTextValue(NbaStatsRow row, String key) {
-  final raw = row.raw[key];
-  final text = raw?.toString().trim() ?? '';
-  return text.isEmpty ? '—' : text;
-}
-
-double? _metricValue(NbaStatsRow row,String key,NbaStatsBasis basis){
-  // Engine-backed counting metrics are already normalized to the selected basis.
-  // Catalog-native metrics resolve from source-backed raw aliases and remain
-  // unavailable (—) when the static corpus does not contain the field.
-  return _resolver.value(row, key) ?? row.value(key);
-}
-
-String _formatMetric(double? value,_Metric metric,NbaStatsBasis basis){if(value==null||value.isNaN||value.isInfinite)return '—';if(metric.percent)return '${(value*100).toStringAsFixed(metric.decimals)}%';if(metric.integer)return value.round().toString();if(metric.signed)return '${value>=0?'+':''}${value.toStringAsFixed(metric.decimals)}';return value.toStringAsFixed(metric.decimals);}
 String _basisDescription(NbaStatsBasis basis)=>switch(basis){NbaStatsBasis.perGame=>'Per-game values.',NbaStatsBasis.totals=>'Season totals.',NbaStatsBasis.per36=>'Per 36 minutes.',NbaStatsBasis.per48=>'Per 48 minutes.',NbaStatsBasis.per75=>'Per 75 possessions.',NbaStatsBasis.per100=>'Per 100 possessions.'};
 String _csvLine(List<Object?> values)=>values.map((value){final text=value?.toString()??'';return '"${text.replaceAll('"','""')}"';}).join(',');
