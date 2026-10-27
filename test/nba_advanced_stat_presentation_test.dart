@@ -70,8 +70,9 @@ void main() {
     expect(stints.map((row) => row.value('bpm')).toList(), [5.5, 1.2]);
     final totalStints = engine.teamStintRows(parent, basis: NbaStatsBasis.totals);
     expect(totalStints.map((row) => row.value('pts')).toList(), [880, 320]);
-    expect(engine.teamStintRows(parent, basis: NbaStatsBasis.per36)
-        .map((row) => row.value('pts')).toList(), [880 * 36 / 1400, 320 * 36 / 700]);
+    final per36 = engine.teamStintRows(parent, basis: NbaStatsBasis.per36);
+    expect(per36[0].value('pts'), closeTo(880 * 36 / 1400, 1e-9));
+    expect(per36[1].value('pts'), closeTo(320 * 36 / 700, 1e-9));
     // The parent is not replaced or double-counted when team children exist.
     expect(engine.buildRows(snapshot).length, 1);
   });
