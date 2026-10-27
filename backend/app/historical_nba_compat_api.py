@@ -327,6 +327,11 @@ def historical_seed_snapshot(
                     _player_seed_row(stints[abbreviation])
                     for abbreviation in sorted(stints)
                 ]
+                # Some historical canonical sources use TOT/MULTI rather than
+                # the familiar 2TM/3TM/4TM for a combined player row.
+                combined_label = str(player_row.get("team_ids") or "").upper()
+                if combined_label in {"TOT", "MULTI"} and len(stints) <= 4:
+                    player_row["team_ids"] = f"{len(stints)}TM"
         players = [_player_profile(row) for row in collapsed]
 
         team_sql = """
