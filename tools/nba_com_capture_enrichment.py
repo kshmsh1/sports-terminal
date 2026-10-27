@@ -317,6 +317,44 @@ def synthesize_player_season_totals(
 
 
 def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: dict[str, Any]) -> None:
+    if surface == "players_bio":
+        # Preserve source identity and season-specific bio measurements without
+        # treating them as duplicate traditional box-score production.
+        for key, field in {
+            "age": "AGE",
+            "height_inches": "PLAYER_HEIGHT_INCHES",
+            "weight_lbs": "PLAYER_WEIGHT",
+            "draft_year": "DRAFT_YEAR",
+            "draft_round": "DRAFT_ROUND",
+            "draft_number": "DRAFT_NUMBER",
+            "bio_gp": "GP",
+            "bio_points": "PTS",
+            "bio_rebounds": "REB",
+            "bio_assists": "AST",
+        }.items():
+            value = number(source.get(field))
+            if value is not None:
+                publish(target, key, value, overwrite=False)
+        # Non-numeric fields are preserved for player-bio columns; no number
+        # is fabricated for "Undrafted" or an absent measurement.
+        for key, field in {
+            "bio_height_display": "PLAYER_HEIGHT",
+            "bio_college": "COLLEGE",
+            "bio_country": "COUNTRY",
+        }.items():
+            publish(target, key, source.get(field), overwrite=False)
+        for key, field in {
+            "net_rating": "NET_RATING",
+            "orb_pct": "OREB_PCT",
+            "drb_pct": "DREB_PCT",
+            "usage": "USG_PCT",
+            "ts_pct": "TS_PCT",
+            "ast_pct": "AST_PCT",
+        }.items():
+            value = number(source.get(field))
+            if value is not None:
+                publish(target, key, value, overwrite=False)
+
     if surface == "players_clutch":
         if variant == "base":
             for key, field in {
@@ -493,17 +531,46 @@ def apply_metrics(target: dict[str, Any], surface: str, variant: str, source: di
         )
 
     if surface == "players_hustle":
+        # PerMode=Totals: never use canonical GP for hustle rates. The source
+        # G field is the denominator for its own tracking availability.
         for key, field in {
-            "deflections_pg": "DEFLECTIONS", "charges_drawn_pg": "CHARGES_DRAWN",
-            "contested_shots_pg": "CONTESTED_SHOTS", "loose_balls_recovered_pg": "LOOSE_BALLS_RECOVERED",
-            "screen_apg": "SCREEN_ASSISTS", "box_outs_pg": "BOX_OUTS",
+            "hustle_gp": "G",
+            "hustle_minutes": "MIN",
+        }.items():
+            value = number(source.get(field))
+            if value is not None:
+                publish(target, key, value)
+        publish_per_game(target, "hustle_mpg", source, "MIN")
+        for key, field in {
+            "contested_shots_pg": "CONTESTED_SHOTS",
+            "contested_twos_pg": "CONTESTED_SHOTS_2PT",
+            "contested_threes_pg": "CONTESTED_SHOTS_3PT",
+            "deflections_pg": "DEFLECTIONS",
+            "charges_drawn_pg": "CHARGES_DRAWN",
+            "screen_apg": "SCREEN_ASSISTS",
+            "screen_assist_points_pg": "SCREEN_AST_PTS",
+            "off_loose_balls_recovered_pg": "OFF_LOOSE_BALLS_RECOVERED",
+            "def_loose_balls_recovered_pg": "DEF_LOOSE_BALLS_RECOVERED",
+            "loose_balls_recovered_pg": "LOOSE_BALLS_RECOVERED",
+            "off_box_outs_pg": "OFF_BOXOUTS",
+            "def_box_outs_pg": "DEF_BOXOUTS",
+            "box_outs_pg": "BOX_OUTS",
+            "box_out_team_rebounds_pg": "BOX_OUT_PLAYER_TEAM_REBS",
+            "box_out_player_rebounds_pg": "BOX_OUT_PLAYER_REBS",
         }.items():
             publish_per_game(target, key, source, field)
-        # NBA exposes PCT_BOX_OUTS_REB as BOX_OUT_PLAYER_REBS / BOX_OUTS:
-        # the share of the player's box outs on which that player secures the
-        # rebound. Preserve that native percentage rather than inventing a rate.
-        box_out_pct = first(source, ("PCT_BOX_OUTS_REB", "PCT_BOX_OUTS_TEAM_REB"))
-        publish(target, "box_out_pct", box_out_pct)
+        # These are native source fractions; never divide by games.
+        for key, field in {
+            "loose_ball_off_pct": "PCT_LOOSE_BALLS_RECOVERED_OFF",
+            "loose_ball_def_pct": "PCT_LOOSE_BALLS_RECOVERED_DEF",
+            "off_box_out_pct": "PCT_BOX_OUTS_OFF",
+            "def_box_out_pct": "PCT_BOX_OUTS_DEF",
+            "box_out_team_reb_pct": "PCT_BOX_OUTS_TEAM_REB",
+            "box_out_pct": "PCT_BOX_OUTS_REB",
+        }.items():
+            value = number(source.get(field))
+            if value is not None:
+                publish(target, key, value)
 
 
 def clear_previous(row: dict[str, Any]) -> None:
