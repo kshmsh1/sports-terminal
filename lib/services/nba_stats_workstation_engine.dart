@@ -534,6 +534,474 @@ class NbaStatsWorkstationEngine {
     return _attachPercentiles(rows);
   }
 
+  /// Source-backed team splits attached to a combined player-season row.
+  /// No splitting, pro-rating or synthetic estimation of team values is done.
+  /// Missing historical stint data stays unavailable rather than fabricated.
+  List<NbaStatsRow> teamStintRows(
+    NbaStatsRow parent, {
+    NbaStatsBasis basis = NbaStatsBasis.perGame,
+  }) {
+    final source = parent.raw['team_stints'];
+    if (source is! List) return const [];
+    final normalized = <NbaStatsRow>[];
+    final seenTeams = <String>{};
+    for (final item in source) {
+      if (item is! Map) continue;
+      final raw = item.map((key, value) => MapEntry(key.toString(), value));
+      final playerId = _text(_first(raw, const ['player_id', 'id']));
+      final team = _text(_first(raw, const ['team_ids', 'team_abbreviation']));
+      if (playerId != parent.playerId ||
+          team.isEmpty ||
+          !RegExp(r'^[A-Za-z]{2,4}
+    NbaStatsFilters filters, {
+    Set<String> favorites = const {},
+  }) {
+    final query = filters.search.trim().toLowerCase();
+    return rows.where((row) {
+      if (query.isNotEmpty &&
+          !'${row.player} ${row.team} ${row.position}'.toLowerCase().contains(
+            query,
+          )) {
+        return false;
+      }
+      if (filters.team != 'All' &&
+          !row.team.split(RegExp(r'[,/ ]+')).contains(filters.team)) {
+        return false;
+      }
+      if (filters.position != 'All' && row.position != filters.position) {
+        return false;
+      }
+      if ((row.value('gp') ?? 0) < filters.minGames) return false;
+      final minutes = row.value('min') ?? 0;
+      if (minutes < filters.minMinutes) return false;
+      final age = row.value('age');
+      if (filters.minAge != null && (age == null || age < filters.minAge!)) {
+        return false;
+      }
+      if (filters.maxAge != null && (age == null || age > filters.maxAge!)) {
+        return false;
+      }
+      if (filters.favoriteOnly && !favorites.contains(row.playerId)) {
+        return false;
+      }
+      if (filters.metricKey != null) {
+        final value = row.value(filters.metricKey!);
+        if (value == null) return false;
+        if (filters.metricMinimum != null && value < filters.metricMinimum!) {
+          return false;
+        }
+        if (filters.metricMaximum != null && value > filters.metricMaximum!) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
+  }
+
+  void sortRows(
+    List<NbaStatsRow> rows,
+    String metricKey, {
+    bool descending = true,
+  }) {
+    rows.sort((left, right) {
+      final l = left.value(metricKey);
+      final r = right.value(metricKey);
+      if (l == null && r == null) return left.player.compareTo(right.player);
+      if (l == null) return 1;
+      if (r == null) return -1;
+      final compared = l.compareTo(r);
+      return descending ? -compared : compared;
+    });
+  }
+
+  Map<String, List<NbaStatsRow>> groupByTeam(List<NbaStatsRow> rows) {
+    final output = <String, List<NbaStatsRow>>{};
+    for (final row in rows) {
+      final teams = row.team
+          .split(RegExp(r'[,/ ]+'))
+          .where((team) => team.isNotEmpty && team != '—');
+      for (final team in teams) {
+        output.putIfAbsent(team, () => []).add(row);
+      }
+    }
+    return output;
+  }
+
+  NbaStatMetric metric(String key) => nbaStatMetrics.firstWhere(
+    (metric) => metric.key == key,
+    orElse: () => NbaStatMetric(
+      key: key,
+      label: key,
+      shortLabel: key.toUpperCase(),
+      group: 'Custom',
+    ),
+  );
+
+  String formatValue(String key, double? value) {
+    if (value == null || value.isNaN || value.isInfinite) return '—';
+    final definition = metric(key);
+    switch (definition.format) {
+      case NbaMetricFormat.integer:
+        return value.round().toString();
+      case NbaMetricFormat.percent:
+        return '${(value * 100).toStringAsFixed(definition.decimals)}%';
+      case NbaMetricFormat.signed:
+        return '${value >= 0 ? '+' : ''}${value.toStringAsFixed(definition.decimals)}';
+      case NbaMetricFormat.text:
+        return value.toString();
+      case NbaMetricFormat.decimal:
+        return value.toStringAsFixed(definition.decimals);
+    }
+  }
+
+  NbaStatsRow _normalize(
+    Map<String, dynamic> raw,
+    Map<String, dynamic> profile,
+    NbaStatsBasis basis,
+  ) {
+    final games = _number(_first(raw, const ['games', 'gp', 'g'])) ?? 0;
+    final minutesTotal = _total(
+      raw,
+      games,
+      const ['minutes', 'mp'],
+      const ['minutes_per_game', 'mpg'],
+    );
+    final points = _total(
+      raw,
+      games,
+      const ['points', 'pts'],
+      const ['points_per_game', 'ppg'],
+    );
+    final rebounds = _total(
+      raw,
+      games,
+      const ['rebounds', 'trb', 'reb'],
+      const ['rebounds_per_game', 'rpg'],
+    );
+    final offensiveRebounds = _total(
+      raw,
+      games,
+      const ['offensive_rebounds', 'orb', 'oreb'],
+      const ['offensive_rebounds_per_game', 'oreb_per_game'],
+    );
+    final defensiveRebounds = _total(
+      raw,
+      games,
+      const ['defensive_rebounds', 'drb', 'dreb'],
+      const ['defensive_rebounds_per_game', 'dreb_per_game'],
+    );
+    final assists = _total(
+      raw,
+      games,
+      const ['assists', 'ast'],
+      const ['assists_per_game', 'apg'],
+    );
+    final steals = _total(
+      raw,
+      games,
+      const ['steals', 'stl'],
+      const ['steals_per_game', 'spg'],
+    );
+    final blocks = _total(
+      raw,
+      games,
+      const ['blocks', 'blk'],
+      const ['blocks_per_game', 'bpg'],
+    );
+    final turnovers = _total(
+      raw,
+      games,
+      const ['turnovers', 'tov'],
+      const ['turnovers_per_game', 'tov_per_game'],
+    );
+    final fouls = _total(
+      raw,
+      games,
+      const ['personal_fouls', 'pf'],
+      const ['personal_fouls_per_game', 'pf_per_game'],
+    );
+    final plusMinus = _total(
+      raw,
+      games,
+      const ['plus_minus'],
+      const ['plus_minus_per_game'],
+    );
+    final fgm = _total(
+      raw,
+      games,
+      const ['field_goals_made', 'fg', 'fgm'],
+      const ['field_goals_made_per_game', 'fgm_per_game'],
+    );
+    final fga = _total(
+      raw,
+      games,
+      const ['field_goal_attempts', 'fga'],
+      const ['field_goal_attempts_per_game', 'fga_per_game'],
+    );
+    final threePm = _total(
+      raw,
+      games,
+      const ['three_pointers_made', 'fg3', 'three_pm'],
+      const ['three_pointers_made_per_game', 'three_pm_per_game'],
+    );
+    final threePa = _total(
+      raw,
+      games,
+      const ['three_point_attempts', 'fg3a', 'three_pa'],
+      const ['three_point_attempts_per_game', 'three_pa_per_game'],
+    );
+    final ftm = _total(
+      raw,
+      games,
+      const ['free_throws_made', 'ft', 'ftm'],
+      const ['free_throws_made_per_game', 'ftm_per_game'],
+    );
+    final fta = _total(
+      raw,
+      games,
+      const ['free_throw_attempts', 'fta'],
+      const ['free_throw_attempts_per_game', 'fta_per_game'],
+    );
+    final directPossessions = _number(
+      _first(raw, const ['possessions', 'poss', 'estimated_possessions']),
+    );
+    var possessions =
+        directPossessions ??
+        math
+            .max(0.0, fga + .44 * fta - offensiveRebounds + turnovers)
+            .toDouble();
+    var possessionsEstimated = directPossessions == null;
+    if (possessions <= 0 && minutesTotal > 0) {
+      possessions = minutesTotal * 2.05;
+      possessionsEstimated = true;
+    }
+
+    final scale = switch (basis) {
+      NbaStatsBasis.totals => 1.0,
+      NbaStatsBasis.perGame => games > 0 ? 1 / games : 0.0,
+      NbaStatsBasis.per36 => minutesTotal > 0 ? 36 / minutesTotal : 0.0,
+      NbaStatsBasis.per48 => minutesTotal > 0 ? 48 / minutesTotal : 0.0,
+      NbaStatsBasis.per75 => possessions > 0 ? 75 / possessions : 0.0,
+      NbaStatsBasis.per100 => possessions > 0 ? 100 / possessions : 0.0,
+    };
+    final minuteScale = basis == NbaStatsBasis.totals ? 1.0 : scale;
+    final twoPm = math.max(0.0, fgm - threePm).toDouble();
+    final twoPa = math.max(0.0, fga - threePa).toDouble();
+    final shootingPossessions = fga + .44 * fta;
+    final fgPct = _ratioOrSource(raw, fgm, fga, const [
+      'fg_pct',
+      'field_goal_percentage',
+      'field_goal_pct',
+      'avg_fg_pct',
+    ]);
+    final threePct = _ratioOrSource(raw, threePm, threePa, const [
+      'three_point_percentage',
+      'three_point_pct',
+      'fg3_pct',
+      'avg_fg3_pct',
+    ]);
+    final ftPct = _ratioOrSource(raw, ftm, fta, const [
+      'free_throw_percentage',
+      'free_throw_pct',
+      'ft_pct',
+      'avg_ft_pct',
+    ]);
+    final tsPct = _ratioOrSource(raw, points, 2 * shootingPossessions, const [
+      'true_shooting_percentage', 'ts_pct', 'avg_ts_pct',
+    ]);
+    final efgPct = _ratioOrSource(raw, fgm + .5 * threePm, fga, const [
+      'effective_field_goal_percentage', 'efg_pct',
+    ]);
+    final bpm = _number(
+      _first(raw, const ['avg_bpm', 'bpm', 'box_plus_minus']),
+    );
+
+    double scaled(double value) => value * scale;
+
+    return NbaStatsRow(
+      playerId: _display(_first(raw, const ['player_id', 'id', 'slug'])),
+      player: _display(_first(raw, const ['player_label', 'player', 'name'])),
+      team: _display(_first(raw, const ['team_ids', 'team_id', 'team'])),
+      position: _position(raw, profile),
+      values: {
+        'gp': games,
+        'min': minutesTotal * minuteScale,
+        'age':
+            _number(_first(raw, const ['age'])) ??
+            _number(_first(profile, const ['age'])),
+        'pts': scaled(points),
+        'ast': scaled(assists),
+        'reb': scaled(rebounds),
+        'oreb': scaled(offensiveRebounds),
+        'dreb': scaled(defensiveRebounds),
+        'stl': scaled(steals),
+        'blk': scaled(blocks),
+        'tov': scaled(turnovers),
+        'pf': scaled(fouls),
+        'fgm': scaled(fgm),
+        'fga': scaled(fga),
+        'fg_pct': fgPct,
+        'two_pm': scaled(twoPm),
+        'two_pa': scaled(twoPa),
+        'two_pct': _ratio(twoPm, twoPa),
+        'three_pm': scaled(threePm),
+        'three_pa': scaled(threePa),
+        'three_pct': threePct,
+        'ftm': scaled(ftm),
+        'fta': scaled(fta),
+        'ft_pct': ftPct,
+        'ts_pct': tsPct,
+        'efg_pct': efgPct,
+        'points_per_shot': _ratio(points, shootingPossessions),
+        'ast_tov': turnovers > 0
+            ? assists / turnovers
+            : (assists > 0 ? assists : null),
+        'three_rate': _ratio(threePa, fga),
+        'ft_rate': _ratio(fta, fga),
+        'plus_minus': scaled(plusMinus),
+        'bpm': bpm,
+        'game_score_proxy': scaled(
+          points +
+              .7 * rebounds +
+              .7 * assists +
+              steals +
+              blocks -
+              .7 * turnovers,
+        ),
+        'stocks': scaled(steals + blocks),
+        'defense_events': scaled(steals + blocks + .35 * defensiveRebounds),
+        'possessions_proxy': basis == NbaStatsBasis.totals
+            ? possessions
+            : possessions * scale,
+        'scoring_load': _ratio(shootingPossessions, possessions),
+      },
+      percentiles: const {},
+      raw: raw,
+      possessionsEstimated: possessionsEstimated,
+    );
+  }
+
+  List<NbaStatsRow> _attachPercentiles(List<NbaStatsRow> rows) {
+    if (rows.isEmpty) return rows;
+    final byPlayer = <String, Map<String, double>>{
+      for (final row in rows) row.playerId: <String, double>{},
+    };
+    for (final metric in nbaStatMetrics) {
+      final entries = <MapEntry<String, double>>[];
+      for (final row in rows) {
+        final value = row.value(metric.key);
+        if (value != null && value.isFinite) {
+          entries.add(MapEntry(row.playerId, value));
+        }
+      }
+      entries.sort((a, b) => a.value.compareTo(b.value));
+      if (entries.isEmpty) continue;
+      for (var index = 0; index < entries.length; index++) {
+        final base = entries.length == 1
+            ? 100.0
+            : index / (entries.length - 1) * 100;
+        byPlayer[entries[index].key]![metric.key] = metric.higherIsBetter
+            ? base
+            : 100 - base;
+      }
+    }
+    return [
+      for (final row in rows)
+        row.withPercentiles(byPlayer[row.playerId] ?? const {}),
+    ];
+  }
+}
+
+Object? _first(Map<String, dynamic> row, List<String> keys) {
+  for (final key in keys) {
+    final value = row[key];
+    if (value != null && value.toString().trim().isNotEmpty) return value;
+  }
+  return null;
+}
+
+double _total(
+  Map<String, dynamic> row,
+  double games,
+  List<String> totalKeys,
+  List<String> perGameKeys,
+) {
+  final total = _number(_first(row, totalKeys));
+  if (total != null) return total;
+  final perGame = _number(_first(row, perGameKeys));
+  if (perGame != null) return perGame * games;
+  return 0;
+}
+
+double? _ratioOrSource(
+  Map<String, dynamic> row,
+  double numerator,
+  double denominator,
+  List<String> sourceKeys,
+) {
+  final source = _number(_first(row, sourceKeys));
+  if (source != null) return source > 1 ? source / 100 : source;
+  return _ratio(numerator, denominator);
+}
+
+double? _ratio(double numerator, double denominator) {
+  if (denominator <= 0) return null;
+  return numerator / denominator;
+}
+
+double? _number(Object? value) {
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  return double.tryParse(
+    value.toString().replaceAll(',', '').replaceAll('%', '').trim(),
+  );
+}
+
+String _text(Object? value) => value?.toString().trim() ?? '';
+
+String _display(Object? value) {
+  final text = _text(value);
+  return text.isEmpty ? '—' : text;
+}
+
+String _position(Map<String, dynamic> raw, Map<String, dynamic> profile) {
+  final source =
+      _text(
+        _first(raw, const ['position', 'pos', 'primary_position']),
+      ).isNotEmpty
+      ? _text(_first(raw, const ['position', 'pos', 'primary_position']))
+      : _text(
+          _first(profile, const [
+            'position',
+            'pos',
+            'primary_position',
+            'position_abbrev',
+          ]),
+        );
+  final normalized = source.toUpperCase().replaceAll(' ', '');
+  for (final candidate in const ['PG', 'SG', 'SF', 'PF', 'C']) {
+    if (normalized == candidate ||
+        normalized.startsWith('$candidate-') ||
+        normalized.endsWith('-$candidate')) {
+      return candidate;
+    }
+  }
+  if (normalized.contains('GUARD')) return 'G';
+  if (normalized.contains('FORWARD')) return 'F';
+  if (normalized.contains('CENTER')) return 'C';
+  return source.isEmpty ? '—' : source;
+}
+).hasMatch(team) ||
+          !seenTeams.add(team.toUpperCase())) {
+        continue;
+      }
+      final stint = _normalize(raw, parent.raw, basis);
+      if (stint.team != team) continue;
+      normalized.add(stint);
+    }
+    return normalized.length >= 2 ? normalized : const [];
+  }
+
   List<NbaStatsRow> filterRows(
     List<NbaStatsRow> rows,
     NbaStatsFilters filters, {
