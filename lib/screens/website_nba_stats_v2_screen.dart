@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../models/app_session.dart';
 import '../widgets/nba_player_inspector.dart';
+import '../services/nba_stats_metric_catalog.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
@@ -25,6 +26,7 @@ class WebsiteNbaStatsScreen extends StatefulWidget {
 class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
   final _api = const WebsiteNbaApiService();
   final _engine = const NbaStatsWorkstationEngine();
+  final _metricResolver = const NbaTerminalMetricResolver();
   final _search = TextEditingController();
 
   late Future<List<WebsiteNbaSeason>> _seasonsFuture;
@@ -227,8 +229,8 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
     }).toList();
 
     filtered.sort((left, right) {
-      final a = left.value(_sortKey);
-      final b = right.value(_sortKey);
+      final a = left.value(_sortKey) ?? _metricResolver.value(left, _sortKey);
+      final b = right.value(_sortKey) ?? _metricResolver.value(right, _sortKey);
       if (a == null && b == null) return left.player.compareTo(right.player);
       if (a == null) return 1;
       if (b == null) return -1;
@@ -302,7 +304,8 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
           for (final visible in visibleColumns)
             _StatValueCell(
               column: visible.column,
-              value: row.value(visible.column.key),
+              value: row.value(visible.column.key) ??
+                  _metricResolver.value(row, visible.column.key),
             ),
         ],
     ];
@@ -679,10 +682,14 @@ const _baseColumns = <_StatColumn>[
       _StatColumn('dreb', 'DRB'),
     ],
   ),
-  _StatColumn('ast', 'APG'),
+  _StatColumn('ast', 'APG', children: [
+    _StatColumn('ast_pct', 'AST%', percent: true),
+  ]),
   _StatColumn('stl', 'SPG'),
   _StatColumn('blk', 'BPG'),
-  _StatColumn('tov', 'TPG'),
+  _StatColumn('tov', 'TPG', children: [
+    _StatColumn('tov_pct', 'TO%', percent: true),
+  ]),
   _StatColumn('pf', 'PF'),
   _StatColumn(
     'fg_pct',
