@@ -1420,11 +1420,13 @@ class _ProductTradeMachineVideoScreenState
           ),
           SizedBox(
             width: 170,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 5,
+              runSpacing: 5,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _tag(context, 'Two-Way'),
-                const SizedBox(width: 6),
                 SizedBox(
                   width: 106,
                   child: _routeControl(
