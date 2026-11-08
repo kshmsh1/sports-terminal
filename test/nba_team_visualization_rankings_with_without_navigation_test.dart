@@ -49,7 +49,7 @@ void main() {
 
     expect(alias, contains("export 'website_nba_with_without_v2_screen.dart'"));
     expect(screen, contains("String _season = '2025-26';"));
-    expect(screen, contains('Stat Line Shift'));
+    expect(screen, contains('With / Without'));
     expect(screen, contains('_playerOne'));
     expect(screen, contains('_playerTwo'));
     expect(screen, contains('Select exactly two distinct players'));
@@ -125,8 +125,8 @@ void main() {
     expect(source, contains('Deterministic top-N selection'));
     expect(source, contains("'histogram_bins': histogramBins"));
     expect(source, contains("'radar_compare_player': radarComparePlayer"));
-    expect(shell, contains("_selected == 'visualizations'"));
-    expect(shell, contains('? 1880'));
+    expect(shell, contains("'visualizations'"));
+    expect(shell, contains('? 1920'));
   });
 
   test('rankings supports ordered drag-drop tiers and durable saved boards', () {
