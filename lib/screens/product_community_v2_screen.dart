@@ -243,9 +243,8 @@ class _ProductCommunityV2ScreenState extends State<ProductCommunityV2Screen> {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _CommunityChoice(
                             label: 'All communities',
@@ -255,7 +254,8 @@ class _ProductCommunityV2ScreenState extends State<ProductCommunityV2Screen> {
                               _changeFeed();
                             },
                           ),
-                          for (final board in boards)
+                          const SizedBox(height: 6),
+                          for (final board in boards) ...[
                             _CommunityChoice(
                               label: '${board['name'] ?? board['slug']}',
                               badge: board['following'] == true ? 'FOLLOWING' : '',
@@ -265,6 +265,8 @@ class _ProductCommunityV2ScreenState extends State<ProductCommunityV2Screen> {
                                 _changeFeed();
                               },
                             ),
+                            const SizedBox(height: 5),
+                          ],
                         ],
                       ),
                     ],
@@ -1213,16 +1215,18 @@ class _CommunityChoice extends StatelessWidget {
               border: Border.all(color: selected ? _cBlue : _cLine),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: MainAxisSize.max,
               children: [
-                Text(
+                Expanded(child: Text(
                   label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: selected ? _cText : _cMuted,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 11,
+                    fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
                   ),
-                ),
+                )),
                 if (badge.isNotEmpty) ...[
                   const SizedBox(width: 6),
                   const Icon(Icons.check_circle_rounded, size: 12, color: _cGreen),
