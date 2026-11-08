@@ -278,7 +278,7 @@ final List<NbaTerminalMetric> nbaTerminalMetrics = [
   _m('rpg', 'Rebounds Per Game', 'RPG', 'Basic', 'Total rebounds under the selected rate basis.', engineKey: 'reb', children: ['oreb', 'dreb']),
   _m('oreb', 'Offensive Rebounds', 'ORB', 'Rebounding', 'Offensive rebounds under the selected rate basis.', engineKey: 'oreb', children: ['contested_orb_pg', 'uncontested_orb_pg', 'orb_pct']),
   _m('dreb', 'Defensive Rebounds', 'DRB', 'Rebounding', 'Defensive rebounds under the selected rate basis.', engineKey: 'dreb', children: ['contested_dreb_pg', 'uncontested_dreb_pg', 'drb_pct']),
-  _m('apg', 'Assists Per Game', 'APG', 'Playmaking', 'Assists under the selected rate basis.', engineKey: 'ast'),
+  _m('apg', 'Assists Per Game', 'APG', 'Playmaking', 'Assists under the selected rate basis.', engineKey: 'ast', children: ['ast_pct']),
   _m('spg', 'Steals Per Game', 'SPG', 'Defense', 'Steals under the selected rate basis.', engineKey: 'stl', children: ['stl_pct']),
   _m('bpg', 'Blocks Per Game', 'BPG', 'Defense', 'Blocks under the selected rate basis.', engineKey: 'blk', children: ['blk_pct']),
   _m('tpg', 'Turnovers Per Game', 'TPG', 'Playmaking', 'Turnovers under the selected rate basis.', engineKey: 'tov', children: ['tov_pct'], higherIsBetter: false),
