@@ -400,7 +400,7 @@ class _WebsiteNbaAdvancedStatsScreenState
           children: [
             Text('Advanced Stats', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -1)),
             const SizedBox(height: 8),
-            Text('Deep player statistics organized by basketball questions, with explicit source boundaries and stable rate conversions.', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: colors.onSurfaceVariant, height: 1.45)),
+            const SizedBox.shrink(),
             const SizedBox(height: 20),
             Card(
               child: Padding(
@@ -459,7 +459,7 @@ class _WebsiteNbaAdvancedStatsScreenState
               ),
             ),
             const SizedBox(height: 14),
-            SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [for (final item in _categories) Padding(padding: const EdgeInsets.only(right: 7), child: ChoiceChip(label: Text(item.name), selected: item.name == _category, onSelected: (_) => _selectCategory(item.name)))])),
+            Wrap(spacing: 7, runSpacing: 8, children: [for (final item in _categories) ChoiceChip(label: Text(item.name), selected: item.name == _category, onSelected: (_) => _selectCategory(item.name))]),
             const SizedBox(height: 10),
             Text(definition.description, style: TextStyle(color: colors.onSurfaceVariant, height: 1.4)),
             const SizedBox(height: 4),
@@ -669,11 +669,11 @@ final _categories = <_Category>[
     countMetric('min','MPG','Minutes','MIN','Minutes played.'),
     countMetric('pts','PPG','Points','PTS','Points scored.'),
     countMetric('reb','RPG','Rebounds','REB','Total rebounds.',children:[childCount('oreb','ORB','Offensive Rebounds','OREB','Offensive rebounds.'),childCount('dreb','DREB','Defensive Rebounds','DREB','Defensive rebounds.')]),
-    countMetric('ast','APG','Assists','AST','Assists.'),
+    countMetric('ast','APG','Assists','AST','Assists.',children:[_catalogMetric('ast_pct')]),
     countMetric('stl','SPG','Steals','STL','Steals.'),
     countMetric('blk','BPG','Blocks','BLK','Blocks.'),
-    countMetric('tov','TPG','Turnovers','TOV','Turnovers.'),
-    countMetric('pf','PF PG','Personal Fouls','PF','Personal fouls.'),
+    countMetric('tov','TPG','Turnovers','TOV','Turnovers.',children:[_catalogMetric('tov_pct')]),
+    countMetric('pf','PF','Personal Fouls','PF','Personal fouls.'),
     _Metric('fg_pct','FG%','Field-goal percentage.',percent:true,children:[childCount('fgm','FGM','Field Goals Made','FGM','Field goals made.'),childCount('fga','FGA','Field Goal Attempts','FGA','Field-goal attempts.')]),
     _Metric('three_pct','3P%','Three-point percentage.',percent:true,children:[childCount('three_pm','3PM','Three-Pointers Made','3PM','Three-pointers made.'),childCount('three_pa','3PA','Three-Point Attempts','3PA','Three-point attempts.')]),
     _Metric('ft_pct','FT%','Free-throw percentage.',percent:true,children:[childCount('ftm','FTM','Free Throws Made','FTM','Free throws made.'),childCount('fta','FTA','Free Throw Attempts','FTA','Free-throw attempts.')]),
@@ -730,10 +730,10 @@ final _categories = <_Category>[
     countMetric('min','MPG','Minutes','MIN','Minutes played.'),
     countMetric('pts','PPG','Points','PTS','Points.'),
     countMetric('reb','RPG','Rebounds','REB','Rebounds.'),
-    countMetric('ast','APG','Assists','AST','Assists.'),
+    countMetric('ast','APG','Assists','AST','Assists.',children:[_catalogMetric('ast_pct')]),
     countMetric('stl','SPG','Steals','STL','Steals.'),
     countMetric('blk','BPG','Blocks','BLK','Blocks.'),
-    countMetric('tov','TPG','Turnovers','TOV','Turnovers.'),
+    countMetric('tov','TPG','Turnovers','TOV','Turnovers.',children:[_catalogMetric('tov_pct')]),
     countMetric('fgm','FGM PG','Field Goals Made','FGM','Field goals made.'),
     countMetric('three_pm','3PM PG','Three-Pointers Made','3PM','Three-pointers made.'),
     countMetric('ftm','FTM PG','Free Throws Made','FTM','Free throws made.'),
@@ -742,10 +742,10 @@ final _categories = <_Category>[
 
 double _metricColumnWidth(_Metric metric, NbaStatsBasis basis, {required bool child}) {
   final label = metric.displayLabel(basis);
-  if (metric.textValue) return 175.0;
+  if (metric.textValue) return 142.0;
   final arrowAllowance = metric.children.isEmpty ? 0.0 : 32.0;
-  final estimated = label.length * 7.8 + 26 + arrowAllowance;
-  return math.max(child ? 72.0 : 78.0, math.min(estimated, 320.0));
+  final estimated = label.length * 6.5 + 19 + arrowAllowance;
+  return math.max(child ? 62.0 : 67.0, math.min(estimated, 270.0));
 }
 
 class _StatGlossary extends StatelessWidget {
