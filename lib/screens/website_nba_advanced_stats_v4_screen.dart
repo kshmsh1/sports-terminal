@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../models/app_session.dart';
 import '../services/nba_stat_display_format.dart';
 import '../services/nba_stats_metric_catalog.dart';
+import '../widgets/nba_player_inspector.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
@@ -49,6 +50,7 @@ class _WebsiteNbaAdvancedStatsScreenState
   bool _descending = true;
   final Set<String> _expanded = <String>{};
   final Set<String> _expandedPlayers = <String>{};
+  String? _inspectedPlayerId;
   int _pageSize = 20;
   int _page = 1;
 
@@ -212,6 +214,13 @@ class _WebsiteNbaAdvancedStatsScreenState
       basis: _basis,
       seasonType: _seasonType,
     );
+    NbaStatsRow? inspected;
+    for (final playerRow in rows) {
+      if (playerRow.playerId == _inspectedPlayerId) {
+        inspected = playerRow;
+        break;
+      }
+    }
     final query = _search.text.trim().toLowerCase();
     final realTeams = <String>{};
     final combinedLabels = <String>{};
@@ -361,12 +370,7 @@ class _WebsiteNbaAdvancedStatsScreenState
                 const SizedBox(width: 28),
               Expanded(
                 child: InkWell(
-                  onTap: () => openWebsiteNbaPlayerPage(
-                    context,
-                    session: widget.session,
-                    playerKey: entry.row.playerId,
-                    playerName: entry.row.player,
-                  ),
+                  onTap: () => setState(() => _inspectedPlayerId = entry.row.playerId),
                   child: Text(
                     entry.isChild ? '↳ ${entry.row.player}' : entry.row.player,
                     maxLines: 1,
@@ -465,16 +469,38 @@ class _WebsiteNbaAdvancedStatsScreenState
             const SizedBox(height: 4),
             Text(_basisDescription(_basis), style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
             const SizedBox(height: 12),
-            pager(),
-            const SizedBox(height: 8),
-            if (filtered.isEmpty)
-              _EmptyCard(_seasonType == NbaStatsSeasonType.playoffs ? 'No playoff rows match these filters for $_season.' : 'No regular-season rows match these filters for $_season.')
-            else
-              WebsiteStickyStatsTable(columns: tableColumns, rows: tableRows, rowBackgrounds: rowBackgrounds, firstColumnWidth: 164, headerHeight: 46, rowHeight: 40),
-            const SizedBox(height: 8),
-            pager(),
-            const SizedBox(height: 16),
-            _StatGlossary(category: definition, basis: _basis),
+            LayoutBuilder(builder: (context, bounds) {
+              final table = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                pager(),
+                const SizedBox(height: 8),
+                if (filtered.isEmpty)
+                  _EmptyCard(_seasonType == NbaStatsSeasonType.playoffs
+                      ? 'No playoff rows match these filters for $_season.'
+                      : 'No regular-season rows match these filters for $_season.')
+                else
+                  WebsiteStickyStatsTable(
+                    columns: tableColumns, rows: tableRows,
+                    rowBackgrounds: rowBackgrounds,
+                    firstColumnWidth: 164, headerHeight: 46, rowHeight: 40),
+                const SizedBox(height: 8),
+                pager(),
+                const SizedBox(height: 16),
+                _StatGlossary(category: definition, basis: _basis),
+              ]);
+              final profile = inspected == null ? const SizedBox.shrink() :
+                NbaPlayerInspector(player: inspected!, session: widget.session,
+                  season: _season,
+                  onClose: () => setState(() => _inspectedPlayerId = null));
+              if (bounds.maxWidth < 1140) {
+                return Column(children: [table,
+                  if (inspected != null) ...[const SizedBox(height: 14), profile]]);
+              }
+              return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: table),
+                const SizedBox(width: 16),
+                SizedBox(width: 350, child: profile),
+              ]);
+            }),
           ],
         ),
       ),
