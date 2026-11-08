@@ -195,7 +195,7 @@ class _NbaResearchQueryPanelState extends State<NbaResearchQueryPanel> {
               crossAxisAlignment: WrapCrossAlignment.center, children: [
               SizedBox(width: 146, child: DropdownButtonFormField<String>(
                 key: ValueKey('research-season-$season'),
-                initialValue: season,
+                initialValue: seasons.isEmpty ? null : season,
                 isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Default season', isDense: true),
@@ -221,7 +221,7 @@ class _NbaResearchQueryPanelState extends State<NbaResearchQueryPanel> {
                 }),
               ),
               FilledButton.icon(
-                onPressed: _busy || _used >= _maxDaily ? null : _submit,
+                onPressed: _busy || _used >= _maxDaily || seasons.isEmpty ? null : _submit,
                 icon: _busy
                     ? const SizedBox(width: 15, height: 15,
                         child: CircularProgressIndicator(strokeWidth: 2))
