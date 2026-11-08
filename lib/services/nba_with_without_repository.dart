@@ -106,6 +106,17 @@ class NbaWithWithoutRepository {
           message: 'With/without dataset is unavailable (${response.statusCode}).',
         );
       }
+      // Hosting rewrites can return an HTML shell for a missing static JSON
+      // path with HTTP 200. Treat that as unavailable, not a raw SyntaxError.
+      if (!response.body.trimLeft().startsWith('{') ||
+          (response.headers['content-type']?.contains('text/html') ?? false)) {
+        return _cache[key] = const NbaWithWithoutSnapshot(
+          available: false,
+          source: '',
+          rows: [],
+          message: 'Lineup split data has not been published for this season.',
+        );
+      }
       final decoded = jsonDecode(response.body);
       if (decoded is! Map) {
         return _cache[key] = const NbaWithWithoutSnapshot(
