@@ -19,12 +19,12 @@ void main() {
     expect(shell, contains("id: 'team-compare'"));
     expect(shell, contains("'Compare'"));
     expect(shell, contains('_CompareMenu'));
-    expect(shell, contains('maxWidth: _selected == \'trade\''));
+    expect(shell, contains("'trade', 'stats', 'advanced'"));
     expect(shell, contains('WebsiteNbaPlayerComparisonScreen'));
     expect(shell, contains('WebsiteNbaTeamComparisonScreen'));
     expect(shell, isNot(contains("id: 'compare'")));
 
-    expect(player, contains('Player Comparison Lab'));
+    expect(player, contains('Player Compare'));
     expect(player, contains('1946-47 → 2025-26'));
     expect(player, contains('_maxPlayers = 5'));
     expect(player, contains('Add player'));
@@ -64,7 +64,7 @@ void main() {
     expect(player, isNot(contains('http://')));
     expect(player, isNot(contains('/v2/nba/history')));
 
-    expect(team, contains('Team Comparison Lab'));
+    expect(team, contains('Team Compare'));
     expect(team, contains('ComparisonSelectionLayout'));
     expect(team, contains('ComparisonTableViewport'));
     expect(team, contains('ComparisonMetricPill'));

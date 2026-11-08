@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/app_session.dart';
+import '../widgets/nba_player_inspector.dart';
+import '../services/nba_stats_metric_catalog.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
@@ -24,6 +26,7 @@ class WebsiteNbaStatsScreen extends StatefulWidget {
 class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
   final _api = const WebsiteNbaApiService();
   final _engine = const NbaStatsWorkstationEngine();
+  final _metricResolver = const NbaTerminalMetricResolver();
   final _search = TextEditingController();
 
   late Future<List<WebsiteNbaSeason>> _seasonsFuture;
@@ -39,6 +42,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
   String _sortKey = 'pts';
   bool _descending = true;
   final Set<String> _expanded = <String>{};
+  String? _inspectedPlayerId;
   int _pageSize = 20;
   int _page = 1;
 
@@ -188,6 +192,13 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
       basis: NbaStatsBasis.perGame,
       seasonType: _seasonType,
     );
+    NbaStatsRow? inspected;
+    for (final playerRow in rows) {
+      if (playerRow.playerId == _inspectedPlayerId) {
+        inspected = playerRow;
+        break;
+      }
+    }
     final query = _search.text.trim().toLowerCase();
     final teams = <String>{'All'};
     for (final row in rows) {
@@ -218,8 +229,8 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
     }).toList();
 
     filtered.sort((left, right) {
-      final a = left.value(_sortKey);
-      final b = right.value(_sortKey);
+      final a = left.value(_sortKey) ?? _metricResolver.value(left, _sortKey);
+      final b = right.value(_sortKey) ?? _metricResolver.value(right, _sortKey);
       if (a == null && b == null) return left.player.compareTo(right.player);
       if (a == null) return 1;
       if (b == null) return -1;
@@ -277,12 +288,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
       for (final row in paged)
         [
           InkWell(
-            onTap: () => openWebsiteNbaPlayerPage(
-              context,
-              session: widget.session,
-              playerKey: row.playerId,
-              playerName: row.player,
-            ),
+            onTap: () => setState(() => _inspectedPlayerId = row.playerId),
             child: Text(
               row.player,
               maxLines: 1,
@@ -298,7 +304,8 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
           for (final visible in visibleColumns)
             _StatValueCell(
               column: visible.column,
-              value: row.value(visible.column.key),
+              value: row.value(visible.column.key) ??
+                  _metricResolver.value(row, visible.column.key),
             ),
         ],
     ];
@@ -443,32 +450,37 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
                   ),
             ),
             const SizedBox(height: 12),
-            pager(),
-            const SizedBox(height: 8),
-            if (filtered.isEmpty)
-              _EmptyStatsCard(
-                _seasonType == NbaStatsSeasonType.playoffs
-                    ? 'No playoff player rows match these filters for $_season.'
-                    : 'No regular-season player rows match these filters for $_season.',
-              )
-            else
-              WebsiteStickyStatsTable(
-                columns: tableColumns,
-                rows: tableRows,
-                firstColumnWidth: 164,
-                headerHeight: 43,
-                rowHeight: 40,
-              ),
-            const SizedBox(height: 8),
-            pager(),
-            const SizedBox(height: 14),
-            Text(
-              'Historical rows are served directly from the precompiled local NBA corpus. No runtime NBA.com request is required to browse regular-season or playoff tables.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                    height: 1.45,
-                  ),
-            ),
+            LayoutBuilder(builder: (context, bounds) {
+              final table = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                pager(),
+                const SizedBox(height: 8),
+                if (filtered.isEmpty)
+                  _EmptyStatsCard(_seasonType == NbaStatsSeasonType.playoffs
+                      ? 'No playoff player rows match these filters for $_season.'
+                      : 'No regular-season player rows match these filters for $_season.')
+                else
+                  WebsiteStickyStatsTable(
+                    columns: tableColumns, rows: tableRows,
+                    firstColumnWidth: 164, headerHeight: 43, rowHeight: 40),
+                const SizedBox(height: 8),
+                pager(),
+                const SizedBox(height: 14),
+                Text('Historical stats are served from Arcside static NBA data.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant)),
+              ]);
+              final profile = inspected == null ? const SizedBox.shrink() :
+                NbaPlayerInspector(player: inspected, session: widget.session,
+                  season: _season,
+                  onClose: () => setState(() => _inspectedPlayerId = null));
+              if (bounds.maxWidth < 1140) return Column(children: [
+                table, if (inspected != null) ...[const SizedBox(height: 14), profile],
+              ]);
+              return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: table), const SizedBox(width: 16),
+                SizedBox(width: 350, child: profile),
+              ]);
+            }),
           ],
         ),
       ),
@@ -670,10 +682,14 @@ const _baseColumns = <_StatColumn>[
       _StatColumn('dreb', 'DRB'),
     ],
   ),
-  _StatColumn('ast', 'APG'),
+  _StatColumn('ast', 'APG', children: [
+    _StatColumn('ast_pct', 'AST%', percent: true),
+  ]),
   _StatColumn('stl', 'SPG'),
   _StatColumn('blk', 'BPG'),
-  _StatColumn('tov', 'TPG'),
+  _StatColumn('tov', 'TPG', children: [
+    _StatColumn('tov_pct', 'TO%', percent: true),
+  ]),
   _StatColumn('pf', 'PF'),
   _StatColumn(
     'fg_pct',
@@ -706,8 +722,8 @@ const _baseColumns = <_StatColumn>[
 
 double _statColumnWidth(_StatColumn column, {required bool child}) {
   final arrowAllowance = column.children.isEmpty ? 0.0 : 30.0;
-  final estimated = column.label.length * 8.0 + 24 + arrowAllowance;
-  return math.max(child ? 64.0 : 70.0, math.min(estimated, 190.0));
+  final estimated = column.label.length * 6.7 + 20 + arrowAllowance;
+  return math.max(child ? 58.0 : 63.0, math.min(estimated, 156.0));
 }
 
 class _StatsLoading extends StatelessWidget {

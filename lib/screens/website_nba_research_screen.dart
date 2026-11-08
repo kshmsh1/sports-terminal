@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../services/website_nba_api_service.dart';
 
 class WebsiteNbaResearchScreen extends StatefulWidget {
-  const WebsiteNbaResearchScreen({super.key});
+  const WebsiteNbaResearchScreen({super.key, this.onNavigate});
+
+  final ValueChanged<String>? onNavigate;
 
   @override
   State<WebsiteNbaResearchScreen> createState() =>
@@ -48,6 +50,34 @@ class _WebsiteNbaResearchScreenState extends State<WebsiteNbaResearchScreen> {
                 height: 1.45,
               ),
         ),
+        const SizedBox(height: 16),
+        Card(child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Your research workspace', style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 6),
+            Text('Today this is the data and source-coverage hub. You can explore static statistics and build visual analysis now; the Python Lab and Excel Workspace integrations are not enabled yet.',
+                style: TextStyle(color: colors.onSurfaceVariant)),
+            const SizedBox(height: 13),
+            Wrap(spacing: 9, runSpacing: 9, children: [
+              OutlinedButton.icon(onPressed: widget.onNavigate == null ? null :
+                  () => widget.onNavigate!('advanced'),
+                  icon: const Icon(Icons.analytics_outlined),
+                  label: const Text('Explore Advanced Stats')),
+              OutlinedButton.icon(onPressed: widget.onNavigate == null ? null :
+                  () => widget.onNavigate!('visualizations'),
+                  icon: const Icon(Icons.auto_graph_rounded),
+                  label: const Text('Open Visualization Studio')),
+              OutlinedButton.icon(onPressed: widget.onNavigate == null ? null :
+                  () => widget.onNavigate!('rankings'),
+                  icon: const Icon(Icons.format_list_numbered_rounded),
+                  label: const Text('Build Rankings')),
+              const Chip(label: Text('Python Lab · Planned')),
+              const Chip(label: Text('Excel Workspace · Planned')),
+            ]),
+          ]),
+        )),
         const SizedBox(height: 24),
         FutureBuilder<_ResearchCoverage>(
           future: _future,

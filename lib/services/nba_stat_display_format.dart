@@ -2,7 +2,8 @@
 const _nbaStatAcronyms = <String>{
   'NBA', 'ABA', 'GP', 'G', 'MPG', 'PPG', 'RPG', 'APG', 'SPG', 'BPG',
   'TPG', 'PF', 'PG', 'SG', 'SF', 'F', 'C', 'MIN', 'PTS', 'AST', 'REB',
-  'ORB', 'DRB', 'OREB', 'DREB', 'STL', 'BLK', 'TOV',
+  'ORB', 'DRB', 'OREB', 'DREB', 'STL', 'BLK', 'TOV', 'TO',
+  'ORTG', 'DRTG', 'NRTG',
   'FG', 'FGM', 'FGA', 'FG3M', 'FG3A', 'FT', 'FTM', 'FTA',
   '2P', '2PM', '2PA', '3P', '3PM', '3PA', '2PT', '3PT',
   'TS', 'PER', 'BPM', 'OBPM', 'DBPM', 'VORP', 'WS', 'OWS', 'DWS',

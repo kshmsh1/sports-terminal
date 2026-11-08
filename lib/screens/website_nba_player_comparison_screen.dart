@@ -533,7 +533,7 @@ class _WebsiteNbaPlayerComparisonScreenState
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
-              'Player Comparison Lab',
+              'Player Compare',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.w900,
                     letterSpacing: -1,
@@ -554,7 +554,7 @@ class _WebsiteNbaPlayerComparisonScreenState
         ),
         const SizedBox(height: 8),
         Text(
-          'Compare two to five player seasons or playoff runs across eras, rate bases and custom stat bundles.',
+          'Source-backed player matchups · Seasons, pace adjustments and percentiles.',
           style: TextStyle(color: colors.onSurfaceVariant),
         ),
         const SizedBox(height: 18),
@@ -604,7 +604,7 @@ class _WebsiteNbaPlayerComparisonScreenState
           ),
         if (_slots.length == 2)
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1200),
+            constraints: const BoxConstraints(maxWidth: 1800),
             child: Align(
             alignment: Alignment.centerRight,
             child: TextButton.icon(
@@ -622,7 +622,7 @@ class _WebsiteNbaPlayerComparisonScreenState
         Align(
           alignment: Alignment.centerLeft,
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: _slots.length == 2 ? 1200 : 1800),
+            constraints: const BoxConstraints(maxWidth: 1800),
             child: ComparisonSelectionLayout(
           children: [
             for (var index = 0; index < _slots.length; index++)
@@ -674,7 +674,7 @@ class _WebsiteNbaPlayerComparisonScreenState
           ),
         if (selected.length >= 2) ...[
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1200),
+            constraints: const BoxConstraints(maxWidth: 1800),
             child: SizedBox(width: double.infinity,
               child: _StandingsCard(standings: standings)),
           ),

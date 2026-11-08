@@ -62,6 +62,32 @@ class _WebsiteNbaTeamComparisonScreenState
       }
     }
     await _loadSavedViews();
+    // Recent static seasons may have player records but lack team-season
+    // totals. Start with the newest *actual* comparable team season instead
+    // of opening an empty selector. Leave unsupported seasons selectable.
+    if (_seasons.isNotEmpty) {
+      final candidates = _seasons.map((season) => season.id).toList()
+        ..sort((a, b) => b.compareTo(a));
+      final chosen = <String>[];
+      for (final season in candidates.take(8)) {
+        try {
+          final snapshot = await _api.seasonSnapshot(season,
+              seasonType: 'regular');
+          if (_teamRows(snapshot).where((row) =>
+              row.values.isNotEmpty).length >= 2) {
+            chosen.add(season);
+            break;
+          }
+        } catch (_) {
+          // Historical shards may not be published for every catalog season.
+        }
+      }
+      if (chosen.isNotEmpty) {
+        for (final slot in _slots) {
+          slot.season = chosen.first;
+        }
+      }
+    }
     return _loadData();
   }
 
@@ -302,7 +328,7 @@ class _WebsiteNbaTeamComparisonScreenState
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
-              'Team Comparison Lab',
+              'Team Compare',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.w900,
                     letterSpacing: -1,
@@ -321,7 +347,7 @@ class _WebsiteNbaTeamComparisonScreenState
         ),
         const SizedBox(height: 8),
         Text(
-          'Compare team seasons and playoff runs across eras using results, shooting, rebounding, playmaking and efficiency.',
+          'Compare NBA team seasons, playoff runs and efficiency side by side.',
           style: TextStyle(color: colors.onSurfaceVariant),
         ),
         const SizedBox(height: 18),
@@ -434,7 +460,7 @@ class _WebsiteNbaTeamComparisonScreenState
         Align(
           alignment: Alignment.center,
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: _slots.length == 2 ? 1050 : 1800),
+            constraints: const BoxConstraints(maxWidth: 1800),
             child: ComparisonSelectionLayout(
           children: [
             for (var index = 0; index < _slots.length; index++)

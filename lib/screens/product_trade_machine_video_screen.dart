@@ -509,7 +509,7 @@ class _ProductTradeMachineVideoScreenState
             return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(flex: 7, child: left),
+                Expanded(flex: 8, child: left),
                 const SizedBox(width: 12),
                 Expanded(flex: 5, child: right),
               ],
@@ -1337,7 +1337,7 @@ class _ProductTradeMachineVideoScreenState
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final minimumWidth = constraints.maxWidth < 840 ? 840.0 : constraints.maxWidth;
+        final minimumWidth = constraints.maxWidth < 735 ? 735.0 : constraints.maxWidth;
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: SizedBox(
@@ -1383,7 +1383,7 @@ class _ProductTradeMachineVideoScreenState
       child: Row(
         children: [
           SizedBox(
-            width: 240,
+            width: 193,
             child: Row(
               children: [
                 _initialAvatar(context, player.player),
@@ -1419,14 +1419,16 @@ class _ProductTradeMachineVideoScreenState
             ),
           ),
           SizedBox(
-            width: 210,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            width: 170,
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 5,
+              runSpacing: 5,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _tag(context, 'Two-Way'),
-                const SizedBox(width: 6),
                 SizedBox(
-                  width: 118,
+                  width: 106,
                   child: _routeControl(
                     assetId: assetId,
                     originTeam: player.team,
@@ -1455,7 +1457,7 @@ class _ProductTradeMachineVideoScreenState
       child: Row(
         children: [
           SizedBox(
-            width: 240,
+            width: 193,
             child: Row(
               children: [
                 _initialAvatar(context, player.player),
@@ -1511,7 +1513,7 @@ class _ProductTradeMachineVideoScreenState
             ),
           ),
           SizedBox(
-            width: 210,
+            width: 170,
             child: Wrap(
               spacing: 5,
               runSpacing: 4,
@@ -1522,7 +1524,7 @@ class _ProductTradeMachineVideoScreenState
                 if (restriction?.hasTradeVeto == true)
                   _tag(context, 'Consent'),
                 SizedBox(
-                  width: 118,
+                  width: 106,
                   child: _routeControl(
                     assetId: player.id,
                     originTeam: player.team,
@@ -3955,10 +3957,10 @@ class _ProductTradeMachineVideoScreenState
       ),
       child: Row(
         children: [
-          SizedBox(width: 240, child: Text(labels[0], style: _headerStyle(context))),
+          SizedBox(width: 193, child: Text(labels[0], style: _headerStyle(context))),
           Expanded(child: Text(labels[1], style: _headerStyle(context))),
           Expanded(child: Text(labels[2], style: _headerStyle(context))),
-          SizedBox(width: 210, child: Text(labels[3], style: _headerStyle(context))),
+          SizedBox(width: 170, child: Text(labels[3], style: _headerStyle(context))),
         ],
       ),
     );

@@ -251,18 +251,20 @@ class _WebsiteNbaWithWithoutScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Center(
+        Align(
+          alignment: Alignment.centerLeft,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Stat Line Shift',
+                'With / Without',
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
                       fontWeight: FontWeight.w900,
                     ),
               ),
               const SizedBox(height: 4),
               Text(
-                'Analyze how a player’s production changes with and without one specific teammate.',
+                'Compare source-backed lineup splits, minutes and season baselines for two teammates.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: colors.onSurfaceVariant),
               ),
@@ -423,6 +425,23 @@ class _WebsiteNbaWithWithoutScreenState
               '${data.splitSnapshot.message} Season baselines are source-backed; pair-split values remain blank until lineup stints or play-by-play are loaded.',
             ),
           const SizedBox(height: 14),
+          if (firstSplit == null && secondSplit == null) ...[
+            _InfoCard('No lineup splits are available for this player pair. Season statistics appear below as context; no with/without values or deltas are estimated.'),
+            const SizedBox(height: 12),
+            LayoutBuilder(builder: (context, bounds) {
+              final cards = [
+                _SeasonBaselineCard(player: first, basis: _basis, engine: _engine),
+                _SeasonBaselineCard(player: second, basis: _basis, engine: _engine),
+              ];
+              if (bounds.maxWidth < 850) return Column(children: [
+                cards[0], const SizedBox(height: 12), cards[1],
+              ]);
+              return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: cards[0]), const SizedBox(width: 16),
+                Expanded(child: cards[1]),
+              ]);
+            }),
+          ] else
           LayoutBuilder(
             builder: (context, constraints) {
               final cards = [
@@ -571,6 +590,55 @@ class _PairContextCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _SeasonBaselineCard extends StatelessWidget {
+  const _SeasonBaselineCard({required this.player, required this.basis, required this.engine});
+  final NbaStatsRow player;
+  final NbaStatsBasis basis;
+  final NbaStatsWorkstationEngine engine;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final metrics = [
+      ('PTS','pts'), ('REB','reb'), ('AST','ast'),
+      ('STL','stl'), ('BLK','blk'), ('TOV','tov'),
+      ('FG%','fg_pct'), ('3P%','three_pct'), ('TS%','ts_pct'),
+    ];
+    return Card(child: Padding(padding: const EdgeInsets.all(20),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('SEASON BASELINE', style: TextStyle(
+          fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 8),
+        Text(player.player, style: Theme.of(context).textTheme.titleLarge
+            ?.copyWith(fontWeight: FontWeight.w900)),
+        Text('${player.team} · ${basis.label}',
+            style: TextStyle(color: colors.onSurfaceVariant)),
+        const SizedBox(height: 16),
+        Wrap(spacing: 10, runSpacing: 10, children: [
+          for (final metric in metrics)
+            Container(width: 115,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                  color: colors.surfaceContainerHighest.withValues(alpha: .4),
+                  borderRadius: BorderRadius.circular(9)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(metric.$1, style: TextStyle(fontSize: 11,
+                    color: colors.onSurfaceVariant)),
+                const SizedBox(height: 4),
+                Text(engine.formatValue(metric.$2, player.value(metric.$2)),
+                    style: const TextStyle(fontSize: 20,
+                        fontWeight: FontWeight.w900)),
+              ]),
+            ),
+        ]),
+        const SizedBox(height: 14),
+        Text('Full-season baseline only · Arcside',
+            style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant)),
+      ]),
+    ));
   }
 }
 

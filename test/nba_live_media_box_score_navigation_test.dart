@@ -40,7 +40,7 @@ void main() {
     expect(media, isNot(contains('NbaXTimeline')));
 
     expect(box, contains('Historical static archive'));
-    expect(box, contains('Search box scores'));
+    expect(box, contains('showDatePicker('));
     expect(box, contains('gameDetail('));
     expect(box, contains('player_box_scores'));
     expect(box, isNot(contains('/v2/nba/history')));
