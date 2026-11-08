@@ -351,7 +351,7 @@ class _WebsiteNbaRankingsScreenState extends State<WebsiteNbaRankingsScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Build a source-backed tier list. Click a player to rank them or drag to reposition.'
+                'Build a source-backed tier list. Click a player to rank them or drag to reposition.',
                 style: TextStyle(color: colors.onSurfaceVariant),
               ),
             ],
