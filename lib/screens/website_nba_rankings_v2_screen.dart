@@ -273,9 +273,31 @@ class _WebsiteNbaRankingsScreenState extends State<WebsiteNbaRankingsScreen> {
           return Card(
             child: Padding(
               padding: const EdgeInsets.all(22),
-              child: Text('Rankings player pool unavailable: ${snapshot.error}'),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text('The ranking pool could not be loaded.'),
+                const SizedBox(height: 9),
+                Text('${snapshot.error}', textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => _future = _initialize()),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Reload Rankings'),
+                ),
+              ]),
             ),
           );
+        }
+        if (_seasons.isEmpty || snapshot.data!.isEmpty) {
+          return Card(child: Padding(padding: const EdgeInsets.all(24),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text('No published player records for this season / segment.'),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Reload data'),
+                  onPressed: () => setState(() => _future = _initialize()),
+                ),
+              ])));
         }
         return _buildPage(context, snapshot.data!);
       },
@@ -312,7 +334,7 @@ class _WebsiteNbaRankingsScreenState extends State<WebsiteNbaRankingsScreen> {
       return (b.value(key) ?? double.negativeInfinity)
           .compareTo(a.value(key) ?? double.negativeInfinity);
     });
-    final visiblePool = pool.take(160).toList(growable: false);
+    final visiblePool = pool.take(80).toList(growable: false);
     final colors = Theme.of(context).colorScheme;
 
     return Column(
@@ -322,14 +344,14 @@ class _WebsiteNbaRankingsScreenState extends State<WebsiteNbaRankingsScreen> {
           child: Column(
             children: [
               Text(
-                'Player Rankings',
+                'Rankings',
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
                       fontWeight: FontWeight.w900,
                     ),
               ),
               const SizedBox(height: 4),
               Text(
-                'Build ordered tiers, drag players into exact positions, and save the board locally.',
+                'Build a source-backed tier list. Click a player to rank them or drag to reposition.'
                 style: TextStyle(color: colors.onSurfaceVariant),
               ),
             ],
@@ -436,7 +458,11 @@ class _WebsiteNbaRankingsScreenState extends State<WebsiteNbaRankingsScreen> {
             ],
           ),
         ],
-        const SizedBox(height: 18),
+        const SizedBox(height: 12),
+        Text('ARCSIDE · PLAYER RANKINGS', style: TextStyle(
+            fontSize: 10, fontWeight: FontWeight.w900,
+            letterSpacing: 1, color: colors.onSurfaceVariant)),
+        const SizedBox(height: 10),
         LayoutBuilder(
           builder: (context, constraints) {
             final board = _TierBoard(
