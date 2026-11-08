@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sports_terminal/widgets/nba_percentage_heat_cell.dart';
 import 'package:sports_terminal/services/nba_stats_metric_catalog.dart';
 import 'package:sports_terminal/services/nba_stats_workstation_engine.dart';
-import 'package:sports_terminal/services/nba_terminal_seed_repository.dart';
 
 void main() {
   testWidgets('Free throw heat marks 90.0% dark green for both FT% labels',
