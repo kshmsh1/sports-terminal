@@ -135,12 +135,12 @@ class ArcsideResearchQueryEngine {
           : (int.tryParse(requested.group(1)!) ?? 5).clamp(1, 10).toInt();
       final eligible = rows.where((row) {
         final gp = row.value('gp') ?? 0;
-        final value = _value(row, metric);
+        final value = _value(row, metric, basis: basis);
         return gp >= minGames && value != null && value.isFinite;
       }).toList()
         ..sort((left, right) {
-          final leftValue = _value(left, metric)!;
-          final rightValue = _value(right, metric)!;
+          final leftValue = _value(left, metric, basis: basis)!;
+          final rightValue = _value(right, metric, basis: basis)!;
           final comparison = rightValue.compareTo(leftValue);
           return comparison != 0 ? comparison : left.player.compareTo(right.player);
         });
@@ -163,7 +163,7 @@ class ArcsideResearchQueryEngine {
             ArcsideResearchHit(
               name: row.player,
               team: row.team,
-              value: _display(metric, _value(row, metric)),
+              value: _display(metric, _value(row, metric, basis: basis), totals: wantsTotals),
               detail: '${(row.value('gp') ?? 0).round()} GP',
             ),
         ],
@@ -207,7 +207,7 @@ class ArcsideResearchQueryEngine {
           ArcsideResearchHit(
             name: player.player,
             team: player.team,
-            value: _display(metric, value),
+            value: _display(metric, value, totals: wantsTotals),
             detail: '${(player.value('gp') ?? 0).round()} GP',
           ),
         ],
@@ -242,16 +242,27 @@ class ArcsideResearchQueryEngine {
   }) {
     if (basis == NbaStatsBasis.totals &&
         const {'pts', 'reb', 'ast', 'stl', 'blk', 'tov'}.contains(key)) {
-      final games = row.value('gp');
-      final perGame = row.value(key);
-      if (games == null || perGame == null) return null;
-      return games * perGame;
+      // Counting totals are used only when preserved explicitly in the
+      // canonical source row. Never reconstruct them from rounded per-game
+      // displays or assume a missing total was zero.
+      const rawKeys = <String, String>{
+        'pts': 'points', 'reb': 'rebounds', 'ast': 'assists',
+        'stl': 'steals', 'blk': 'blocks', 'tov': 'turnovers',
+      };
+      final raw = row.raw[rawKeys[key]];
+      if (raw is num) return raw.toDouble();
+      return double.tryParse(raw?.toString() ?? '');
     }
     return row.value(key);
   }
 
-  static String _display(String key, double? value) =>
-      _stats.formatValue(key, value);
+  static String _display(String key, double? value, {bool totals = false}) {
+    if (totals && value != null && value.isFinite &&
+        const {'pts', 'reb', 'ast', 'stl', 'blk', 'tov'}.contains(key)) {
+      return value.round().toString();
+    }
+    return _stats.formatValue(key, value);
+  }
 
   static String? _metricFor(String prompt) {
     const patterns = <(String, String)>[
