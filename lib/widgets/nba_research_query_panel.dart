@@ -161,7 +161,7 @@ class _NbaResearchQueryPanelState extends State<NbaResearchQueryPanel> {
               ),
             ]),
             const SizedBox(height: 6),
-            Text('Ask a question about NBA player statistics. Answers come directly from Arcside\'s historical data, without an account or AI subscription.',
+            Text('Ask a question about NBA player statistics. Answers come directly from Arcside\'s historical data, without a ChatGPT login or an AI subscription.',
               style: TextStyle(color: colors.onSurfaceVariant, height: 1.4)),
             const SizedBox(height: 18),
             TextField(
