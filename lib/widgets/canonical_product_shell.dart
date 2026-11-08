@@ -142,11 +142,11 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
           icon: Icons.account_tree_rounded,
           builder: () => ProductFrontOfficeRegistryScreen(session: widget.session),
         ),
-        const _Destination(
+        _Destination(
           id: 'research',
           label: 'Research',
           icon: Icons.science_outlined,
-          builder: WebsiteNbaResearchScreen.new,
+          builder: () => WebsiteNbaResearchScreen(onNavigate: _select),
         ),
         _Destination(
           id: 'community',
