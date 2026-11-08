@@ -2997,6 +2997,24 @@ class _NbaChartPainter extends CustomPainter {
       case _ChartType.radar:
         _paintRadar(canvas, rect);
     }
+    // Draw inside the actual visualization canvas so screenshots and exports
+    // visibly attribute the chart to Arcside, independent of page chrome.
+    final mark = TextPainter(
+      text: TextSpan(
+        text: 'ARCSIDE',
+        style: TextStyle(
+          color: colorScheme.onSurface.withValues(alpha: .40),
+          fontSize: 11,
+          letterSpacing: 2,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    mark.paint(canvas, Offset(
+      math.max(8.0, size.width - mark.width - 15),
+      math.max(5.0, size.height - mark.height - 8),
+    ));
   }
 
   void _paintXY(
