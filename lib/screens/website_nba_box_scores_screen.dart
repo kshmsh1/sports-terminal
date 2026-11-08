@@ -2,28 +2,25 @@ import 'package:flutter/material.dart';
 
 import '../services/website_nba_api_service.dart';
 
+/// Date-first, source-backed NBA archive. Games are browsed on the left;
+/// choosing a game reveals its box score and player drill-down on the right.
 class WebsiteNbaBoxScoresScreen extends StatefulWidget {
   const WebsiteNbaBoxScoresScreen({super.key});
-
   @override
-  State<WebsiteNbaBoxScoresScreen> createState() =>
-      _WebsiteNbaBoxScoresScreenState();
+  State<WebsiteNbaBoxScoresScreen> createState() => _WebsiteNbaBoxScoresScreenState();
 }
 
 class _WebsiteNbaBoxScoresScreenState extends State<WebsiteNbaBoxScoresScreen> {
   final _api = const WebsiteNbaApiService();
-  final _search = TextEditingController();
-  late Future<_BoxScoreArchive> _future;
+  late Future<_BoxScoreArchive> _archive = _load();
   String _season = 'All';
   String _segment = 'All';
-  int _page = 1;
-  static const _pageSize = 30;
-
-  @override
-  void initState() {
-    super.initState();
-    _future = _load();
-  }
+  DateTime? _date;
+  String? _selectedGameKey;
+  Future<Map<String, dynamic>>? _gameFuture;
+  Map<String, dynamic>? _selectedPlayer;
+  String? _teamFilter;
+  final _search = TextEditingController();
 
   @override
   void dispose() {
@@ -32,512 +29,507 @@ class _WebsiteNbaBoxScoresScreenState extends State<WebsiteNbaBoxScoresScreen> {
   }
 
   Future<_BoxScoreArchive> _load() async {
-    final results = await Future.wait<dynamic>([
-      _api.seasons(),
-      _api.games(),
-    ]);
-    final seasons = results[0] as List<WebsiteNbaSeason>;
-    final games = results[1] as List<Map<String, dynamic>>;
-    games.sort((a, b) {
-      final byDate = _text(b['game_date']).compareTo(_text(a['game_date']));
-      return byDate != 0
-          ? byDate
-          : _text(b['game_key']).compareTo(_text(a['game_key']));
-    });
-    return _BoxScoreArchive(seasons: seasons, games: games);
+    final data = await Future.wait<dynamic>([_api.seasons(), _api.games()]);
+    final games = data[1] as List<Map<String, dynamic>>;
+    games.sort((a, b) => _text(b['game_date']).compareTo(_text(a['game_date'])));
+    return _BoxScoreArchive(
+      seasons: data[0] as List<WebsiteNbaSeason>, games: games);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<_BoxScoreArchive>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const SizedBox(
-            height: 460,
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-        if (snapshot.hasError || snapshot.data == null) {
-          return _ArchiveError(
-            error: snapshot.error,
-            onRetry: () => setState(() => _future = _load()),
-          );
-        }
-        return _buildPage(context, snapshot.data!);
-      },
-    );
-  }
-
-  Widget _buildPage(BuildContext context, _BoxScoreArchive archive) {
-    final colors = Theme.of(context).colorScheme;
-    final query = _search.text.trim().toLowerCase();
-    final filtered = archive.games.where((game) {
-      if (_season != 'All' && _text(game['season_id']) != _season) return false;
-      if (_segment != 'All') {
-        final type = _text(game['season_type']).toLowerCase();
-        if (_segment == 'Regular Season' && type.contains('play')) return false;
-        if (_segment == 'Playoffs' && !type.contains('play')) return false;
-      }
-      if (query.isEmpty) return true;
-      final haystack = [
-        game['game_date'],
-        game['game_key'],
-        game['nba_game_id'],
-        game['home_team_name'],
-        game['away_team_name'],
-        game['home_team_abbreviation'],
-        game['away_team_abbreviation'],
-      ].map((value) => _text(value).toLowerCase()).join(' ');
-      return haystack.contains(query);
-    }).toList(growable: false);
-
-    final pageCount = filtered.isEmpty
-        ? 1
-        : ((filtered.length + _pageSize - 1) ~/ _pageSize);
-    if (_page > pageCount) _page = pageCount;
-    final start = (_page - 1) * _pageSize;
-    final visible = filtered.skip(start).take(_pageSize).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 12,
-          runSpacing: 10,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(
-              'Box Scores',
-              style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1,
-                  ),
-            ),
-            const Chip(
-              avatar: Icon(Icons.inventory_2_outlined, size: 17),
-              label: Text('Historical static archive'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Browse the newest completed games or search the historical game catalog by team, date or game ID. Detailed player rows appear whenever a source-backed box score has been materialized locally.',
-          style: TextStyle(color: colors.onSurfaceVariant),
-        ),
-        const SizedBox(height: 18),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                SizedBox(
-                  width: 320,
-                  child: TextField(
-                    controller: _search,
-                    onChanged: (_) => setState(() => _page = 1),
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search_rounded),
-                      labelText: 'Search box scores',
-                      hintText: 'Celtics, 2024-06-17, game ID…',
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 168,
-                  child: DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue: _season,
-                    decoration: const InputDecoration(
-                      labelText: 'Season',
-                      isDense: true,
-                    ),
-                    items: [
-                      const DropdownMenuItem(value: 'All', child: Text('All seasons')),
-                      for (final season in archive.seasons)
-                        DropdownMenuItem(
-                          value: season.id,
-                          child: Text(season.id),
-                        ),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _season = value;
-                        _page = 1;
-                      });
-                    },
-                  ),
-                ),
-                SizedBox(
-                  width: 190,
-                  child: DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue: _segment,
-                    decoration: const InputDecoration(
-                      labelText: 'Segment',
-                      isDense: true,
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'All', child: Text('All games')),
-                      DropdownMenuItem(
-                        value: 'Regular Season',
-                        child: Text('Regular Season'),
-                      ),
-                      DropdownMenuItem(value: 'Playoffs', child: Text('Playoffs')),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _segment = value;
-                        _page = 1;
-                      });
-                    },
-                  ),
-                ),
-                Text(
-                  '${filtered.length} games',
-                  style: TextStyle(
-                    color: colors.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        if (visible.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(28),
-              child: Center(child: Text('No historical games match these filters.')),
-            ),
-          )
-        else ...[
-          for (final game in visible)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _GameRow(
-                game: game,
-                onOpen: () => _openGame(context, game),
-              ),
-            ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                tooltip: 'Previous page',
-                onPressed: _page > 1 ? () => setState(() => _page--) : null,
-                icon: const Icon(Icons.chevron_left_rounded),
-              ),
-              Text('Page $_page of $pageCount'),
-              IconButton(
-                tooltip: 'Next page',
-                onPressed: _page < pageCount
-                    ? () => setState(() => _page++)
-                    : null,
-                icon: const Icon(Icons.chevron_right_rounded),
-              ),
-            ],
-          ),
-        ],
-      ],
-    );
-  }
-
-  Future<void> _openGame(
-    BuildContext context,
-    Map<String, dynamic> game,
-  ) async {
+  void _selectGame(Map<String, dynamic> game) {
     final key = _text(game['game_key']);
-    Map<String, dynamic>? detail;
-    Object? error;
-    try {
-      detail = await _api.gameDetail(key);
-    } catch (caught) {
-      error = caught;
+    if (key.isEmpty) return;
+    setState(() {
+      _selectedGameKey = key;
+      _selectedPlayer = null;
+      _teamFilter = null;
+      _gameFuture = _api.gameDetail(key);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<_BoxScoreArchive>(
+    future: _archive,
+    builder: (context, result) {
+      if (!result.hasData) {
+        return SizedBox(height: 430, child: Center(child: result.hasError
+            ? Text('Game archive unavailable: ${result.error}')
+            : const CircularProgressIndicator()));
+      }
+      return _buildArchive(context, result.data!);
+    },
+  );
+
+  Widget _buildArchive(BuildContext context, _BoxScoreArchive archive) {
+    final colors = Theme.of(context).colorScheme;
+    final seasonGames = archive.games.where((game) {
+      if (_season != 'All' && _text(game['season_id']) != _season) return false;
+      if (_segment == 'Regular Season' && _isPlayoffs(game)) return false;
+      if (_segment == 'Playoffs' && !_isPlayoffs(game)) return false;
+      return true;
+    }).toList();
+    final date = _date ?? (seasonGames.isEmpty
+        ? null : DateTime.tryParse(_text(seasonGames.first['game_date']).substring(0, 10)));
+    final dateString = date == null ? '' : _dateKey(date);
+    final query = _search.text.trim().toLowerCase();
+    final visible = seasonGames.where((game) {
+      if (dateString.isNotEmpty &&
+          !_text(game['game_date']).startsWith(dateString)) return false;
+      if (query.isEmpty) return true;
+      return [
+        game['away_team_name'], game['home_team_name'],
+        game['away_team_abbreviation'], game['home_team_abbreviation'],
+        game['game_key'],
+      ].any((value) => _text(value).toLowerCase().contains(query));
+    }).toList();
+
+    final filters = Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(13),
+        child: Wrap(spacing: 10, runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center, children: [
+          SizedBox(width: 152, child: DropdownButtonFormField<String>(
+            key: ValueKey('box-season-$_season'),
+            initialValue: _season,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Season', isDense: true),
+            items: [
+              const DropdownMenuItem(value: 'All', child: Text('All seasons')),
+              for (final item in archive.seasons)
+                DropdownMenuItem(value: item.id, child: Text(item.id)),
+            ],
+            onChanged: (next) {
+              if (next == null) return;
+              setState(() {
+                _season = next;
+                _date = null;
+                _selectedGameKey = null;
+                _gameFuture = null;
+                _selectedPlayer = null;
+              });
+            },
+          )),
+          SizedBox(width: 167, child: DropdownButtonFormField<String>(
+            key: ValueKey('box-segment-$_segment'),
+            initialValue: _segment,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Segment', isDense: true),
+            items: const [
+              DropdownMenuItem(value: 'All', child: Text('All games')),
+              DropdownMenuItem(value: 'Regular Season', child: Text('Regular Season')),
+              DropdownMenuItem(value: 'Playoffs', child: Text('Playoffs')),
+            ],
+            onChanged: (next) => setState(() {
+              _segment = next ?? 'All';
+              _date = null;
+              _selectedGameKey = null;
+              _gameFuture = null;
+              _selectedPlayer = null;
+            }),
+          )),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.calendar_month_rounded, size: 18),
+            label: Text(date == null ? 'Choose date' : _niceDate(date)),
+            onPressed: () async {
+              final pick = await showDatePicker(
+                context: context,
+                initialDate: date ?? DateTime(2025, 1, 1),
+                firstDate: DateTime(1946),
+                lastDate: DateTime(2027, 12, 31),
+                helpText: 'Select a game date',
+              );
+              if (pick == null || !mounted) return;
+              setState(() {
+                _date = pick;
+                _selectedGameKey = null;
+                _gameFuture = null;
+                _selectedPlayer = null;
+              });
+            },
+          ),
+          IconButton(
+            tooltip: 'Previous day',
+            onPressed: date == null ? null : () => setState(() {
+              _date = date.subtract(const Duration(days: 1));
+              _selectedGameKey = null; _gameFuture = null; _selectedPlayer = null;
+            }),
+            icon: const Icon(Icons.chevron_left_rounded),
+          ),
+          IconButton(
+            tooltip: 'Next day',
+            onPressed: date == null ? null : () => setState(() {
+              _date = date.add(const Duration(days: 1));
+              _selectedGameKey = null; _gameFuture = null; _selectedPlayer = null;
+            }),
+            icon: const Icon(Icons.chevron_right_rounded),
+          ),
+          SizedBox(width: 180, child: TextField(
+            controller: _search,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              isDense: true, hintText: 'Search teams',
+              prefixIcon: Icon(Icons.search_rounded)),
+          )),
+          Chip(label: Text('${visible.length} game${visible.length == 1 ? '' : 's'}')),
+        ]),
+      ),
+    );
+
+    final gameGrid = visible.isEmpty
+      ? Card(child: Padding(padding: const EdgeInsets.all(26),
+          child: Text('No games found for ${date == null ? 'this season' : _niceDate(date)}. Choose another date.')))
+      : LayoutBuilder(builder: (context, bounds) {
+        final width = (bounds.maxWidth - 12) / 2;
+        return Wrap(spacing: 12, runSpacing: 12, children: [
+          for (final game in visible)
+            SizedBox(width: width, child: _GameTile(
+              game: game,
+              selected: _selectedGameKey == _text(game['game_key']),
+              onTap: () => _selectGame(game),
+            )),
+        ]);
+      });
+
+    Widget detailPanel() {
+      if (_gameFuture == null || _selectedGameKey == null) return const SizedBox.shrink();
+      Map<String, dynamic>? selectedGame;
+      for (final game in archive.games) {
+        if (_text(game['game_key']) == _selectedGameKey) {
+          selectedGame = game; break;
+        }
+      }
+      if (selectedGame == null) return const SizedBox.shrink();
+      final selected = selectedGame;
+      return FutureBuilder<Map<String, dynamic>>(
+        future: _gameFuture,
+        builder: (context, result) => _GameInspector(
+          game: selected,
+          detail: result.data,
+          loading: result.connectionState != ConnectionState.done,
+          error: result.error,
+          selectedPlayer: _selectedPlayer,
+          selectedTeam: _teamFilter,
+          onTeam: (team) => setState(() {
+            _teamFilter = team;
+            _selectedPlayer = null;
+          }),
+          onPlayer: (player) => setState(() => _selectedPlayer = player),
+          onClose: () => setState(() {
+            _selectedGameKey = null; _gameFuture = null;
+            _selectedPlayer = null;
+          }),
+        ),
+      );
     }
-    if (!context.mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (_) => _BoxScoreDialog(game: game, detail: detail, error: error),
-    );
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Box Scores', style: Theme.of(context).textTheme.displaySmall
+          ?.copyWith(fontWeight: FontWeight.w900)),
+      const SizedBox(height: 5),
+      Text('Choose a season and date to browse final scores. Select a game for team and player box scores.',
+          style: TextStyle(color: colors.onSurfaceVariant)),
+      const SizedBox(height: 16),
+      filters,
+      const SizedBox(height: 16),
+      LayoutBuilder(builder: (context, bounds) {
+        final left = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            Expanded(child: Text(date == null ? 'Select a date' : _niceDate(date),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900))),
+            Text('${visible.length} final scores', style: TextStyle(
+                fontSize: 12, color: colors.onSurfaceVariant)),
+          ]),
+          const SizedBox(height: 11),
+          gameGrid,
+        ]);
+        if (bounds.maxWidth < 1100) return Column(children: [
+          left, if (_gameFuture != null) ...[
+            const SizedBox(height: 16), detailPanel(),
+          ],
+        ]);
+        return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: left),
+          const SizedBox(width: 16),
+          SizedBox(width: 670, child: detailPanel()),
+        ]);
+      }),
+      const SizedBox(height: 14),
+      Text('ARCSIDE · Historical static archive · Missing player statistics are not inferred.',
+          style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant)),
+    ]);
   }
 }
 
-class _GameRow extends StatelessWidget {
-  const _GameRow({required this.game, required this.onOpen});
-
+class _GameTile extends StatelessWidget {
+  const _GameTile({required this.game, required this.selected, required this.onTap});
   final Map<String, dynamic> game;
-  final VoidCallback onOpen;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final homeScore = _num(game['home_score']);
-    final awayScore = _num(game['away_score']);
-    final available = game['box_score_available'] == true;
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 100,
-                child: Text(
-                  _text(game['game_date'], 'Unknown date'),
-                  style: TextStyle(
-                    color: colors.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  '${_team(game, away: true)}  @  ${_team(game, away: false)}',
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-              ),
-              SizedBox(
-                width: 100,
-                child: Text(
-                  awayScore == null || homeScore == null
-                      ? '—'
-                      : '${awayScore.round()} – ${homeScore.round()}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Tooltip(
-                message: available
-                    ? 'Detailed box score available'
-                    : 'Game indexed; detailed player box score not materialized yet',
-                child: Icon(
-                  available
-                      ? Icons.table_rows_rounded
-                      : Icons.table_rows_outlined,
-                  color: available ? colors.primary : colors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_right_rounded),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BoxScoreDialog extends StatelessWidget {
-  const _BoxScoreDialog({
-    required this.game,
-    required this.detail,
-    required this.error,
-  });
-
-  final Map<String, dynamic> game;
-  final Map<String, dynamic>? detail;
-  final Object? error;
-
-  @override
-  Widget build(BuildContext context) {
-    final playerRows = _maps(detail?['player_box_scores']);
-    final colors = Theme.of(context).colorScheme;
-    return Dialog(
-      child: SizedBox(
-        width: 1050,
-        height: 720,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${_team(game, away: true)} at ${_team(game, away: false)}',
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${_text(game['game_date'])} · ${_text(game['season_id'])} · ${_segment(game)}',
-                          style: TextStyle(color: colors.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              _ScoreBanner(game: detail == null ? game : _map(detail!['game'])),
-              const SizedBox(height: 16),
-              Expanded(
-                child: playerRows.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(
-                            'This game is in the historical catalog, but a detailed player box score has not been materialized from the source data yet.${error == null ? '' : '\n\n$error'}',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: colors.onSurfaceVariant),
-                          ),
-                        ),
-                      )
-                    : _PlayerBoxTable(rows: playerRows),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ScoreBanner extends StatelessWidget {
-  const _ScoreBanner({required this.game});
-  final Map<String, dynamic> game;
-
-  @override
-  Widget build(BuildContext context) {
     final away = _team(game, away: true);
     final home = _team(game, away: false);
     final awayScore = _num(game['away_score']);
     final homeScore = _num(game['home_score']);
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                away,
-                textAlign: TextAlign.right,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-              ),
-            ),
-            const SizedBox(width: 18),
-            Text(
-              awayScore == null ? '—' : awayScore.round().toString(),
-              style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w900),
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12),
-              child: Text('–', style: TextStyle(fontSize: 28)),
-            ),
-            Text(
-              homeScore == null ? '—' : homeScore.round().toString(),
-              style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(width: 18),
-            Expanded(
-              child: Text(
-                home,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-              ),
-            ),
-          ],
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(13),
+        side: BorderSide(color: selected ? colors.primary :
+            colors.outlineVariant, width: selected ? 2 : .7),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(padding: const EdgeInsets.all(13),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(children: [
+              Text('FINAL', style: TextStyle(fontSize: 10,
+                  letterSpacing: 1, color: colors.onSurfaceVariant,
+                  fontWeight: FontWeight.w900)),
+              const Spacer(),
+              if (_isPlayoffs(game))
+                Text('PLAYOFFS', style: TextStyle(fontSize: 10,
+                    color: colors.primary, fontWeight: FontWeight.w900)),
+              const SizedBox(width: 5),
+              Icon(game['box_score_available'] == true
+                  ? Icons.table_chart_rounded : Icons.table_chart_outlined,
+                  size: 15, color: colors.onSurfaceVariant),
+            ]),
+            const SizedBox(height: 10),
+            _teamScoreRow(away, awayScore, awayScore != null &&
+                homeScore != null && awayScore > homeScore),
+            const SizedBox(height: 6),
+            _teamScoreRow(home, homeScore, awayScore != null &&
+                homeScore != null && homeScore > awayScore),
+          ]),
         ),
+      ),
+    );
+  }
+
+  Widget _teamScoreRow(String team, double? score, bool winner) =>
+      Row(children: [
+        Expanded(child: Text(team, maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 13, fontWeight:
+                winner ? FontWeight.w900 : FontWeight.w600))),
+        const SizedBox(width: 7),
+        Text(score == null ? '—' : score.round().toString(),
+            style: TextStyle(fontSize: 21, fontWeight: winner
+                ? FontWeight.w900 : FontWeight.w600)),
+      ]);
+}
+
+class _GameInspector extends StatelessWidget {
+  const _GameInspector({required this.game, required this.detail,
+    required this.loading, required this.error, required this.selectedPlayer,
+    required this.selectedTeam, required this.onPlayer, required this.onTeam,
+    required this.onClose});
+  final Map<String, dynamic> game;
+  final Map<String, dynamic>? detail;
+  final bool loading;
+  final Object? error;
+  final Map<String, dynamic>? selectedPlayer;
+  final String? selectedTeam;
+  final ValueChanged<Map<String, dynamic>> onPlayer;
+  final ValueChanged<String> onTeam;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final rows = _maps(detail?['player_box_scores']);
+    final teamTotals = _maps(detail?['team_box_scores']);
+    final away = _text(game['away_team_abbreviation']);
+    final home = _text(game['home_team_abbreviation']);
+    final team = selectedTeam == home ? home : selectedTeam == away ? away : away;
+    final players = rows.where((r) => _text(r['team_abbreviation']) == team).toList()
+      ..sort((a, b) => (_num(b['pts']) ?? -1).compareTo(_num(a['pts']) ?? -1));
+
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Padding(padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Text('GAME CENTER', style: TextStyle(
+                fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1.2)),
+            const Spacer(),
+            IconButton(tooltip: 'Close game', onPressed: onClose,
+                icon: const Icon(Icons.close_rounded)),
+          ]),
+          Text('${_team(game, away: true)} @ ${_team(game, away: false)}',
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w900)),
+          Text('${_text(game['game_date']).split(' ').first}  ·  ${_text(game['season_id'])}  ·  ${_isPlayoffs(game) ? 'Playoffs' : 'Regular Season'}',
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11)),
+          const SizedBox(height: 10),
+          _ScoreStrip(game: game),
+          const SizedBox(height: 14),
+          if (loading) const Padding(
+            padding: EdgeInsets.all(38),
+            child: Center(child: CircularProgressIndicator()))
+          else if (error != null || rows.isEmpty) Padding(
+            padding: const EdgeInsets.all(22),
+            child: Text('Individual box scores are not available for this game in the local static archive.${error == null ? '' : ' $error'}',
+                style: TextStyle(color: colors.onSurfaceVariant)))
+          else ...[
+            if (selectedPlayer != null) ...[
+              _PlayerSpotlight(row: selectedPlayer!),
+              const SizedBox(height: 14),
+            ],
+            const Text('TEAM BOX SCORES',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900,
+                    letterSpacing: 1.1)),
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              ChoiceChip(label: Text(away), selected: team == away,
+                  onSelected: (_) => onTeam(away)),
+              ChoiceChip(label: Text(home), selected: team == home,
+                  onSelected: (_) => onTeam(home)),
+            ]),
+            const SizedBox(height: 9),
+            if (teamTotals.isNotEmpty)
+              for (final total in teamTotals.where((t) =>
+                  _text(t['team_abbreviation']) == team))
+                Padding(padding: const EdgeInsets.only(bottom: 8),
+                    child: Text('Team  ·  ${_stat(total, 'pts')} PTS  ·  ${_stat(total, 'reb')} REB  ·  ${_stat(total, 'ast')} AST')),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                showCheckboxColumn: false,
+                horizontalMargin: 8,
+                columnSpacing: 15,
+                headingRowHeight: 35,
+                dataRowMinHeight: 37,
+                dataRowMaxHeight: 40,
+                columns: const [
+                  DataColumn(label: Text('Player')),
+                  DataColumn(label: Text('MIN')),
+                  DataColumn(label: Text('PTS')),
+                  DataColumn(label: Text('REB')),
+                  DataColumn(label: Text('AST')),
+                  DataColumn(label: Text('STL')),
+                  DataColumn(label: Text('BLK')),
+                  DataColumn(label: Text('TO')),
+                  DataColumn(label: Text('FG')),
+                  DataColumn(label: Text('3P')),
+                  DataColumn(label: Text('FT')),
+                ],
+                rows: [
+                  for (final player in players)
+                    DataRow(
+                      selected: identical(player, selectedPlayer),
+                      onSelectChanged: (_) => onPlayer(player),
+                      cells: [
+                        DataCell(Text(_text(player['player_name'], 'Player'),
+                            style: const TextStyle(fontWeight: FontWeight.w800))),
+                        for (final stat in ['minutes', 'pts', 'reb', 'ast', 'stl', 'blk', 'tov'])
+                          DataCell(Text(_stat(player, stat))),
+                        DataCell(Text('${_stat(player, 'fgm')}/${_stat(player, 'fga')}')),
+                        DataCell(Text('${_stat(player, 'three_pm')}/${_stat(player, 'three_pa')}')),
+                        DataCell(Text('${_stat(player, 'ftm')}/${_stat(player, 'fta')}')),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text('Select any player to inspect their full game stat line.',
+                style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant)),
+          ],
+          const SizedBox(height: 12),
+          Text('ARCSIDE · SOURCE-BACKED BOX SCORE',
+              style: TextStyle(fontSize: 10,
+                  color: colors.onSurfaceVariant, letterSpacing: 1)),
+        ]),
       ),
     );
   }
 }
 
-class _PlayerBoxTable extends StatelessWidget {
-  const _PlayerBoxTable({required this.rows});
-  final List<Map<String, dynamic>> rows;
-
+class _ScoreStrip extends StatelessWidget {
+  const _ScoreStrip({required this.game});
+  final Map<String, dynamic> game;
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SingleChildScrollView(
-          child: DataTable(
-            columns: const [
-              DataColumn(label: Text('PLAYER')),
-              DataColumn(label: Text('TEAM')),
-              DataColumn(label: Text('MIN')),
-              DataColumn(label: Text('PTS')),
-              DataColumn(label: Text('REB')),
-              DataColumn(label: Text('AST')),
-              DataColumn(label: Text('STL')),
-              DataColumn(label: Text('BLK')),
-              DataColumn(label: Text('TOV')),
-              DataColumn(label: Text('FG')),
-              DataColumn(label: Text('3P')),
-              DataColumn(label: Text('FT')),
-            ],
-            rows: [
-              for (final row in rows)
-                DataRow(
-                  cells: [
-                    DataCell(Text(_text(row['player_name'], 'Player'))),
-                    DataCell(Text(_text(row['team_abbreviation']))),
-                    DataCell(Text(_stat(row, 'minutes'))),
-                    DataCell(Text(_stat(row, 'pts'))),
-                    DataCell(Text(_stat(row, 'reb'))),
-                    DataCell(Text(_stat(row, 'ast'))),
-                    DataCell(Text(_stat(row, 'stl'))),
-                    DataCell(Text(_stat(row, 'blk'))),
-                    DataCell(Text(_stat(row, 'tov'))),
-                    DataCell(Text('${_stat(row, 'fgm')}/${_stat(row, 'fga')}')),
-                    DataCell(Text('${_stat(row, 'three_pm')}/${_stat(row, 'three_pa')}')),
-                    DataCell(Text('${_stat(row, 'ftm')}/${_stat(row, 'fta')}')),
-                  ],
-                ),
-            ],
-          ),
-        ),
-      );
+  Widget build(BuildContext context) {
+    final awayScore = _num(game['away_score']);
+    final homeScore = _num(game['home_score']);
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .23),
+        borderRadius: BorderRadius.circular(12)),
+      child: Row(children: [
+        Expanded(child: Text(_team(game, away: true), textAlign: TextAlign.right,
+            style: const TextStyle(fontWeight: FontWeight.w800))),
+        const SizedBox(width: 9),
+        Text(awayScore == null ? '—' : awayScore.round().toString(),
+            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+        const Padding(padding: EdgeInsets.symmetric(horizontal: 8),
+            child: Text('–')),
+        Text(homeScore == null ? '—' : homeScore.round().toString(),
+            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+        const SizedBox(width: 9),
+        Expanded(child: Text(_team(game, away: false),
+            style: const TextStyle(fontWeight: FontWeight.w800))),
+      ]),
+    );
+  }
 }
 
-class _ArchiveError extends StatelessWidget {
-  const _ArchiveError({required this.error, required this.onRetry});
-  final Object? error;
-  final VoidCallback onRetry;
-
+class _PlayerSpotlight extends StatelessWidget {
+  const _PlayerSpotlight({required this.row});
+  final Map<String, dynamic> row;
   @override
-  Widget build(BuildContext context) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Historical game archive unavailable',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 8),
-              Text('${error ?? ''}'),
-              const SizedBox(height: 14),
-              OutlinedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      );
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final items = [
+      ('MIN', 'minutes'), ('PTS', 'pts'), ('REB', 'reb'),
+      ('AST', 'ast'), ('STL', 'stl'), ('BLK', 'blk'),
+      ('TO', 'tov'), ('+/−', 'plus_minus'),
+      ('FG', 'fgm'), ('FGA', 'fga'), ('3PM', 'three_pm'),
+      ('3PA', 'three_pa'), ('FTM', 'ftm'), ('FTA', 'fta'),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: colors.primaryContainer.withValues(alpha: .20),
+        border: Border.all(color: colors.primary.withValues(alpha: .4)),
+        borderRadius: BorderRadius.circular(12)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(_text(row['player_name'], 'Player'), style:
+            Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+        Text('${_text(row['team_abbreviation'])} · Individual game',
+            style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11)),
+        const SizedBox(height: 13),
+        Row(children: [
+          for (final key in ['pts','reb','ast'])
+            Expanded(child: Column(children: [
+              Text(_stat(row, key), style:
+                  const TextStyle(fontSize: 27, fontWeight: FontWeight.w900)),
+              Text(key.toUpperCase(), style:
+                  TextStyle(fontSize: 10, color: colors.onSurfaceVariant)),
+            ])),
+        ]),
+        const Divider(height: 24),
+        Wrap(spacing: 17, runSpacing: 13, children: [
+          for (final item in items)
+            Column(mainAxisSize: MainAxisSize.min, children: [
+              Text(_stat(row, item.$2),
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
+              Text(item.$1, style: TextStyle(color: colors.onSurfaceVariant,
+                  fontSize: 10)),
+            ]),
+        ]),
+      ]),
+    );
+  }
 }
 
 class _BoxScoreArchive {
@@ -546,45 +538,31 @@ class _BoxScoreArchive {
   final List<Map<String, dynamic>> games;
 }
 
+String _dateKey(DateTime date) => '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+String _niceDate(DateTime date) => '${const ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][date.month - 1]} ${date.day}, ${date.year}';
+bool _isPlayoffs(Map<String, dynamic> game) =>
+    _text(game['season_type']).toLowerCase().contains('play');
 String _team(Map<String, dynamic> game, {required bool away}) {
-  final prefix = away ? 'away' : 'home';
-  return _text(
-    game['${prefix}_team_name'],
-    _text(game['${prefix}_team_abbreviation'], 'Team'),
-  );
+  final key = away ? 'away' : 'home';
+  return _text(game['${key}_team_name'], _text(game['${key}_team_abbreviation'], 'Team'));
 }
-
-String _segment(Map<String, dynamic> game) =>
-    _text(game['season_type']).toLowerCase().contains('play')
-        ? 'Playoffs'
-        : 'Regular Season';
-
+String _text(Object? value, [String fallback = '']) {
+  final result = value?.toString().trim() ?? '';
+  return result.isEmpty || result == 'null' ? fallback : result;
+}
+double? _num(Object? value) => value is num
+    ? value.toDouble() : double.tryParse(value?.toString() ?? '');
 String _stat(Map<String, dynamic> row, String key) {
   final value = row[key];
   if (value == null) return '—';
   if (value is num && value == value.roundToDouble()) return value.round().toString();
   return value.toString();
 }
-
-Map<String, dynamic> _map(Object? value) {
-  if (value is! Map) return const {};
-  return value.map((key, item) => MapEntry(key.toString(), item));
-}
-
 List<Map<String, dynamic>> _maps(Object? value) {
   if (value is! List) return const [];
   return [
     for (final item in value)
-      if (item is Map) _map(item),
+      if (item is Map)
+        item.map((key, value) => MapEntry(key.toString(), value)),
   ];
-}
-
-String _text(Object? value, [String fallback = '']) {
-  final text = value?.toString().trim() ?? '';
-  return text.isEmpty || text.toLowerCase() == 'null' ? fallback : text;
-}
-
-double? _num(Object? value) {
-  if (value is num) return value.toDouble();
-  return double.tryParse(value?.toString() ?? '');
 }
