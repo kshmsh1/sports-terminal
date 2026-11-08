@@ -61,16 +61,16 @@ class _WebsiteNbaResearchScreenState extends State<WebsiteNbaResearchScreen> {
                 style: TextStyle(color: colors.onSurfaceVariant)),
             const SizedBox(height: 13),
             Wrap(spacing: 9, runSpacing: 9, children: [
-              OutlinedButton.icon(onPressed: onNavigate == null ? null :
-                  () => onNavigate!('advanced'),
+              OutlinedButton.icon(onPressed: widget.onNavigate == null ? null :
+                  () => widget.onNavigate!('advanced'),
                   icon: const Icon(Icons.analytics_outlined),
                   label: const Text('Explore Advanced Stats')),
-              OutlinedButton.icon(onPressed: onNavigate == null ? null :
-                  () => onNavigate!('visualizations'),
+              OutlinedButton.icon(onPressed: widget.onNavigate == null ? null :
+                  () => widget.onNavigate!('visualizations'),
                   icon: const Icon(Icons.auto_graph_rounded),
                   label: const Text('Open Visualization Studio')),
-              OutlinedButton.icon(onPressed: onNavigate == null ? null :
-                  () => onNavigate!('rankings'),
+              OutlinedButton.icon(onPressed: widget.onNavigate == null ? null :
+                  () => widget.onNavigate!('rankings'),
                   icon: const Icon(Icons.format_list_numbered_rounded),
                   label: const Text('Build Rankings')),
               const Chip(label: Text('Python Lab · Planned')),
