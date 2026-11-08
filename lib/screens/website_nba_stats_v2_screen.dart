@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/app_session.dart';
+import '../widgets/nba_player_inspector.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_terminal_seed_repository.dart';
 import '../services/website_nba_api_service.dart';
@@ -39,6 +40,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
   String _sortKey = 'pts';
   bool _descending = true;
   final Set<String> _expanded = <String>{};
+  String? _inspectedPlayerId;
   int _pageSize = 20;
   int _page = 1;
 
@@ -188,6 +190,13 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
       basis: NbaStatsBasis.perGame,
       seasonType: _seasonType,
     );
+    NbaStatsRow? inspected;
+    for (final playerRow in rows) {
+      if (playerRow.playerId == _inspectedPlayerId) {
+        inspected = playerRow;
+        break;
+      }
+    }
     final query = _search.text.trim().toLowerCase();
     final teams = <String>{'All'};
     for (final row in rows) {
@@ -277,12 +286,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
       for (final row in paged)
         [
           InkWell(
-            onTap: () => openWebsiteNbaPlayerPage(
-              context,
-              session: widget.session,
-              playerKey: row.playerId,
-              playerName: row.player,
-            ),
+            onTap: () => setState(() => _inspectedPlayerId = row.playerId),
             child: Text(
               row.player,
               maxLines: 1,
@@ -443,32 +447,37 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
                   ),
             ),
             const SizedBox(height: 12),
-            pager(),
-            const SizedBox(height: 8),
-            if (filtered.isEmpty)
-              _EmptyStatsCard(
-                _seasonType == NbaStatsSeasonType.playoffs
-                    ? 'No playoff player rows match these filters for $_season.'
-                    : 'No regular-season player rows match these filters for $_season.',
-              )
-            else
-              WebsiteStickyStatsTable(
-                columns: tableColumns,
-                rows: tableRows,
-                firstColumnWidth: 164,
-                headerHeight: 43,
-                rowHeight: 40,
-              ),
-            const SizedBox(height: 8),
-            pager(),
-            const SizedBox(height: 14),
-            Text(
-              'Historical rows are served directly from the precompiled local NBA corpus. No runtime NBA.com request is required to browse regular-season or playoff tables.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                    height: 1.45,
-                  ),
-            ),
+            LayoutBuilder(builder: (context, bounds) {
+              final table = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                pager(),
+                const SizedBox(height: 8),
+                if (filtered.isEmpty)
+                  _EmptyStatsCard(_seasonType == NbaStatsSeasonType.playoffs
+                      ? 'No playoff player rows match these filters for $_season.'
+                      : 'No regular-season player rows match these filters for $_season.')
+                else
+                  WebsiteStickyStatsTable(
+                    columns: tableColumns, rows: tableRows,
+                    firstColumnWidth: 164, headerHeight: 43, rowHeight: 40),
+                const SizedBox(height: 8),
+                pager(),
+                const SizedBox(height: 14),
+                Text('Historical stats are served from Arcside static NBA data.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant)),
+              ]);
+              final profile = inspected == null ? const SizedBox.shrink() :
+                NbaPlayerInspector(player: inspected!, session: widget.session,
+                  season: _season,
+                  onClose: () => setState(() => _inspectedPlayerId = null));
+              if (bounds.maxWidth < 1140) return Column(children: [
+                table, if (inspected != null) ...[const SizedBox(height: 14), profile],
+              ]);
+              return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: table), const SizedBox(width: 16),
+                SizedBox(width: 350, child: profile),
+              ]);
+            }),
           ],
         ),
       ),
