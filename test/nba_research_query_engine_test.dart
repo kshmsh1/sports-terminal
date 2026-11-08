@@ -25,7 +25,7 @@ NbaStatsRow _player(
     'ts_pct': ts, 'stl': 1.2, 'blk': .4, 'three_pct': .4,
   },
   percentiles: const {},
-  raw: const {},
+  raw: {'points': name == 'Stephen Curry' ? 2375 : (pts * gp).round()},
   possessionsEstimated: false,
 );
 
@@ -68,8 +68,15 @@ void main() {
     final totals = ArcsideResearchQueryEngine.answerFromRows(
       'Stephen Curry 2015-16 total points',
       _sample, season: '2015-16', playoffs: false);
-    expect(totals.hits.single.value, '2377.9');
+    expect(totals.hits.single.value, '2375');
     expect(totals.title, contains('Total points'));
+
+    final totalLeaders = ArcsideResearchQueryEngine.answerFromRows(
+      'Top 2 total points in 2015-16',
+      _sample, season: '2015-16', playoffs: false);
+    expect(totalLeaders.hits.map((hit) => hit.name).toList(),
+        ['James Harden', 'Stephen Curry']);
+    expect(totalLeaders.hits.first.value, '2378');
   });
 
   test('Profile requests provide a sourced NBA season snapshot', () {
