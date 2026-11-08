@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sports_terminal/widgets/nba_percentage_heat_cell.dart';
+import 'package:sports_terminal/services/nba_stat_display_format.dart';
 import 'package:sports_terminal/services/nba_stats_metric_catalog.dart';
 import 'package:sports_terminal/services/nba_stats_workstation_engine.dart';
 
@@ -29,6 +30,11 @@ void main() {
     expect(nbaTerminalMetricByKey['ortg']!.shortLabel, 'ORTG');
     expect(nbaTerminalMetricByKey['drtg']!.shortLabel, 'DRTG');
     expect(nbaTerminalMetricByKey['net_rating']!.shortLabel, 'NRTG');
+    expect(nbaTitleCaseStatLabel('ORTG'), 'ORTG');
+    expect(nbaTitleCaseStatLabel('DRTG'), 'DRTG');
+    expect(nbaTitleCaseStatLabel('NRTG'), 'NRTG');
+    expect(nbaTitleCaseStatLabel('TO%'), 'TO%');
+    expect(nbaTitleCaseStatLabel('AST:TO'), 'AST:TO');
 
     const resolver = NbaTerminalMetricResolver();
     const row = NbaStatsRow(
