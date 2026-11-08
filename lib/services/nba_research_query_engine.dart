@@ -175,8 +175,9 @@ class ArcsideResearchQueryEngine {
     final matches = rows.where((row) {
       final name = row.player.toLowerCase().trim();
       if (name.isEmpty || name == '—') return false;
-      final escaped = RegExp.escape(name);
-      return RegExp('(^|[^a-z])$escaped([^a-z]|$)').hasMatch(query);
+      final normalizedName = name.replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+      final normalizedQuery = query.replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+      return (' $normalizedQuery ').contains(' $normalizedName ');
     }).toList();
     if (matches.length != 1) {
       return ArcsideResearchAnswer(
