@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/nba_research_query_panel.dart';
 import '../services/website_nba_api_service.dart';
 
 class WebsiteNbaResearchScreen extends StatefulWidget {
@@ -44,20 +45,32 @@ class _WebsiteNbaResearchScreenState extends State<WebsiteNbaResearchScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Research starts from the same immutable historical NBA corpus used by Home, Stats, Advanced Stats, and canonical player/team pages. Historical facts are not fetched from a runtime NBA API.',
+          'Ask source-backed questions about NBA player seasons, then explore the underlying data and coverage. Research queries never contact a chatbot or remote sports API.',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: colors.onSurfaceVariant,
                 height: 1.45,
               ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 17),
+        FutureBuilder<_ResearchCoverage>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return snapshot.hasError
+                  ? _StaticUnavailableCard(error: snapshot.error)
+                  : const _StaticLoadingCard();
+            }
+            return NbaResearchQueryPanel(seasons: snapshot.data!.seasons);
+          },
+        ),
+        const SizedBox(height: 24),
         Card(child: Padding(
           padding: const EdgeInsets.all(18),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Your research workspace', style: Theme.of(context).textTheme.titleLarge
                 ?.copyWith(fontWeight: FontWeight.w900)),
             const SizedBox(height: 6),
-            Text('Today this is the data and source-coverage hub. You can explore static statistics and build visual analysis now; the Python Lab and Excel Workspace integrations are not enabled yet.',
+            Text('Ask Arcside handles narrow statistics queries today. This section remains the data-coverage and analytical tools hub; Python Lab and Excel Workspace are planned but not enabled.',
                 style: TextStyle(color: colors.onSurfaceVariant)),
             const SizedBox(height: 13),
             Wrap(spacing: 9, runSpacing: 9, children: [
