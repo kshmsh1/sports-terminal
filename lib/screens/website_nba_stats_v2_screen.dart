@@ -706,8 +706,8 @@ const _baseColumns = <_StatColumn>[
 
 double _statColumnWidth(_StatColumn column, {required bool child}) {
   final arrowAllowance = column.children.isEmpty ? 0.0 : 30.0;
-  final estimated = column.label.length * 8.0 + 24 + arrowAllowance;
-  return math.max(child ? 64.0 : 70.0, math.min(estimated, 190.0));
+  final estimated = column.label.length * 6.7 + 20 + arrowAllowance;
+  return math.max(child ? 58.0 : 63.0, math.min(estimated, 156.0));
 }
 
 class _StatsLoading extends StatelessWidget {
