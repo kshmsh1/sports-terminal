@@ -302,7 +302,7 @@ class _WebsiteNbaTeamComparisonScreenState
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
-              'Team Comparison Lab',
+              'Team Compare',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.w900,
                     letterSpacing: -1,
@@ -321,7 +321,7 @@ class _WebsiteNbaTeamComparisonScreenState
         ),
         const SizedBox(height: 8),
         Text(
-          'Compare team seasons and playoff runs across eras using results, shooting, rebounding, playmaking and efficiency.',
+          'Compare NBA team seasons, playoff runs and efficiency side by side.',
           style: TextStyle(color: colors.onSurfaceVariant),
         ),
         const SizedBox(height: 18),
@@ -434,7 +434,7 @@ class _WebsiteNbaTeamComparisonScreenState
         Align(
           alignment: Alignment.center,
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: _slots.length == 2 ? 1050 : 1800),
+            constraints: const BoxConstraints(maxWidth: 1800),
             child: ComparisonSelectionLayout(
           children: [
             for (var index = 0; index < _slots.length; index++)
