@@ -12,7 +12,7 @@ class WebsiteNbaBoxScoresScreen extends StatefulWidget {
 
 class _WebsiteNbaBoxScoresScreenState extends State<WebsiteNbaBoxScoresScreen> {
   final _api = const WebsiteNbaApiService();
-  late Future<_BoxScoreArchive> _archive = _load();
+  late final Future<_BoxScoreArchive> _archive = _load();
   String _season = 'All';
   String _segment = 'All';
   DateTime? _date;
