@@ -215,13 +215,18 @@ class _ProductCommunityV2ScreenState extends State<ProductCommunityV2Screen> {
                   orElse: () => null,
                 );
             return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _CommunityHero(
                   profileFuture: profileFuture,
                   onCreate: boards.isEmpty ? null : () => _createThread(boards),
                 ),
                 const SizedBox(height: 12),
+
+                LayoutBuilder(builder: (context, bounds) {
+                  final communities = Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                 _CommunityPanel(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,6 +270,12 @@ class _ProductCommunityV2ScreenState extends State<ProductCommunityV2Screen> {
                     ],
                   ),
                 ),
+
+                    ],
+                  );
+                  final feed = Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                 if (selectedBoard != null) ...[
                   const SizedBox(height: 10),
                   _BoardProfile(
@@ -399,6 +410,31 @@ class _ProductCommunityV2ScreenState extends State<ProductCommunityV2Screen> {
                     );
                   },
                 ),
+
+                    ],
+                  );
+                  if (bounds.maxWidth < 1180) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [communities, const SizedBox(height: 12), feed],
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(width: 226, child: communities),
+                      const SizedBox(width: 15),
+                      Expanded(child: feed),
+                      const SizedBox(width: 15),
+                      SizedBox(width: 238,
+                        child: _CommunityRightRail(
+                          profileFuture: profileFuture,
+                          boardCount: boards.length,
+                        )),
+                    ],
+                  );
+                }),
+                const SizedBox(height: 16),
                 const _NetworkPrinciples(),
               ],
             );
@@ -613,16 +649,16 @@ class _CommunityHero extends StatelessWidget {
                       ),
                       SizedBox(height: 7),
                       Text(
-                        'A sports network built around evidence, identity and durable communities',
+                        'Arcside Community',
                         style: TextStyle(
                           color: _cText,
-                          fontSize: 26,
+                          fontSize: 29,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
                       SizedBox(height: 7),
                       Text(
-                        'Follow league, analytics, transaction, draft, history, fantasy and all 30 team communities. Rank threads by Hot, New, Top or Controversial; save research-worthy discussions; build reputation; and participate under the same report, block, mute, sanction and audit controls as the rest of Arcside.',
+                        'Join basketball conversations, share analysis and follow your favorite teams.',
                         style: TextStyle(color: _cMuted, height: 1.5),
                       ),
                     ],
@@ -659,6 +695,70 @@ class _CommunityHero extends StatelessWidget {
           ],
         ),
       );
+}
+
+class _CommunityRightRail extends StatelessWidget {
+  const _CommunityRightRail({required this.profileFuture, required this.boardCount});
+  final Future<Map<String, dynamic>?> profileFuture;
+  final int boardCount;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _CommunityPanel(child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionLabel('ABOUT ARCSIDE'),
+          const SizedBox(height: 11),
+          const Text('Basketball news, thoughtful analysis and conversation in one community.',
+              style: TextStyle(color: _cText, height: 1.45)),
+          const Divider(height: 26, color: _cLine),
+          Text('$boardCount communities', style: const TextStyle(
+              color: _cText, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8),
+          const Text('Upvote useful posts, save research, and join team discussions.',
+              style: TextStyle(color: _cMuted, fontSize: 12, height: 1.5)),
+        ],
+      )),
+      const SizedBox(height: 12),
+      _CommunityPanel(child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionLabel('YOUR ACTIVITY'),
+          const SizedBox(height: 11),
+          FutureBuilder<Map<String, dynamic>?>(
+            future: profileFuture,
+            builder: (context, snapshot) {
+              final reputation = snapshot.data?['reputation'];
+              final info = reputation is Map ? reputation : const {};
+              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${info['reputation'] ?? 0} reputation',
+                    style: const TextStyle(color: _cText,
+                        fontSize: 18, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 7),
+                Text('${info['posts'] ?? 0} posts · ${info['comments'] ?? 0} comments',
+                    style: const TextStyle(color: _cMuted, fontSize: 12)),
+              ]);
+            },
+          ),
+        ],
+      )),
+      const SizedBox(height: 12),
+      const _CommunityPanel(child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionLabel('COMMUNITY GUIDELINES'),
+          SizedBox(height: 10),
+          Text('• Use credible sources\n• Be respectful\n• No spam or harassment\n• Keep posts on topic',
+              style: TextStyle(color: _cMuted, fontSize: 12, height: 1.7)),
+          SizedBox(height: 12),
+          Text('ARCSIDE', style: TextStyle(
+              color: _cBlue, fontWeight: FontWeight.w900)),
+        ],
+      )),
+    ],
+  );
 }
 
 class _BoardProfile extends StatelessWidget {
