@@ -70,7 +70,7 @@ void main() {
     expect(source, contains('ProductTradeMachineScreen.new'));
     expect(source, contains('ProductFrontOfficeRegistryScreen('));
     expect(source, contains('ProductCommunityV2Screen('));
-    expect(source, contains('WebsiteNbaResearchScreen.new'));
+    expect(source, contains('WebsiteNbaResearchScreen(onNavigate: _select)'));
 
     expect(source, isNot(contains('ProductArenaHomeScreen(')));
     expect(source, isNot(contains('ProductNbaStatsCenterScreen(')));
