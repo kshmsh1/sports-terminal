@@ -75,7 +75,7 @@ Color? nbaPercentageHeatColor(
       if (value >= .32) return darkYellow;
       return maroon;
     case NbaPercentageHeatMetric.freeThrow:
-      if (value >= .88) return darkGreen;
+      if (value >= .90) return darkGreen;
       if (value >= .78) return green;
       if (value >= .70) return darkYellow;
       return maroon;
