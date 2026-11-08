@@ -281,7 +281,7 @@ final List<NbaTerminalMetric> nbaTerminalMetrics = [
   _m('apg', 'Assists Per Game', 'APG', 'Playmaking', 'Assists under the selected rate basis.', engineKey: 'ast'),
   _m('spg', 'Steals Per Game', 'SPG', 'Defense', 'Steals under the selected rate basis.', engineKey: 'stl', children: ['stl_pct']),
   _m('bpg', 'Blocks Per Game', 'BPG', 'Defense', 'Blocks under the selected rate basis.', engineKey: 'blk', children: ['blk_pct']),
-  _m('tpg', 'Turnovers Per Game', 'TPG', 'Playmaking', 'Turnovers under the selected rate basis.', engineKey: 'tov', higherIsBetter: false),
+  _m('tpg', 'Turnovers Per Game', 'TPG', 'Playmaking', 'Turnovers under the selected rate basis.', engineKey: 'tov', children: ['tov_pct'], higherIsBetter: false),
   _m('pf', 'Personal Fouls', 'PF', 'Basic', 'Personal fouls under the selected rate basis.', engineKey: 'pf', higherIsBetter: false),
   _m('fg_pct', 'Field Goal Percentage', 'FG%', 'Shooting', 'Field goals made divided by field-goal attempts.', engineKey: 'fg_pct', children: ['fgm', 'fga'], format: NbaTerminalMetricFormat.percent),
   _m('fgm', 'Field Goals Made', 'FGM', 'Shooting', 'Field goals made under the selected rate basis.', engineKey: 'fgm'),
@@ -362,7 +362,7 @@ final List<NbaTerminalMetric> nbaTerminalMetrics = [
 
   _m('contested_rpg', 'Contested Rebounds Per Game', 'Contested RPG', 'Rebounding', 'Rebounds secured with an opponent contest nearby.', raw: ['contested_rebounds_per_game', 'contested_rpg'], providerNative: true),
   _m('uncontested_rpg', 'Uncontested Rebounds Per Game', 'Uncontested RPG', 'Rebounding', 'Rebounds secured without a nearby opponent contest.', raw: ['uncontested_rebounds_per_game', 'uncontested_rpg'], providerNative: true),
-  _m('trb_pct', 'Total Rebound Percentage', 'TRB%', 'Rebounding', 'Estimated share of available rebounds secured while the player is on court.', raw: ['trb_pct', 'total_rebound_pct'], format: NbaTerminalMetricFormat.percent, providerNative: true),
+  _m('trb_pct', 'Total Rebound Percentage', 'REB%', 'Rebounding', 'Estimated share of available rebounds secured while the player is on court.', raw: ['trb_pct', 'total_rebound_pct'], format: NbaTerminalMetricFormat.percent, providerNative: true),
   _m('drb_pct', 'Defensive Rebound Percentage', 'DRB%', 'Rebounding', 'Estimated share of available defensive rebounds secured while the player is on court.', raw: ['drb_pct', 'defensive_rebound_pct'], format: NbaTerminalMetricFormat.percent, providerNative: true),
   _m('contested_orb_pg', 'Contested Offensive Rebounds Per Game', 'Contested ORB PG', 'Rebounding', 'Offensive rebounds secured with an opponent contest nearby.', raw: ['contested_orb_pg', 'contested_offensive_rebounds_per_game'], providerNative: true),
   _m('uncontested_orb_pg', 'Uncontested Offensive Rebounds Per Game', 'Uncontested ORB PG', 'Rebounding', 'Offensive rebounds secured without a nearby opponent contest.', raw: ['uncontested_orb_pg', 'uncontested_offensive_rebounds_per_game'], providerNative: true),
@@ -381,9 +381,9 @@ final List<NbaTerminalMetric> nbaTerminalMetrics = [
   _m('assisted_ppg', 'Assisted Points Per Game', 'ASTD PPG', 'Efficiency', 'Points scored on assisted field goals per game.', raw: ['assisted_points_per_game', 'assisted_ppg'], providerNative: true),
   _m('unassisted_ppg', 'Unassisted Points Per Game', 'UNAST PPG', 'Efficiency', 'Points scored on unassisted field goals per game.', raw: ['unassisted_points_per_game', 'unassisted_ppg'], providerNative: true),
 
-  _m('ortg', 'Offensive Rating', 'Offensive Rating (ORTG)', 'Impact', 'Team points scored per 100 possessions while the player is on court, or source player ORtg.', raw: ['offensive_rating', 'ortg'], providerNative: true),
-  _m('drtg', 'Defensive Rating', 'Defensive Rating (DRTG)', 'Impact', 'Team points allowed per 100 possessions while the player is on court, or source player DRtg.', raw: ['defensive_rating', 'drtg'], higherIsBetter: false, providerNative: true),
-  _m('net_rating', 'Net Rating', 'Net Rating (NRTG)', 'Impact', 'Offensive rating minus defensive rating.', raw: ['net_rating', 'net_rtg'], format: NbaTerminalMetricFormat.signed, providerNative: true),
+  _m('ortg', 'Offensive Rating', 'ORTG', 'Impact', 'Team points scored per 100 possessions while the player is on court, or source player ORtg.', raw: ['offensive_rating', 'ortg'], providerNative: true),
+  _m('drtg', 'Defensive Rating', 'DRTG', 'Impact', 'Team points allowed per 100 possessions while the player is on court, or source player DRtg.', raw: ['defensive_rating', 'drtg'], higherIsBetter: false, providerNative: true),
+  _m('net_rating', 'Net Rating', 'NRTG', 'Impact', 'Offensive rating minus defensive rating.', raw: ['net_rating', 'net_rtg'], format: NbaTerminalMetricFormat.signed, providerNative: true),
   _m('on_off', 'On/Off Differential', 'On/Off', 'Impact', 'Difference in team net rating with the player on the floor versus off the floor.', raw: ['on_off', 'on_off_differential', 'on_off_net_rating'], format: NbaTerminalMetricFormat.signed, providerNative: true),
   _m('pace', 'Pace', 'Pace', 'Impact', 'Estimated possessions per 48 minutes in the player’s on-court minutes.', raw: ['pace', 'pace_per_48'], providerNative: true),
 
