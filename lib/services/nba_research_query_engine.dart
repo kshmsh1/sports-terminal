@@ -132,7 +132,7 @@ class ArcsideResearchQueryEngine {
       final requested = RegExp(r'\btop\s+(\d{1,2})\b').firstMatch(query);
       final count = requested == null
           ? (query.contains('who ') ? 1 : 5)
-          : (int.tryParse(requested.group(1)!) ?? 5).clamp(1, 10);
+          : (int.tryParse(requested.group(1)!) ?? 5).clamp(1, 10).toInt();
       final eligible = rows.where((row) {
         final gp = row.value('gp') ?? 0;
         final value = _value(row, metric);
