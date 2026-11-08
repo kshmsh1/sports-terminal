@@ -215,58 +215,154 @@ class ComparisonHeadToHead extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1200),
-        child: Card(
-          margin: EdgeInsets.zero,
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('HEAD-TO-HEAD', textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800, fontSize: 11,
-                    letterSpacing: 1.5, color: colors.onSurfaceVariant)),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(child: _DuelHeading(
-                      name: leftName, contextText: leftContext,
-                      color: leftColor, align: TextAlign.center)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('VS', style: TextStyle(
-                        color: colors.onSurfaceVariant,
-                        fontWeight: FontWeight.w900)),
-                    ),
-                    Expanded(child: _DuelHeading(
-                      name: rightName, contextText: rightContext,
-                      color: rightColor, align: TextAlign.center)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Divider(height: 1),
-                for (final metric in metrics)
-                  _ComparisonDuelRow(
-                    metric: metric,
-                    leftColor: leftColor,
-                    rightColor: rightColor,
-                  ),
-                const SizedBox(height: 8),
-                Text('Highlighted values lead this metric. Δ is the absolute gap; percentages use percentage points.',
-                  style: TextStyle(
-                    color: colors.onSurfaceVariant, fontSize: 12),
-                  textAlign: TextAlign.center),
-              ],
-            ),
-          ),
-        ),
+    var leftLeads = 0;
+    var rightLeads = 0;
+    var ties = 0;
+    var available = 0;
+    final differences = <ComparisonDuelMetric>[];
+    for (final metric in metrics) {
+      final a = metric.leftValue;
+      final b = metric.rightValue;
+      if (a == null || b == null || !a.isFinite || !b.isFinite) continue;
+      available++;
+      if ((a - b).abs() < .000001) {
+        ties++;
+      } else {
+        differences.add(metric);
+        if (metric.higherIsBetter ? a > b : a < b) {
+          leftLeads++;
+        } else {
+          rightLeads++;
+        }
+      }
+    }
+    final ordered = differences.toList()..sort((a, b) {
+      final left = (a.leftValue! - a.rightValue!).abs() /
+          (a.leftValue!.abs() + a.rightValue!.abs() + .000001);
+      final right = (b.leftValue! - b.rightValue!).abs() /
+          (b.leftValue!.abs() + b.rightValue!.abs() + .000001);
+      return right.compareTo(left);
+    });
+
+    final duel = Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Icon(Icons.compare_arrows_rounded, size: 18),
+            const SizedBox(width: 7),
+            Text('HEAD-TO-HEAD', style: TextStyle(
+                color: colors.onSurfaceVariant, letterSpacing: 1.2,
+                fontSize: 11, fontWeight: FontWeight.w900)),
+            const Spacer(),
+            Text('${metrics.length} metrics', style: TextStyle(
+                color: colors.onSurfaceVariant, fontSize: 11)),
+          ]),
+          const SizedBox(height: 18),
+          Row(children: [
+            Expanded(child: _DuelHeading(name: leftName,
+                contextText: leftContext, color: leftColor,
+                align: TextAlign.center)),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text('VS', style: TextStyle(color: colors.onSurfaceVariant,
+                  fontWeight: FontWeight.w900))),
+            Expanded(child: _DuelHeading(name: rightName,
+                contextText: rightContext, color: rightColor,
+                align: TextAlign.center)),
+          ]),
+          const Divider(height: 30),
+          for (final metric in metrics)
+            _ComparisonDuelRow(metric: metric, leftColor: leftColor,
+                rightColor: rightColor),
+          const SizedBox(height: 12),
+          Text('Highlighted metrics lead. Differences are absolute; percentages use percentage points.',
+              textAlign: TextAlign.center, style: TextStyle(
+                  color: colors.onSurfaceVariant, fontSize: 11)),
+          const SizedBox(height: 5),
+          Text('ARCSIDE · SOURCE-BACKED COMPARISON',
+              textAlign: TextAlign.right, style: TextStyle(
+                  color: colors.onSurfaceVariant, fontSize: 10)),
+        ]),
       ),
     );
+    Widget countBox(String name, int count, Color color) => Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .12),
+          border: Border.all(color: color.withValues(alpha: .3)),
+          borderRadius: BorderRadius.circular(11)),
+        child: Column(children: [
+          Text('$count', style: TextStyle(fontSize: 26,
+              color: color, fontWeight: FontWeight.w900)),
+          Text(name, textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis, maxLines: 1,
+              style: const TextStyle(fontSize: 11,
+                  fontWeight: FontWeight.w700)),
+        ]),
+      ),
+    );
+    final insight = Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(17),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('MATCHUP SNAPSHOT',
+              style: TextStyle(color: colors.onSurfaceVariant,
+                  letterSpacing: 1.1, fontSize: 11,
+                  fontWeight: FontWeight.w900)),
+          const SizedBox(height: 12),
+          Text('Metric advantage', style:
+              Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w900)),
+          const SizedBox(height: 6),
+          Text('$available comparable · $ties tied',
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12)),
+          const SizedBox(height: 14),
+          Row(children: [
+            countBox(leftName, leftLeads, leftColor),
+            const SizedBox(width: 8),
+            countBox(rightName, rightLeads, rightColor),
+          ]),
+          const SizedBox(height: 18),
+          Text('Largest relative gaps',
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 7),
+          for (final metric in ordered.take(5))
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 7),
+              child: Row(children: [
+                Expanded(child: Text(metric.label,
+                    style: const TextStyle(fontWeight: FontWeight.w700))),
+                Text('${metric.leftDisplay} / ${metric.rightDisplay}',
+                    style: TextStyle(fontSize: 12,
+                        color: colors.onSurfaceVariant)),
+              ]),
+            ),
+          if (available == 0)
+            Text('Choose participants with overlapping source-backed metrics.',
+                style: TextStyle(color: colors.onSurfaceVariant)),
+          const Divider(height: 26),
+          Text('An advantage counts the selected metrics only, not an overall player or team rating.',
+              style: TextStyle(color: colors.onSurfaceVariant,
+                  fontSize: 11, height: 1.4)),
+        ]),
+      ),
+    );
+
+    return LayoutBuilder(builder: (context, bounds) {
+      if (bounds.maxWidth < 1350) return Column(children: [
+        duel, const SizedBox(height: 14), insight,
+      ]);
+      return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(flex: 7, child: duel),
+        const SizedBox(width: 16),
+        Expanded(flex: 3, child: insight),
+      ]);
+    });
   }
 }
 
