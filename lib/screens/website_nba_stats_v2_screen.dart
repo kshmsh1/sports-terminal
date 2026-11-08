@@ -470,7 +470,7 @@ class _WebsiteNbaStatsScreenState extends State<WebsiteNbaStatsScreen> {
                     color: colors.onSurfaceVariant)),
               ]);
               final profile = inspected == null ? const SizedBox.shrink() :
-                NbaPlayerInspector(player: inspected!, session: widget.session,
+                NbaPlayerInspector(player: inspected, session: widget.session,
                   season: _season,
                   onClose: () => setState(() => _inspectedPlayerId = null));
               if (bounds.maxWidth < 1140) return Column(children: [
