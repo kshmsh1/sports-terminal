@@ -276,10 +276,8 @@ class _NbaResearchQueryPanelState extends State<NbaResearchQueryPanel> {
               icon: const Icon(Icons.copy_all_rounded, size: 15),
               label: const Text('Copy all results'),
               onPressed: () => Clipboard.setData(ClipboardData(text:
-                '${answer.title}\n${answer.message}\n${answer.source}\n' +
-                hits.map((hit) =>
-                  '${hit.name} | ${hit.team} | ${hit.value} | ${hit.detail}')
-                  .join('\n'),
+                '${answer.title}\n${answer.message}\n${answer.source}\n'
+                '${hits.map((hit) => '${hit.name} | ${hit.team} | ${hit.value} | ${hit.detail}').join('\n')}',
               )),
             ),
           ]),
