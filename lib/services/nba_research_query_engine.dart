@@ -67,15 +67,6 @@ class ArcsideResearchQueryEngine {
     return double.tryParse(value?.toString() ?? '');
   }
 
-  static List<Map<String, dynamic>> _mapRows(Object? value) {
-    if (value is! List) return const [];
-    return [
-      for (final item in value)
-        if (item is Map)
-          item.map((key, value) => MapEntry(key.toString(), value)),
-    ];
-  }
-
   /// Every branch below reads only a published Arcside static resource. The
   /// input is interpreted as query intent; it is never executable content.
   Future<ArcsideResearchAnswer> ask(
@@ -502,7 +493,7 @@ class ArcsideResearchQueryEngine {
     }
     if (compare && matches.length != 2) {
       return _notFound('Two players required',
-        'Give both players\\' full names and one season, '
+        'Give both players’ full names and one season, '
         'for example "compare Stephen Curry vs James Harden 2015-16".',
         source);
     }
