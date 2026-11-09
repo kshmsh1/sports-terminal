@@ -549,7 +549,8 @@ class ArcsideResearchQueryEngine {
         final value = _value(row, key);
         if (value == null || !value.isFinite) continue;
         hits.add(ArcsideResearchHit(
-          name: '${row.player} · ${_metricShort(key)}',
+          name: matches.length == 1 ? _metricShort(key)
+              : '${row.player} · ${_metricShort(key)}',
           team: row.team,
           value: _display(row, key),
           detail: '',
