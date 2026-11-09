@@ -337,8 +337,9 @@ class ArcsideResearchQueryEngine {
       final teamKey = row['team_key']?.toString() ?? '';
       Map<String, dynamic>? meta;
       for (final team in teams) {
-        if (team['team_key']?.toString() == teamKey ||
-            team['team_id']?.toString() == row['team_id']?.toString()) {
+        final recordId = row['team_id']?.toString();
+        if ((teamKey.isNotEmpty && team['team_key']?.toString() == teamKey) ||
+            (recordId != null && team['team_id']?.toString() == recordId)) {
           meta = team; break;
         }
       }
@@ -441,7 +442,7 @@ class ArcsideResearchQueryEngine {
       if (applicable.isEmpty) return _notFound('No qualifying data',
         'No rows meet the $minGp GP minimum and requested source-backed metric.',
         source);
-      final selected = applicable.take(count.clamp(1, applicable.length)).toList();
+      final selected = applicable.take(count.clamp(1, applicable.length).toInt()).toList();
       final metricLabel = _metricName(metric, totals: totals);
       return ArcsideResearchAnswer(
         title: '${selected.length} player results · $metricLabel',
@@ -602,6 +603,12 @@ class ArcsideResearchQueryEngine {
       ('blocks per game','bpg'),('blocks','bpg'),('bpg','bpg'),
       ('turnovers per game','tpg'),('turnovers','tpg'),('tpg','tpg'),
       ('true shooting','ts_pct'),('ts%','ts_pct'),
+      ('deflections','deflections_pg'),
+      ('contested shots','contested_shots_pg'),
+      ('screen assists','screen_apg'),
+      ('loose balls recovered','loose_balls_recovered_pg'),
+      ('box outs','box_outs_pg'),
+      ('scored','ppg'),('score','ppg'),
       ('usage rate','usage'),('usg%','usage'),
       ('net rating','net_rating'),('nrtg','net_rating'),
       ('assist to turnover','ast_to'),('ast:to','ast_to'),
