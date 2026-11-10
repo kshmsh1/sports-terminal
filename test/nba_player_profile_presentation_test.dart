@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sports_terminal/services/nba_player_profile_presentation.dart';
-import 'package:sports_terminal/services/nba_stats_metric_catalog.dart';
 
 void main() {
   test('Player positions always appear PG SG SF PF C', () {
