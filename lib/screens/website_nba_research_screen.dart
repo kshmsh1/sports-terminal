@@ -36,22 +36,6 @@ class _WebsiteNbaResearchScreenState extends State<WebsiteNbaResearchScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'NBA Research',
-          style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                fontWeight: FontWeight.w900,
-                letterSpacing: -1,
-              ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Ask source-backed questions about NBA player seasons, then explore the underlying data and coverage. Research queries never contact a chatbot or remote sports API.',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: colors.onSurfaceVariant,
-                height: 1.45,
-              ),
-        ),
-        const SizedBox(height: 17),
         FutureBuilder<_ResearchCoverage>(
           future: _future,
           builder: (context, snapshot) {
@@ -63,7 +47,17 @@ class _WebsiteNbaResearchScreenState extends State<WebsiteNbaResearchScreen> {
             return NbaResearchQueryPanel(seasons: snapshot.data!.seasons);
           },
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 19),
+        ExpansionTile(
+          initiallyExpanded: false,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 7),
+          title: const Text('Data coverage & research tools',
+            style: TextStyle(fontWeight: FontWeight.w800)),
+          subtitle: Text('Advanced Stats, Visualization Studio and '
+            'historical source coverage',
+            style: TextStyle(fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          children: [
         Card(child: Padding(
           padding: const EdgeInsets.all(18),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -162,6 +156,8 @@ class _WebsiteNbaResearchScreenState extends State<WebsiteNbaResearchScreen> {
               ],
             );
           },
+        ),
+          ],
         ),
       ],
     );

@@ -253,7 +253,7 @@ void main() {
     expect(service, isNot(contains('chatgpt.com')));
     expect(service, isNot(contains('api.openai.com')));
     expect(service, isNot(contains('sk-')));
-    expect(panel, contains('No daily query limit'));
+    expect(panel, contains('No daily quota'));
     expect(panel, contains('_pageSize = 40'));
     expect(panel, isNot(contains('SharedPreferences.getInstance()')));
     expect(panel, isNot(contains('_maxDaily')));
@@ -273,9 +273,9 @@ void main() {
       ])),
     )));
     await tester.pumpAndSettle();
-    expect(find.text('Ask Arcside'), findsOneWidget);
-    expect(find.text('Research question'), findsOneWidget);
-    expect(find.text('No daily query limit'), findsOneWidget);
+    expect(find.text('Research Hub'), findsWidgets);
+    expect(find.text('Historical'), findsOneWidget);
+    expect(find.text('No subscription · No daily quota · Source-backed answers'), findsOneWidget);
     expect(find.text('Top 50 scorers in 2025-26'), findsWidgets);
   });
 }

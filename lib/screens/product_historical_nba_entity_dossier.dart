@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/historical_nba_repository.dart';
+import '../services/nba_player_profile_presentation.dart';
 import '../services/nba_stat_display_format.dart';
 import '../services/nba_stats_metric_catalog.dart';
 import '../services/nba_stats_workstation_engine.dart';
@@ -171,7 +172,7 @@ class _ProductHistoricalPlayerDossierState
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '${identity['primary_position'] ?? '—'} · ${identity['active_from'] ?? '—'} to ${identity['active_to'] ?? '—'} · canonical key ${bundle.playerKey}',
+                    '${nbaOrderedPositions('${identity['primary_position'] ?? ''}')} · ${identity['active_from'] ?? '—'} to ${identity['active_to'] ?? '—'} · canonical key ${bundle.playerKey}',
                     style: const TextStyle(color: _hMuted),
                   ),
                   const SizedBox(height: 10),
@@ -461,11 +462,11 @@ class _HistoricalCareerTable extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Table(
-          defaultColumnWidth: const FixedColumnWidth(82),
+          defaultColumnWidth: const FixedColumnWidth(75),
           columnWidths: const {
-            0: FixedColumnWidth(92),
-            1: FixedColumnWidth(64),
-            2: FixedColumnWidth(72),
+            0: FixedColumnWidth(88),
+            1: FixedColumnWidth(59),
+            2: FixedColumnWidth(65),
           },
           border: const TableBorder(
             horizontalInside: BorderSide(color: _hLine, width: .5),
@@ -554,9 +555,7 @@ class _MetricHeader extends StatelessWidget {
 
 class _HistoricalHonors extends StatelessWidget {
   const _HistoricalHonors({
-    required this.awards,
-    required this.allStar,
-    required this.draft,
+    required this.awards, required this.allStar, required this.draft,
   });
 
   final List awards;
@@ -564,55 +563,50 @@ class _HistoricalHonors extends StatelessWidget {
   final List draft;
 
   @override
-  Widget build(BuildContext context) => _HistoricalPanel(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'HONORS / DRAFT',
-              style: TextStyle(
-                color: _hAmber,
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                letterSpacing: .7,
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (draft.isNotEmpty)
-              for (final item in draft.take(3))
-                Text(
-                  'Draft ${_m(item, 'draft_year')} · Rd ${_m(item, 'round_text')} · Pick ${_m(item, 'pick_number')} · ${_m(item, 'drafting_team_text')}',
-                  style: const TextStyle(color: _hText, height: 1.5),
-                ),
-            if (awards.isNotEmpty) ...[
-              const SizedBox(height: 7),
-              Wrap(
-                spacing: 7,
-                runSpacing: 7,
-                children: [
-                  for (final item in awards.reversed.take(16))
-                    _Pill(
-                      '${_m(item, 'season_id')} · ${_m(item, 'award')}',
-                      _m(item, 'winner') == '1' ? _hGreen : _hAmber,
-                    ),
-                ],
-              ),
-            ],
-            if (allStar.isNotEmpty) ...[
-              const SizedBox(height: 7),
-              Text(
-                '${allStar.length} canonical All-Star selection record${allStar.length == 1 ? '' : 's'}',
-                style: const TextStyle(color: _hBlue, fontWeight: FontWeight.w800),
-              ),
-            ],
-            if (draft.isEmpty && awards.isEmpty && allStar.isEmpty)
-              const Text(
-                'No canonical award, All-Star or draft rows are attached to this identity yet.',
-                style: TextStyle(color: _hMuted),
-              ),
-          ],
-        ),
-      );
+  Widget build(BuildContext context) {
+    final groups = nbaGroupPlayerHonors(_rows(awards), _rows(allStar));
+    return _HistoricalPanel(child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('AWARDS & DRAFT',
+          style: TextStyle(color: _hAmber, fontSize: 11,
+            fontWeight: FontWeight.w900, letterSpacing: .7)),
+        const SizedBox(height: 12),
+        if (draft.isNotEmpty) ...[
+          Text('Draft ${_m(draft.first, 'draft_year')} · '
+            'Round ${_m(draft.first, 'round_text')} · '
+            'Pick ${_m(draft.first, 'pick_number')} · '
+            '${_m(draft.first, 'drafting_team_text')}',
+            style: const TextStyle(color: _hMuted, fontSize: 11)),
+          const SizedBox(height: 18),
+        ],
+        if (groups.isNotEmpty)
+          LayoutBuilder(builder: (context, bounds) {
+            const gap = 19.0;
+            final columns = bounds.maxWidth >= 1020 ? 4 :
+                bounds.maxWidth >= 560 ? 2 : 1;
+            final width = (bounds.maxWidth - gap * (columns - 1)) / columns;
+            return Wrap(spacing: gap, runSpacing: 20, children: [
+              for (final honor in groups)
+                SizedBox(width: width, child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(honor.title, style: const TextStyle(
+                      color: _hText, fontWeight: FontWeight.w900,
+                      fontSize: 12)),
+                    const SizedBox(height: 6),
+                    Text(honor.summary, style: const TextStyle(
+                      color: _hMuted, height: 1.4, fontSize: 11)),
+                  ],
+                )),
+            ]);
+          }),
+        if (groups.isEmpty && draft.isEmpty)
+          const Text('No verified award or draft records are attached to this identity.',
+            style: TextStyle(color: _hMuted)),
+      ],
+    ));
+  }
 }
 
 class _HistoricalGlossary extends StatelessWidget {

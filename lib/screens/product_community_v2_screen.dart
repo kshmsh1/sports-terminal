@@ -205,244 +205,295 @@ class _ProductCommunityV2ScreenState extends State<ProductCommunityV2Screen> {
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-        color: _cBg,
-        child: FutureBuilder<List<Map<String, dynamic>>>(
-          future: boardsFuture,
-          builder: (context, boardsSnapshot) {
-            final boards = boardsSnapshot.data ?? const <Map<String, dynamic>>[];
-            final selectedBoard = boards.cast<Map<String, dynamic>?>().firstWhere(
-                  (item) => '${item?['slug'] ?? ''}' == selectedCommunity,
-                  orElse: () => null,
+    color: _cBg,
+    child: FutureBuilder<List<Map<String, dynamic>>>(
+      future: boardsFuture,
+      builder: (context, snapshot) {
+        final boards = snapshot.data ?? const <Map<String, dynamic>>[];
+        final selectedBoard = boards.cast<Map<String, dynamic>?>().firstWhere(
+          (board) => '${board?['slug'] ?? ''}' == selectedCommunity,
+          orElse: () => null,
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Row(children: [
+                const Icon(Icons.forum_outlined, color: _cBlue, size: 22),
+                const SizedBox(width: 8),
+                const Expanded(child: Text('Community',
+                  style: TextStyle(color: _cText, fontSize: 23,
+                    fontWeight: FontWeight.w900))),
+                OutlinedButton.icon(
+                  onPressed: boards.isEmpty
+                      ? null : () => _createThread(boards),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Create post'),
+                ),
+              ]),
+            ),
+            LayoutBuilder(builder: (context, bounds) {
+              final desktop = bounds.maxWidth >= 1070;
+              final middle = _communityFeed(boards, selectedBoard);
+              if (!desktop) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _communityMobileNav(boards),
+                    const SizedBox(height: 14),
+                    middle,
+                  ],
                 );
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _CommunityHero(
-                  profileFuture: profileFuture,
-                  onCreate: boards.isEmpty ? null : () => _createThread(boards),
-                ),
-                const SizedBox(height: 12),
-
-                LayoutBuilder(builder: (context, bounds) {
-                  final communities = Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                _CommunityPanel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: _SectionLabel('COMMUNITIES'),
-                          ),
-                          Text(
-                            '${boards.length} available',
-                            style: const TextStyle(color: _cMuted, fontSize: 10),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _CommunityChoice(
-                            label: 'All communities',
-                            selected: selectedCommunity.isEmpty,
-                            onTap: () {
-                              selectedCommunity = '';
-                              _changeFeed();
-                            },
-                          ),
-                          const SizedBox(height: 6),
-                          for (final board in boards) ...[
-                            _CommunityChoice(
-                              label: '${board['name'] ?? board['slug']}',
-                              badge: board['following'] == true ? 'FOLLOWING' : '',
-                              selected: selectedCommunity == '${board['slug']}',
-                              onTap: () {
-                                selectedCommunity = '${board['slug']}';
-                                _changeFeed();
-                              },
-                            ),
-                            const SizedBox(height: 5),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                    ],
-                  );
-                  final feed = Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                if (selectedBoard != null) ...[
-                  const SizedBox(height: 10),
-                  _BoardProfile(
-                    board: selectedBoard,
-                    onFollow: () => _follow(selectedBoard),
-                  ),
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(width: 210, child: _communitySidebar(boards)),
+                  const SizedBox(width: 28),
+                  Expanded(child: middle),
+                  const SizedBox(width: 28),
+                  SizedBox(width: 250, child: _CommunityRightRail(
+                    profileFuture: profileFuture,
+                    boards: boards,
+                    onOpenBoard: (slug) {
+                      selectedCommunity = slug;
+                      followedOnly = false;
+                      savedOnly = false;
+                      _changeFeed();
+                    },
+                  )),
                 ],
-                const SizedBox(height: 12),
-                _CommunityPanel(
-                  child: Wrap(
-                    spacing: 9,
-                    runSpacing: 9,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 270,
-                        child: TextField(
-                          controller: searchController,
-                          onChanged: (value) => setState(() => search = value),
-                          style: const TextStyle(color: _cText),
-                          decoration: const InputDecoration(
-                            hintText: 'Search visible threads…',
-                            prefixIcon: Icon(Icons.search_rounded),
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                        ),
-                      ),
-                      for (final item in const [
-                        ('hot', 'Hot'),
-                        ('new', 'New'),
-                        ('top', 'Top'),
-                        ('controversial', 'Controversial'),
-                      ])
-                        ChoiceChip(
-                          label: Text(item.$2),
-                          selected: sort == item.$1,
-                          onSelected: (_) {
-                            sort = item.$1;
-                            _changeFeed();
-                          },
-                        ),
-                      FilterChip(
-                        label: const Text('Following'),
-                        selected: followedOnly,
-                        onSelected: (value) {
-                          followedOnly = value;
-                          if (value) savedOnly = false;
-                          _changeFeed();
-                        },
-                      ),
-                      FilterChip(
-                        label: const Text('Saved'),
-                        selected: savedOnly,
-                        onSelected: (value) {
-                          savedOnly = value;
-                          if (value) followedOnly = false;
-                          _changeFeed();
-                        },
-                      ),
-                      IconButton(
-                        tooltip: 'Refresh',
-                        onPressed: _refresh,
-                        icon: const Icon(Icons.refresh_rounded),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                FutureBuilder<List<Map<String, dynamic>>>(
-                  future: feedFuture,
-                  builder: (context, feedSnapshot) {
-                    if (feedSnapshot.connectionState != ConnectionState.done) {
-                      return const _CommunityPanel(
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-                    if (feedSnapshot.hasError) {
-                      return _CommunityPanel(
-                        child: Text(
-                          'Community feed unavailable: ${feedSnapshot.error}',
-                          style: const TextStyle(color: _cMuted),
-                        ),
-                      );
-                    }
-                    final query = search.trim().toLowerCase();
-                    final rows = (feedSnapshot.data ?? const [])
-                        .where(
-                          (post) => query.isEmpty ||
-                              '${post['title']} ${post['body']} ${post['author_display_name']} ${post['flair']} ${post['community_slug']}'
-                                  .toLowerCase()
-                                  .contains(query),
-                        )
-                        .toList();
-                    if (rows.isEmpty) {
-                      return const _CommunityPanel(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Text(
-                            'No threads match this feed. Follow a community, change the sort, clear the filter or start a discussion.',
-                            style: TextStyle(color: _cMuted),
-                          ),
-                        ),
-                      );
-                    }
-                    return Column(
-                      children: [
-                        for (final post in rows) ...[
-                          _ThreadCard(
-                            session: widget.session,
-                            post: post,
-                            onVote: (direction) => _vote(post, direction),
-                            onSave: () => _save(post),
-                            onReport: () => _report(post),
-                            onBlock: () => _relationship(post, true),
-                            onMute: () => _relationship(post, false),
-                            onOpen: () => Navigator.of(context).push<void>(
-                              MaterialPageRoute(
-                                settings: RouteSettings(
-                                  name: '/community/thread/${post['id']}',
-                                ),
-                                builder: (_) => CommunityThreadPage(
-                                  session: widget.session,
-                                  initialPost: post,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                        ],
-                      ],
-                    );
-                  },
-                ),
+              );
+            }),
+          ],
+        );
+      },
+    ),
+  );
 
-                    ],
-                  );
-                  if (bounds.maxWidth < 1180) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [communities, const SizedBox(height: 12), feed],
-                    );
-                  }
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(width: 226, child: communities),
-                      const SizedBox(width: 15),
-                      Expanded(child: feed),
-                      const SizedBox(width: 15),
-                      SizedBox(width: 238,
-                        child: _CommunityRightRail(
-                          profileFuture: profileFuture,
-                          boardCount: boards.length,
-                        )),
-                    ],
-                  );
-                }),
-                const SizedBox(height: 16),
-                const _NetworkPrinciples(),
-              ],
-            );
+  Widget _communitySidebar(List<Map<String, dynamic>> boards) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _CommunityChoice(
+          label: 'Home', selected: selectedCommunity.isEmpty &&
+              !followedOnly && !savedOnly,
+          icon: Icons.home_outlined,
+          onTap: () {
+            selectedCommunity = '';
+            followedOnly = false;
+            savedOnly = false;
+            _changeFeed();
           },
         ),
-      );
+        _CommunityChoice(
+          label: 'Following', icon: Icons.people_outline,
+          selected: followedOnly,
+          onTap: () {
+            selectedCommunity = '';
+            followedOnly = true;
+            savedOnly = false;
+            _changeFeed();
+          },
+        ),
+        _CommunityChoice(
+          label: 'Saved', icon: Icons.bookmark_outline,
+          selected: savedOnly,
+          onTap: () {
+            selectedCommunity = '';
+            followedOnly = false;
+            savedOnly = true;
+            _changeFeed();
+          },
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(12, 27, 0, 10),
+          child: _SectionLabel('COMMUNITIES'),
+        ),
+        for (final board in boards)
+          _CommunityChoice(
+            label: '${board['name'] ?? board['slug']}',
+            icon: Icons.tag_rounded,
+            selected: selectedCommunity == '${board['slug']}',
+            badge: board['following'] == true ? 'Following' : '',
+            onTap: () {
+              selectedCommunity = '${board['slug']}';
+              followedOnly = false;
+              savedOnly = false;
+              _changeFeed();
+            },
+          ),
+        const SizedBox(height: 20),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text('ARCSIDE · Basketball discussion',
+            style: TextStyle(color: _cMuted, fontSize: 10)),
+        ),
+      ]);
+
+  Widget _communityMobileNav(List<Map<String, dynamic>> boards) =>
+    SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(children: [
+        _CommunityChoice(
+          label: 'Home', icon: Icons.home_outlined,
+          selected: selectedCommunity.isEmpty,
+          onTap: () {
+            selectedCommunity = '';
+            _changeFeed();
+          },
+        ),
+        for (final board in boards)
+          SizedBox(width: 145, child: _CommunityChoice(
+            label: '${board['name'] ?? board['slug']}',
+            icon: Icons.tag_rounded,
+            selected: selectedCommunity == '${board['slug']}',
+            onTap: () {
+              selectedCommunity = '${board['slug']}';
+              _changeFeed();
+            },
+          )),
+      ]),
+    );
+
+  Widget _communityFeed(
+      List<Map<String, dynamic>> boards, Map<String, dynamic>? selectedBoard) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (selectedBoard != null) ...[
+          _BoardProfile(
+            board: selectedBoard,
+            onFollow: () => _follow(selectedBoard),
+          ),
+          const SizedBox(height: 14),
+        ],
+        Row(children: [
+          TextButton(
+            onPressed: () {
+              followedOnly = false;
+              savedOnly = false;
+              _changeFeed();
+            },
+            child: Text('For you', style: TextStyle(
+              fontWeight: FontWeight.w900,
+              color: followedOnly ? _cMuted : _cText)),
+          ),
+          const SizedBox(width: 13),
+          TextButton(
+            onPressed: () {
+              followedOnly = true;
+              savedOnly = false;
+              _changeFeed();
+            },
+            child: Text('Following', style: TextStyle(
+              fontWeight: FontWeight.w900,
+              color: followedOnly ? _cText : _cMuted)),
+          ),
+          const Spacer(),
+          IconButton(
+            tooltip: 'Refresh feed', onPressed: _refresh,
+            icon: const Icon(Icons.refresh_rounded, color: _cMuted),
+          ),
+        ]),
+        const Divider(height: 1, color: _cLine),
+        const SizedBox(height: 12),
+        TextField(
+          controller: searchController,
+          onChanged: (value) => setState(() => search = value),
+          style: const TextStyle(color: _cText),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: 'Search community posts',
+            prefixIcon: const Icon(Icons.search_rounded),
+            filled: true, fillColor: _cPanel2,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(spacing: 7, runSpacing: 7, children: [
+          for (final item in const [
+            ('hot', 'Hot'),
+            ('new', 'New'),
+            ('top', 'Top'),
+            ('controversial', 'Controversial'),
+          ])
+            ChoiceChip(
+              label: Text(item.$2),
+              selected: sort == item.$1,
+              onSelected: (_) {
+                sort = item.$1;
+                _changeFeed();
+              },
+            ),
+          FilterChip(
+            label: const Text('Saved'),
+            selected: savedOnly,
+            onSelected: (value) {
+              savedOnly = value;
+              if (value) followedOnly = false;
+              _changeFeed();
+            },
+          ),
+        ]),
+        const SizedBox(height: 12),
+        FutureBuilder<List<Map<String, dynamic>>>(
+          future: feedFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Padding(
+                padding: EdgeInsets.all(30),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (snapshot.hasError) {
+              return Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text('Community feed unavailable: ${snapshot.error}',
+                  style: const TextStyle(color: _cMuted)),
+              );
+            }
+            final query = search.toLowerCase().trim();
+            final posts = (snapshot.data ?? const <Map<String, dynamic>>[])
+                .where((post) => query.isEmpty ||
+                  '${post['title']} ${post['body']} '
+                  '${post['author_display_name']} ${post['flair']} '
+                  '${post['community_slug']}'.toLowerCase().contains(query))
+                .toList();
+            if (posts.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Text(
+                  'No posts match this feed. Try another sort or community.',
+                  style: TextStyle(color: _cMuted)),
+              );
+            }
+            return Column(children: [
+              for (final post in posts)
+                _ThreadCard(
+                  session: widget.session, post: post,
+                  onVote: (direction) => _vote(post, direction),
+                  onSave: () => _save(post),
+                  onReport: () => _report(post),
+                  onBlock: () => _relationship(post, true),
+                  onMute: () => _relationship(post, false),
+                  onOpen: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute(
+                      settings: RouteSettings(
+                        name: '/community/thread/${post['id']}'),
+                      builder: (_) => CommunityThreadPage(
+                        session: widget.session, initialPost: post),
+                    ),
+                  ),
+                ),
+            ]);
+          },
+        ),
+      ],
+    );
+  }
 }
 
 class CommunityThreadPage extends StatefulWidget {
@@ -619,148 +670,82 @@ class _CommunityThreadPageState extends State<CommunityThreadPage> {
       );
 }
 
-class _CommunityHero extends StatelessWidget {
-  const _CommunityHero({
-    required this.profileFuture,
-    required this.onCreate,
-  });
-
-  final Future<Map<String, dynamic>?> profileFuture;
-  final VoidCallback? onCreate;
-
-  @override
-  Widget build(BuildContext context) => _CommunityPanel(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ARCSIDE / COMMUNITY',
-                        style: TextStyle(
-                          color: _cBlue,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      SizedBox(height: 7),
-                      Text(
-                        'Arcside Community',
-                        style: TextStyle(
-                          color: _cText,
-                          fontSize: 29,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      SizedBox(height: 7),
-                      Text(
-                        'Join basketball conversations, share analysis and follow your favorite teams.',
-                        style: TextStyle(color: _cMuted, height: 1.5),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: onCreate,
-                  icon: const Icon(Icons.add_comment_rounded),
-                  label: const Text('Create thread'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            FutureBuilder<Map<String, dynamic>?>(
-              future: profileFuture,
-              builder: (context, snapshot) {
-                final reputation = snapshot.data?['reputation'];
-                final data = reputation is Map ? reputation : const {};
-                final badges = data['badges'];
-                return Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _MetricPill('REPUTATION', '${data['reputation'] ?? 0}'),
-                    _MetricPill('POSTS', '${data['posts'] ?? 0}'),
-                    _MetricPill('COMMENTS', '${data['comments'] ?? 0}'),
-                    if (badges is List)
-                      for (final badge in badges) _Badge('$badge'),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
-      );
-}
-
 class _CommunityRightRail extends StatelessWidget {
-  const _CommunityRightRail({required this.profileFuture, required this.boardCount});
+  const _CommunityRightRail({
+    required this.profileFuture, required this.boards,
+    required this.onOpenBoard,
+  });
   final Future<Map<String, dynamic>?> profileFuture;
-  final int boardCount;
+  final List<Map<String, dynamic>> boards;
+  final ValueChanged<String> onOpenBoard;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      _CommunityPanel(child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionLabel('ABOUT ARCSIDE'),
-          const SizedBox(height: 11),
-          const Text('Basketball news, thoughtful analysis and conversation in one community.',
-              style: TextStyle(color: _cText, height: 1.45)),
-          const Divider(height: 26, color: _cLine),
-          Text('$boardCount communities', style: const TextStyle(
-              color: _cText, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 8),
-          const Text('Upvote useful posts, save research, and join team discussions.',
-              style: TextStyle(color: _cMuted, fontSize: 12, height: 1.5)),
-        ],
-      )),
-      const SizedBox(height: 12),
-      _CommunityPanel(child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionLabel('YOUR ACTIVITY'),
-          const SizedBox(height: 11),
-          FutureBuilder<Map<String, dynamic>?>(
-            future: profileFuture,
-            builder: (context, snapshot) {
-              final reputation = snapshot.data?['reputation'];
-              final info = reputation is Map ? reputation : const {};
-              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${info['reputation'] ?? 0} reputation',
-                    style: const TextStyle(color: _cText,
-                        fontSize: 18, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 7),
-                Text('${info['posts'] ?? 0} posts · ${info['comments'] ?? 0} comments',
-                    style: const TextStyle(color: _cMuted, fontSize: 12)),
-              ]);
-            },
+  Widget build(BuildContext context) {
+    final popular = [...boards]..sort((a, b) =>
+      _int(b['member_count']).compareTo(_int(a['member_count'])));
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(13),
+        color: _cPanel,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const _SectionLabel('POPULAR COMMUNITIES'),
+        const SizedBox(height: 14),
+        for (var index = 0; index < popular.take(7).length; index++) ...[
+          InkWell(
+            onTap: () => onOpenBoard('${popular[index]['slug'] ?? ''}'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              child: Row(children: [
+                SizedBox(width: 23, child: Text('${index + 1}.',
+                  style: const TextStyle(color: _cMuted, fontSize: 11))),
+                CircleAvatar(radius: 14, backgroundColor: _cPanel2,
+                  child: const Icon(Icons.sports_basketball_outlined,
+                    size: 16, color: _cBlue)),
+                const SizedBox(width: 8),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${popular[index]['name'] ?? popular[index]['slug']}',
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: _cText,
+                        fontSize: 11, fontWeight: FontWeight.w800)),
+                    Text('${popular[index]['member_count'] ?? 0} members',
+                      style: const TextStyle(color: _cMuted, fontSize: 10)),
+                  ],
+                )),
+              ]),
+            ),
           ),
+          if (index < popular.take(7).length - 1)
+            const Divider(height: 1, color: _cLine),
         ],
-      )),
-      const SizedBox(height: 12),
-      const _CommunityPanel(child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SectionLabel('COMMUNITY GUIDELINES'),
-          SizedBox(height: 10),
-          Text('• Use credible sources\n• Be respectful\n• No spam or harassment\n• Keep posts on topic',
-              style: TextStyle(color: _cMuted, fontSize: 12, height: 1.7)),
-          SizedBox(height: 12),
-          Text('ARCSIDE', style: TextStyle(
-              color: _cBlue, fontWeight: FontWeight.w900)),
-        ],
-      )),
-    ],
-  );
+        const Divider(height: 28, color: _cLine),
+        const _SectionLabel('YOUR ARCSIDE ACTIVITY'),
+        const SizedBox(height: 10),
+        FutureBuilder<Map<String, dynamic>?>(
+          future: profileFuture,
+          builder: (context, snapshot) {
+            final reputation = snapshot.data?['reputation'];
+            final info = reputation is Map ? reputation : const {};
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${info['reputation'] ?? 0} reputation',
+                style: const TextStyle(color: _cText,
+                  fontSize: 16, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 5),
+              Text('${info['posts'] ?? 0} posts · ${info['comments'] ?? 0} comments',
+                style: const TextStyle(color: _cMuted, fontSize: 11)),
+            ]);
+          },
+        ),
+        const Divider(height: 28, color: _cLine),
+        const Text('ARCSIDE · COMMUNITY', style: TextStyle(
+          color: _cMuted, fontSize: 10,
+          fontWeight: FontWeight.w800)),
+      ]),
+    );
+  }
 }
 
 class _BoardProfile extends StatelessWidget {
@@ -841,6 +826,8 @@ class _BoardProfile extends StatelessWidget {
   }
 }
 
+/// Flat Reddit-style discussion post. Existing vote, save and moderation
+/// callbacks are preserved; this only changes the layout.
 class _ThreadCard extends StatelessWidget {
   const _ThreadCard({
     required this.session,
@@ -868,137 +855,128 @@ class _ThreadCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewerVote = _int(post['viewer_vote']);
     final own = '${post['author_user_id']}' == session.userId;
-    return _CommunityPanel(
-      padding: EdgeInsets.zero,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            width: 56,
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            color: _cPanel2,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: 'Upvote',
-                  onPressed: onVote == null ? null : () => onVote!(1),
-                  icon: Icon(
-                    Icons.arrow_upward_rounded,
-                    color: viewerVote == 1 ? _cGreen : _cMuted,
-                  ),
-                ),
-                Text(
-                  '${post['score'] ?? 0}',
-                  style: const TextStyle(
-                    color: _cText,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Downvote',
-                  onPressed: onVote == null || own ? null : () => onVote!(-1),
-                  icon: Icon(
-                    Icons.arrow_downward_rounded,
-                    color: viewerVote == -1 ? _cRed : _cMuted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(13),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 7,
-                    runSpacing: 5,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Text(
-                        '${post['community_slug'] ?? 'community'}',
-                        style: const TextStyle(
-                          color: _cBlue,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      _Badge('${post['flair'] ?? 'Discussion'}'),
-                      if (post['pinned'] == true) const _Badge('PINNED'),
-                      Text(
-                        'by ${post['author_handle']?.toString().isNotEmpty == true ? '@${post['author_handle']}' : post['author_display_name'] ?? post['author_user_id']} · ${_relative('${post['created_at'] ?? ''}')}',
-                        style: const TextStyle(color: _cMuted, fontSize: 10),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 7),
-                  InkWell(
-                    onTap: onOpen,
-                    child: Text(
-                      '${post['title'] ?? ''}',
-                      style: const TextStyle(
-                        color: _cText,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    '${post['body'] ?? ''}',
-                    maxLines: detailed ? null : 5,
-                    overflow: detailed ? TextOverflow.visible : TextOverflow.ellipsis,
-                    style: const TextStyle(color: _cMuted, height: 1.45),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      TextButton.icon(
-                        onPressed: onOpen,
-                        icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
-                        label: Text('${post['comment_count'] ?? 0} comments'),
-                      ),
-                      TextButton.icon(
-                        onPressed: onSave,
-                        icon: Icon(
-                          post['saved_by_viewer'] == true
-                              ? Icons.bookmark_rounded
-                              : Icons.bookmark_border_rounded,
-                          size: 16,
-                        ),
-                        label: Text(
-                          post['saved_by_viewer'] == true ? 'Saved' : 'Save',
-                        ),
-                      ),
-                      if (onReport != null)
-                        TextButton.icon(
-                          onPressed: onReport,
-                          icon: const Icon(Icons.flag_outlined, size: 16),
-                          label: const Text('Report'),
-                        ),
-                      if (!own && onMute != null)
-                        TextButton(
-                          onPressed: onMute,
-                          child: const Text('Mute author'),
-                        ),
-                      if (!own && onBlock != null)
-                        TextButton(
-                          onPressed: onBlock,
-                          child: const Text('Block author'),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+    final slug = '${post['community_slug'] ?? 'basketball'}';
+    final user = post['author_handle']?.toString().isNotEmpty == true
+        ? 'u/${post['author_handle']}'
+        : '${post['author_display_name'] ?? 'member'}';
+    final saved = post['saved_by_viewer'] == true;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 3),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: _cLine)),
       ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          CircleAvatar(
+            radius: 14, backgroundColor: const Color(0xFF243853),
+            child: Text(slug.isEmpty ? 'a' : slug[0].toUpperCase(),
+              style: const TextStyle(color: _cText,
+                fontSize: 12, fontWeight: FontWeight.w900)),
+          ),
+          const SizedBox(width: 8),
+          Flexible(child: Text('r/$slug', maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: _cText,
+              fontSize: 12, fontWeight: FontWeight.w900))),
+          const SizedBox(width: 7),
+          Expanded(child: Text('· $user · ${_relative('${post['created_at'] ?? ''}')}',
+            maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: _cMuted, fontSize: 11))),
+          PopupMenuButton<String>(
+            tooltip: 'Post options',
+            icon: const Icon(Icons.more_horiz_rounded, color: _cMuted),
+            onSelected: (action) {
+              switch (action) {
+                case 'save': onSave?.call();
+                case 'report': onReport?.call();
+                case 'mute': onMute?.call();
+                case 'block': onBlock?.call();
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(value: 'save',
+                child: Text(saved ? 'Unsave' : 'Save post')),
+              if (onReport != null)
+                const PopupMenuItem(value: 'report',
+                  child: Text('Report')),
+              if (!own && onMute != null)
+                const PopupMenuItem(value: 'mute',
+                  child: Text('Mute author')),
+              if (!own && onBlock != null)
+                const PopupMenuItem(value: 'block',
+                  child: Text('Block author')),
+            ],
+          ),
+        ]),
+        const SizedBox(height: 6),
+        InkWell(
+          onTap: onOpen,
+          child: Text('${post['title'] ?? ''}',
+            style: const TextStyle(fontSize: 18,
+              fontWeight: FontWeight.w800, color: _cText, height: 1.24)),
+        ),
+        if ('${post['body'] ?? ''}'.trim().isNotEmpty) ...[
+          const SizedBox(height: 9),
+          Text('${post['body'] ?? ''}',
+            maxLines: detailed ? null : 4,
+            overflow: detailed ? TextOverflow.visible : TextOverflow.ellipsis,
+            style: const TextStyle(color: _cMuted,
+              fontSize: 13, height: 1.45)),
+        ],
+        if ('${post['flair'] ?? ''}'.isNotEmpty) ...[
+          const SizedBox(height: 9),
+          Text('${post['flair']}',
+            style: const TextStyle(color: _cBlue,
+              fontSize: 11, fontWeight: FontWeight.w800)),
+        ],
+        if (post['pinned'] == true) ...[
+          const SizedBox(height: 4),
+          const Text('Pinned by moderators',
+            style: TextStyle(color: _cGreen, fontSize: 10)),
+        ],
+        const SizedBox(height: 12),
+        Wrap(spacing: 9, runSpacing: 7, children: [
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(99),
+              color: _cPanel2,
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              IconButton(
+                tooltip: 'Upvote',
+                visualDensity: VisualDensity.compact,
+                onPressed: onVote == null || own ? null : () => onVote!(1),
+                icon: Icon(Icons.arrow_upward_rounded, size: 18,
+                  color: viewerVote == 1 ? _cGreen : _cMuted),
+              ),
+              Text('${post['score'] ?? 0}',
+                style: const TextStyle(color: _cText,
+                  fontSize: 12, fontWeight: FontWeight.w800)),
+              IconButton(
+                tooltip: 'Downvote',
+                visualDensity: VisualDensity.compact,
+                onPressed: onVote == null || own ? null : () => onVote!(-1),
+                icon: Icon(Icons.arrow_downward_rounded, size: 18,
+                  color: viewerVote == -1 ? _cRed : _cMuted),
+              ),
+            ]),
+          ),
+          TextButton.icon(
+            style: TextButton.styleFrom(backgroundColor: _cPanel2),
+            onPressed: onOpen,
+            icon: const Icon(Icons.mode_comment_outlined, size: 16),
+            label: Text('${post['comment_count'] ?? 0} comments'),
+          ),
+          TextButton.icon(
+            style: TextButton.styleFrom(backgroundColor: _cPanel2),
+            onPressed: onSave,
+            icon: Icon(saved ? Icons.bookmark_rounded
+              : Icons.bookmark_border_rounded, size: 16),
+            label: Text(saved ? 'Saved' : 'Save'),
+          ),
+        ]),
+      ]),
     );
   }
 }
@@ -1197,45 +1175,39 @@ class _CommunityChoice extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.badge = '',
+    this.icon = Icons.tag_rounded,
   });
-
   final String label;
   final bool selected;
   final VoidCallback onTap;
   final String badge;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) => Material(
-        color: selected ? const Color(0xFF17273A) : _cPanel2,
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              border: Border.all(color: selected ? _cBlue : _cLine),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                Expanded(child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: selected ? _cText : _cMuted,
-                    fontSize: 11,
-                    fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-                  ),
-                )),
-                if (badge.isNotEmpty) ...[
-                  const SizedBox(width: 6),
-                  const Icon(Icons.check_circle_rounded, size: 12, color: _cGreen),
-                ],
-              ],
-            ),
-          ),
-        ),
-      );
+    color: selected ? const Color(0xFF202E3E) : Colors.transparent,
+    borderRadius: BorderRadius.circular(8),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 11),
+        child: Row(children: [
+          Icon(icon, color: selected ? _cText : _cMuted, size: 19),
+          const SizedBox(width: 10),
+          Expanded(child: Text(label,
+            overflow: TextOverflow.ellipsis, maxLines: 1,
+            style: TextStyle(
+              color: selected ? _cText : _cMuted,
+              fontSize: 12, fontWeight: selected
+                  ? FontWeight.w800 : FontWeight.w600))),
+          if (badge.isNotEmpty)
+            const Icon(Icons.check_circle_outline_rounded,
+              size: 13, color: _cGreen),
+        ]),
+      ),
+    ),
+  );
 }
 
 class _CommunityPanel extends StatelessWidget {
@@ -1324,27 +1296,6 @@ class _SectionLabel extends StatelessWidget {
       );
 }
 
-class _NetworkPrinciples extends StatelessWidget {
-  const _NetworkPrinciples();
-
-  @override
-  Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.only(top: 8),
-        child: _CommunityPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _SectionLabel('NETWORK DESIGN'),
-              SizedBox(height: 6),
-              Text(
-                'Arcside community ranking is bounded and auditable rather than an opaque engagement maximizer. Blocks are bilateral for conversation visibility, mutes remove authors from feeds, sanctions can prevent publication, reports enter a moderation queue, and moderation actions are written to the platform audit log.',
-                style: TextStyle(color: _cMuted, height: 1.5),
-              ),
-            ],
-          ),
-        ),
-      );
-}
 
 int _int(Object? value) {
   if (value is num) return value.toInt();
