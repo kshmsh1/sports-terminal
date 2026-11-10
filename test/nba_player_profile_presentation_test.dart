@@ -17,9 +17,13 @@ void main() {
         {'award': 'nba_mvp', 'season_id': season, 'winner': 1},
       {'award': 'NBA MVP', 'season_id': '2008-09', 'winner': 1},
       {'award': 'nba_mvp', 'season_id': '2003-04', 'winner': 0},
-      {'award': 'All-NBA', 'season_id': '2004-05', 'winner': 0},
-      {'award': 'all_nba', 'season_id': '2004-05', 'winner': 0},
-      {'award': 'all_defense', 'season_id': '2008-09', 'winner': 0},
+      {'award': 'All-NBA', 'season_id': '2004-05', 'winner': 0,
+        'rank_text': '2nd Team'},
+      {'award': 'all_nba', 'season_id': '2004-05', 'winner': 0,
+        'rank_text': '2nd Team'},
+      {'award': 'all_nba', 'season_id': '2003-04', 'winner': 0,
+        'rank_text': '4'},
+      {'award': 'all_defense', 'season_id': '2008-09', 'winner': 1},
     ];
     final groups = nbaGroupPlayerHonors(awards, const []);
     final mvp = groups.firstWhere(
