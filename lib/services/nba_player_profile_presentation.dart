@@ -32,7 +32,14 @@ List<NbaPlayerHonorGroup> nbaGroupPlayerHonors(
         title.startsWith('All-Defensive') || title.startsWith('All-Rookie');
     final winner = row['winner'] == 1 || row['winner'] == true ||
         row['winner']?.toString().toLowerCase() == 'true';
-    if (!teamSelection && !winner) continue;
+    // Historical source files include *votes* for All-NBA, All-Defense and
+    // All-Rookie alongside actual team selections. A vote is not a selection.
+    // Retain a non-winner row only with explicit team-placement evidence.
+    final rank = (row['rank_text'] ?? '').toString().toLowerCase();
+    final teamPlacement = RegExp(
+      r'\b(?:first|second|third|1st|2nd|3rd)\s*(?:team)?\b',
+    ).hasMatch(rank);
+    if (!winner && !(teamSelection && teamPlacement)) continue;
     final year = nbaHonorSeasonEndYear(row);
     if (year != null) grouped.putIfAbsent(title, () => {}).add(year);
   }
