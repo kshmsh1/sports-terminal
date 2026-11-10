@@ -5,7 +5,6 @@ import '../services/nba_player_profile_presentation.dart';
 import '../services/nba_trade_contract_repository.dart';
 import '../services/nba_stats_metric_catalog.dart';
 import '../services/nba_stat_display_format.dart';
-import '../services/front_office_registry_service.dart';
 import '../services/website_nba_api_service.dart';
 import '../widgets/nba_percentage_heat_cell.dart';
 
@@ -63,7 +62,6 @@ class WebsiteNbaPlayerPage extends StatefulWidget {
 
 class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
   final _api = const WebsiteNbaApiService();
-  final _frontOffice = const FrontOfficeRegistryService();
   late Future<_PlayerPageData> _future;
   String _segment = 'regular';
   String _advancedCategory = 'Efficiency';
@@ -78,19 +76,8 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
 
   Future<_PlayerPageData> _load() async {
     final dossier = await _api.playerDossier(widget.playerKey);
-    FrontOfficeRegistrySnapshot? registry;
-    try {
-      registry = await _frontOffice.load(
-        session: widget.session,
-        season: '2025-26',
-      );
-    } catch (_) {
-      registry = null;
-    }
     final current = await const NbaTradeContractRepository().load();
-    return _PlayerPageData(
-      dossier: dossier, registry: registry, currentContracts: current,
-    );
+    return _PlayerPageData(dossier: dossier, currentContracts: current);
   }
 
   @override
@@ -123,9 +110,6 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
             final awards = _maps(dossier['awards']);
             final allStar = _maps(dossier['all_star']);
             final draft = _maps(dossier['draft']);
-            final contracts = _playerContracts(
-              data.registry, widget.playerKey, name,
-            );
             final normalizedName = name.toLowerCase().replaceAll(
               RegExp(r'[^a-z0-9]'), '',
             );
@@ -236,7 +220,6 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                       const _SectionTitle('Contract'),
                       const SizedBox(height: 10),
                       _ContractSection(
-                        contracts: contracts,
                         current: current,
                         asOf: data.currentContracts.asOf,
                       ),
@@ -703,11 +686,9 @@ class _TeamSeasonTable extends StatelessWidget {
 
 class _ContractSection extends StatelessWidget {
   const _ContractSection({
-    required this.contracts,
     required this.current,
     required this.asOf,
   });
-  final List<Map<String, dynamic>> contracts;
   final NbaTradeContract? current;
   final String asOf;
 
@@ -716,11 +697,10 @@ class _ContractSection extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final contract = current;
     if (contract == null) {
-      return _EmptyCard(
-        '2026–27 contract information is not present in Arcside’s published '
-        'salary reference for this player. ${contracts.isEmpty
-            ? 'No earlier registered contract is available either.'
-            : 'Earlier registry records are not shown as current contracts.'}',
+      return const _EmptyCard(
+        '2026–27 contract information is not present in Arcside’s '
+        'published salary reference for this player. '
+        'No earlier contract is presented as current.',
       );
     }
     final salary = contract.salaryFor('2026-27');
@@ -1029,10 +1009,9 @@ class _EntityError extends StatelessWidget {
 
 class _PlayerPageData {
   const _PlayerPageData({
-    required this.dossier, required this.registry, required this.currentContracts,
+    required this.dossier, required this.currentContracts,
   });
   final Map<String, dynamic> dossier;
-  final FrontOfficeRegistrySnapshot? registry;
   final NbaTradeContractSnapshot currentContracts;
 }
 
@@ -1080,23 +1059,6 @@ int? _honorYear(Map<String, dynamic> row) {
   final match = RegExp(r'^(\d{4})').firstMatch(_text(row['season_id']));
   final start = match == null ? null : int.tryParse(match.group(1)!);
   return start == null ? null : start + 1;
-}
-
-List<Map<String, dynamic>> _playerContracts(
-  FrontOfficeRegistrySnapshot? registry,
-  String playerKey,
-  String playerName,
-) {
-  if (registry == null) return const [];
-  final result = <Map<String, dynamic>>[];
-  for (final wrapper in registry.contracts) {
-    final record = _map(wrapper['record']);
-    final idMatch = _text(record['player_id']) == playerKey;
-    final nameMatch = _text(record['player_name']).toLowerCase() ==
-        playerName.toLowerCase();
-    if (idMatch || nameMatch) result.add(record);
-  }
-  return result;
 }
 
 Map<String, dynamic> _map(Object? value) {
