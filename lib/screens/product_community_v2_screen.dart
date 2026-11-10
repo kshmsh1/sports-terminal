@@ -1276,3 +1276,22 @@ class _SectionLabel extends StatelessWidget {
       );
 }
 
+
+int _int(Object? value) {
+  if (value is num) return value.toInt();
+  return int.tryParse('${value ?? ''}') ?? 0;
+}
+
+String _relative(String iso) {
+  try {
+    final then = DateTime.parse(iso).toUtc();
+    final delta = DateTime.now().toUtc().difference(then);
+    if (delta.inDays >= 365) return '${(delta.inDays / 365).floor()}y';
+    if (delta.inDays >= 1) return '${delta.inDays}d';
+    if (delta.inHours >= 1) return '${delta.inHours}h';
+    if (delta.inMinutes >= 1) return '${delta.inMinutes}m';
+    return 'now';
+  } catch (_) {
+    return iso;
+  }
+}
