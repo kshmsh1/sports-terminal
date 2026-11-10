@@ -66,7 +66,8 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
   final _frontOffice = const FrontOfficeRegistryService();
   late Future<_PlayerPageData> _future;
   String _segment = 'regular';
-  String _advancedCategory = 'Shooting & Efficiency';
+  String _advancedCategory = 'Efficiency';
+  final Set<String> _expandedCareerMetrics = {};
   final Set<String> _expandedAdvancedMetrics = {};
 
   @override
@@ -191,34 +192,45 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      _PlayerCareerTable(rows: selectedRows),
+                      _PlayerCareerTable(
+                        rows: selectedRows,
+                        expanded: _expandedCareerMetrics,
+                        onExpand: (key) => setState(() {
+                          if (!_expandedCareerMetrics.add(key)) {
+                            _expandedCareerMetrics.remove(key);
+                          }
+                        }),
+                      ),
                       const SizedBox(height: 30),
                       const _SectionTitle('Advanced statistics'),
                       const SizedBox(height: 10),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            for (final category in _advancedCategories)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: ChoiceChip(
-                                  label: Text(category.name),
-                                  selected: _advancedCategory == category.name,
-                                  onSelected: (_) => setState(
-                                    () => _advancedCategory = category.name,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
+                      Wrap(
+                        spacing: 7,
+                        runSpacing: 7,
+                        children: [
+                          for (final family in _advancedCategories)
+                            ChoiceChip(
+                              label: Text(family.label),
+                              selected: _advancedCategory == family.label,
+                              onSelected: (_) => setState(() {
+                                _advancedCategory = family.label;
+                                _expandedAdvancedMetrics.clear();
+                              }),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 10),
                       _PlayerAdvancedTable(
                         rows: selectedRows,
-                        category: _advancedCategories.firstWhere(
-                          (item) => item.name == _advancedCategory,
+                        family: _advancedCategories.firstWhere(
+                          (item) => item.label == _advancedCategory,
                         ),
+                        expanded: _expandedAdvancedMetrics,
+                        onExpand: (key) => setState(() {
+                          if (!_expandedAdvancedMetrics.add(key)) {
+                            _expandedAdvancedMetrics.remove(key);
+                          }
+                        }),
                       ),
                       const SizedBox(height: 30),
                       const _SectionTitle('Contract'),
@@ -428,182 +440,214 @@ class _WebsiteNbaTeamPageState extends State<WebsiteNbaTeamPage> {
       );
 }
 
+/// Player career and Advanced Stats share the same compact, expandable table.
 class _PlayerCareerTable extends StatelessWidget {
-  const _PlayerCareerTable({required this.rows});
+  const _PlayerCareerTable({
+    required this.rows, required this.expanded, required this.onExpand,
+  });
   final List<Map<String, dynamic>> rows;
+  final Set<String> expanded;
+  final ValueChanged<String> onExpand;
 
   @override
-  Widget build(BuildContext context) {
-    final ordered = [...rows]
-      ..sort(
-        (a, b) => _text(b['season_id']).compareTo(_text(a['season_id'])),
-      );
-    if (ordered.isEmpty) {
-      return const _EmptyCard(
-        'No source-backed statistics are available for this segment.',
-      );
-    }
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columns: const [
-            DataColumn(label: Text('Season')),
-            DataColumn(label: Text('Team')),
-            DataColumn(label: Text('Pos')),
-            DataColumn(numeric: true, label: Text('GP')),
-            DataColumn(numeric: true, label: Text('MPG')),
-            DataColumn(numeric: true, label: Text('PPG')),
-            DataColumn(numeric: true, label: Text('RPG')),
-            DataColumn(numeric: true, label: Text('APG')),
-            DataColumn(numeric: true, label: Text('SPG')),
-            DataColumn(numeric: true, label: Text('BPG')),
-            DataColumn(numeric: true, label: Text('TPG')),
-            DataColumn(numeric: true, label: Text('PF')),
-            DataColumn(numeric: true, label: Text('FG%')),
-            DataColumn(numeric: true, label: Text('3PM')),
-            DataColumn(numeric: true, label: Text('3PA')),
-            DataColumn(numeric: true, label: Text('3P%')),
-            DataColumn(numeric: true, label: Text('FT%')),
-            DataColumn(numeric: true, label: Text('TS%')),
-            DataColumn(numeric: true, label: Text('PER')),
-            DataColumn(numeric: true, label: Text('BPM')),
-            DataColumn(numeric: true, label: Text('VORP')),
-          ],
-          rows: [
-            for (final row in ordered)
-              DataRow(
-                cells: [
-                  DataCell(Text(_text(row['season_id']))),
-                  DataCell(Text(_text(row['team_abbreviation'], '—'))),
-                  DataCell(
-                    Text(
-                      _text(
-                        row['positions'],
-                        _textAny(
-                          row,
-                          const ['position', 'pos'],
-                          fallback: '—',
-                        ),
-                      ),
-                    ),
-                  ),
-                  DataCell(Text(_whole(row['games']))),
-                  DataCell(Text(_perGameAny(row, const ['minutes', 'min']))),
-                  DataCell(Text(_perGameAny(row, const ['pts', 'points']))),
-                  DataCell(Text(_perGameAny(row, const ['reb', 'rebounds']))),
-                  DataCell(Text(_perGameAny(row, const ['ast', 'assists']))),
-                  DataCell(Text(_perGameAny(row, const ['stl', 'steals']))),
-                  DataCell(Text(_perGameAny(row, const ['blk', 'blocks']))),
-                  DataCell(Text(_perGameAny(row, const ['tov', 'turnovers']))),
-                  DataCell(Text(_perGameAny(row, const ['pf', 'personal_fouls']))),
-                  _heatDataCell(
-                    row,
-                    const ['fg_pct', 'field_goal_percentage'],
-                    NbaPercentageHeatMetric.fieldGoal,
-                  ),
-                  DataCell(
-                    Text(
-                      _perGameAny(
-                        row,
-                        const ['three_pm', 'three_pointers_made', 'fg3m'],
-                      ),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      _perGameAny(
-                        row,
-                        const ['three_pa', 'three_point_attempts', 'fg3a'],
-                      ),
-                    ),
-                  ),
-                  _heatDataCell(
-                    row,
-                    const ['three_pct', 'fg3_pct', 'three_point_percentage'],
-                    NbaPercentageHeatMetric.threePoint,
-                  ),
-                  _heatDataCell(
-                    row,
-                    const ['ft_pct', 'free_throw_percentage'],
-                    NbaPercentageHeatMetric.freeThrow,
-                  ),
-                  DataCell(Text(_pctAny(row, const ['ts_pct']))),
-                  DataCell(Text(_decimalAny(row, const ['per']))),
-                  DataCell(Text(_signedAny(row, const ['bpm']))),
-                  DataCell(Text(_decimalAny(row, const ['vorp']))),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => _SeasonMetricTable(
+    rows: rows,
+    family: nbaTerminalFamily('basic'),
+    expanded: expanded,
+    onExpand: onExpand,
+  );
 }
 
 class _PlayerAdvancedTable extends StatelessWidget {
-  const _PlayerAdvancedTable({required this.rows, required this.category});
+  const _PlayerAdvancedTable({
+    required this.rows, required this.family,
+    required this.expanded, required this.onExpand,
+  });
   final List<Map<String, dynamic>> rows;
-  final _AdvancedCategory category;
+  final NbaTerminalStatFamily family;
+  final Set<String> expanded;
+  final ValueChanged<String> onExpand;
+
+  @override
+  Widget build(BuildContext context) => _SeasonMetricTable(
+    rows: rows, family: family, expanded: expanded, onExpand: onExpand,
+  );
+}
+
+class _SeasonMetricTable extends StatelessWidget {
+  const _SeasonMetricTable({
+    required this.rows,
+    required this.family,
+    required this.expanded,
+    required this.onExpand,
+  });
+  final List<Map<String, dynamic>> rows;
+  final NbaTerminalStatFamily family;
+  final Set<String> expanded;
+  final ValueChanged<String> onExpand;
 
   @override
   Widget build(BuildContext context) {
     final ordered = [...rows]
-      ..sort(
-        (a, b) => _text(b['season_id']).compareTo(_text(a['season_id'])),
-      );
-    final available = category.metrics
-        .where(
-          (metric) => ordered.any(
-            (row) => _numberAny(row, metric.keys) != null,
-          ),
-        )
-        .toList();
-    if (ordered.isEmpty || available.isEmpty) {
+      ..sort((a, b) =>
+          _text(b['season_id']).compareTo(_text(a['season_id'])));
+    final keys = nbaVisibleMetricKeys(family, expanded);
+    final metrics = [
+      for (final key in keys)
+        if (nbaTerminalMetricByKey[key] case final NbaTerminalMetric metric)
+          if (ordered.any((row) =>
+              _seasonSourceValue(row, metric) != null))
+            metric,
+    ];
+    if (ordered.isEmpty || metrics.isEmpty) {
       return _EmptyCard(
-        '${category.name} metrics are not source-backed for this player/segment in the active historical release.',
+        '${family.label} has no published source-backed fields '
+        'for these player seasons. Missing historical statistics '
+        'are not reconstructed.',
       );
     }
-    return Card(
-      clipBehavior: Clip.antiAlias,
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: colors.outlineVariant),
+      ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
+          columnSpacing: 19,
+          horizontalMargin: 12,
+          headingRowHeight: 38,
+          dataRowMinHeight: 35,
+          dataRowMaxHeight: 38,
+          headingTextStyle: TextStyle(
+            fontSize: 11, color: colors.onSurface,
+            fontWeight: FontWeight.w800,
+          ),
+          dataTextStyle: TextStyle(fontSize: 11.5,
+            color: colors.onSurface),
           columns: [
             const DataColumn(label: Text('Season')),
             const DataColumn(label: Text('Team')),
             const DataColumn(label: Text('Pos')),
-            for (final metric in available)
-              DataColumn(numeric: true, label: Text(metric.label)),
+            for (final metric in metrics)
+              DataColumn(
+                numeric: metric.format != NbaTerminalMetricFormat.feetInches,
+                label: InkWell(
+                  onTap: _isExpandable(metric)
+                      ? () => onExpand(metric.key) : null,
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    if (_isExpandable(metric)) ...[
+                      Icon(expanded.contains(metric.key)
+                        ? Icons.keyboard_arrow_down_rounded
+                        : Icons.chevron_right_rounded, size: 14),
+                      const SizedBox(width: 2),
+                    ],
+                    Text(_playerTableMetricLabel(metric)),
+                  ]),
+                ),
+              ),
           ],
           rows: [
             for (final row in ordered)
-              DataRow(
-                cells: [
-                  DataCell(Text(_text(row['season_id']))),
-                  DataCell(Text(_text(row['team_abbreviation'], '—'))),
-                  DataCell(
-                    Text(
-                      _text(
-                        row['positions'],
-                        _textAny(
-                          row,
-                          const ['position', 'pos'],
-                          fallback: '—',
-                        ),
-                      ),
-                    ),
-                  ),
-                  for (final metric in available)
-                    _advancedDataCell(row, metric),
-                ],
-              ),
+              DataRow(cells: [
+                DataCell(Text(_text(row['season_id']))),
+                DataCell(Text(_text(row['team_abbreviation'], '—'))),
+                DataCell(Text(nbaOrderedPositions(_textAny(row,
+                  const ['positions', 'position', 'pos'], fallback: '—')))),
+                for (final metric in metrics)
+                  _playerProfileMetricCell(row, metric),
+              ]),
           ],
         ),
       ),
     );
   }
+
+  bool _isExpandable(NbaTerminalMetric metric) =>
+      (family.expansionOverrides[metric.key] ?? metric.children).isNotEmpty;
+}
+
+DataCell _playerProfileMetricCell(
+    Map<String, dynamic> row, NbaTerminalMetric metric) {
+  final value = _seasonSourceValue(row, metric);
+  final text = _formatSeasonMetric(metric, value);
+  final heat = switch (metric.key) {
+    'fg_pct' => NbaPercentageHeatMetric.fieldGoal,
+    'three_pct' => NbaPercentageHeatMetric.threePoint,
+    'ft_pct' => NbaPercentageHeatMetric.freeThrow,
+    _ => null,
+  };
+  if (heat == null) return DataCell(Text(text));
+  return DataCell(NbaPercentageHeatCell(
+      metric: heat, value: value, child: Text(text)));
+}
+
+/// Only read source-provided fields. Season counting values are stored as
+/// totals in canonical player-season rows, so divide by actual source GP.
+double? _seasonSourceValue(
+    Map<String, dynamic> row, NbaTerminalMetric metric) {
+  const counting = <String, List<String>>{
+    'mpg': ['minutes', 'min'], 'ppg': ['pts', 'points'],
+    'rpg': ['reb', 'rebounds'], 'apg': ['ast', 'assists'],
+    'spg': ['stl', 'steals'], 'bpg': ['blk', 'blocks'],
+    'tpg': ['tov', 'turnovers'], 'pf': ['pf', 'personal_fouls'],
+    'oreb': ['oreb', 'offensive_rebounds'],
+    'dreb': ['dreb', 'defensive_rebounds'],
+    'fgm': ['fgm', 'field_goals_made'],
+    'fga': ['fga', 'field_goal_attempts'],
+    'three_pm': ['three_pm', 'three_pointers_made', 'fg3m'],
+    'three_pa': ['three_pa', 'three_point_attempts', 'fg3a'],
+    'ftm': ['ftm', 'free_throws_made'],
+    'fta': ['fta', 'free_throw_attempts'],
+  };
+  if (metric.key == 'gp') return _numberAny(row, const ['games', 'gp']);
+  final totalKeys = counting[metric.key];
+  if (totalKeys != null) {
+    final games = _numberAny(row, const ['games', 'gp']);
+    final amount = _numberAny(row, totalKeys);
+    if (games == null || games <= 0 || amount == null) return null;
+    return amount / games;
+  }
+  return _numberAny(row, [
+    ...metric.rawAliases,
+    metric.key,
+    if (metric.engineKey case final String engineKey) engineKey,
+  ]);
+}
+
+String _formatSeasonMetric(NbaTerminalMetric metric, double? value) {
+  if (value == null || !value.isFinite) return '—';
+  switch (metric.format) {
+    case NbaTerminalMetricFormat.integer:
+      return value.round().toString();
+    case NbaTerminalMetricFormat.percent:
+      return _pct(value);
+    case NbaTerminalMetricFormat.signed:
+      return '${value >= 0 ? '+' : ''}${value.toStringAsFixed(metric.decimals)}';
+    case NbaTerminalMetricFormat.feetInches:
+      return nbaFormatFeetInches(value);
+    case NbaTerminalMetricFormat.inches:
+      return '${value.toStringAsFixed(1)} in';
+    case NbaTerminalMetricFormat.pounds:
+      return '${value.toStringAsFixed(0)} lb';
+    case NbaTerminalMetricFormat.seconds:
+      return '${value.toStringAsFixed(metric.decimals)}s';
+    case NbaTerminalMetricFormat.decimal:
+      return value.toStringAsFixed(metric.decimals);
+  }
+}
+
+String _playerTableMetricLabel(NbaTerminalMetric metric) {
+  final label = metric.shortLabel;
+  if (label == label.toUpperCase() &&
+      label.replaceAll(RegExp(r'[^A-Z]'), '').length > 5 &&
+      !label.contains('%')) {
+    return metric.label;
+  }
+  return label;
 }
 
 class _TeamSeasonTable extends StatelessWidget {
@@ -998,107 +1042,9 @@ class _SummaryItem {
   final String value;
 }
 
-class _AdvancedCategory {
-  const _AdvancedCategory(this.name, this.metrics);
-  final String name;
-  final List<_AdvancedMetric> metrics;
-}
-
-class _AdvancedMetric {
-  const _AdvancedMetric(
-    this.label,
-    this.keys, {
-    this.percent = false,
-    this.signed = false,
-    this.perGame = false,
-    this.heatMetric,
-  });
-  final String label;
-  final List<String> keys;
-  final bool percent;
-  final bool signed;
-  final bool perGame;
-  final NbaPercentageHeatMetric? heatMetric;
-}
-
-const _advancedCategories = <_AdvancedCategory>[
-  _AdvancedCategory(
-    'Shooting & Efficiency',
-    [
-      _AdvancedMetric('PPG', ['pts', 'points'], perGame: true),
-      _AdvancedMetric(
-        'FG%',
-        ['fg_pct', 'field_goal_percentage'],
-        percent: true,
-        heatMetric: NbaPercentageHeatMetric.fieldGoal,
-      ),
-      _AdvancedMetric(
-        '3PM',
-        ['three_pm', 'three_pointers_made', 'fg3m'],
-        perGame: true,
-      ),
-      _AdvancedMetric(
-        '3PA',
-        ['three_pa', 'three_point_attempts', 'fg3a'],
-        perGame: true,
-      ),
-      _AdvancedMetric(
-        '3P%',
-        ['three_pct', 'fg3_pct', 'three_point_percentage'],
-        percent: true,
-        heatMetric: NbaPercentageHeatMetric.threePoint,
-      ),
-      _AdvancedMetric(
-        'FT%',
-        ['ft_pct', 'free_throw_percentage'],
-        percent: true,
-        heatMetric: NbaPercentageHeatMetric.freeThrow,
-      ),
-      _AdvancedMetric('eFG%', ['efg_pct'], percent: true),
-      _AdvancedMetric('TS%', ['ts_pct'], percent: true),
-      _AdvancedMetric('PER', ['per']),
-      _AdvancedMetric('USG%', ['usg_pct'], percent: true),
-    ],
-  ),
-  _AdvancedCategory(
-    'Defense',
-    [
-      _AdvancedMetric('SPG', ['stl', 'steals'], perGame: true),
-      _AdvancedMetric('BPG', ['blk', 'blocks'], perGame: true),
-      _AdvancedMetric(
-        'DFG%',
-        ['dfg_pct', 'd_fg_pct'],
-        percent: true,
-        heatMetric: NbaPercentageHeatMetric.defensiveFieldGoal,
-      ),
-      _AdvancedMetric(
-        'Rim DFG%',
-        ['rim_dfg_pct', 'lt6_dfg_pct'],
-        percent: true,
-        heatMetric: NbaPercentageHeatMetric.rimDefensiveFieldGoal,
-      ),
-      _AdvancedMetric(
-        '3P DFG%',
-        ['three_dfg_pct', 'three_point_dfg_pct'],
-        percent: true,
-        heatMetric: NbaPercentageHeatMetric.threePointDefensiveFieldGoal,
-      ),
-      _AdvancedMetric('DBPM', ['dbpm'], signed: true),
-      _AdvancedMetric('DRtg', ['drtg']),
-    ],
-  ),
-  _AdvancedCategory(
-    'Impact',
-    [
-      _AdvancedMetric('PER', ['per']),
-      _AdvancedMetric('WS', ['ws']),
-      _AdvancedMetric('WS/48', ['ws48']),
-      _AdvancedMetric('OBPM', ['obpm'], signed: true),
-      _AdvancedMetric('DBPM', ['dbpm'], signed: true),
-      _AdvancedMetric('BPM', ['bpm'], signed: true),
-      _AdvancedMetric('VORP', ['vorp']),
-    ],
-  ),
+final List<NbaTerminalStatFamily> _advancedCategories = [
+  for (final family in nbaTerminalStatFamilies)
+    if (family.id != 'basic') family,
 ];
 
 DataCell _heatDataCell(
@@ -1112,22 +1058,6 @@ DataCell _heatDataCell(
       metric: metric,
       value: value,
       child: Text(_pct(value)),
-    ),
-  );
-}
-
-DataCell _advancedDataCell(
-  Map<String, dynamic> row,
-  _AdvancedMetric metric,
-) {
-  final value = _numberAny(row, metric.keys);
-  final text = _formatAdvanced(row, metric);
-  if (metric.heatMetric == null) return DataCell(Text(text));
-  return DataCell(
-    NbaPercentageHeatCell(
-      metric: metric.heatMetric!,
-      value: value,
-      child: Text(text),
     ),
   );
 }
@@ -1246,14 +1176,4 @@ String _money(Object? value) {
   final number = _number(value);
   if (number == null) return '—';
   return '\$${number.toStringAsFixed(0).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}';
-}
-String _formatAdvanced(Map<String, dynamic> row, _AdvancedMetric metric) {
-  if (metric.perGame) return _perGameAny(row, metric.keys);
-  final value = _numberAny(row, metric.keys);
-  if (value == null) return '—';
-  if (metric.percent) return _pct(value);
-  if (metric.signed) {
-    return '${value >= 0 ? '+' : ''}${value.toStringAsFixed(1)}';
-  }
-  return value.toStringAsFixed(1);
 }
