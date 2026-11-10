@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../models/app_session.dart';
+import '../services/nba_player_profile_presentation.dart';
+import '../services/nba_trade_contract_repository.dart';
+import '../services/nba_stats_metric_catalog.dart';
+import '../services/nba_stat_display_format.dart';
 import '../services/front_office_registry_service.dart';
 import '../services/website_nba_api_service.dart';
 import '../widgets/nba_percentage_heat_cell.dart';
@@ -63,6 +67,7 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
   late Future<_PlayerPageData> _future;
   String _segment = 'regular';
   String _advancedCategory = 'Shooting & Efficiency';
+  final Set<String> _expandedAdvancedMetrics = {};
 
   @override
   void initState() {
@@ -81,7 +86,10 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
     } catch (_) {
       registry = null;
     }
-    return _PlayerPageData(dossier: dossier, registry: registry);
+    final current = await const NbaTradeContractRepository().load();
+    return _PlayerPageData(
+      dossier: dossier, registry: registry, currentContracts: current,
+    );
   }
 
   @override
@@ -107,25 +115,30 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
             final playoffs = _maps(dossier['playoff_seasons']);
             final selectedRows = _segment == 'playoffs' ? playoffs : regular;
             final name = _text(profile['canonical_name'], widget.playerName);
-            final positions = _text(
+            final positions = nbaOrderedPositions(_text(
               profile['positions'],
               _text(profile['primary_position']),
-            );
+            ));
             final awards = _maps(dossier['awards']);
             final allStar = _maps(dossier['all_star']);
             final draft = _maps(dossier['draft']);
-            final games = _maps(dossier['recent_games']);
             final contracts = _playerContracts(
-              data.registry,
-              widget.playerKey,
-              name,
+              data.registry, widget.playerKey, name,
             );
+            final normalizedName = name.toLowerCase().replaceAll(
+              RegExp(r'[^a-z0-9]'), '',
+            );
+            final currentMatches = data.currentContracts.records.where((item) =>
+              item.player.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '') ==
+                  normalizedName && item.salaryFor('2026-27') > 0,
+            );
+            final current = currentMatches.isEmpty ? null : currentMatches.first;
 
             return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 28, 24, 72),
+              padding: const EdgeInsets.fromLTRB(16, 28, 16, 72),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1380),
+                  constraints: const BoxConstraints(maxWidth: 1780),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -155,8 +168,7 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                             'Playoff seasons',
                             '${_uniqueSeasons(playoffs)}',
                           ),
-                          _SummaryItem('All-Star', '${_uniqueAllStarYears(allStar)}'),
-                          _SummaryItem('Recent games', '${games.length}'),
+                          _SummaryItem('All-Star selections', '${_uniqueAllStarYears(allStar)}'),
                         ],
                       ),
                       const SizedBox(height: 30),
@@ -211,7 +223,11 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                       const SizedBox(height: 30),
                       const _SectionTitle('Contract'),
                       const SizedBox(height: 10),
-                      _ContractSection(contracts: contracts),
+                      _ContractSection(
+                        contracts: contracts,
+                        current: current,
+                        asOf: data.currentContracts.asOf,
+                      ),
                       const SizedBox(height: 30),
                       const _SectionTitle('Awards & context'),
                       const SizedBox(height: 10),
@@ -220,10 +236,6 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                         allStar: allStar,
                         draft: draft,
                       ),
-                      const SizedBox(height: 30),
-                      const _SectionTitle('Recent games'),
-                      const SizedBox(height: 10),
-                      _RecentGames(rows: games),
                     ],
                   ),
                 ),
@@ -981,9 +993,12 @@ class _EntityError extends StatelessWidget {
 }
 
 class _PlayerPageData {
-  const _PlayerPageData({required this.dossier, required this.registry});
+  const _PlayerPageData({
+    required this.dossier, required this.registry, required this.currentContracts,
+  });
   final Map<String, dynamic> dossier;
   final FrontOfficeRegistrySnapshot? registry;
+  final NbaTradeContractSnapshot currentContracts;
 }
 
 class _SummaryItem {
