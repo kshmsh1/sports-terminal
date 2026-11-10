@@ -255,7 +255,13 @@ class _ProductCommunityV2ScreenState extends State<ProductCommunityV2Screen> {
                   const SizedBox(width: 28),
                   SizedBox(width: 250, child: _CommunityRightRail(
                     profileFuture: profileFuture,
-                    boardCount: boards.length,
+                    boards: boards,
+                    onOpenBoard: (slug) {
+                      selectedCommunity = slug;
+                      followedOnly = false;
+                      savedOnly = false;
+                      _changeFeed();
+                    },
                   )),
                 ],
               );
@@ -665,67 +671,81 @@ class _CommunityThreadPageState extends State<CommunityThreadPage> {
 }
 
 class _CommunityRightRail extends StatelessWidget {
-  const _CommunityRightRail({required this.profileFuture, required this.boardCount});
+  const _CommunityRightRail({
+    required this.profileFuture, required this.boards,
+    required this.onOpenBoard,
+  });
   final Future<Map<String, dynamic>?> profileFuture;
-  final int boardCount;
+  final List<Map<String, dynamic>> boards;
+  final ValueChanged<String> onOpenBoard;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      _CommunityPanel(child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionLabel('ABOUT ARCSIDE'),
-          const SizedBox(height: 11),
-          const Text('Basketball news, thoughtful analysis and conversation in one community.',
-              style: TextStyle(color: _cText, height: 1.45)),
-          const Divider(height: 26, color: _cLine),
-          Text('$boardCount communities', style: const TextStyle(
-              color: _cText, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 8),
-          const Text('Upvote useful posts, save research, and join team discussions.',
-              style: TextStyle(color: _cMuted, fontSize: 12, height: 1.5)),
-        ],
-      )),
-      const SizedBox(height: 12),
-      _CommunityPanel(child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionLabel('YOUR ACTIVITY'),
-          const SizedBox(height: 11),
-          FutureBuilder<Map<String, dynamic>?>(
-            future: profileFuture,
-            builder: (context, snapshot) {
-              final reputation = snapshot.data?['reputation'];
-              final info = reputation is Map ? reputation : const {};
-              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${info['reputation'] ?? 0} reputation',
-                    style: const TextStyle(color: _cText,
-                        fontSize: 18, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 7),
-                Text('${info['posts'] ?? 0} posts · ${info['comments'] ?? 0} comments',
-                    style: const TextStyle(color: _cMuted, fontSize: 12)),
-              ]);
-            },
+  Widget build(BuildContext context) {
+    final popular = [...boards]..sort((a, b) =>
+      _int(b['member_count']).compareTo(_int(a['member_count'])));
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(13),
+        color: _cPanel,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const _SectionLabel('POPULAR COMMUNITIES'),
+        const SizedBox(height: 14),
+        for (var index = 0; index < popular.take(7).length; index++) ...[
+          InkWell(
+            onTap: () => onOpenBoard('${popular[index]['slug'] ?? ''}'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              child: Row(children: [
+                SizedBox(width: 23, child: Text('${index + 1}.',
+                  style: const TextStyle(color: _cMuted, fontSize: 11))),
+                CircleAvatar(radius: 14, backgroundColor: _cPanel2,
+                  child: const Icon(Icons.sports_basketball_outlined,
+                    size: 16, color: _cBlue)),
+                const SizedBox(width: 8),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${popular[index]['name'] ?? popular[index]['slug']}',
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: _cText,
+                        fontSize: 11, fontWeight: FontWeight.w800)),
+                    Text('${popular[index]['member_count'] ?? 0} members',
+                      style: const TextStyle(color: _cMuted, fontSize: 10)),
+                  ],
+                )),
+              ]),
+            ),
           ),
+          if (index < popular.take(7).length - 1)
+            const Divider(height: 1, color: _cLine),
         ],
-      )),
-      const SizedBox(height: 12),
-      const _CommunityPanel(child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SectionLabel('COMMUNITY GUIDELINES'),
-          SizedBox(height: 10),
-          Text('• Use credible sources\n• Be respectful\n• No spam or harassment\n• Keep posts on topic',
-              style: TextStyle(color: _cMuted, fontSize: 12, height: 1.7)),
-          SizedBox(height: 12),
-          Text('ARCSIDE', style: TextStyle(
-              color: _cBlue, fontWeight: FontWeight.w900)),
-        ],
-      )),
-    ],
-  );
+        const Divider(height: 28, color: _cLine),
+        const _SectionLabel('YOUR ARCSIDE ACTIVITY'),
+        const SizedBox(height: 10),
+        FutureBuilder<Map<String, dynamic>?>(
+          future: profileFuture,
+          builder: (context, snapshot) {
+            final reputation = snapshot.data?['reputation'];
+            final info = reputation is Map ? reputation : const {};
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${info['reputation'] ?? 0} reputation',
+                style: const TextStyle(color: _cText,
+                  fontSize: 16, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 5),
+              Text('${info['posts'] ?? 0} posts · ${info['comments'] ?? 0} comments',
+                style: const TextStyle(color: _cMuted, fontSize: 11)),
+            ]);
+          },
+        ),
+        const Divider(height: 28, color: _cLine),
+        const Text('ARCSIDE · COMMUNITY', style: TextStyle(
+          color: _cMuted, fontSize: 10,
+          fontWeight: FontWeight.w800)),
+      ]),
+    );
+  }
 }
 
 class _BoardProfile extends StatelessWidget {
