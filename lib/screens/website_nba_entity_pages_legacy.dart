@@ -658,46 +658,82 @@ class _TeamSeasonTable extends StatelessWidget {
 }
 
 class _ContractSection extends StatelessWidget {
-  const _ContractSection({required this.contracts});
+  const _ContractSection({
+    required this.contracts,
+    required this.current,
+    required this.asOf,
+  });
   final List<Map<String, dynamic>> contracts;
+  final NbaTradeContract? current;
+  final String asOf;
 
   @override
   Widget build(BuildContext context) {
-    if (contracts.isEmpty) {
-      return const _EmptyCard(
-        'No registered contract record is currently available for this player. Historical statistics remain independent of contract-data availability.',
+    final colors = Theme.of(context).colorScheme;
+    final contract = current;
+    if (contract == null) {
+      return _EmptyCard(
+        '2026–27 contract information is not present in Arcside’s published '
+        'salary reference for this player. ${contracts.isEmpty
+            ? 'No earlier registered contract is available either.'
+            : 'Earlier registry records are not shown as current contracts.'}',
       );
     }
-    return Column(
-      children: [
-        for (final item in contracts)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${_text(item['team_id'])} · ${_text(item['season'])}',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  const SizedBox(height: 10),
-                  for (final year in _maps(item['years']))
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text(
-                        '${_text(year['season'])} · ${_money(year['salary'])} · ${_money(year['guaranteed_amount'])} guaranteed',
-                      ),
-                    ),
-                ],
-              ),
-            ),
+    final salary = contract.salaryFor('2026-27');
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        border: Border(
+          top: BorderSide(color: colors.outlineVariant),
+          bottom: BorderSide(color: colors.outlineVariant),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 28,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _ContractDatum('Season', '2026–27'),
+              _ContractDatum('Team', contract.team),
+              _ContractDatum('2026–27 salary', _money(salary)),
+              if (contract.guaranteed != null)
+                _ContractDatum('Recorded guarantee',
+                    _money(contract.guaranteed)),
+            ],
           ),
-      ],
+          const SizedBox(height: 12),
+          Text(
+            'Arcside salary reference · as of $asOf · ${contract.sourceLabel}. '
+            'This is a dated salary snapshot, not a live contract verification.',
+            style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+          ),
+        ],
+      ),
     );
   }
+}
+
+class _ContractDatum extends StatelessWidget {
+  const _ContractDatum(this.label, this.value);
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: TextStyle(fontSize: 11,
+        color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      const SizedBox(height: 5),
+      Text(value, style: Theme.of(context).textTheme.titleMedium
+          ?.copyWith(fontWeight: FontWeight.w800)),
+    ],
+  );
 }
 
 class _AwardsSection extends StatelessWidget {
@@ -712,102 +748,57 @@ class _AwardsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = <String>[];
-    if (draft.isNotEmpty) {
-      final row = draft.first;
-      items.add(
-        'Draft: ${_text(row['draft_year'])} · ${_text(row['round_text'])} · pick ${_text(row['pick_number'])} · ${_text(row['drafting_team_text'])}',
-      );
-    }
-    if (allStar.isNotEmpty) {
-      items.add('All-Star selections: ${_uniqueAllStarYears(allStar)}');
-    }
-    for (final row in awards.take(24)) {
-      final award = _text(row['award'], _text(row['award_name']));
-      if (award.isEmpty) continue;
-      final season = _text(row['season_id'], _text(row['year']));
-      items.add(season.isEmpty ? award : '$season · $award');
-    }
-    if (items.isEmpty) {
-      return const _EmptyCard('No source-backed award or draft context is available.');
-    }
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final item in items)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(item),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RecentGames extends StatelessWidget {
-  const _RecentGames({required this.rows});
-  final List<Map<String, dynamic>> rows;
-
-  @override
-  Widget build(BuildContext context) {
-    if (rows.isEmpty) {
+    final groups = nbaGroupPlayerHonors(awards, allStar);
+    if (groups.isEmpty && draft.isEmpty) {
       return const _EmptyCard(
-        'No source-backed recent game rows are available for this player.',
+        'No verified individual honors or draft information is present '
+        'in the published Arcside historical data.',
       );
     }
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columns: const [
-            DataColumn(label: Text('Date')),
-            DataColumn(label: Text('Team')),
-            DataColumn(label: Text('Opponent')),
-            DataColumn(numeric: true, label: Text('MIN')),
-            DataColumn(numeric: true, label: Text('PTS')),
-            DataColumn(numeric: true, label: Text('REB')),
-            DataColumn(numeric: true, label: Text('AST')),
-            DataColumn(numeric: true, label: Text('STL')),
-            DataColumn(numeric: true, label: Text('BLK')),
-          ],
-          rows: [
-            for (final row in rows)
-              DataRow(
-                cells: [
-                  DataCell(Text(_text(row['game_date']))),
-                  DataCell(
-                    Text(
-                      _text(
-                        row['team_abbreviation'],
-                        _text(row['team_name']),
-                      ),
-                    ),
+    final colors = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (draft.isNotEmpty) ...[
+          Text(
+            'Draft · ${_text(draft.first['draft_year'])} · '
+            'Round ${_text(draft.first['round_text'])} · '
+            'Pick ${_text(draft.first['pick_number'])} · '
+            '${_text(draft.first['drafting_team_text'])}',
+            style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+          ),
+          const SizedBox(height: 20),
+        ],
+        LayoutBuilder(builder: (context, constraints) {
+          const gap = 20.0;
+          final columns = constraints.maxWidth >= 1000 ? 4
+              : constraints.maxWidth >= 620 ? 2 : 1;
+          final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+          return Wrap(
+            spacing: gap,
+            runSpacing: 24,
+            children: [
+              for (final group in groups)
+                SizedBox(
+                  width: width,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(group.title,
+                        style: const TextStyle(fontSize: 13,
+                          fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 7),
+                      Text(group.summary,
+                        style: TextStyle(
+                          color: colors.onSurfaceVariant, fontSize: 12,
+                          height: 1.45)),
+                    ],
                   ),
-                  DataCell(
-                    Text(
-                      _text(
-                        row['opponent_abbreviation'],
-                        _text(row['opponent_name']),
-                      ),
-                    ),
-                  ),
-                  DataCell(Text(_decimalAny(row, const ['minutes', 'min']))),
-                  DataCell(Text(_wholeAny(row, const ['pts', 'points']))),
-                  DataCell(Text(_wholeAny(row, const ['reb', 'rebounds']))),
-                  DataCell(Text(_wholeAny(row, const ['ast', 'assists']))),
-                  DataCell(Text(_wholeAny(row, const ['stl', 'steals']))),
-                  DataCell(Text(_wholeAny(row, const ['blk', 'blocks']))),
-                ],
-              ),
-          ],
-        ),
-      ),
+                ),
+            ],
+          );
+        }),
+      ],
     );
   }
 }
