@@ -4,6 +4,7 @@ import '../models/app_session.dart';
 import '../services/front_office_registry_service.dart';
 import '../services/nba_trade_contract_repository.dart';
 import '../services/nba_stats_metric_catalog.dart';
+import '../services/nba_stats_workstation_engine.dart';
 import '../services/nba_player_profile_format.dart';
 import '../services/website_nba_api_service.dart';
 import '../widgets/nba_percentage_heat_cell.dart';
@@ -67,6 +68,7 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
   final _tradeContracts = const NbaTradeContractRepository();
   late Future<_PlayerPageData> _future;
   String _segment = 'regular';
+  NbaStatsBasis _basis = NbaStatsBasis.perGame;
   String _advancedCategory = nbaTerminalStatFamilies.first.label;
 
   @override
@@ -171,24 +173,47 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                       const SizedBox(height: 30),
                       _SectionHeader(
                         title: 'Career statistics',
-                        trailing: SegmentedButton<String>(
-                          segments: const [
-                            ButtonSegment(
-                              value: 'regular',
-                              label: Text('Regular Season'),
+                        trailing: Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            DropdownButton<NbaStatsBasis>(
+                              value: _basis,
+                              isDense: true,
+                              items: [
+                                for (final basis in NbaStatsBasis.values)
+                                  DropdownMenuItem(
+                                    value: basis,
+                                    child: Text(basis.label),
+                                  ),
+                              ],
+                              onChanged: (basis) {
+                                if (basis != null) {
+                                  setState(() => _basis = basis);
+                                }
+                              },
                             ),
-                            ButtonSegment(
-                              value: 'playoffs',
-                              label: Text('Playoffs'),
+                            SegmentedButton<String>(
+                              segments: const [
+                                ButtonSegment(
+                                  value: 'regular',
+                                  label: Text('Regular Season'),
+                                ),
+                                ButtonSegment(
+                                  value: 'playoffs',
+                                  label: Text('Playoffs'),
+                                ),
+                              ],
+                              selected: {_segment},
+                              onSelectionChanged: (value) =>
+                                  setState(() => _segment = value.first),
                             ),
                           ],
-                          selected: {_segment},
-                          onSelectionChanged: (value) =>
-                              setState(() => _segment = value.first),
                         ),
                       ),
                       const SizedBox(height: 10),
-                      _PlayerCareerTable(rows: selectedRows),
+                      _PlayerCareerTable(rows: selectedRows, basis: _basis),
                       const SizedBox(height: 30),
                       const _SectionTitle('Advanced statistics'),
                       const SizedBox(height: 10),
@@ -206,6 +231,7 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                       const SizedBox(height: 10),
                       _PlayerAdvancedTable(
                         rows: selectedRows,
+                        basis: _basis,
                         category: _advancedCategories.firstWhere(
                           (item) => item.name == _advancedCategory,
                         ),
@@ -416,20 +442,24 @@ class _WebsiteNbaTeamPageState extends State<WebsiteNbaTeamPage> {
 }
 
 class _PlayerCareerTable extends StatelessWidget {
-  const _PlayerCareerTable({required this.rows});
+  const _PlayerCareerTable({required this.rows, required this.basis});
   final List<Map<String, dynamic>> rows;
+  final NbaStatsBasis basis;
 
   @override
   Widget build(BuildContext context) => NbaPlayerProfileStatsTable(
     rows: rows,
     family: nbaTerminalStatFamilies.first,
+    basis: basis,
   );
 }
 
 class _PlayerAdvancedTable extends StatelessWidget {
-  const _PlayerAdvancedTable({required this.rows, required this.category});
+  const _PlayerAdvancedTable({required this.rows, required this.category,
+    required this.basis});
   final List<Map<String, dynamic>> rows;
   final _AdvancedCategory category;
+  final NbaStatsBasis basis;
 
   @override
   Widget build(BuildContext context) => NbaPlayerProfileStatsTable(
@@ -438,6 +468,7 @@ class _PlayerAdvancedTable extends StatelessWidget {
     family: nbaTerminalStatFamilies.firstWhere(
       (family) => family.label == category.name,
     ),
+    basis: basis,
   );
 }
 
