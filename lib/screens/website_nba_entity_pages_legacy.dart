@@ -476,15 +476,13 @@ class _PlayerCareerTableState extends State<_PlayerCareerTable> {
               const DataColumn(numeric: true, label: Text('FGM')),
               const DataColumn(numeric: true, label: Text('FGA')),
             ],
-            const DataColumn(numeric: true, label: Text('3PM')),
-            const DataColumn(numeric: true, label: Text('3PA')),
             DataColumn(numeric: true, label: TextButton(
               onPressed: () => toggle('three_pct'),
               style: TextButton.styleFrom(padding: EdgeInsets.zero),
               child: Text('${expanded.contains('three_pct') ? '▾' : '▸'} 3P%'))),
             if (expanded.contains('three_pct')) ...[
-              const DataColumn(numeric: true, label: Text('3PM*')),
-              const DataColumn(numeric: true, label: Text('3PA*')),
+              const DataColumn(numeric: true, label: Text('3PM')),
+              const DataColumn(numeric: true, label: Text('3PA')),
             ],
             DataColumn(numeric: true, label: TextButton(
               onPressed: () => toggle('ft_pct'),
@@ -507,14 +505,14 @@ class _PlayerCareerTableState extends State<_PlayerCareerTable> {
                   DataCell(Text(_text(row['team_abbreviation'], '—'))),
                   DataCell(
                     Text(
-                      _text(
+                      nbaOrderedPositions(_text(
                         row['positions'],
                         _textAny(
                           row,
                           const ['position', 'pos'],
                           fallback: '—',
                         ),
-                      ),
+                      )),
                     ),
                   ),
                   DataCell(Text(_whole(row['games']))),
@@ -539,22 +537,6 @@ class _PlayerCareerTableState extends State<_PlayerCareerTable> {
                     DataCell(Text(_perGameAny(row, const ['fgm','field_goals_made']))),
                     DataCell(Text(_perGameAny(row, const ['fga','field_goal_attempts']))),
                   ],
-                  DataCell(
-                    Text(
-                      _perGameAny(
-                        row,
-                        const ['three_pm', 'three_pointers_made', 'fg3m'],
-                      ),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      _perGameAny(
-                        row,
-                        const ['three_pa', 'three_point_attempts', 'fg3a'],
-                      ),
-                    ),
-                  ),
                   _heatDataCell(
                     row,
                     const ['three_pct', 'fg3_pct', 'three_point_percentage'],
