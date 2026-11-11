@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,6 +13,7 @@ sys.path.insert(0, str(ROOT))
 
 from engine import Workbook, Sheet, Parser, normalize_ref, expand_range
 from tools.player_dossier_stat_parity import overlay_published_season
+from tools.sync_player_dossier_stat_parity import sync
 
 
 class SpreadsheetTests(unittest.TestCase):
@@ -92,6 +94,35 @@ class PlayerParityTests(unittest.TestCase):
         self.assertEqual(regular["ts_pct"],0.63)
         self.assertEqual(regular["deflections_pg"],2.8)
         self.assertNotIn("ts_pct",postseason)
+
+    def test_post_enrichment_static_sync_updates_player_profiles(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "players").mkdir()
+            (root / "seasons/2025-26").mkdir(parents=True)
+            (root / "seasons.json").write_text(
+                json.dumps([{"season_id":"2025-26"}]))
+            (root / "players/index.json").write_text(
+                json.dumps([{"player_key":"nba_12","file":"players/test.json"}]))
+            (root / "players/test.json").write_text(json.dumps({
+                "profile":{"player_key":"nba_12"},
+                "seasons":[{"season_id":"2025-26",
+                            "season_type":"regular","team_abbreviation":"LAL"}],
+                "regular_seasons":[],
+                "playoff_seasons":[]
+            }))
+            (root / "seasons/2025-26/regular.json").write_text(
+                json.dumps({"player_season_totals":[
+                    {"player_id":"nba_12","deflections_pg":3.5,"ts_pct":0.62},
+                    {"player_id":"nba_13","deflections_pg":10}
+                ]}))
+            changed, additions = sync(root)
+            self.assertEqual(changed, 1)
+            self.assertEqual(additions, 2)
+            updated = json.loads((root / "players/test.json").read_text())
+            self.assertEqual(updated["regular_seasons"][0]["deflections_pg"], 3.5)
+            self.assertEqual(updated["regular_seasons"][0]["ts_pct"], 0.62)
+            self.assertEqual(sync(root), (0, 0))
 
     def test_do_not_stamp_combined_totals_onto_separate_team_stints(self):
         rows = [
