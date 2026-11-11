@@ -278,7 +278,7 @@ class Sheet:
             raise FormulaError("#CIRC!")
         if ref in self._cache:
             cached = self._cache[ref]
-            if cached in ERRORS:
+            if isinstance(cached, str) and cached in ERRORS:
                 raise FormulaError(cached)
             return cached
         raw = self.cells.get(ref, "")
@@ -370,7 +370,9 @@ class Sheet:
                 if name == "SUM":
                     return sum(numeric)
                 if name in ("AVERAGE", "AVG"):
-                    return sum(numeric) / len(numeric) if numeric else "#DIV/0!"
+                    if not numeric:
+                        raise FormulaError("#DIV/0!")
+                    return sum(numeric) / len(numeric)
                 if name == "COUNT":
                     return len(numeric)
                 if name == "COUNTA":
