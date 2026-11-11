@@ -415,13 +415,23 @@ class _WebsiteNbaTeamPageState extends State<WebsiteNbaTeamPage> {
       );
 }
 
-class _PlayerCareerTable extends StatelessWidget {
+class _PlayerCareerTable extends StatefulWidget {
   const _PlayerCareerTable({required this.rows});
   final List<Map<String, dynamic>> rows;
 
   @override
+  State<_PlayerCareerTable> createState() => _PlayerCareerTableState();
+}
+
+class _PlayerCareerTableState extends State<_PlayerCareerTable> {
+  final Set<String> expanded = {};
+  void toggle(String key) => setState(() {
+    if (!expanded.add(key)) expanded.remove(key);
+  });
+
+  @override
   Widget build(BuildContext context) {
-    final ordered = [...rows]
+    final ordered = [...widget.rows]
       ..sort(
         (a, b) => _text(b['season_id']).compareTo(_text(a['season_id'])),
       );
@@ -438,28 +448,56 @@ class _PlayerCareerTable extends StatelessWidget {
           headingRowHeight: 42,
           dataRowMinHeight: 36,
           dataRowMaxHeight: 42,
-          columns: const [
-            DataColumn(label: Text('Season')),
-            DataColumn(label: Text('Team')),
-            DataColumn(label: Text('Pos')),
-            DataColumn(numeric: true, label: Text('GP')),
-            DataColumn(numeric: true, label: Text('MPG')),
-            DataColumn(numeric: true, label: Text('PPG')),
-            DataColumn(numeric: true, label: Text('RPG')),
-            DataColumn(numeric: true, label: Text('APG')),
-            DataColumn(numeric: true, label: Text('SPG')),
-            DataColumn(numeric: true, label: Text('BPG')),
-            DataColumn(numeric: true, label: Text('TPG')),
-            DataColumn(numeric: true, label: Text('PF')),
-            DataColumn(numeric: true, label: Text('FG%')),
-            DataColumn(numeric: true, label: Text('3PM')),
-            DataColumn(numeric: true, label: Text('3PA')),
-            DataColumn(numeric: true, label: Text('3P%')),
-            DataColumn(numeric: true, label: Text('FT%')),
-            DataColumn(numeric: true, label: Text('TS%')),
-            DataColumn(numeric: true, label: Text('PER')),
-            DataColumn(numeric: true, label: Text('BPM')),
-            DataColumn(numeric: true, label: Text('VORP')),
+          columns: [
+            const DataColumn(label: Text('Season')),
+            const DataColumn(label: Text('Team')),
+            const DataColumn(label: Text('Pos')),
+            const DataColumn(numeric: true, label: Text('GP')),
+            const DataColumn(numeric: true, label: Text('MPG')),
+            const DataColumn(numeric: true, label: Text('PPG')),
+            DataColumn(numeric: true, label: TextButton(
+              onPressed: () => toggle('rpg'),
+              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+              child: Text('${expanded.contains('rpg') ? '▾' : '▸'} RPG'))),
+            if (expanded.contains('rpg')) ...[
+              const DataColumn(numeric: true, label: Text('ORB')),
+              const DataColumn(numeric: true, label: Text('DRB')),
+            ],
+            const DataColumn(numeric: true, label: Text('APG')),
+            const DataColumn(numeric: true, label: Text('SPG')),
+            const DataColumn(numeric: true, label: Text('BPG')),
+            const DataColumn(numeric: true, label: Text('TPG')),
+            const DataColumn(numeric: true, label: Text('PF')),
+            DataColumn(numeric: true, label: TextButton(
+              onPressed: () => toggle('fg_pct'),
+              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+              child: Text('${expanded.contains('fg_pct') ? '▾' : '▸'} FG%'))),
+            if (expanded.contains('fg_pct')) ...[
+              const DataColumn(numeric: true, label: Text('FGM')),
+              const DataColumn(numeric: true, label: Text('FGA')),
+            ],
+            const DataColumn(numeric: true, label: Text('3PM')),
+            const DataColumn(numeric: true, label: Text('3PA')),
+            DataColumn(numeric: true, label: TextButton(
+              onPressed: () => toggle('three_pct'),
+              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+              child: Text('${expanded.contains('three_pct') ? '▾' : '▸'} 3P%'))),
+            if (expanded.contains('three_pct')) ...[
+              const DataColumn(numeric: true, label: Text('3PM*')),
+              const DataColumn(numeric: true, label: Text('3PA*')),
+            ],
+            DataColumn(numeric: true, label: TextButton(
+              onPressed: () => toggle('ft_pct'),
+              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+              child: Text('${expanded.contains('ft_pct') ? '▾' : '▸'} FT%'))),
+            if (expanded.contains('ft_pct')) ...[
+              const DataColumn(numeric: true, label: Text('FTM')),
+              const DataColumn(numeric: true, label: Text('FTA')),
+            ],
+            const DataColumn(numeric: true, label: Text('TS%')),
+            const DataColumn(numeric: true, label: Text('PER')),
+            const DataColumn(numeric: true, label: Text('BPM')),
+            const DataColumn(numeric: true, label: Text('VORP')),
           ],
           rows: [
             for (final row in ordered)
@@ -483,6 +521,10 @@ class _PlayerCareerTable extends StatelessWidget {
                   DataCell(Text(_perGameAny(row, const ['minutes', 'min']))),
                   DataCell(Text(_perGameAny(row, const ['pts', 'points']))),
                   DataCell(Text(_perGameAny(row, const ['reb', 'rebounds']))),
+                  if (expanded.contains('rpg')) ...[
+                    DataCell(Text(_perGameAny(row, const ['oreb','offensive_rebounds']))),
+                    DataCell(Text(_perGameAny(row, const ['dreb','defensive_rebounds']))),
+                  ],
                   DataCell(Text(_perGameAny(row, const ['ast', 'assists']))),
                   DataCell(Text(_perGameAny(row, const ['stl', 'steals']))),
                   DataCell(Text(_perGameAny(row, const ['blk', 'blocks']))),
@@ -493,6 +535,10 @@ class _PlayerCareerTable extends StatelessWidget {
                     const ['fg_pct', 'field_goal_percentage'],
                     NbaPercentageHeatMetric.fieldGoal,
                   ),
+                  if (expanded.contains('fg_pct')) ...[
+                    DataCell(Text(_perGameAny(row, const ['fgm','field_goals_made']))),
+                    DataCell(Text(_perGameAny(row, const ['fga','field_goal_attempts']))),
+                  ],
                   DataCell(
                     Text(
                       _perGameAny(
@@ -514,11 +560,19 @@ class _PlayerCareerTable extends StatelessWidget {
                     const ['three_pct', 'fg3_pct', 'three_point_percentage'],
                     NbaPercentageHeatMetric.threePoint,
                   ),
+                  if (expanded.contains('three_pct')) ...[
+                    DataCell(Text(_perGameAny(row, const ['three_pm','three_pointers_made','fg3m']))),
+                    DataCell(Text(_perGameAny(row, const ['three_pa','three_point_attempts','fg3a']))),
+                  ],
                   _heatDataCell(
                     row,
                     const ['ft_pct', 'free_throw_percentage'],
                     NbaPercentageHeatMetric.freeThrow,
                   ),
+                  if (expanded.contains('ft_pct')) ...[
+                    DataCell(Text(_perGameAny(row, const ['ftm','free_throws_made']))),
+                    DataCell(Text(_perGameAny(row, const ['fta','free_throw_attempts']))),
+                  ],
                   DataCell(Text(_pctAny(row, const ['ts_pct']))),
                   DataCell(Text(_decimalAny(row, const ['per']))),
                   DataCell(Text(_signedAny(row, const ['bpm']))),
