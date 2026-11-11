@@ -39,6 +39,9 @@ jobs:
       - name: Compile launch backend
         run: python -m compileall -q backend/app tools
 
+      - name: Test standalone Python Lab and Spreadsheet contracts
+        run: python backend/scripts/arcside_workspaces_contract_test.py
+
       - name: Test NBA API metric coverage audit contract
         run: python backend/scripts/nba_api_metric_coverage_contract_test.py
 
