@@ -142,12 +142,12 @@ class _NbaPlayerProfileStatsTableState extends State<NbaPlayerProfileStatsTable>
           _basis=b ?? _basis; _page=0;
         })),
         const Spacer(),
-        Text(String.fromCharCodes([]) + values.length.toString() + ' seasons',
+        Text('${values.length} seasons',
           style:TextStyle(color:colors.onSurfaceVariant,fontSize:12)),
         const SizedBox(width:10),
         DropdownButton<int>(value:_pageSize,isDense:true,items:[
           for(final n in [10,20,50,100])
-            DropdownMenuItem(value:n,child:Text(n.toString()+' rows'))
+            DropdownMenuItem(value:n,child:Text('$n rows'))
         ],onChanged:(n) => setState(() {
           _pageSize=n??20; _page=0;
         })),
@@ -184,7 +184,7 @@ class _NbaPlayerProfileStatsTableState extends State<NbaPlayerProfileStatsTable>
       if(count>1) Row(mainAxisAlignment:MainAxisAlignment.end,children:[
         IconButton(onPressed:_page==0?null:()=>setState(()=>_page--),
           icon:const Icon(Icons.chevron_left_rounded)),
-        Text((_page+1).toString()+' / '+count.toString()),
+        Text('${_page + 1} / $count'),
         IconButton(onPressed:_page+1>=count?null:()=>setState(()=>_page++),
           icon:const Icon(Icons.chevron_right_rounded)),
       ]),
