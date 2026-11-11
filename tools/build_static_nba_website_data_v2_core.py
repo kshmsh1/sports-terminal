@@ -17,6 +17,8 @@ if str(ROOT) not in sys.path:
 if str(BACKEND) not in sys.path:
     sys.path.insert(0, str(BACKEND))
 
+from tools.player_dossier_stat_parity import overlay_published_season
+
 from tools.build_static_nba_website_data import (
     COMPILER_VERSION,
     canonical_ready,
@@ -34,7 +36,7 @@ from tools.build_static_nba_website_data import (
 
 DEFAULT_DB = ROOT / "data/warehouse/nba_history.sqlite"
 DEFAULT_OUTPUT = ROOT / "web/data/nba_static"
-STATIC_SCHEMA_VERSION = 5
+STATIC_SCHEMA_VERSION = 6
 KNOWN_MISSING_SEASONS = {"1946-47", "1947-48", "1948-49"}
 
 
@@ -292,6 +294,9 @@ def build() -> int:
 
         generated_season_files = 0
         dashboard_files = 0
+        # Index the published season snapshots once; re-use them in player
+        # dossiers so full-profile metrics match the Stats tables exactly.
+        published_by_player: dict[str, list[tuple[str, str, dict[str, Any]]]] = {}
         for season in seasons:
             season_id = str(season["season_id"])
             source_id = str(season.get("source_season_id") or season_id)
@@ -319,6 +324,14 @@ def build() -> int:
                 payload["season_type"] = season_type
                 payload["static_data"] = True
                 payload["static_compiler_version"] = COMPILER_VERSION
+                for published_row in payload.get("player_season_totals", []):
+                    if not isinstance(published_row, dict):
+                        continue
+                    player_id = str(published_row.get("player_id") or "")
+                    if player_id:
+                        published_by_player.setdefault(player_id, []).append(
+                            (season_id, season_type, published_row)
+                        )
                 write_json(staging / f"seasons/{season_id}/{season_type}.json", payload)
                 generated_season_files += 1
                 if season_type == "regular":
@@ -328,6 +341,13 @@ def build() -> int:
         if not args.skip_entities:
             for index, player in enumerate(players, start=1):
                 dossier = _normalize_player_dossier(static_player_dossier(db, str(player["player_key"]), recent_games=max(0, args.recent_player_games)))
+                for overlay_season, overlay_segment, overlay_row in published_by_player.get(
+                    str(player["player_key"]), []
+                ):
+                    overlay_published_season(
+                        dossier, {"player_season_totals": [overlay_row]},
+                        overlay_season, overlay_segment,
+                    )
                 dossier["static_data"] = True
                 write_json(staging / str(player["file"]), dossier)
                 if index % 500 == 0:
