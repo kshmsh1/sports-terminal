@@ -69,6 +69,38 @@ class PythonHighlighter(QSyntaxHighlighter):
             self.setFormat(comment, len(text) - comment, self.comment)
 
 
+class LineNumberGutter(QWidget):
+    def __init__(self, editor):
+        super().__init__(editor)
+        self.editor = editor
+
+    def sizeHint(self):
+        return QSize(self.editor.gutter_width(), 0)
+
+    def paintEvent(self, event):
+        self.editor.paint_gutter(event)
+
+    def mousePressEvent(self, event):
+        line = self.editor.firstVisibleBlock()
+        block_number = line.blockNumber()
+        top = self.editor.blockBoundingGeometry(line).translated(
+            self.editor.contentOffset()
+        ).top()
+        while line.isValid() and top <= event.position().y():
+            bottom = top + self.editor.blockBoundingRect(line).height()
+            if top <= event.position().y() < bottom:
+                number = block_number + 1
+                if number in self.editor.breakpoints:
+                    self.editor.breakpoints.remove(number)
+                else:
+                    self.editor.breakpoints.add(number)
+                self.update()
+                break
+            line = line.next()
+            top = bottom
+            block_number += 1
+
+
 class CodeEditor(QPlainTextEdit):
     def __init__(self, path=None):
         super().__init__()
@@ -80,11 +112,66 @@ class CodeEditor(QPlainTextEdit):
             "border:0; selection-background-color:#324C71; }"
         )
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.breakpoints: set[int] = set()
+        self.gutter = LineNumberGutter(self)
+        self.blockCountChanged.connect(self._update_gutter_width)
+        self.updateRequest.connect(self._update_gutter)
+        self._update_gutter_width()
         self.highlighter = PythonHighlighter(self.document())
         self.cursorPositionChanged.connect(self.highlight_current_line)
         self.highlight_current_line()
         if self.path and self.path.is_file():
             self.setPlainText(self.path.read_text(encoding="utf-8"))
+
+    def gutter_width(self):
+        digits = len(str(max(1, self.blockCount())))
+        return 26 + self.fontMetrics().horizontalAdvance("9") * digits
+
+    def _update_gutter_width(self, *_):
+        self.setViewportMargins(self.gutter_width(), 0, 0, 0)
+
+    def _update_gutter(self, rect, dy):
+        if dy:
+            self.gutter.scroll(0, dy)
+        else:
+            self.gutter.update(0, rect.y(), self.gutter.width(), rect.height())
+        if rect.contains(self.viewport().rect()):
+            self._update_gutter_width()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        bounds = self.contentsRect()
+        self.gutter.setGeometry(
+            QRect(bounds.left(), bounds.top(),
+                  self.gutter_width(), bounds.height())
+        )
+
+    def paint_gutter(self, event):
+        painter = QPainter(self.gutter)
+        painter.fillRect(event.rect(), QColor("#1B2735"))
+        block = self.firstVisibleBlock()
+        number = block.blockNumber()
+        top = self.blockBoundingGeometry(block).translated(
+            self.contentOffset()
+        ).top()
+        bottom = top + self.blockBoundingRect(block).height()
+        while block.isValid() and top <= event.rect().bottom():
+            if block.isVisible() and bottom >= event.rect().top():
+                lineno = number + 1
+                painter.setPen(QColor("#8C9BAB"))
+                painter.drawText(
+                    0, int(top), self.gutter.width() - 6,
+                    self.fontMetrics().height(),
+                    Qt.AlignmentFlag.AlignRight, str(lineno)
+                )
+                if lineno in self.breakpoints:
+                    painter.setBrush(QColor("#E76A6A"))
+                    painter.setPen(QColor("#E76A6A"))
+                    painter.drawEllipse(4, int(top) + 4, 10, 10)
+            block = block.next()
+            top = bottom
+            bottom = top + self.blockBoundingRect(block).height()
+            number += 1
 
     def highlight_current_line(self):
         selection = QPlainTextEdit.ExtraSelection()
@@ -517,8 +604,11 @@ class PythonLab(QMainWindow):
     def debug_file(self):
         editor = self.current_editor()
         if editor and self.save_file():
-            self._start(["-u", "-m", "pdb", str(editor.path)],
-                        mode="debug", cwd=editor.path.parent)
+            arguments = ["-u", "-m", "pdb"]
+            for line in sorted(editor.breakpoints):
+                arguments.extend(["-c", f"break {line}"])
+            arguments.append(str(editor.path))
+            self._start(arguments, mode="debug", cwd=editor.path.parent)
             self._append("pdb: n=next, s=step, c=continue, b N=breakpoint, p X=inspect\n")
 
     def run_tests(self):
