@@ -1,5 +1,5 @@
 /* Arcside Spreadsheet calculation engine.
- * No eval(), remote formulas, macros, telemetry or server-side execution.
+ * No dynamic JavaScript evaluation, macros, telemetry or server-side execution.
  * Sparse workbook, proper tokenized formulas, dependency graph and cycles. */
 export class SpreadsheetError extends Error {
   constructor(code){super(code);this.code=code;}
@@ -253,7 +253,7 @@ export class ArcsideWorkbook {
   }
   _resolved(id,ref,visiting,depth){
     const value=this._calculate(this.key(id,ref),visiting,depth+1);
-    if(typeof value==='string'&&/^#(?:REF!|CIRC!|DIV\/0!|NUM!|VALUE!|NAME\?|ERROR!)/.test(value))
+    if(typeof value==='string'&&/^#(?:REF!|CIRC!|DIV\/0!|NUM!|VALUE!|NAME\?|ERROR!|N\/A)/.test(value))
       throw new SpreadsheetError(value);
     return value;
   }
