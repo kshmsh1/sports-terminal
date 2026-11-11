@@ -6,6 +6,8 @@ Everything runs on the user's computer. No remote code execution, AI or telemetr
 from __future__ import annotations
 
 import ast
+
+from lsp_client import LocalPythonLanguageServer
 import os
 import re
 import sys
@@ -185,6 +187,15 @@ class PythonLab(QMainWindow):
         self.find_box = QLineEdit()
         self.find_box.setPlaceholderText("Find in file (Enter)")
         self.find_box.returnPressed.connect(self.find_next)
+        self.lsp = LocalPythonLanguageServer(self)
+        self.lsp.status.connect(self._lsp_status)
+        self.lsp.diagnostics.connect(self._lsp_diagnostics)
+        self.lsp.completions.connect(self._lsp_completions)
+        self._lsp_timer = QTimer(self)
+        self._lsp_timer.setSingleShot(True)
+        self._lsp_timer.setInterval(450)
+        self._lsp_timer.timeout.connect(self._lsp_publish)
+        self.interpreter.currentIndexChanged.connect(self._lsp_interpreter_changed)
         self._build_actions()
         self.discover_interpreters()
         self.new_file()
@@ -210,6 +221,8 @@ class PythonLab(QMainWindow):
             ("Stop", "Shift+F5", self.stop_process),
             ("pytest", "Ctrl+Shift+T", self.run_tests),
             ("Terminal", "Ctrl+Backtick", self.open_terminal),
+            ("Start LSP", "Ctrl+Shift+L", self.start_lsp),
+            ("Complete", "Ctrl+Space", self.complete),
         ]:
             action = QAction(text, self)
             action.setShortcut(shortcut)
@@ -259,6 +272,7 @@ class PythonLab(QMainWindow):
     def new_file(self):
         editor = CodeEditor()
         editor.textChanged.connect(self.update_title)
+        editor.textChanged.connect(self._lsp_timer.start)
         index = self.tabs.addTab(editor, "untitled.py")
         self.tabs.setCurrentIndex(index)
 
@@ -297,7 +311,9 @@ class PythonLab(QMainWindow):
             QMessageBox.warning(self, "Cannot open file", str(exc))
             return
         editor.textChanged.connect(self.update_title)
+        editor.textChanged.connect(self._lsp_timer.start)
         index = self.tabs.addTab(editor, path.name)
+        self._lsp_timer.start()
         self.tabs.setCurrentIndex(index)
 
     def update_title(self, *_):
@@ -323,6 +339,7 @@ class PythonLab(QMainWindow):
             return False
         editor.document().setModified(False)
         self.update_title()
+        self._lsp_timer.start()
         return True
 
     def save_as(self):
@@ -347,11 +364,15 @@ class PythonLab(QMainWindow):
             )
             if choice != QMessageBox.StandardButton.Yes:
                 return
+        if isinstance(editor, CodeEditor) and editor.path:
+            self.lsp.close_document(editor.path)
         self.tabs.removeTab(index)
         if self.tabs.count() == 0:
             self.new_file()
 
     def check_syntax(self):
+        if self.lsp.ready:
+            return
         editor = self.current_editor()
         if editor is None:
             return
@@ -362,6 +383,85 @@ class PythonLab(QMainWindow):
             self.issues.setPlainText(
                 f"{exc.filename}:{exc.lineno}:{exc.offset} — {exc.msg}"
             )
+
+    def _lsp_interpreter_changed(self, *_):
+        if self.lsp.ready:
+            self.lsp.stop()
+            self.issues.setPlainText("Python interpreter changed. Restart LSP.")
+
+    def start_lsp(self):
+        interpreter = self.interpreter.currentData() or sys.executable
+        self.lsp.start(str(interpreter), self.root)
+
+    def _lsp_status(self, message):
+        self.statusBar().showMessage(message)
+        if self.lsp.ready:
+            self._lsp_publish()
+
+    def _lsp_publish(self):
+        editor = self.current_editor()
+        if editor and editor.path and self.lsp.ready:
+            self.lsp.open_or_change(editor.path, editor.toPlainText())
+
+    def _lsp_diagnostics(self, uri, diagnostics):
+        editor = self.current_editor()
+        if not editor or not editor.path or uri != editor.path.as_uri():
+            return
+        lines = []
+        for item in diagnostics:
+            pos = item.get("range", {}).get("start", {})
+            line = int(pos.get("line", 0)) + 1
+            message = str(item.get("message", "")).strip()
+            severity = {1: "Error", 2: "Warning", 3: "Info"}.get(
+                item.get("severity"), "Diagnostic"
+            )
+            lines.append(f"{editor.path.name}:{line} [{severity}] {message}")
+        self.issues.setPlainText("\n".join(lines))
+
+    def complete(self):
+        editor = self.current_editor()
+        if editor is None:
+            return
+        if not editor.path:
+            self.statusBar().showMessage(
+                "Save the Python file to request local LSP completion."
+            )
+            return
+        cursor = editor.textCursor()
+        self.lsp.request_completion(
+            editor.path,
+            cursor.blockNumber(),
+            cursor.positionInBlock(),
+        )
+
+    def _lsp_completions(self, suggestions):
+        editor = self.current_editor()
+        if editor is None or not suggestions:
+            return
+        menu = QMenu(editor)
+        for item in suggestions[:35]:
+            label = str(item.get("label", ""))
+            if not label:
+                continue
+            text = item.get("insertText") or label
+            action = menu.addAction(label)
+            action.triggered.connect(
+                lambda checked=False, value=text:
+                    self._insert_completion(value)
+            )
+        location = editor.mapToGlobal(
+            editor.cursorRect().bottomRight()
+        )
+        menu.popup(location)
+
+    def _insert_completion(self, text):
+        editor = self.current_editor()
+        if editor is None:
+            return
+        cursor = editor.textCursor()
+        cursor.select(QTextCursor.SelectionType.WordUnderCursor)
+        cursor.insertText(text)
+        editor.setTextCursor(cursor)
 
     def goto_line(self):
         editor = self.current_editor()
@@ -457,6 +557,7 @@ class PythonLab(QMainWindow):
 
     def closeEvent(self, event):
         self.stop_process()
+        self.lsp.stop()
         for index in range(self.tabs.count()):
             editor = self.tabs.widget(index)
             if isinstance(editor, CodeEditor) and editor.document().isModified():
