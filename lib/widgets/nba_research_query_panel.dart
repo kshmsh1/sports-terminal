@@ -211,9 +211,9 @@ class _NbaResearchQueryPanelState extends State<NbaResearchQueryPanel> {
 
   Widget _landing(BuildContext context) {
     const examples = [
-      'Youngest players to average 25+ PPG and 5+ APG in a season',
+      'Top 25 assists in 2024-25',
       'Top 50 scorers in 2025-26',
-      'Which players led the league in TS% in 2024-25?',
+      'Top 25 TS% in 2024-25',
       'Compare Stephen Curry vs James Harden 2015-16 points',
       '2018 NBA draft picks',
     ];
