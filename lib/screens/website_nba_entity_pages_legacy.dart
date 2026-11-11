@@ -165,7 +165,6 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                             '${_uniqueSeasons(playoffs)}',
                           ),
                           _SummaryItem('All-Star', '${_uniqueAllStarYears(allStar)}'),
-                          _SummaryItem('Career seasons', '${_uniqueSeasons([...regular, ...playoffs])}'),
                         ],
                       ),
                       const SizedBox(height: 30),
