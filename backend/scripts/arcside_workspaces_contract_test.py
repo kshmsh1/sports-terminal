@@ -85,7 +85,7 @@ class PlayerParityTests(unittest.TestCase):
         count = overlay_published_season(dossier, {
             "player_season_totals":[
                 {"player_id":"nba_123","ts_pct":0.63,"deflections_pg":2.8,
-                 "pts":9999,"team_abbreviation":"BOS"},
+                 "pts":9999,"team_abbreviation":"LAL"},
                 {"player_id":"nba_999","per":49}
             ]
         }, "2025-26", "regular")
@@ -123,6 +123,39 @@ class PlayerParityTests(unittest.TestCase):
             self.assertEqual(updated["regular_seasons"][0]["deflections_pg"], 3.5)
             self.assertEqual(updated["regular_seasons"][0]["ts_pct"], 0.62)
             self.assertEqual(sync(root), (0, 0))
+
+    def test_team_stints_only_join_matching_teams(self):
+        records = [
+            {"season_id":"2024-25","season_type":"regular",
+             "team_abbreviation":team}
+            for team in ("LAL", "DAL")
+        ]
+        dossier = {"profile":{"player_key":"nba_10"},"seasons":records}
+        count = overlay_published_season(dossier, {
+            "player_season_totals":[{
+                "player_id":"nba_10", "team_ids":"2TM","ts_pct":0.615,
+                "team_stints":[
+                    {"team_abbreviation":"LAL","ts_pct":0.6},
+                    {"team_abbreviation":"DAL","ts_pct":0.65},
+                ],
+            }]
+        }, "2024-25", "regular")
+        self.assertEqual(count, 2)
+        self.assertEqual(records[0]["ts_pct"], 0.6)
+        self.assertEqual(records[1]["ts_pct"], 0.65)
+
+    def test_team_mismatch_never_injects_source_measures(self):
+        record = {"season_id":"2024-25","season_type":"regular",
+                  "team_abbreviation":"DAL"}
+        dossier = {"profile":{"player_key":"nba_10"},"seasons":[record]}
+        count = overlay_published_season(dossier, {
+            "player_season_totals":[{
+                "player_id":"nba_10","team_abbreviation":"LAL",
+                "ts_pct":0.9,
+            }]
+        }, "2024-25", "regular")
+        self.assertEqual(count, 0)
+        self.assertNotIn("ts_pct", record)
 
     def test_do_not_stamp_combined_totals_onto_separate_team_stints(self):
         rows = [
