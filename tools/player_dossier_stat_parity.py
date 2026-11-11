@@ -70,7 +70,10 @@ def overlay_published_season(dossier: dict[str, Any],
         if not destinations and len(targets) == 1:
             team = str(row.get("team_ids") or row.get("team_abbreviation")
                        or "").upper()
-            if team not in {"TOT", "2TM", "3TM", "4TM"}:
+            target_team = str(targets[0].get("team_abbreviation") or "").upper()
+            if team not in {"TOT", "2TM", "3TM", "4TM"} and (
+                not team or not target_team or team == target_team
+            ):
                 destinations = targets
         for target in destinations:
             updated += merge(target, row)
