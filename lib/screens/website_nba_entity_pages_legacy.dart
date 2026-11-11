@@ -430,11 +430,14 @@ class _PlayerCareerTable extends StatelessWidget {
         'No source-backed statistics are available for this segment.',
       );
     }
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
+    return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
+          horizontalMargin: 12,
+          columnSpacing: 20,
+          headingRowHeight: 42,
+          dataRowMinHeight: 36,
+          dataRowMaxHeight: 42,
           columns: const [
             DataColumn(label: Text('Season')),
             DataColumn(label: Text('Team')),
@@ -524,70 +527,87 @@ class _PlayerCareerTable extends StatelessWidget {
               ),
           ],
         ),
-      ),
     );
   }
 }
 
-class _PlayerAdvancedTable extends StatelessWidget {
+class _PlayerAdvancedTable extends StatefulWidget {
   const _PlayerAdvancedTable({required this.rows, required this.category});
   final List<Map<String, dynamic>> rows;
   final _AdvancedCategory category;
 
   @override
+  State<_PlayerAdvancedTable> createState() => _PlayerAdvancedTableState();
+}
+
+class _PlayerAdvancedTableState extends State<_PlayerAdvancedTable> {
+  final Set<String> _expanded = {};
+
+  @override
+  void didUpdateWidget(covariant _PlayerAdvancedTable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.category.name != widget.category.name) {
+      _expanded.clear();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final ordered = [...rows]
-      ..sort(
-        (a, b) => _text(b['season_id']).compareTo(_text(a['season_id'])),
-      );
-    final available = category.metrics
-        .where(
-          (metric) => ordered.any(
-            (row) => _numberAny(row, metric.keys) != null,
-          ),
-        )
-        .toList();
+    final ordered = [...widget.rows]
+      ..sort((a, b) => _text(b['season_id']).compareTo(_text(a['season_id'])));
+    final requested = <_AdvancedMetric>[];
+    for (final metric in widget.category.metrics) {
+      requested.add(metric);
+      if (_expanded.contains(metric.key)) {
+        for (final child in metric.children) {
+          final item = nbaTerminalMetricByKey[child];
+          if (item != null) requested.add(_metricFromCatalog(item, const []));
+        }
+      }
+    }
+    final available = requested.where((metric) =>
+        ordered.any((row) => _numberAny(row, metric.keys) != null)).toList();
     if (ordered.isEmpty || available.isEmpty) {
       return _EmptyCard(
-        '${category.name} metrics are not source-backed for this player/segment in the active historical release.',
-      );
+        '${widget.category.name} statistics have no published source-backed values '
+        'for these seasons. Missing statistics are not synthesized.');
     }
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columns: [
-            const DataColumn(label: Text('Season')),
-            const DataColumn(label: Text('Team')),
-            const DataColumn(label: Text('Pos')),
-            for (final metric in available)
-              DataColumn(numeric: true, label: Text(metric.label)),
-          ],
-          rows: [
-            for (final row in ordered)
-              DataRow(
-                cells: [
-                  DataCell(Text(_text(row['season_id']))),
-                  DataCell(Text(_text(row['team_abbreviation'], '—'))),
-                  DataCell(
-                    Text(
-                      _text(
-                        row['positions'],
-                        _textAny(
-                          row,
-                          const ['position', 'pos'],
-                          fallback: '—',
-                        ),
-                      ),
-                    ),
-                  ),
-                  for (final metric in available)
-                    _advancedDataCell(row, metric),
-                ],
-              ),
-          ],
-        ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        horizontalMargin: 12,
+        columnSpacing: 20,
+        headingRowHeight: 42,
+        dataRowMinHeight: 36,
+        dataRowMaxHeight: 42,
+        columns: [
+          const DataColumn(label: Text('Season')),
+          const DataColumn(label: Text('Team')),
+          const DataColumn(label: Text('Pos')),
+          for (final metric in available)
+            DataColumn(numeric: true, label: metric.children.isEmpty
+              ? Text(metric.label)
+              : TextButton(
+                  onPressed: () => setState(() {
+                    if (!_expanded.add(metric.key)) {
+                      _expanded.remove(metric.key);
+                    }
+                  }),
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                  child: Text('${_expanded.contains(metric.key) ? '▾' : '▸'} '
+                    '${metric.label}'),
+                )),
+        ],
+        rows: [
+          for (final row in ordered)
+            DataRow(cells: [
+              DataCell(Text(_text(row['season_id']))),
+              DataCell(Text(_text(row['team_abbreviation'], '—'))),
+              DataCell(Text(nbaOrderedPositions(_text(row['positions'],
+                _textAny(row, const ['position', 'pos'], fallback: '—'))))),
+              for (final metric in available) _advancedDataCell(row, metric),
+            ]),
+        ],
       ),
     );
   }
