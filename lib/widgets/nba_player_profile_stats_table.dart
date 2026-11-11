@@ -26,6 +26,42 @@ class _NbaPlayerProfileStatsTableState extends State<NbaPlayerProfileStatsTable>
     'pf','fg_pct','two_pct','three_pct','ft_pct','ts_pct'];
   static const _overview = ['gp','mpg','ppg','rpg','apg','spg','bpg','tpg',
     'fg_pct','three_pct','ft_pct','ts_pct','per','bpm','vorp'];
+
+  static const _customFamilies = <NbaTerminalStatFamily>[
+    NbaTerminalStatFamily(
+      id: 'shooting_efficiency',
+      label: 'Shooting & Efficiency',
+      description: 'Consolidated shooting percentages and possession efficiency.',
+      metrics: [
+        'fg_pct', 'two_pct', 'three_pct', 'ft_pct', 'rim_fg_pct',
+        'midrange_fg_pct', 'efg_pct', 'ts_pct', 'ftr', 'three_par',
+        'pps', 'pie', 'assisted_fg_pct', 'unassisted_fg_pct',
+        'assisted_ppg', 'unassisted_ppg',
+      ],
+    ),
+    NbaTerminalStatFamily(
+      id: 'isolation',
+      label: 'Isolation',
+      description: 'Isolation scoring and related self-creation measures.',
+      metrics: [
+        'isolation_ppp', 'usage', 'unassisted_fg_pct',
+        'unassisted_ppg', 'drive_ppg', 'drive_apg',
+      ],
+    ),
+    NbaTerminalStatFamily(
+      id: 'rate_adjusted',
+      label: 'Rate Adjusted',
+      description: 'Counting production under the selected rate basis.',
+      metrics: [
+        'mpg', 'ppg', 'rpg', 'apg', 'spg', 'bpg', 'tpg',
+        'fgm', 'three_pm', 'ftm',
+      ],
+    ),
+  ];
+  static final List<NbaTerminalStatFamily> _families = [
+    ..._customFamilies, ...nbaTerminalStatFamilies,
+  ];
+
   NbaStatsBasis _basis = NbaStatsBasis.perGame;
   String _family = 'overview';
   String _sort = 'season_id';
@@ -62,13 +98,18 @@ class _NbaPlayerProfileStatsTableState extends State<NbaPlayerProfileStatsTable>
     return result;
   }
   NbaTerminalStatFamily? get _category {
-    for (final family in nbaTerminalStatFamilies) {
+    for (final family in _families) {
       if (family.id == _family) return family;
     }
     return null;
   }
-  List<String> get _parents => !widget.advanced ? _basic :
-      _family == 'overview' ? _overview : (_category?.metrics ?? _overview);
+  List<String> get _parents {
+    if (!widget.advanced) return _basic;
+    if (_family == 'overview') return _overview;
+    final keys = _category?.metrics ?? _overview;
+    if (_family == 'physical') return [...keys, 'bio_college', 'bio_country'];
+    return keys;
+  }
   List<String> _keys() {
     final keys = <String>[];
     for (final key in _parents) {
@@ -121,7 +162,7 @@ class _NbaPlayerProfileStatsTableState extends State<NbaPlayerProfileStatsTable>
             onSelected:(_) => setState(() {
               _family='overview'; _expanded.clear(); _page=0;
             })),
-          for (final f in nbaTerminalStatFamilies)
+          for (final f in _families)
             ChoiceChip(label:Text(f.label),selected:_family==f.id,
               onSelected:(_) => setState(() {
                 _family=f.id; _expanded.clear(); _page=0;
@@ -204,7 +245,8 @@ class _NbaPlayerProfileStatsTableState extends State<NbaPlayerProfileStatsTable>
     final m=nbaTerminalMetricByKey[key];
     final children=_category?.expansionOverrides[key] ??
       m?.children ?? const <String>[];
-    final label=m?.shortLabel ?? key.toUpperCase();
+    final label=m?.shortLabel ?? (key == 'bio_college' ? 'College' :
+      key == 'bio_country' ? 'Country' : key.toUpperCase());
     if(children.isEmpty || !_parents.contains(key)) {
       return Text(label,maxLines:1,overflow:TextOverflow.ellipsis);
     }
