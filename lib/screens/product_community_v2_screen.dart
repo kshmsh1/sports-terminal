@@ -4,10 +4,10 @@ import '../models/app_session.dart';
 import '../services/community_network_service.dart';
 import '../services/trust_safety_service.dart';
 
-const _cBg = Color(0xFF090D12);
-const _cPanel = Color(0xFF0F151C);
-const _cPanel2 = Color(0xFF141C25);
-const _cLine = Color(0xFF263342);
+const _cBg = Color(0xFF0D0F12);
+const _cPanel = Color(0xFF11151A);
+const _cPanel2 = Color(0xFF1E242B);
+const _cLine = Color(0xFF2B3037);
 const _cText = Color(0xFFE8EDF3);
 const _cMuted = Color(0xFF8895A5);
 const _cBlue = Color(0xFF63A9FF);
@@ -620,83 +620,30 @@ class _CommunityThreadPageState extends State<CommunityThreadPage> {
 }
 
 class _CommunityHero extends StatelessWidget {
-  const _CommunityHero({
-    required this.profileFuture,
-    required this.onCreate,
-  });
-
+  const _CommunityHero({required this.profileFuture, required this.onCreate});
   final Future<Map<String, dynamic>?> profileFuture;
   final VoidCallback? onCreate;
 
   @override
-  Widget build(BuildContext context) => _CommunityPanel(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ARCSIDE / COMMUNITY',
-                        style: TextStyle(
-                          color: _cBlue,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      SizedBox(height: 7),
-                      Text(
-                        'Arcside Community',
-                        style: TextStyle(
-                          color: _cText,
-                          fontSize: 29,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      SizedBox(height: 7),
-                      Text(
-                        'Join basketball conversations, share analysis and follow your favorite teams.',
-                        style: TextStyle(color: _cMuted, height: 1.5),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: onCreate,
-                  icon: const Icon(Icons.add_comment_rounded),
-                  label: const Text('Create thread'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            FutureBuilder<Map<String, dynamic>?>(
-              future: profileFuture,
-              builder: (context, snapshot) {
-                final reputation = snapshot.data?['reputation'];
-                final data = reputation is Map ? reputation : const {};
-                final badges = data['badges'];
-                return Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _MetricPill('REPUTATION', '${data['reputation'] ?? 0}'),
-                    _MetricPill('POSTS', '${data['posts'] ?? 0}'),
-                    _MetricPill('COMMENTS', '${data['comments'] ?? 0}'),
-                    if (badges is List)
-                      for (final badge in badges) _Badge('$badge'),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
-      );
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(12, 13, 12, 15),
+    child: Row(children: [
+      const Expanded(child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Arcside Community', style: TextStyle(
+            fontSize: 25, fontWeight: FontWeight.w900, color: _cText)),
+          SizedBox(height: 5),
+          Text('Basketball discussions, research, and the people behind the numbers.',
+            style: TextStyle(fontSize: 12, color: _cMuted)),
+        ],
+      )),
+      const SizedBox(width: 10),
+      FilledButton.icon(
+        onPressed: onCreate,
+        icon: const Icon(Icons.add_rounded, size: 17),
+        label: const Text('Create post')),
+    ]),
+  );
 }
 
 class _CommunityRightRail extends StatelessWidget {
@@ -845,13 +792,8 @@ class _ThreadCard extends StatelessWidget {
   const _ThreadCard({
     required this.session,
     required this.post,
-    this.onVote,
-    this.onSave,
-    this.onReport,
-    this.onBlock,
-    this.onMute,
-    this.onOpen,
-    this.detailed = false,
+    this.onVote, this.onSave, this.onReport, this.onBlock,
+    this.onMute, this.onOpen, this.detailed = false,
   });
 
   final AppSession session;
@@ -868,139 +810,113 @@ class _ThreadCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewerVote = _int(post['viewer_vote']);
     final own = '${post['author_user_id']}' == session.userId;
-    return _CommunityPanel(
-      padding: EdgeInsets.zero,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            width: 56,
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            color: _cPanel2,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: 'Upvote',
-                  onPressed: onVote == null ? null : () => onVote!(1),
-                  icon: Icon(
-                    Icons.arrow_upward_rounded,
-                    color: viewerVote == 1 ? _cGreen : _cMuted,
-                  ),
-                ),
-                Text(
-                  '${post['score'] ?? 0}',
-                  style: const TextStyle(
-                    color: _cText,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Downvote',
-                  onPressed: onVote == null || own ? null : () => onVote!(-1),
-                  icon: Icon(
-                    Icons.arrow_downward_rounded,
-                    color: viewerVote == -1 ? _cRed : _cMuted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(13),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 7,
-                    runSpacing: 5,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Text(
-                        '${post['community_slug'] ?? 'community'}',
-                        style: const TextStyle(
-                          color: _cBlue,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      _Badge('${post['flair'] ?? 'Discussion'}'),
-                      if (post['pinned'] == true) const _Badge('PINNED'),
-                      Text(
-                        'by ${post['author_handle']?.toString().isNotEmpty == true ? '@${post['author_handle']}' : post['author_display_name'] ?? post['author_user_id']} · ${_relative('${post['created_at'] ?? ''}')}',
-                        style: const TextStyle(color: _cMuted, fontSize: 10),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 7),
-                  InkWell(
-                    onTap: onOpen,
-                    child: Text(
-                      '${post['title'] ?? ''}',
-                      style: const TextStyle(
-                        color: _cText,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    '${post['body'] ?? ''}',
-                    maxLines: detailed ? null : 5,
-                    overflow: detailed ? TextOverflow.visible : TextOverflow.ellipsis,
-                    style: const TextStyle(color: _cMuted, height: 1.45),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      TextButton.icon(
-                        onPressed: onOpen,
-                        icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
-                        label: Text('${post['comment_count'] ?? 0} comments'),
-                      ),
-                      TextButton.icon(
-                        onPressed: onSave,
-                        icon: Icon(
-                          post['saved_by_viewer'] == true
-                              ? Icons.bookmark_rounded
-                              : Icons.bookmark_border_rounded,
-                          size: 16,
-                        ),
-                        label: Text(
-                          post['saved_by_viewer'] == true ? 'Saved' : 'Save',
-                        ),
-                      ),
-                      if (onReport != null)
-                        TextButton.icon(
-                          onPressed: onReport,
-                          icon: const Icon(Icons.flag_outlined, size: 16),
-                          label: const Text('Report'),
-                        ),
-                      if (!own && onMute != null)
-                        TextButton(
-                          onPressed: onMute,
-                          child: const Text('Mute author'),
-                        ),
-                      if (!own && onBlock != null)
-                        TextButton(
-                          onPressed: onBlock,
-                          child: const Text('Block author'),
-                        ),
-                    ],
-                  ),
-                ],
+    final author = post['author_handle']?.toString().isNotEmpty == true
+        ? 'u/${post['author_handle']}'
+        : '${post['author_display_name'] ?? 'member'}';
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(15, 16, 15, 14),
+        decoration: const BoxDecoration(border:
+          Border(bottom: BorderSide(color: _cLine))),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(spacing: 8, runSpacing: 5,
+              crossAxisAlignment: WrapCrossAlignment.center, children: [
+              CircleAvatar(radius: 14, backgroundColor: _cPanel2,
+                child: Text(('${post['community_slug'] ?? 'A'}').isEmpty
+                    ? 'A' : '${post['community_slug'] ?? 'A'}'[0].toUpperCase(),
+                  style: const TextStyle(color: _cBlue,
+                    fontWeight: FontWeight.w900, fontSize: 12))),
+              Text('r/${post['community_slug'] ?? 'arcside'}',
+                style: const TextStyle(color: _cText,
+                  fontWeight: FontWeight.w900, fontSize: 12)),
+              Text('· ${_relative('${post['created_at'] ?? ''}')}',
+                style: const TextStyle(color: _cMuted, fontSize: 11)),
+              Text('· $author', style: const TextStyle(
+                color: _cMuted, fontSize: 11)),
+              if (post['pinned'] == true)
+                const Icon(Icons.push_pin_rounded, color: _cGreen, size: 14),
+              if (post['flair'] != null) _Badge('${post['flair']}'),
+            ]),
+            const SizedBox(height: 10),
+            InkWell(onTap: onOpen, child: Text(
+              '${post['title'] ?? ''}',
+              style: const TextStyle(color: _cText,
+                fontSize: 18, fontWeight: FontWeight.w800,
+                height: 1.28))),
+            const SizedBox(height: 9),
+            Text('${post['body'] ?? ''}',
+              maxLines: detailed ? null : 5,
+              overflow: detailed ? TextOverflow.visible : TextOverflow.ellipsis,
+              style: const TextStyle(color: _cMuted, height: 1.47,
+                fontSize: 13)),
+            const SizedBox(height: 14),
+            Wrap(spacing: 7, runSpacing: 7, children: [
+              Container(
+                decoration: BoxDecoration(color: _cPanel2,
+                    borderRadius: BorderRadius.circular(30)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Upvote',
+                    onPressed: onVote == null ? null : () => onVote!(1),
+                    icon: Icon(Icons.arrow_upward_rounded, size: 18,
+                      color: viewerVote == 1 ? _cGreen : _cText)),
+                  Text('${post['score'] ?? 0}',
+                    style: const TextStyle(color: _cText,
+                      fontWeight: FontWeight.w800, fontSize: 12)),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Downvote',
+                    onPressed: onVote == null || own ? null : () => onVote!(-1),
+                    icon: Icon(Icons.arrow_downward_rounded, size: 18,
+                      color: viewerVote == -1 ? _cRed : _cText)),
+                ]),
               ),
-            ),
-          ),
-        ],
+              _PostAction(icon: Icons.chat_bubble_outline_rounded,
+                label: '${post['comment_count'] ?? 0} comments', onPressed: onOpen),
+              _PostAction(
+                icon: post['saved_by_viewer'] == true
+                    ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                label: post['saved_by_viewer'] == true ? 'Saved' : 'Save',
+                onPressed: onSave),
+              if (onReport != null)
+                _PostAction(icon: Icons.flag_outlined,
+                  label: 'Report', onPressed: onReport),
+              if (!own && onMute != null)
+                _PostAction(icon: Icons.volume_off_outlined,
+                  label: 'Mute', onPressed: onMute),
+              if (!own && onBlock != null)
+                _PostAction(icon: Icons.block_rounded,
+                  label: 'Block', onPressed: onBlock),
+            ]),
+          ],
+        ),
       ),
     );
   }
+}
+
+class _PostAction extends StatelessWidget {
+  const _PostAction({required this.icon, required this.label,
+    required this.onPressed});
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => TextButton.icon(
+    style: TextButton.styleFrom(
+      backgroundColor: _cPanel2,
+      foregroundColor: _cText,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))),
+    onPressed: onPressed,
+    icon: Icon(icon, size: 15),
+    label: Text(label, style: const TextStyle(fontSize: 12)),
+  );
 }
 
 class _ThreadedComment extends StatelessWidget {
@@ -1238,25 +1154,17 @@ class _CommunityChoice extends StatelessWidget {
       );
 }
 
+/// A light structural region: Reddit-style dividers rather than a field of
+/// bordered cards. Deliberate surfaces are reserved for controls and actions.
 class _CommunityPanel extends StatelessWidget {
-  const _CommunityPanel({
-    required this.child,
-    this.padding = const EdgeInsets.all(14),
-  });
-
+  const _CommunityPanel({required this.child,
+    this.padding = const EdgeInsets.all(14)});
   final Widget child;
   final EdgeInsets padding;
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: padding,
-        decoration: BoxDecoration(
-          color: _cPanel,
-          border: Border.all(color: _cLine),
-        ),
-        child: child,
-      );
+  Widget build(BuildContext context) => Padding(
+    padding: padding, child: child);
 }
 
 class _MetricPill extends StatelessWidget {
