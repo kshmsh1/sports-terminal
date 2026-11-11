@@ -253,7 +253,7 @@ void main() {
     expect(service, isNot(contains('chatgpt.com')));
     expect(service, isNot(contains('api.openai.com')));
     expect(service, isNot(contains('sk-')));
-    expect(panel, contains('No browser quota'));
+    expect(panel, contains('No API billing'));
     expect(panel, contains('_pageSize = 40'));
     expect(panel, isNot(contains('SharedPreferences.getInstance()')));
     expect(panel, isNot(contains('_maxDaily')));
