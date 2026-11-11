@@ -271,7 +271,18 @@ class _PlayerSeasonValues {
       'ortg': _first(const ['ortg']),
       'drtg': _first(const ['drtg']),
       'usage': _first(const ['usage','usg_pct']),
-      'ast_tov': _first(const ['ast_to']),
+      'ast_tov': _first(const ['ast_to']) ??
+          (_first(const ['assists', 'ast']) != null &&
+                  (_first(const ['turnovers', 'tov']) ?? 0) > 0
+              ? _first(const ['assists', 'ast'])! /
+                  _first(const ['turnovers', 'tov'])!
+              : null),
+      'ft_rate': fta != null && fga != null && fga > 0
+          ? fta / fga : null,
+      'three_rate': threePa != null && fga != null && fga > 0
+          ? threePa / fga : null,
+      'points_per_shot': pts != null && fga != null && fga > 0
+          ? pts / fga : null,
     };
     return NbaStatsRow(
       playerId: raw['player_key']?.toString() ??
