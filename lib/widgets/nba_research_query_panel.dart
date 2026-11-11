@@ -230,7 +230,7 @@ class _NbaResearchQueryPanelState extends State<NbaResearchQueryPanel> {
       ),
       const SizedBox(height: 22),
       const Text('Research Hub', style: TextStyle(
-        color: _ink, fontSize: 30, fontWeight: FontWeight.w850)),
+        color: _ink, fontSize: 30, fontWeight: FontWeight.w800)),
       const SizedBox(height: 9),
       const Text('Explore historical NBA data, straight from Arcside.',
         textAlign: TextAlign.center,
@@ -377,7 +377,7 @@ class _NbaResearchQueryPanelState extends State<NbaResearchQueryPanel> {
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(hits[i].name, style: const TextStyle(
-                    color: _ink, fontWeight: FontWeight.w650)),
+                    color: _ink, fontWeight: FontWeight.w600)),
                   if (hits[i].team.isNotEmpty || hits[i].detail.isNotEmpty)
                     Text([hits[i].team, hits[i].detail]
                         .where((v) => v.isNotEmpty).join(' · '),
@@ -387,7 +387,7 @@ class _NbaResearchQueryPanelState extends State<NbaResearchQueryPanel> {
               const SizedBox(width: 12),
               Text(hits[i].value,
                 style: const TextStyle(color: _accent,
-                    fontWeight: FontWeight.w850, fontSize: 15)),
+                    fontWeight: FontWeight.w800, fontSize: 15)),
             ]),
           ),
         if (pageCount > 1)
