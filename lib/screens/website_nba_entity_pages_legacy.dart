@@ -441,6 +441,18 @@ class _WebsiteNbaTeamPageState extends State<WebsiteNbaTeamPage> {
       );
 }
 
+const _profileCareerFamily = NbaTerminalStatFamily(
+  id: 'player_career',
+  label: 'Career Statistics',
+  description: 'All source-backed core, shooting, efficiency and impact measures.',
+  metrics: [
+    'gp', 'mpg', 'ppg', 'rpg', 'apg', 'spg', 'bpg', 'tpg', 'pf',
+    'fg_pct', 'two_pct', 'three_pct', 'ft_pct',
+    'efg_pct', 'ts_pct', 'ftr', 'three_par', 'usage',
+    'per', 'ws', 'ws48', 'obpm', 'dbpm', 'bpm', 'vorp',
+  ],
+);
+
 class _PlayerCareerTable extends StatelessWidget {
   const _PlayerCareerTable({required this.rows, required this.basis});
   final List<Map<String, dynamic>> rows;
@@ -449,7 +461,7 @@ class _PlayerCareerTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) => NbaPlayerProfileStatsTable(
     rows: rows,
-    family: nbaTerminalStatFamilies.first,
+    family: _profileCareerFamily,
     basis: basis,
   );
 }
