@@ -6,13 +6,15 @@ python tools/arcside_spreadsheet/app.py
 from __future__ import annotations
 
 import sys
+import csv
+import io
 from pathlib import Path
 
 try:
     from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex
     from PySide6.QtGui import QAction, QColor, QFont, QKeySequence
     from PySide6.QtWidgets import (
-        QApplication, QComboBox, QFileDialog, QInputDialog, QLabel, QLineEdit,
+        QApplication, QComboBox, QCompleter, QFileDialog, QInputDialog, QLabel, QLineEdit,
         QMainWindow, QMessageBox, QSpinBox, QTabWidget, QTableView, QToolBar,
         QVBoxLayout, QWidget
     )
@@ -103,6 +105,98 @@ class SheetModel(QAbstractTableModel):
         to_stack.append((ref, old, new))
         self.layoutChanged.emit()
 
+    def copy_cells(self):
+        view = self._current()
+        if view is None:
+            return
+        selected = view.selectedIndexes()
+        if not selected:
+            return
+        rows = [idx.row() for idx in selected]
+        cols = [idx.column() for idx in selected]
+        chosen = {(idx.row(), idx.column()) for idx in selected}
+        start_r, end_r = min(rows), max(rows)
+        start_c, end_c = min(cols), max(cols)
+        data = [
+            [
+                view.model().sheet.raw(
+                    f"{column_name(c + 1)}{r + 1}"
+                ) if (r, c) in chosen else ""
+                for c in range(start_c, end_c + 1)
+            ]
+            for r in range(start_r, end_r + 1)
+        ]
+        buffer = io.StringIO()
+        csv.writer(buffer, delimiter="\t").writerows(data)
+        QApplication.clipboard().setText(buffer.getvalue())
+
+    def paste_cells(self):
+        view = self._current()
+        if view is None:
+            return
+        text = QApplication.clipboard().text()
+        if not text:
+            return
+        current = view.currentIndex()
+        if not current.isValid():
+            return
+        try:
+            data = list(csv.reader(io.StringIO(text), delimiter="\t"))
+        except csv.Error:
+            return
+        model = view.model()
+        for ri, row in enumerate(data):
+            if current.row() + ri >= model.max_rows:
+                break
+            for ci, raw in enumerate(row):
+                if current.column() + ci >= model.max_cols:
+                    break
+                index = model.index(current.row() + ri, current.column() + ci)
+                model.setData(index, raw)
+        self._sync_bar()
+
+    def fill_down(self):
+        view = self._current()
+        if view is None:
+            return
+        selected = view.selectedIndexes()
+        if len(selected) < 2:
+            return
+        by_col = {}
+        for idx in selected:
+            by_col.setdefault(idx.column(), []).append(idx)
+        for group in by_col.values():
+            group.sort(key=lambda idx: idx.row())
+            raw = view.model().sheet.raw(view.model()._ref(group[0]))
+            for index in group[1:]:
+                # Formula text remains unchanged. Relative-reference rebasing
+                # is intentionally not claimed in this first implementation.
+                view.model().setData(index, raw)
+
+    def format_as_table(self):
+        view = self._current()
+        if view is None:
+            return
+        selection = view.selectedIndexes()
+        if not selection:
+            return
+        model = view.model()
+        head = min(idx.row() for idx in selection)
+        for idx in selection:
+            ref = model._ref(idx)
+            style = model.sheet.styles.setdefault(ref, {})
+            if idx.row() == head:
+                style.update({"fill": "#145A38", "color": "#FFFFFF", "bold": True})
+            elif (idx.row() - head) % 2 == 0:
+                style["fill"] = "#E9F4EE"
+            else:
+                style["fill"] = "#FFFFFF"
+            model.sheet.widths[column_name(idx.column() + 1)] = 15
+        model.layoutChanged.emit()
+        self.statusBar().showMessage(
+            "Formatted selection as a table. Sorting/filtering not yet enabled."
+        )
+
     def undo(self):
         self._replay(self._undo, self._redo, True)
 
@@ -132,6 +226,15 @@ class Spreadsheet(QMainWindow):
         self.name_box.returnPressed.connect(self._goto_name)
         self.formula_box = QLineEdit()
         self.formula_box.setPlaceholderText("fx   Enter value or =SUM(A1:A10)")
+        completer = QCompleter([
+            "=" + name + "(" for name in (
+                "SUM", "AVERAGE", "MIN", "MAX", "COUNT", "COUNTA",
+                "IF", "IFERROR", "ROUND", "ABS", "SQRT", "POWER",
+                "AND", "OR", "NOT", "CONCAT",
+            )
+        ], self.formula_box)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.formula_box.setCompleter(completer)
         self.formula_box.returnPressed.connect(self._commit_formula)
         self._make_toolbar()
         self._rebuild_tabs()
@@ -154,6 +257,10 @@ class Spreadsheet(QMainWindow):
             ("Bold", "Ctrl+B", self.toggle_bold),
             ("Chart", "Ctrl+Shift+C", self.create_chart),
             ("CSV Export", "", self.export_csv),
+            ("Copy", "Ctrl+C", self.copy_cells),
+            ("Paste", "Ctrl+V", self.paste_cells),
+            ("Fill Down", "Ctrl+D", self.fill_down),
+            ("As Table", "Ctrl+T", self.format_as_table),
         ]:
             action = QAction(label, self)
             if shortcut:
