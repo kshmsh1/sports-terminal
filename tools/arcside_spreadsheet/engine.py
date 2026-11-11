@@ -15,10 +15,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-CELL = re.compile(r"^\$?([A-Z]{1,3})\$?([1-9]\d{0,5})$")
+CELL = re.compile(r"^\$?([A-Z]{1,3})\$?([0-9]{1,7})$")
 TOKEN = re.compile(
     r'\s*(?:(\d+(?:\.\d+)?(?:[Ee][+-]?\d+)?)|("(?:[^"]|"")*")|'
-    r'(\$?[A-Za-z]{1,3}\$?[1-9]\d{0,5})|([A-Za-z_][A-Za-z_0-9]*)|'
+    r'(\$?[A-Za-z]{1,3}\$?[0-9]{1,7})|([A-Za-z_][A-Za-z_0-9]*)|'
     r'(<=|>=|<>|[+\-*/^(),:=<>]))',
     re.ASCII
 )
@@ -33,7 +33,7 @@ def normalize_ref(ref: str) -> str:
     number = 0
     for char in col:
         number = number * 26 + ord(char) - 64
-    if number > 16384 or int(row) > 1048576:
+    if number > 16384 or int(row) < 1 or int(row) > 1048576:
         raise ValueError("Cell outside Excel grid")
     return f"{col}{int(row)}"
 
