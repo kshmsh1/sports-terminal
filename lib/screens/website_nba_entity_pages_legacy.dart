@@ -1112,11 +1112,11 @@ List<_AdvancedCategory> get _advancedCategories => [
 _AdvancedMetric _metricFromCatalog(NbaTerminalMetric metric,
     List<String> children) => _AdvancedMetric(
   metric.shortLabel,
-  [
+  <String>{
     ...metric.rawAliases,
     if (metric.engineKey != null) metric.engineKey!,
     metric.key,
-  ].toSet().toList(),
+  }.toList(),
   percent: metric.format == NbaTerminalMetricFormat.percent,
   signed: metric.format == NbaTerminalMetricFormat.signed,
   perGame: const {'ppg','rpg','apg','spg','bpg','tpg','mpg'}.contains(metric.key),
