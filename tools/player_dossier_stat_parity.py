@@ -44,26 +44,51 @@ def overlay_published_season(dossier: dict[str, Any],
     ]
     if not targets:
         return 0
-    combined = [row for row in targets if not str(row.get("team_abbreviation") or "").strip()
-                or str(row.get("team_abbreviation")).upper() in {"TOT", "2TM", "3TM", "4TM"}]
-    if len(targets) == 1:
-        combined = targets
-    if not combined:
-        # Multiple individual team stints cannot safely inherit a combined
-        # published row. Keep original per-team statistics intact.
-        return 0
+    combined = [
+        row for row in targets
+        if not str(row.get("team_abbreviation") or "").strip()
+        or str(row.get("team_abbreviation")).upper() in {
+            "TOT", "2TM", "3TM", "4TM"
+        }
+    ]
+
+    def merge(target: dict[str, Any], source: dict[str, Any]) -> int:
+        applied = 0
+        for metric, value in source.items():
+            if metric in _IDENTITY or value is None or value == "":
+                continue
+            if metric not in target or target[metric] is None:
+                target[metric] = value
+                applied += 1
+        return applied
 
     updated = 0
     for row in rows:
         if not isinstance(row, dict) or str(row.get("player_id")) != key:
             continue
-        for target in combined:
-            for metric, value in row.items():
-                if metric in _IDENTITY or value is None or value == "":
+        destinations = combined
+        if not destinations and len(targets) == 1:
+            team = str(row.get("team_ids") or row.get("team_abbreviation")
+                       or "").upper()
+            if team not in {"TOT", "2TM", "3TM", "4TM"}:
+                destinations = targets
+        for target in destinations:
+            updated += merge(target, row)
+
+        # Traded-player aggregate rows must never be assigned to individual
+        # team seasons. A source-provided matching team stint is safe.
+        stints = row.get("team_stints")
+        if isinstance(stints, list):
+            for stint in stints:
+                if not isinstance(stint, dict):
                     continue
-                if metric not in target or target[metric] is None:
-                    target[metric] = value
-                    updated += 1
+                team = str(stint.get("team_abbreviation") or
+                           stint.get("team_ids") or "").upper()
+                if not team:
+                    continue
+                for target in targets:
+                    if str(target.get("team_abbreviation") or "").upper() == team:
+                        updated += merge(target, stint)
     # The dossier stores these as distinct lists pointing to original rows.
     # Rebuild copies to support callers that do not preserve object identity.
     dossier["regular_seasons"] = [
