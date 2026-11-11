@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../models/app_session.dart';
 import '../services/front_office_registry_service.dart';
+import '../services/nba_trade_contract_repository.dart';
+import '../services/nba_stats_metric_catalog.dart';
+import '../services/nba_player_profile_format.dart';
 import '../services/website_nba_api_service.dart';
 import '../widgets/nba_percentage_heat_cell.dart';
 
@@ -60,9 +63,10 @@ class WebsiteNbaPlayerPage extends StatefulWidget {
 class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
   final _api = const WebsiteNbaApiService();
   final _frontOffice = const FrontOfficeRegistryService();
+  final _tradeContracts = const NbaTradeContractRepository();
   late Future<_PlayerPageData> _future;
   String _segment = 'regular';
-  String _advancedCategory = 'Shooting & Efficiency';
+  String _advancedCategory = nbaTerminalStatFamilies.first.label;
 
   @override
   void initState() {
@@ -81,7 +85,10 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
     } catch (_) {
       registry = null;
     }
-    return _PlayerPageData(dossier: dossier, registry: registry);
+    NbaTradeContractSnapshot? currentContracts;
+    try { currentContracts = await _tradeContracts.load(); } catch (_) { currentContracts = null; }
+    return _PlayerPageData(dossier: dossier, registry: registry,
+      currentContracts: currentContracts);
   }
 
   @override
@@ -107,14 +114,16 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
             final playoffs = _maps(dossier['playoff_seasons']);
             final selectedRows = _segment == 'playoffs' ? playoffs : regular;
             final name = _text(profile['canonical_name'], widget.playerName);
-            final positions = _text(
+            final positions = nbaOrderedPositions(_text(
               profile['positions'],
               _text(profile['primary_position']),
-            );
+            ));
             final awards = _maps(dossier['awards']);
             final allStar = _maps(dossier['all_star']);
             final draft = _maps(dossier['draft']);
-            final games = _maps(dossier['recent_games']);
+            final current = data.currentContracts?.records.where((item) =>
+              _normalizedPlayerName(item.player) == _normalizedPlayerName(name) &&
+              item.salaryFor('2026-27') > 0).toList() ?? <NbaTradeContract>[];
             final contracts = _playerContracts(
               data.registry,
               widget.playerKey,
@@ -125,7 +134,7 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
               padding: const EdgeInsets.fromLTRB(24, 28, 24, 72),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1380),
+                  constraints: const BoxConstraints(maxWidth: 1840),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -156,7 +165,7 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                             '${_uniqueSeasons(playoffs)}',
                           ),
                           _SummaryItem('All-Star', '${_uniqueAllStarYears(allStar)}'),
-                          _SummaryItem('Recent games', '${games.length}'),
+                          _SummaryItem('Career seasons', '${_uniqueSeasons([...regular, ...playoffs])}'),
                         ],
                       ),
                       const SizedBox(height: 30),
@@ -183,23 +192,16 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                       const SizedBox(height: 30),
                       const _SectionTitle('Advanced statistics'),
                       const SizedBox(height: 10),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            for (final category in _advancedCategories)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: ChoiceChip(
-                                  label: Text(category.name),
-                                  selected: _advancedCategory == category.name,
-                                  onSelected: (_) => setState(
-                                    () => _advancedCategory = category.name,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
+                      Wrap(
+                        spacing: 7, runSpacing: 6, children: [
+                          for (final category in _advancedCategories)
+                            ChoiceChip(
+                              label: Text(category.name),
+                              selected: _advancedCategory == category.name,
+                              onSelected: (_) => setState(
+                                () => _advancedCategory = category.name),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 10),
                       _PlayerAdvancedTable(
@@ -211,7 +213,8 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                       const SizedBox(height: 30),
                       const _SectionTitle('Contract'),
                       const SizedBox(height: 10),
-                      _ContractSection(contracts: contracts),
+                      _ContractSection(contracts: contracts,
+                        current: current, asOf: data.currentContracts?.asOf),
                       const SizedBox(height: 30),
                       const _SectionTitle('Awards & context'),
                       const SizedBox(height: 10),
@@ -220,10 +223,6 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                         allStar: allStar,
                         draft: draft,
                       ),
-                      const SizedBox(height: 30),
-                      const _SectionTitle('Recent games'),
-                      const SizedBox(height: 10),
-                      _RecentGames(rows: games),
                     ],
                   ),
                 ),
@@ -646,11 +645,32 @@ class _TeamSeasonTable extends StatelessWidget {
 }
 
 class _ContractSection extends StatelessWidget {
-  const _ContractSection({required this.contracts});
+  const _ContractSection({required this.contracts, required this.current,
+    required this.asOf});
   final List<Map<String, dynamic>> contracts;
+  final List<NbaTradeContract> current;
+  final String? asOf;
 
   @override
   Widget build(BuildContext context) {
+    if (current.isNotEmpty) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('2026–27 · Current salary record', style:
+          Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800)),
+        const SizedBox(height: 12),
+        for (final item in current)
+          Padding(padding: const EdgeInsets.only(bottom: 7),
+            child: Text('${item.team} · ${_money(item.salaryFor('2026-27'))} salary'
+              '${item.guaranteed == null ? '' : ' · ${_money(item.guaranteed)} source-reported guarantee'}',
+              style: const TextStyle(fontSize: 15))),
+        const SizedBox(height: 7),
+        Text('Source: ${current.first.sourceLabel} · as of ${asOf ?? 'source date'}. '
+          'This is a dated salary snapshot, not a verified live contract feed.',
+          style: TextStyle(fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      ]);
+    }
     if (contracts.isEmpty) {
       return const _EmptyCard(
         'No registered contract record is currently available for this player. Historical statistics remain independent of contract-data availability.',
@@ -981,9 +1001,11 @@ class _EntityError extends StatelessWidget {
 }
 
 class _PlayerPageData {
-  const _PlayerPageData({required this.dossier, required this.registry});
+  const _PlayerPageData({required this.dossier, required this.registry,
+    required this.currentContracts});
   final Map<String, dynamic> dossier;
   final FrontOfficeRegistrySnapshot? registry;
+  final NbaTradeContractSnapshot? currentContracts;
 }
 
 class _SummaryItem {
@@ -1236,6 +1258,9 @@ String _perGameAny(Map<String, dynamic> row, List<String> keys) {
   if (games == null || games <= 0 || total == null) return '—';
   return (total / games).toStringAsFixed(1);
 }
+String _normalizedPlayerName(String name) => name.toLowerCase()
+    .replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+
 String _money(Object? value) {
   final number = _number(value);
   if (number == null) return '—';
