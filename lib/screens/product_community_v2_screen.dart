@@ -234,7 +234,7 @@ class _ProductCommunityV2ScreenState extends State<ProductCommunityV2Screen> {
                       Row(
                         children: [
                           const Expanded(
-                            child: _SectionLabel('COMMUNITIES'),
+                            child: _SectionLabel('BROWSE'),
                           ),
                           Text(
                             '${boards.length} available',
@@ -247,14 +247,43 @@ class _ProductCommunityV2ScreenState extends State<ProductCommunityV2Screen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _CommunityChoice(
-                            label: 'All communities',
-                            selected: selectedCommunity.isEmpty,
+                            label: 'Home',
+                            icon: Icons.home_rounded,
+                            selected: selectedCommunity.isEmpty && !followedOnly && sort == 'hot',
                             onTap: () {
                               selectedCommunity = '';
+                              followedOnly = false;
+                              savedOnly = false;
+                              sort = 'hot';
                               _changeFeed();
                             },
                           ),
-                          const SizedBox(height: 6),
+                          _CommunityChoice(
+                            label: 'Popular',
+                            icon: Icons.trending_up_rounded,
+                            selected: selectedCommunity.isEmpty && sort == 'top',
+                            onTap: () {
+                              selectedCommunity = '';
+                              followedOnly = false;
+                              savedOnly = false;
+                              sort = 'top';
+                              _changeFeed();
+                            },
+                          ),
+                          _CommunityChoice(
+                            label: 'Following',
+                            icon: Icons.people_outline_rounded,
+                            selected: followedOnly,
+                            onTap: () {
+                              selectedCommunity = '';
+                              followedOnly = true;
+                              savedOnly = false;
+                              _changeFeed();
+                            },
+                          ),
+                          const Divider(height: 28, color: _cLine),
+                          const _SectionLabel('COMMUNITIES'),
+                          const SizedBox(height: 8),
                           for (final board in boards) ...[
                             _CommunityChoice(
                               label: '${board['name'] ?? board['slug']}',
@@ -1113,26 +1142,29 @@ class _CommunityChoice extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.badge = '',
+    this.icon,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
   final String badge;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) => Material(
-        color: selected ? const Color(0xFF17273A) : _cPanel2,
+        borderRadius: BorderRadius.circular(8),
+        color: selected ? const Color(0xFF252B32) : Colors.transparent,
         child: InkWell(
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              border: Border.all(color: selected ? _cBlue : _cLine),
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(
               mainAxisSize: MainAxisSize.max,
               children: [
+                Icon(icon ?? Icons.tag_rounded, size: 16,
+                  color: selected ? _cText : _cMuted),
+                const SizedBox(width: 10),
                 Expanded(child: Text(
                   label,
                   maxLines: 1,
