@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/app_session.dart';
 import '../screens/website_nba_entity_pages.dart';
 import '../services/nba_stats_workstation_engine.dart';
+import '../services/nba_stats_metric_catalog.dart';
+import '../services/nba_player_profile_format.dart';
 
 /// Contextual player profile shown alongside the sortable Stats tables.
 class NbaPlayerInspector extends StatelessWidget {
@@ -22,122 +24,112 @@ class NbaPlayerInspector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    const catalog = NbaTerminalMetricResolver();
     const engine = NbaStatsWorkstationEngine();
-    final headline = [
-      ('PPG', 'pts'), ('RPG', 'reb'), ('APG', 'ast'),
+    final physical = <(String, String)>[
+      ('Age', 'age'),
+      ('Height', 'height'),
+      ('Weight', 'weight'),
+      ('Wingspan', 'wingspan'),
+      ('Standing Reach', 'standing_reach'),
+      ('Max Vert', 'max_vert'),
+      ('Draft Year', 'draft_year'),
+      ('Draft Round', 'draft_round'),
+      ('Draft Pick', 'draft_number'),
     ];
-    final measures = [
-      ('GP', 'gp'), ('MPG', 'min'), ('FG%', 'fg_pct'),
-      ('3P%', 'three_pct'), ('FT%', 'ft_pct'), ('TS%', 'ts_pct'),
-      ('SPG', 'stl'), ('BPG', 'blk'), ('TPG', 'tov'),
-      ('PER', 'per'), ('BPM', 'bpm'), ('VORP', 'vorp'),
-      ('USG%', 'usage'), ('ORTG', 'ortg'), ('DRTG', 'drtg'),
-    ];
-    String display(String key) {
-      final value = player.value(key) ?? (player.raw[key] is num
-          ? (player.raw[key] as num).toDouble()
-          : double.tryParse(player.raw[key]?.toString() ?? ''));
-      return engine.formatValue(key, value);
+    String getPhysical(String key) {
+      final metric = nbaTerminalMetricByKey[key];
+      if (metric != null) {
+        return catalog.format(player, key);
+      }
+      return engine.formatValue(key, player.value(key));
     }
+    final valid = physical.where((item) {
+      final metric = nbaTerminalMetricByKey[item.$2];
+      return metric != null && catalog.value(player, item.$2) != null;
+    }).toList();
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              const Icon(Icons.person_search_rounded, size: 19),
-              const SizedBox(width: 7),
-              const Expanded(child: Text('PLAYER PROFILE',
-                  style: TextStyle(fontSize: 11, letterSpacing: 1.3,
-                      fontWeight: FontWeight.w900))),
-              IconButton(
-                tooltip: 'Close profile',
-                visualDensity: VisualDensity.compact,
-                onPressed: onClose,
-                icon: const Icon(Icons.close_rounded),
-              ),
-            ]),
-            const Divider(),
-            const SizedBox(height: 10),
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: colors.primaryContainer,
-              child: Text(player.player.split(' ').map((part) =>
-                  part.isEmpty ? '' : part[0]).take(2).join(),
-                  style: TextStyle(color: colors.onPrimaryContainer,
-                      fontWeight: FontWeight.w900, fontSize: 21)),
-            ),
-            const SizedBox(height: 13),
-            Text(player.player,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w900)),
-            const SizedBox(height: 5),
-            Text('${player.team}  ·  ${player.position}  ·  $season',
-                style: TextStyle(color: colors.onSurfaceVariant)),
-            const SizedBox(height: 18),
-            Row(children: [
-              for (final metric in headline)
-                Expanded(child: Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      color: colors.primaryContainer.withValues(alpha: .32),
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        border: Border.all(color: colors.outlineVariant),
+        borderRadius: BorderRadius.circular(14)),
+      padding: const EdgeInsets.all(18),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          const Icon(Icons.person_outline_rounded, size: 19),
+          const SizedBox(width: 8),
+          const Expanded(child: Text('PLAYER PROFILE', style: TextStyle(
+            letterSpacing: 1.2, fontSize: 11, fontWeight: FontWeight.w900))),
+          IconButton(
+            tooltip: 'Close profile',
+            onPressed: onClose,
+            icon: const Icon(Icons.close_rounded)),
+        ]),
+        const Divider(height: 25),
+        Row(children: [
+          CircleAvatar(
+            radius: 27,
+            backgroundColor: colors.primaryContainer,
+            child: Text(player.player.split(' ').where((p) => p.isNotEmpty)
+              .take(2).map((p) => p[0]).join(),
+              style: TextStyle(color: colors.onPrimaryContainer,
+                fontSize: 19, fontWeight: FontWeight.w900)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(player.player, style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 4),
+              Text('${player.team} · ${nbaOrderedPositions(player.position)} · $season',
+                style: TextStyle(fontSize: 12,
+                  color: colors.onSurfaceVariant)),
+            ],
+          )),
+        ]),
+        const SizedBox(height: 22),
+        Text('PHYSICAL PROFILE', style: TextStyle(
+          fontSize: 11, letterSpacing: 1.1,
+          color: colors.onSurfaceVariant, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 11),
+        if (valid.isEmpty)
+          Text('No physical measurements are published for this player-season.',
+            style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant))
+        else
+          for (var i = 0; i < valid.length; i += 2)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(children: [
+                for (final item in valid.skip(i).take(2))
+                  Expanded(child: Padding(
+                    padding: const EdgeInsets.only(right: 9),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(item.$1, style: TextStyle(fontSize: 11,
+                          color: colors.onSurfaceVariant)),
+                        const SizedBox(height: 3),
+                        Text(getPhysical(item.$2), style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w900)),
+                      ],
                     ),
-                    child: Column(children: [
-                      Text(display(metric.$2), style: TextStyle(
-                          fontSize: 22, fontWeight: FontWeight.w900,
-                          color: colors.primary)),
-                      Text(metric.$1, style: TextStyle(
-                          fontSize: 11, color: colors.onSurfaceVariant)),
-                    ]),
-                  ),
-                )),
-            ]),
-            const SizedBox(height: 22),
-            Text('SEASON SNAPSHOT',
-                style: TextStyle(fontWeight: FontWeight.w800,
-                    color: colors.onSurfaceVariant, letterSpacing: 1,
-                    fontSize: 11)),
-            const SizedBox(height: 8),
-            for (var i = 0; i < measures.length; i += 2)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(children: [
-                  for (final metric in measures.skip(i).take(2))
-                    Expanded(child: Row(children: [
-                      Expanded(child: Text(metric.$1,
-                          style: TextStyle(fontSize: 12,
-                              color: colors.onSurfaceVariant))),
-                      Text(display(metric.$2), style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 12)),
-                      const SizedBox(width: 12),
-                    ])),
-                ]),
-              ),
-            const SizedBox(height: 15),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                label: const Text('Full player profile'),
-                onPressed: () => openWebsiteNbaPlayerPage(context,
-                    session: session, playerKey: player.playerId,
-                    playerName: player.player),
-              ),
+                  )),
+                if (valid.length - i == 1) const Expanded(child: SizedBox()),
+              ]),
             ),
-            const SizedBox(height: 8),
-            Text('Source-backed values only · Arcside',
-                style: TextStyle(color: colors.onSurfaceVariant,
-                    fontSize: 10)),
-          ],
-        ),
-      ),
+        const SizedBox(height: 22),
+        SizedBox(width: double.infinity, child: OutlinedButton.icon(
+          icon: const Icon(Icons.open_in_new_rounded, size: 16),
+          label: const Text('Full player profile'),
+          onPressed: () => openWebsiteNbaPlayerPage(context,
+            session: session, playerKey: player.playerId,
+            playerName: player.player),
+        )),
+        const SizedBox(height: 8),
+        Text('Source-backed measurements only · Arcside',
+          style: TextStyle(fontSize: 10,
+            color: colors.onSurfaceVariant)),
+      ]),
     );
   }
 }
