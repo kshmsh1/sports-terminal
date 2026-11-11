@@ -5,6 +5,7 @@ import '../services/front_office_registry_service.dart';
 import '../services/nba_trade_contract_repository.dart';
 import '../services/nba_stats_metric_catalog.dart';
 import '../services/nba_player_profile_format.dart';
+import '../widgets/nba_player_profile_stats_table.dart';
 import '../services/website_nba_api_service.dart';
 import '../widgets/nba_percentage_heat_cell.dart';
 
@@ -187,12 +188,24 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      _PlayerCareerTable(rows: selectedRows),
+                      if (dossier['stat_seasons'] is List)
+                        NbaPlayerProfileStatsTable(
+                          dossier: dossier, playerId: widget.playerKey,
+                          playerName: name, seasonType: _segment,
+                          advanced: false,
+                        )
+                      else _PlayerCareerTable(rows: selectedRows),
                       const SizedBox(height: 30),
                       const _SectionTitle('Advanced statistics'),
                       const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 7, runSpacing: 6, children: [
+                      if (dossier['stat_seasons'] is List)
+                        NbaPlayerProfileStatsTable(
+                          dossier: dossier, playerId: widget.playerKey,
+                          playerName: name, seasonType: _segment,
+                          advanced: true,
+                        )
+                      else ...[
+                        Wrap(spacing: 7, runSpacing: 6, children: [
                           for (final category in _advancedCategories)
                             ChoiceChip(
                               label: Text(category.name),
@@ -200,15 +213,14 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                               onSelected: (_) => setState(
                                 () => _advancedCategory = category.name),
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      _PlayerAdvancedTable(
-                        rows: selectedRows,
-                        category: _advancedCategories.firstWhere(
-                          (item) => item.name == _advancedCategory,
+                        ]),
+                        const SizedBox(height: 10),
+                        _PlayerAdvancedTable(
+                          rows: selectedRows,
+                          category: _advancedCategories.firstWhere(
+                            (item) => item.name == _advancedCategory),
                         ),
-                      ),
+                      ],
                       const SizedBox(height: 30),
                       const _SectionTitle('Contract'),
                       const SizedBox(height: 10),
