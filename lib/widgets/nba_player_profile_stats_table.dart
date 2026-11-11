@@ -98,7 +98,7 @@ class _NbaPlayerProfileStatsTableState
         ),
     ];
     return WebsiteStickyStatsTable(
-      key: ValueKey('\${widget.family.id}:\${widget.basis.name}'),
+      key: ValueKey('${widget.family.id}:${widget.basis.name}'),
       columns: cols,
       firstColumnWidth: 98,
       headerHeight: 40,
@@ -135,7 +135,7 @@ class _NbaPlayerProfileStatsTableState
     }
     final open = _expanded.contains(metric.key);
     return Tooltip(
-      message: '\${open ? 'Collapse' : 'Expand'} \${metric.label}',
+      message: '${open ? 'Collapse' : 'Expand'} ${metric.label}',
       child: InkWell(
         onTap: () => setState(() {
           if (open) { _expanded.remove(metric.key); }
@@ -225,7 +225,6 @@ class _PlayerSeasonValues {
     final fgm = _first(const ['field_goals_made', 'fgm', 'fg']);
     final threePm = _first(const ['three_pointers_made', 'three_pm', 'fg3']);
     final threePa = _first(const ['three_point_attempts', 'three_pa', 'fg3a']);
-    final ftm = _first(const ['free_throws_made', 'ftm', 'ft']);
     final twoPm = fgm != null && threePm != null ? fgm - threePm : null;
     final twoPa = fga != null && threePa != null ? fga - threePa : null;
     final tsDen = fga != null && fta != null
