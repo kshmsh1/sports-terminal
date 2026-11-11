@@ -720,40 +720,42 @@ class _AwardsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = <String>[];
-    if (draft.isNotEmpty) {
-      final row = draft.first;
-      items.add(
-        'Draft: ${_text(row['draft_year'])} · ${_text(row['round_text'])} · pick ${_text(row['pick_number'])} · ${_text(row['drafting_team_text'])}',
-      );
+    final honors = nbaPlayerHonors(awards, allStar: allStar);
+    final draftRecord = draft.isEmpty ? null : draft.first;
+    if (honors.isEmpty && draftRecord == null) {
+      return const _EmptyCard(
+        'No confirmed source-backed award or draft data is available.');
     }
-    if (allStar.isNotEmpty) {
-      items.add('All-Star selections: ${_uniqueAllStarYears(allStar)}');
-    }
-    for (final row in awards.take(24)) {
-      final award = _text(row['award'], _text(row['award_name']));
-      if (award.isEmpty) continue;
-      final season = _text(row['season_id'], _text(row['year']));
-      items.add(season.isEmpty ? award : '$season · $award');
-    }
-    if (items.isEmpty) {
-      return const _EmptyCard('No source-backed award or draft context is available.');
-    }
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final item in items)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(item),
-              ),
-          ],
-        ),
-      ),
-    );
+    return LayoutBuilder(builder: (context, bounds) {
+      final cols = bounds.maxWidth >= 1200 ? 4 :
+          bounds.maxWidth >= 780 ? 3 : bounds.maxWidth >= 470 ? 2 : 1;
+      const gap = 22.0;
+      final width = (bounds.maxWidth - (cols - 1) * gap) / cols;
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (draftRecord != null) ...[
+          Text('Draft · ${_text(draftRecord['draft_year'])} · Round '
+             '${_text(draftRecord['round_text'])} · Pick '
+             '${_text(draftRecord['pick_number'])} · '
+             '${_text(draftRecord['drafting_team_text'])}',
+            style: TextStyle(fontSize: 13,
+              color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 25),
+        ],
+        Wrap(spacing: gap, runSpacing: 28, children: [
+          for (final honor in honors)
+            SizedBox(width: width, child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(honor.title, style: const TextStyle(
+                  fontWeight: FontWeight.w800, fontSize: 14)),
+                const SizedBox(height: 7),
+                Text('${honor.years.length}x: ${honor.years.join(', ')}',
+                  style: TextStyle(fontSize: 13, height: 1.5,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              ],
+            )),
+        ]),
+      ]);
+    });
   }
 }
 
@@ -1028,6 +1030,8 @@ class _AdvancedMetric {
     this.signed = false,
     this.perGame = false,
     this.heatMetric,
+    this.children = const [],
+    this.key = '',
   });
   final String label;
   final List<String> keys;
@@ -1035,87 +1039,34 @@ class _AdvancedMetric {
   final bool signed;
   final bool perGame;
   final NbaPercentageHeatMetric? heatMetric;
+  final List<String> children;
+  final String key;
 }
 
-const _advancedCategories = <_AdvancedCategory>[
-  _AdvancedCategory(
-    'Shooting & Efficiency',
-    [
-      _AdvancedMetric('PPG', ['pts', 'points'], perGame: true),
-      _AdvancedMetric(
-        'FG%',
-        ['fg_pct', 'field_goal_percentage'],
-        percent: true,
-        heatMetric: NbaPercentageHeatMetric.fieldGoal,
-      ),
-      _AdvancedMetric(
-        '3PM',
-        ['three_pm', 'three_pointers_made', 'fg3m'],
-        perGame: true,
-      ),
-      _AdvancedMetric(
-        '3PA',
-        ['three_pa', 'three_point_attempts', 'fg3a'],
-        perGame: true,
-      ),
-      _AdvancedMetric(
-        '3P%',
-        ['three_pct', 'fg3_pct', 'three_point_percentage'],
-        percent: true,
-        heatMetric: NbaPercentageHeatMetric.threePoint,
-      ),
-      _AdvancedMetric(
-        'FT%',
-        ['ft_pct', 'free_throw_percentage'],
-        percent: true,
-        heatMetric: NbaPercentageHeatMetric.freeThrow,
-      ),
-      _AdvancedMetric('eFG%', ['efg_pct'], percent: true),
-      _AdvancedMetric('TS%', ['ts_pct'], percent: true),
-      _AdvancedMetric('PER', ['per']),
-      _AdvancedMetric('USG%', ['usg_pct'], percent: true),
-    ],
-  ),
-  _AdvancedCategory(
-    'Defense',
-    [
-      _AdvancedMetric('SPG', ['stl', 'steals'], perGame: true),
-      _AdvancedMetric('BPG', ['blk', 'blocks'], perGame: true),
-      _AdvancedMetric(
-        'DFG%',
-        ['dfg_pct', 'd_fg_pct'],
-        percent: true,
-        heatMetric: NbaPercentageHeatMetric.defensiveFieldGoal,
-      ),
-      _AdvancedMetric(
-        'Rim DFG%',
-        ['rim_dfg_pct', 'lt6_dfg_pct'],
-        percent: true,
-        heatMetric: NbaPercentageHeatMetric.rimDefensiveFieldGoal,
-      ),
-      _AdvancedMetric(
-        '3P DFG%',
-        ['three_dfg_pct', 'three_point_dfg_pct'],
-        percent: true,
-        heatMetric: NbaPercentageHeatMetric.threePointDefensiveFieldGoal,
-      ),
-      _AdvancedMetric('DBPM', ['dbpm'], signed: true),
-      _AdvancedMetric('DRtg', ['drtg']),
-    ],
-  ),
-  _AdvancedCategory(
-    'Impact',
-    [
-      _AdvancedMetric('PER', ['per']),
-      _AdvancedMetric('WS', ['ws']),
-      _AdvancedMetric('WS/48', ['ws48']),
-      _AdvancedMetric('OBPM', ['obpm'], signed: true),
-      _AdvancedMetric('DBPM', ['dbpm'], signed: true),
-      _AdvancedMetric('BPM', ['bpm'], signed: true),
-      _AdvancedMetric('VORP', ['vorp']),
-    ],
-  ),
+List<_AdvancedCategory> get _advancedCategories => [
+  for (final family in nbaTerminalStatFamilies)
+    _AdvancedCategory(family.label, [
+      for (final key in family.metrics)
+        if (nbaTerminalMetricByKey[key] case final NbaTerminalMetric metric)
+          _metricFromCatalog(metric, family.expansionOverrides[key] ??
+              metric.children),
+    ]),
 ];
+
+_AdvancedMetric _metricFromCatalog(NbaTerminalMetric metric,
+    List<String> children) => _AdvancedMetric(
+  metric.shortLabel,
+  [
+    ...metric.rawAliases,
+    if (metric.engineKey != null) metric.engineKey!,
+    metric.key,
+  ].toSet().toList(),
+  percent: metric.format == NbaTerminalMetricFormat.percent,
+  signed: metric.format == NbaTerminalMetricFormat.signed,
+  perGame: const {'ppg','rpg','apg','spg','bpg','tpg','mpg'}.contains(metric.key),
+  children: children,
+  key: metric.key,
+);
 
 DataCell _heatDataCell(
   Map<String, dynamic> row,
