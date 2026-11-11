@@ -104,6 +104,11 @@ fi
 "$PYTHON_BIN" "$ROOT/tools/enrich_static_nba_pdf_early_totals.py" \
   --output "$ROOT/web/data/nba_static"
 
+# Build every player's dossier from the final enriched season records that
+# Stats and Advanced Stats display. Run AFTER all local enrichment steps.
+"$PYTHON_BIN" "$ROOT/tools/sync_player_profile_stats.py" \
+  --output "$ROOT/web/data/nba_static"
+
 # Contracts/cap/draft records are also published as static read-only website
 # files when the local mutable registry exists. Missing registry data produces
 # explicit empty static files rather than a runtime API dependency.
