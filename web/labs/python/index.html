@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Arcside · Python Lab</title>
+<style>
+:root{color-scheme:dark;--bg:#101319;--panel:#171b22;--surface:#1e232c;--line:#303744;--text:#e1e5ef;--muted:#939bab;--accent:#a7b6ff;--blue:#6b96ff;--green:#58c79e}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.45 Inter,system-ui,Arial,sans-serif}button,input,select,textarea{font:inherit}button{color:var(--text);cursor:pointer;border:1px solid var(--line);background:var(--surface);padding:7px 11px;border-radius:6px}button:hover{border-color:var(--accent)}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:#576fcd;border-color:#576fcd;color:white}button.accent{background:#284b45;border-color:#31705e}input,select{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:5px;padding:7px}.app{display:grid;grid-template-rows:42px 42px 1fr 25px;height:100vh;min-height:400px}.menubar,.toolbar,.status{display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid var(--line)}.menubar{background:#151922}.menubar strong{font-size:15px;letter-spacing:-.3px}.menubar .spacer,.toolbar .spacer{flex:1}.label{color:var(--muted);font-size:11px}.toolbar{background:#191e27}.status{background:#303f74;border:none;font-size:11px;color:#e6ecff;gap:16px}.split{display:grid;grid-template-columns:230px minmax(240px,1fr) 235px;min-height:0}.sidebar{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:auto}.sidehead,.panelhead{height:36px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--line);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.6px}.sidehead button{padding:2px 6px}.files{flex:1;overflow:auto;padding:9px 0}.file{padding:9px 12px;display:flex;gap:8px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.file:hover{background:#232a35}.file.active{background:#2b3655;color:#c6d0ff}.file span{overflow:hidden;text-overflow:ellipsis}.sidefoot{padding:12px;color:var(--muted);font-size:11px;border-top:1px solid var(--line)}.work{display:grid;grid-template-rows:38px minmax(180px,1fr) minmax(160px,32%);min-height:0;min-width:0}.tabs{display:flex;align-items:center;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);background:#161b23}.tab{padding:9px 13px;border-right:1px solid #252b35;white-space:nowrap;cursor:pointer;display:flex;gap:10px;align-items:center}.tab.active{background:#202734;color:var(--accent);box-shadow:inset 0 2px var(--accent)}.tab b{font-size:11px;color:var(--muted)}#editor{height:100%;width:100%;min-height:0}#plain{width:100%;height:100%;display:none;background:#111820;color:#e7ecf7;resize:none;border:none;outline:none;padding:19px;font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace}.bottom{border-top:1px solid var(--line);display:grid;grid-template-rows:35px minmax(0,1fr);min-height:0}.bottomhead{display:flex;align-items:center;padding:0 14px;gap:13px;border-bottom:1px solid var(--line)}.bottomhead .active{color:var(--accent)}#output{white-space:pre-wrap;overflow:auto;padding:12px 15px;font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;color:#d9dfed;margin:0}.stderr{color:#f7a5a5}.result{color:#8cebb3}.aside{border-left:1px solid var(--line);min-height:0;overflow:auto}.section{padding:12px;border-bottom:1px solid var(--line)}.section p{margin:0 0 10px;color:var(--muted);font-size:11px}.section button{margin:3px}.inspector{white-space:pre-wrap;font:11px/1.5 ui-monospace,monospace;color:#c1d5e7;max-height:240px;overflow:auto}.plots{display:flex;gap:10px;flex-wrap:wrap;padding:9px}.plots img{max-width:100%;background:white}.hide{display:none!important}.section strong{font-size:12px}.notice{color:var(--accent)}.traceitem{display:block;width:100%;margin:4px 0;text-align:left}.mini{font-size:11px}.footbtn{border:none;background:transparent;padding:4px 6px}.kbd{border:1px solid #4b5260;border-radius:4px;padding:1px 5px;color:var(--muted)}@media(max-width:1100px){.split{grid-template-columns:170px minmax(250px,1fr)}.aside{display:none}}@media(max-width:670px){.split{grid-template-columns:minmax(0,1fr)}.sidebar{display:none}.menubar .optional,.toolbar .optional{display:none}}
+</style>
+<script defer src="https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs/loader.js"></script>
+<script defer src="./app.js"></script>
+</head>
+<body><div class="app">
+<header class="menubar">
+<strong>Arcside</strong><span class="label">/ PYTHON LAB</span><span class="spacer"></span>
+<span class="label optional">Local-first · browser Python · no AI / API billing</span>
+<button id="download">Export project</button><button id="import">Import project</button>
+<input id="importInput" type="file" accept=".json,.py,.csv,.txt" hidden multiple>
+</header>
+<div class="toolbar">
+<button id="newfile">+ File</button><button id="savefile">↓ Download file</button>
+<span class="spacer"></span>
+<button id="check">Check syntax</button><button id="debug">Trace</button>
+<button id="run" class="primary">▶ Run</button>
+<button id="stop" class="accent" disabled>■ Stop / Reset</button>
+</div>
+<div class="split">
+<nav class="sidebar">
+<div class="sidehead">Explorer <span style="flex:1"></span><button id="rename" title="Rename file">✎</button><button id="delete" title="Delete file">×</button></div>
+<div class="files" id="fileList"></div>
+<div class="sidefoot">Project files live in this browser. Download a project JSON for a durable backup.</div>
+</nav>
+<main class="work">
+<div class="tabs" id="tabs"></div>
+<div style="min-height:0;position:relative"><div id="editor"></div><textarea id="plain" spellcheck="false"></textarea></div>
+<section class="bottom">
+<div class="bottomhead"><span class="active">OUTPUT / TERMINAL</span><span id="elapsed" class="label"></span><span style="flex:1"></span><button id="clear" class="footbtn">Clear</button></div>
+<div style="overflow:auto"><pre id="output">Python environment is loading. Your code runs in an isolated browser worker. No Arcside backend access.</pre><div class="plots" id="plots"></div></div>
+</section>
+</main>
+<aside class="aside">
+<div class="panelhead">Data science toolkit</div>
+<div class="section">
+<strong>Python runtime</strong><p id="runtime">Booting Pyodide…</p>
+<button id="science">Load NumPy / pandas / SciPy / Matplotlib / scikit-learn</button>
+</div>
+<div class="section"><strong>Variable explorer</strong><p>Visible globals after each run</p><div class="inspector" id="vars">—</div></div>
+<div class="section"><strong>Breakpoints & trace</strong><p>Trace mode records line/locals snapshots for inspection. Live step-into debugging requires a future local DAP kernel.</p>
+<label class="mini">Line: <input id="breakpoint" type="number" min="1" placeholder="e.g. 4" style="width:100px"></label>
+<button id="addBreakpoint">Add</button><div id="breakpoints" class="mini"></div><div id="traceResults" class="inspector"></div></div>
+<div class="section"><strong>Runtime notes</strong><p>Python executes entirely in WebAssembly in your browser. Use Stop to terminate a runaway worker. Native Python environments, GPU training and sockets are not available in this browser build. Packages must be compatible with Pyodide.</p></div>
+</aside>
+</div>
+<footer class="status"><span id="status">Loading…</span><span id="position"></span><span style="flex:1"></span><span>Python 3 · Pyodide</span><span class="optional">Ctrl/Cmd + Enter: Run</span></footer>
+</div></body></html>

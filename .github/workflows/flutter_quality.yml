@@ -26,6 +26,18 @@ jobs:
       - name: Audit static-only runtime network policy
         run: python tools/audit_no_runtime_remote_apis.py
 
+      - name: Validate standalone Python Lab and Excel Workspace
+        run: |
+          node --version
+          node --check web/labs/python/app.js
+          node --check web/labs/python/worker.js
+          node --check web/labs/excel/app.mjs
+          node --check web/labs/excel/engine.mjs
+          node --test test/arcside_spreadsheet_engine.test.mjs
+
+      - name: Test complete player profile season snapshot parity
+        run: python backend/scripts/player_profile_stats_contract_test.py
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
