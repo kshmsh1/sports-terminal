@@ -447,6 +447,9 @@ def _write_json(path: Path, payload: Any) -> None:
 def sync_enriched_player_dossiers(
     output: Path,
     enriched_seasons: dict[tuple[str, str, str], dict[str, Any]],
+    *,
+    keys_field: str = "nba_com_enriched_keys",
+    extra_fields: tuple[str, ...] = ("nba_com", "nba_com_sources"),
 ) -> int:
     """Copy *published* league enrichment into the matching player dossiers.
 
@@ -517,7 +520,7 @@ def sync_enriched_player_dossiers(
                 is_aggregate = team in {"TOT", "MULTI", "ALL", "2TM", "3TM", "4TM"}
                 if multiple and not (is_aggregate or team == source_team):
                     continue
-                keys = source.get("nba_com_enriched_keys")
+                keys = source.get(keys_field)
                 if not isinstance(keys, list):
                     continue
                 for key in keys:
@@ -525,11 +528,10 @@ def sync_enriched_player_dossiers(
                         continue
                     row[key] = source[key]
                     changed = True
-                if isinstance(source.get("nba_com"), dict):
-                    row["nba_com"] = source["nba_com"]
-                if isinstance(source.get("nba_com_sources"), list):
-                    row["nba_com_sources"] = source["nba_com_sources"]
-                row["nba_com_enriched_keys"] = list(keys)
+                for nested_key in extra_fields:
+                    if isinstance(source.get(nested_key), (dict, list)):
+                        row[nested_key] = source[nested_key]
+                row[keys_field] = list(keys)
         if changed:
             dossier["nba_com_profile_enriched"] = True
             _write_json(path, dossier)
