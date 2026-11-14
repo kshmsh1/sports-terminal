@@ -76,8 +76,17 @@ class ArcsidePlayerProfileStats {
   double? value(NbaStatsRow row, String key) {
     final metric = nbaTerminalMetricByKey[key];
     final raw = row.raw;
-    if (metric != null && metric.engineKey != null &&
-        metric.rawAliases.isEmpty && !_hasSource(raw, key)) {
+    // Only guard counting metrics against the stats engine's missing-input
+    // defaults. Ratios/derived metrics may legitimately be calculated from
+    // published component fields even without an explicit source ratio.
+    const guardedCounts = {
+      'gp','mpg','ppg','rpg','apg','spg','bpg','tpg','pf',
+      'oreb','dreb','fgm','fga','three_pm','three_pa','ftm','fta',
+      'bpm','obpm','dbpm',
+    };
+    if (guardedCounts.contains(key) &&
+        metric != null && metric.rawAliases.isEmpty &&
+        !_hasSource(raw, key)) {
       return null;
     }
     final number = metric == null
