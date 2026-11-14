@@ -69,7 +69,12 @@ class SheetModel(QAbstractTableModel):
             return self.workbook.raw(self.sheet, key)
         if role == Qt.DisplayRole:
             value = self.workbook.value(self.sheet, key)
-            if isinstance(value, float):
+            style = self.workbook.styles.get((self.sheet, key), {})
+            number_format = style.get("format", "General")
+            if isinstance(value, (float, int)) and not isinstance(value, bool):
+                if number_format == "Number": return f"{value:,.2f}"
+                if number_format == "Percent": return f"{value:.2%}"
+                if number_format == "Currency": return f"${value:,.2f}"
                 return f"{value:,.10g}"
             return str(value) if value is not None else ""
         if role == Qt.TextAlignmentRole:
@@ -204,6 +209,7 @@ class SpreadsheetWindow(QMainWindow):
             ("Paste", self._paste, "Ctrl+V"),
             ("Clear", self._clear, "Delete"),
             ("Bold", self._bold, "Ctrl+B"),
+            ("Format Table", self._table_style, None),
             ("Chart", self._chart, None),
         ]:
             toolbar.addAction(self._action(label, callback, shortcut))
@@ -358,6 +364,22 @@ class SpreadsheetWindow(QMainWindow):
         for index in self._selected_cells():
             key = (self.model.sheet, self.model._key(index))
             self.book.styles.setdefault(key, {})["format"] = value
+        self.model.refresh()
+
+    def _table_style(self):
+        indexes = self._selected_cells()
+        if not indexes: return
+        top = min(index.row() for index in indexes)
+        for index in indexes:
+            key = (self.model.sheet, self.model._key(index))
+            style = self.book.styles.setdefault(key, {})
+            if index.row() == top:
+                style["bold"] = True
+                style["background"] = "#107c41"
+                style["color"] = "#ffffff"
+            else:
+                style["background"] = "#e9f4ee" if (index.row()-top) % 2 else "#ffffff"
+                style["color"] = "#202830"
         self.model.refresh()
 
     def _chart(self):
