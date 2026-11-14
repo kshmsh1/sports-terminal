@@ -15,7 +15,7 @@ import re
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QPoint, QRect, Qt, QProcess, QSize, Signal
+from PySide6.QtCore import QPoint, QRect, Qt, QProcess, QSize, Signal, QTimer, QStringListModel
 from PySide6.QtGui import (
     QAction, QColor, QFont, QKeySequence, QPainter,
     QSyntaxHighlighter, QTextCharFormat, QTextCursor,
@@ -24,8 +24,14 @@ from PySide6.QtWidgets import (
     QApplication, QComboBox, QCompleter, QDockWidget, QFileDialog,
     QFileSystemModel, QHBoxLayout, QInputDialog, QLabel, QLineEdit,
     QMainWindow, QMessageBox, QPlainTextEdit, QSplitter, QTabWidget,
+    QListWidget, QListWidgetItem, QTextEdit,
     QToolBar, QTreeView, QVBoxLayout, QWidget,
 )
+
+try:
+    from .lsp_client import PylspClient
+except ImportError:
+    from lsp_client import PylspClient
 
 
 class PythonHighlighter(QSyntaxHighlighter):
@@ -79,11 +85,13 @@ class Gutter(QWidget):
 
 class CodeEditor(QPlainTextEdit):
     breakpointsChanged = Signal()
+    completionRequested = Signal(int, int)
 
     def __init__(self, filename: Path | None = None):
         super().__init__()
         self.filename = filename
         self.breakpoints: set[int] = set()
+        self.diagnostics: list[dict] = []
         self.gutter = Gutter(self)
         font = QFont("JetBrains Mono", 12)
         if not QFont(font).exactMatch(): font = QFont("Menlo", 12)
@@ -150,13 +158,40 @@ class CodeEditor(QPlainTextEdit):
             block = block.next()
 
     def _highlight_line(self):
-        from PySide6.QtWidgets import QTextEdit
         selection = QTextEdit.ExtraSelection()
         selection.format.setBackground(QColor("#202e3a"))
         selection.format.setProperty(QTextCharFormat.FullWidthSelection, True)
         selection.cursor = self.textCursor()
         selection.cursor.clearSelection()
-        self.setExtraSelections([selection])
+        all_selections = [selection]
+        for diagnostic in self.diagnostics[:150]:
+            index = int(diagnostic.get("range", {}).get("start", {}).get("line", -1))
+            block = self.document().findBlockByNumber(index)
+            if not block.isValid():
+                continue
+            issue = QTextEdit.ExtraSelection()
+            issue.cursor = QTextCursor(block)
+            issue.cursor.select(QTextCursor.LineUnderCursor)
+            issue.format.setUnderlineStyle(QTextCharFormat.WaveUnderline)
+            issue.format.setUnderlineColor(QColor("#ec7279"))
+            all_selections.append(issue)
+        self.setExtraSelections(all_selections)
+
+    def set_diagnostics(self, diagnostics: list[dict]):
+        self.diagnostics = diagnostics
+        self._highlight_line()
+
+    def offer_lsp_completions(self, labels: list[str]):
+        if not labels:
+            return
+        self.completer.setModel(QStringListModel(sorted(set(labels)), self))
+        cursor = self.textCursor()
+        cursor.select(QTextCursor.WordUnderCursor)
+        prefix = cursor.selectedText()
+        self.completer.setCompletionPrefix(prefix)
+        rect = self.cursorRect()
+        rect.setWidth(260)
+        self.completer.complete(rect)
 
     def toggle_breakpoint(self, line: int):
         if line in self.breakpoints: self.breakpoints.remove(line)
@@ -201,6 +236,9 @@ class CodeEditor(QPlainTextEdit):
         rect = self.cursorRect()
         rect.setWidth(240)
         self.completer.complete(rect)
+        if self.filename is not None:
+            self.completionRequested.emit(cursor.blockNumber(),
+                                          cursor.positionInBlock())
 
     def find_text(self, text: str):
         if not text: return
@@ -217,6 +255,7 @@ class PythonLabWindow(QMainWindow):
         self.setWindowTitle("Arcside · Python Lab")
         self.resize(1550, 920)
         self.project = Path.cwd()
+        self.lsp = PylspClient(self)
         self.process: QProcess | None = None
         self.mode = ""
         self._output_lines = 0
@@ -263,7 +302,18 @@ class PythonLabWindow(QMainWindow):
         self.resizeDocks([dock], [280], Qt.Vertical)
 
         self._toolbar()
+        self.problems = QListWidget()
+        self.problems.itemDoubleClicked.connect(self._jump_diagnostic)
+        problems_dock = QDockWidget("PROBLEMS · LSP DIAGNOSTICS", self)
+        problems_dock.setWidget(self.problems)
+        self.addDockWidget(Qt.RightDockWidgetArea, problems_dock)
+        self.lsp.ready.connect(self._lsp_ready)
+        self.lsp.completions.connect(self._lsp_completions)
+        self.lsp.diagnostics.connect(self._lsp_diagnostics)
+        self.lsp.notice.connect(lambda notice: self._append(notice + "\\n"))
+        self.environment.currentTextChanged.connect(self._restart_lsp)
         self._scan_interpreters()
+        self._restart_lsp()
         self.statusBar().showMessage("Python Lab · local execution · choose a project to begin")
         self.setStyleSheet("""
             QMainWindow, QDockWidget { background: #0f141b; color: #dce5ef; }
@@ -326,6 +376,7 @@ class PythonLabWindow(QMainWindow):
             "print('Mean:', values.mean())\n"
             "print(pd.DataFrame({'value': values}).describe())\n")
         self.tabs.addTab(editor, "Untitled")
+        self._attach_lsp(editor)
         self.tabs.setCurrentWidget(editor)
 
     def _open_project(self):
@@ -334,6 +385,7 @@ class PythonLabWindow(QMainWindow):
         self.project = Path(folder)
         self.tree.setRootIndex(self.model.index(str(self.project)))
         self._scan_interpreters()
+        self._restart_lsp()
         self.statusBar().showMessage(f"Project: {self.project}")
 
     def _open_tree_file(self, index):
@@ -362,6 +414,8 @@ class PythonLabWindow(QMainWindow):
         editor.document().modificationChanged.connect(
             lambda _: self._update_tab_label(editor))
         self.tabs.addTab(editor, path.name)
+        self._attach_lsp(editor)
+        self.lsp.open_document(path, code)
         self.tabs.setCurrentWidget(editor)
 
     def _update_tab_label(self, editor: CodeEditor):
@@ -386,6 +440,7 @@ class PythonLabWindow(QMainWindow):
         try:
             editor.filename.write_text(editor.toPlainText(), encoding="utf-8")
             editor.document().setModified(False)
+            self.lsp.open_document(editor.filename, editor.toPlainText())
             self._update_tab_label(editor)
             self.statusBar().showMessage(f"Saved {editor.filename}")
             return True
@@ -399,12 +454,15 @@ class PythonLabWindow(QMainWindow):
             decision = QMessageBox.question(self, "Unsaved file",
                 f"Close {self.tabs.tabText(index)} without saving?")
             if decision != QMessageBox.Yes: return
+        if isinstance(editor, CodeEditor) and editor.filename is not None:
+            self.lsp.close_document(editor.filename)
         self.tabs.removeTab(index)
         editor.deleteLater()
         if self.tabs.count() == 0: self._new_file()
 
     def _scan_interpreters(self):
         previous = self.environment.currentText()
+        self.environment.blockSignals(True)
         self.environment.clear()
         interpreters = [sys.executable]
         for folder in [self.project / ".venv", self.project / "venv",
@@ -415,6 +473,64 @@ class PythonLabWindow(QMainWindow):
         for path in dict.fromkeys(interpreters):
             self.environment.addItem(path)
         if previous in interpreters: self.environment.setCurrentText(previous)
+        self.environment.blockSignals(False)
+
+    def _restart_lsp(self, *_):
+        interpreter = self._interpreter()
+        if interpreter:
+            self.lsp.start(interpreter, self.project)
+
+    def _attach_lsp(self, editor: CodeEditor):
+        timer = QTimer(editor)
+        timer.setInterval(450)
+        timer.setSingleShot(True)
+        timer.timeout.connect(lambda: editor.filename is not None and
+            self.lsp.change_document(editor.filename, editor.toPlainText()))
+        editor.textChanged.connect(timer.start)
+        editor.completionRequested.connect(lambda line, col:
+            editor.filename is not None and
+            self.lsp.request_completion(editor.filename, line, col))
+
+    def _lsp_ready(self):
+        for index in range(self.tabs.count()):
+            editor = self.tabs.widget(index)
+            if isinstance(editor, CodeEditor) and editor.filename is not None:
+                self.lsp.open_document(editor.filename, editor.toPlainText())
+
+    def _lsp_completions(self, labels: list):
+        editor = self._current()
+        if editor is not None:
+            editor.offer_lsp_completions(labels)
+
+    def _lsp_diagnostics(self, uri: str, records: list):
+        for index in range(self.tabs.count()):
+            editor = self.tabs.widget(index)
+            if not isinstance(editor, CodeEditor) or editor.filename is None:
+                continue
+            if editor.filename.resolve().as_uri() == uri:
+                editor.set_diagnostics(records)
+        self.problems.clear()
+        for diagnostic in records:
+            line = int(diagnostic.get("range", {}).get("start", {}).get("line", 0))
+            message = str(diagnostic.get("message", "Unknown diagnostic"))
+            item = QListWidgetItem(f"Ln {line + 1} · {message}")
+            item.setData(Qt.UserRole, (uri, line))
+            self.problems.addItem(item)
+
+    def _jump_diagnostic(self, item: QListWidgetItem):
+        data = item.data(Qt.UserRole)
+        if not data:
+            return
+        uri, line = data
+        from urllib.parse import urlparse, unquote
+        path = Path(unquote(urlparse(uri).path))
+        if path.is_file():
+            self._open_file(path)
+            editor = self._current()
+            if editor is not None:
+                cursor = QTextCursor(editor.document().findBlockByNumber(line))
+                editor.setTextCursor(cursor)
+                editor.setFocus()
 
     def _interpreter(self) -> str:
         return self.environment.currentText() or sys.executable
@@ -531,6 +647,7 @@ class PythonLabWindow(QMainWindow):
                 f"Col {pos.positionInBlock()+1} · Python: {self._interpreter()}")
 
     def closeEvent(self, event):
+        self.lsp.stop()
         self._stop()
         super().closeEvent(event)
 
