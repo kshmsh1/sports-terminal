@@ -54,7 +54,7 @@ class _NbaPlayerProfileMetricTableState extends State<NbaPlayerProfileMetricTabl
   double _width(String key) {
     final label = nbaTerminalMetricByKey[key]?.shortLabel ?? key.toUpperCase();
     final extra = _children(key).isEmpty ? 0.0 : 24.0;
-    return (label.length * 7 + 25 + extra).clamp(62.0, 175.0);
+    return (label.length * 7 + 25 + extra).clamp(62.0, 175.0).toDouble();
   }
 
   NbaPercentageHeatMetric? _heat(String key) => switch (key) {
