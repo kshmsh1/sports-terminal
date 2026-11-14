@@ -9,7 +9,7 @@ from typing import Any, Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_RAW_ROOTS = (ROOT / "raw/nba_com_stats", ROOT.parent / "raw/nba_com_stats")
-ENRICHMENT_CONTRACT = "sports-terminal-nba-com-static-enrichment-v2"
+ENRICHMENT_CONTRACT = "sports-terminal-nba-com-static-enrichment-v3"
 
 PLAYER_SEASON_SURFACES = (
     "players_base",
@@ -443,6 +443,102 @@ def _write_json(path: Path, payload: Any) -> None:
     temp.replace(path)
 
 
+
+def sync_enriched_player_dossiers(
+    output: Path,
+    enriched_seasons: dict[tuple[str, str, str], dict[str, Any]],
+    *,
+    keys_field: str = "nba_com_enriched_keys",
+    extra_fields: tuple[str, ...] = ("nba_com", "nba_com_sources"),
+) -> int:
+    """Copy *published* league enrichment into the matching player dossiers.
+
+    Player profiles otherwise load the original warehouse-only player JSON,
+    while Stats/Advanced Stats load NBA.com-enhanced season snapshots. Join by
+    canonical player key + normalized season + segment; only copy confirmed
+    enriched keys and provenance. Do not assign a traded player's combined
+    2TM row to an unrelated team-specific stint.
+    """
+    index = output / "players/index.json"
+    if not index.is_file() or not enriched_seasons:
+        return 0
+    entries = json.loads(index.read_text(encoding="utf-8"))
+    if not isinstance(entries, list):
+        return 0
+    by_player: dict[str, dict[tuple[str, str], dict[str, Any]]] = {}
+    for (player_key, season, segment), row in enriched_seasons.items():
+        by_player.setdefault(player_key, {})[(season, segment)] = row
+
+    touched = 0
+    for info in entries:
+        if not isinstance(info, dict):
+            continue
+        player_key = str(info.get("player_key") or "")
+        updates = by_player.get(player_key)
+        if not updates:
+            continue
+        file = str(info.get("file") or "")
+        if not file or Path(file).is_absolute() or ".." in Path(file).parts:
+            continue
+        path = output / file
+        if not path.is_file():
+            continue
+        dossier = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(dossier, dict):
+            continue
+
+        # A player dossier can expose both aggregate TOT/2TM and individual
+        # traded-team rows. Only a matching aggregate receives aggregate
+        # NBA.com measures. Single-team seasons map directly.
+        changed = False
+        for field, segment in (
+            ("regular_seasons", "regular"),
+            ("playoff_seasons", "playoffs"),
+            ("seasons", None),
+        ):
+            rows = dossier.get(field)
+            if not isinstance(rows, list):
+                continue
+            season_counts: dict[tuple[str, str], int] = {}
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                key = (str(row.get("season_id") or ""),
+                       segment or str(row.get("season_type") or ""))
+                season_counts[key] = season_counts.get(key, 0) + 1
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                year = str(row.get("season_id") or "")
+                kind = segment or str(row.get("season_type") or "")
+                source = updates.get((year, kind))
+                if source is None:
+                    continue
+                team = str(row.get("team_abbreviation") or "").upper()
+                source_team = str(source.get("team_ids") or "").upper()
+                multiple = season_counts.get((year, kind), 0) > 1
+                is_aggregate = team in {"TOT", "MULTI", "ALL", "2TM", "3TM", "4TM"}
+                if multiple and not (is_aggregate or team == source_team):
+                    continue
+                keys = source.get(keys_field)
+                if not isinstance(keys, list):
+                    continue
+                for key in keys:
+                    if not isinstance(key, str) or key not in source:
+                        continue
+                    row[key] = source[key]
+                    changed = True
+                for nested_key in extra_fields:
+                    if isinstance(source.get(nested_key), (dict, list)):
+                        row[nested_key] = source[nested_key]
+                row[keys_field] = list(keys)
+        if changed:
+            dossier["nba_com_profile_enriched"] = True
+            _write_json(path, dossier)
+            touched += 1
+    return touched
+
+
 def _print_no_capture_warning(fingerprint: dict[str, Any]) -> None:
     roots = fingerprint.get("roots") or [str(path.resolve()) for path in DEFAULT_RAW_ROOTS]
     print("NBA.com static enrichment has no local normalized captures to materialize.")
@@ -461,7 +557,7 @@ def enrich_static_corpus(output: Path, *, raw_roots: Iterable[Path] | None = Non
     fingerprint = enrichment_fingerprint(roots)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     previous = manifest.get("nba_com_enrichment") if isinstance(manifest, dict) else None
-    if not force and isinstance(previous, dict) and previous.get("fingerprint") == fingerprint:
+    if not force and isinstance(previous, dict) and previous.get("contract") == ENRICHMENT_CONTRACT and previous.get("fingerprint") == fingerprint:
         if int(fingerprint.get("normalized_file_count") or 0) == 0:
             _print_no_capture_warning(fingerprint)
         else:
@@ -470,6 +566,7 @@ def enrich_static_corpus(output: Path, *, raw_roots: Iterable[Path] | None = Non
     season_files = sorted((output / "seasons").glob("*/regular.json")) + sorted((output / "seasons").glob("*/playoffs.json"))
     enriched_files = 0
     enriched_players = 0
+    dossier_updates: dict[tuple[str, str, str], dict[str, Any]] = {}
     matched_rows = 0
     unmatched_rows = 0
     surface_counts: dict[str, int] = {}
@@ -496,7 +593,14 @@ def enrich_static_corpus(output: Path, *, raw_roots: Iterable[Path] | None = Non
                     if isinstance(item, dict) and item.get("surface"):
                         key = str(item["surface"])
                         surface_counts[key] = surface_counts.get(key, 0) + 1
+        for row in payload.get("player_season_totals", []):
+            if not isinstance(row, dict) or not row.get("nba_com_enriched_keys"):
+                continue
+            player_id = str(row.get("player_id") or "")
+            if player_id:
+                dossier_updates[(player_id, season, season_type)] = row
         _write_json(path, payload)
+    dossiers_enriched = sync_enriched_player_dossiers(output, dossier_updates)
     summary = {
         "contract": ENRICHMENT_CONTRACT,
         "fingerprint": fingerprint,
@@ -504,6 +608,7 @@ def enrich_static_corpus(output: Path, *, raw_roots: Iterable[Path] | None = Non
         "season_files_scanned": len(season_files),
         "season_files_enriched": enriched_files,
         "enriched_player_rows": enriched_players,
+        "enriched_player_dossiers": dossiers_enriched,
         "matched_source_rows": matched_rows,
         "unmatched_source_rows": unmatched_rows,
         "surface_season_files": surface_counts,

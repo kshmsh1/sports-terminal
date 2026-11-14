@@ -1,0 +1,22 @@
+name: Arcside Desktop Studio Quality
+on:
+  push:
+    paths:
+      - 'desktop/arcside_studio/**'
+      - '.github/workflows/desktop_studio_quality.yml'
+  pull_request:
+    paths:
+      - 'desktop/arcside_studio/**'
+      - '.github/workflows/desktop_studio_quality.yml'
+jobs:
+  core-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile Python IDE, spreadsheet UI and formula engine
+        run: python -m compileall -q desktop/arcside_studio
+      - name: Test spreadsheet evaluation and project execution contracts
+        run: python -m unittest discover -s desktop/arcside_studio -p 'test_*.py' -v

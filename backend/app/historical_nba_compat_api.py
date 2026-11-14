@@ -29,7 +29,25 @@ def _season_filter_sql(alias: str, season_type: str) -> tuple[str, list[Any]]:
 
 
 def _player_seed_row(row: dict[str, Any]) -> dict[str, Any]:
+    # Stats, Advanced Stats and player profiles must see the same canonical
+    # numeric source fields. Earlier snapshots exported a limited whitelist,
+    # silently dropping provider-native Advanced Stats columns that were
+    # available in canon_fact_player_season and the player dossier.
+    # Keep scalar numeric fields only (never warehouse provenance_json or
+    # source blobs) and retain the established public aliases below.
+    canonical_numeric = {
+        key: value
+        for key, value in row.items()
+        if isinstance(value, (int, float)) and not isinstance(value, bool)
+    }
+    bio_text = {
+        key: row[key]
+        for key in ("bio_college", "bio_country", "bio_height_display")
+        if isinstance(row.get(key), str)
+    }
     return {
+        **canonical_numeric,
+        **bio_text,
         "player_id": row.get("player_key"),
         "id": row.get("player_key"),
         "player_label": row.get("player_name"),

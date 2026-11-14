@@ -1,0 +1,12 @@
+# Local desktop development tools; none are paid APIs.
+PySide6>=6.7,<7
+numpy>=2.0
+pandas>=2.2
+matplotlib>=3.9
+scikit-learn>=1.5
+scipy>=1.14
+openpyxl>=3.1
+pytest>=8.0
+# Optional language-server and debugging enhancements
+python-lsp-server>=1.12
+debugpy>=1.8

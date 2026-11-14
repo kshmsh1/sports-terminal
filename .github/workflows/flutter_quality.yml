@@ -57,6 +57,9 @@ jobs:
       - name: Test NBA.com historical capture and static materialization contract
         run: python backend/scripts/nba_com_historical_collection_contract_test.py
 
+      - name: Verify player dossier and season shard NBA.com metric parity
+        run: python backend/scripts/nba_com_player_dossier_parity_contract_test.py
+
       - name: Retain NBA API coverage report
         uses: actions/upload-artifact@v4
         with:

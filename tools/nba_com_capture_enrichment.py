@@ -11,7 +11,7 @@ from typing import Any, Iterable
 ROOT = Path(__file__).resolve().parents[1] if Path(__file__).resolve().parent.name == "tools" else Path.cwd()
 DEFAULT_RAW_ROOTS = (ROOT / "raw/nba_com_stats", ROOT.parent / "raw/nba_com_stats")
 DEFAULT_OUTPUT = ROOT / "web/data/nba_static"
-CONTRACT = "sports-terminal-nba-com-part1-season-enrichment-v2"
+CONTRACT = "sports-terminal-nba-com-part1-season-enrichment-v3"
 
 PLAYER_ID_KEYS = ("PLAYER_ID", "CLOSE_DEF_PERSON_ID", "PERSON_ID", "playerId", "personId")
 PLAYER_NAME_KEYS = ("PLAYER_NAME", "PLAYER", "playerName")
@@ -791,6 +791,7 @@ def enrich_corpus(output: Path, *, roots: list[Path], force: bool = False) -> di
 
     files = sorted((output / "seasons").glob("*/regular.json")) + sorted((output / "seasons").glob("*/playoffs.json"))
     files_enriched = players_enriched = synthesized = matched = unmatched = 0
+    dossier_updates: dict[tuple[str, str, str], dict[str, Any]] = {}
     for path in files:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
@@ -813,7 +814,26 @@ def enrich_corpus(output: Path, *, roots: list[Path], force: bool = False) -> di
         synthesized += int(info.get("synthesized_player_rows") or 0)
         matched += int(info.get("matched_rows") or 0)
         unmatched += int(info.get("unmatched_rows") or 0)
+        for row in payload.get("player_season_totals", []):
+            if not isinstance(row, dict) or not row.get("nba_com_part1_enriched_keys"):
+                continue
+            player_key = str(row.get("player_id") or "")
+            if player_key:
+                dossier_updates[(player_key, season, season_type)] = row
         write_json(path, payload)
+
+    # Both NBA.com capture streams feed the same stat catalog. Carry native
+    # Part 1 measures into per-player history just as the league table sees
+    # them, without manufacturing traded team-stint splits.
+    import sys
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from tools.nba_com_static_enrichment import sync_enriched_player_dossiers
+    dossiers_enriched = sync_enriched_player_dossiers(
+        output, dossier_updates,
+        keys_field="nba_com_part1_enriched_keys",
+        extra_fields=("nba_com_part1", "nba_com_part1_sources"),
+    )
 
     summary = {
         "contract": CONTRACT,
@@ -821,6 +841,7 @@ def enrich_corpus(output: Path, *, roots: list[Path], force: bool = False) -> di
         "season_files_scanned": len(files),
         "season_files_enriched": files_enriched,
         "enriched_player_rows": players_enriched,
+        "enriched_player_dossiers": dossiers_enriched,
         "synthesized_player_rows": synthesized,
         "matched_source_rows": matched,
         "unmatched_source_rows": unmatched,

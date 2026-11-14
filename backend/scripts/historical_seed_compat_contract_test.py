@@ -162,6 +162,15 @@ def main() -> int:
         assert star["assists"] == 620, star
         assert star["team_ids"] == "AAA", star
         assert star["avg_bpm"] == 6.7, star
+        # Native canonical metrics previously disappeared from the API seed,
+        # leaving Stats/Advanced Stats with fewer fields than player dossiers.
+        for key, value in (
+            ("ws", 11), ("ws48", .196), ("obpm", 5.5),
+            ("dbpm", 1.2), ("usg_pct", .30),
+            ("ortg", 123), ("drtg", 112), ("per", 25),
+        ):
+            assert abs(star[key] - value) < 1e-9, (key, star)
+        assert "provenance_json" not in star, star
         assert payload["player_leaders"]["points"][0]["player_label"] == "Example Star", payload["player_leaders"]
         assert payload["player_game_highs"]["p_star"]["max_points"] == 32, payload["player_game_highs"]
         assert payload["manifest"]["warehouseBuild"]["playByPlayEventsNormalized"] == 250000, payload["manifest"]
