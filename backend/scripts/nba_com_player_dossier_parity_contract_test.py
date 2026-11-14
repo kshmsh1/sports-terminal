@@ -81,6 +81,27 @@ def main() -> None:
         assert "usg_pct" not in second["regular_seasons"][2], second
         assert sync_enriched_player_dossiers(root, {}) == 0
 
+        # Part 1 covers source-native hustle, bio and shot-tracking metrics
+        # that are attached to league season shards later in the build.
+        part_one = {
+            ("nba_one", "2025-26", "regular"): {
+                "team_ids": "BOS",
+                "nba_com_part1_enriched_keys": ["contested_shots_pg", "height_inches"],
+                "contested_shots_pg": 5.8,
+                "height_inches": 80,
+                "nba_com_part1_sources": ["players_hustle/default", "players_bio/default"],
+            }
+        }
+        assert sync_enriched_player_dossiers(
+            root, part_one, keys_field="nba_com_part1_enriched_keys",
+            extra_fields=("nba_com_part1", "nba_com_part1_sources"),
+        ) == 1
+        refreshed = json.loads((root / "players/one.json").read_text(encoding="utf-8"))
+        assert refreshed["regular_seasons"][0]["contested_shots_pg"] == 5.8
+        assert refreshed["regular_seasons"][0]["height_inches"] == 80
+        assert refreshed["regular_seasons"][0]["deflections_pg"] == 3.2
+        assert refreshed["regular_seasons"][0]["nba_com_part1_sources"], refreshed
+
     print("Arcside NBA.com player dossier/league parity contract passed.")
 
 
