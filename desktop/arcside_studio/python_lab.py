@@ -484,12 +484,18 @@ class PythonLabWindow(QMainWindow):
         timer = QTimer(editor)
         timer.setInterval(450)
         timer.setSingleShot(True)
-        timer.timeout.connect(lambda: editor.filename is not None and
-            self.lsp.change_document(editor.filename, editor.toPlainText()))
+        timer.timeout.connect(lambda: self._notify_document(editor))
         editor.textChanged.connect(timer.start)
-        editor.completionRequested.connect(lambda line, col:
-            editor.filename is not None and
-            self.lsp.request_completion(editor.filename, line, col))
+        editor.completionRequested.connect(
+            lambda line, col: self._request_completion(editor, line, col))
+
+    def _notify_document(self, editor: CodeEditor):
+        if editor.filename is not None:
+            self.lsp.change_document(editor.filename, editor.toPlainText())
+
+    def _request_completion(self, editor: CodeEditor, line: int, col: int):
+        if editor.filename is not None:
+            self.lsp.request_completion(editor.filename, line, col)
 
     def _lsp_ready(self):
         for index in range(self.tabs.count()):
