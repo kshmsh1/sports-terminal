@@ -9,7 +9,6 @@ import '../services/nba_player_profile_stats.dart';
 import '../services/nba_stats_workstation_engine.dart';
 import '../widgets/nba_player_profile_metric_table.dart';
 import '../services/website_nba_api_service.dart';
-import '../widgets/nba_percentage_heat_cell.dart';
 
 Future<void> openWebsiteNbaPlayerPage(
   BuildContext context, {
@@ -911,7 +910,6 @@ class _AdvancedMetric {
     this.percent = false,
     this.signed = false,
     this.perGame = false,
-    this.heatMetric,
     this.children = const [],
     this.key = '',
   });
@@ -920,7 +918,6 @@ class _AdvancedMetric {
   final bool percent;
   final bool signed;
   final bool perGame;
-  final NbaPercentageHeatMetric? heatMetric;
   final List<String> children;
   final String key;
 }
@@ -965,37 +962,6 @@ _AdvancedMetric _metricFromCatalog(NbaTerminalMetric metric,
   children: children,
   key: metric.key,
 );
-
-DataCell _heatDataCell(
-  Map<String, dynamic> row,
-  List<String> keys,
-  NbaPercentageHeatMetric metric,
-) {
-  final value = _numberAny(row, keys);
-  return DataCell(
-    NbaPercentageHeatCell(
-      metric: metric,
-      value: value,
-      child: Text(_pct(value)),
-    ),
-  );
-}
-
-DataCell _advancedDataCell(
-  Map<String, dynamic> row,
-  _AdvancedMetric metric,
-) {
-  final value = _numberAny(row, metric.keys);
-  final text = _formatAdvanced(row, metric);
-  if (metric.heatMetric == null) return DataCell(Text(text));
-  return DataCell(
-    NbaPercentageHeatCell(
-      metric: metric.heatMetric!,
-      value: value,
-      child: Text(text),
-    ),
-  );
-}
 
 int _uniqueAllStarYears(List<Map<String, dynamic>> rows) => rows
     .map(_honorYear)
@@ -1052,18 +1018,6 @@ String _text(Object? value, [String fallback = '']) {
   return text.isEmpty || text.toLowerCase() == 'null' ? fallback : text;
 }
 
-String _textAny(
-  Map<String, dynamic> row,
-  List<String> keys, {
-  String fallback = '',
-}) {
-  for (final key in keys) {
-    final value = _text(row[key]);
-    if (value.isNotEmpty) return value;
-  }
-  return fallback;
-}
-
 double? _number(Object? value) {
   if (value is num) return value.toDouble();
   return double.tryParse(value?.toString() ?? '');
@@ -1099,14 +1053,6 @@ String _pct(Object? value) {
   if (number == null) return '—';
   return '${(number.abs() <= 1.5 ? number * 100 : number).toStringAsFixed(1)}%';
 }
-String _pctAny(Map<String, dynamic> row, List<String> keys) =>
-    _pct(_numberAny(row, keys));
-String _perGameAny(Map<String, dynamic> row, List<String> keys) {
-  final games = _number(row['games']);
-  final total = _numberAny(row, keys);
-  if (games == null || games <= 0 || total == null) return '—';
-  return (total / games).toStringAsFixed(1);
-}
 String _normalizedPlayerName(String name) => name.toLowerCase()
     .replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
 
@@ -1114,14 +1060,4 @@ String _money(Object? value) {
   final number = _number(value);
   if (number == null) return '—';
   return '\$${number.toStringAsFixed(0).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}';
-}
-String _formatAdvanced(Map<String, dynamic> row, _AdvancedMetric metric) {
-  if (metric.perGame) return _perGameAny(row, metric.keys);
-  final value = _numberAny(row, metric.keys);
-  if (value == null) return '—';
-  if (metric.percent) return _pct(value);
-  if (metric.signed) {
-    return '${value >= 0 ? '+' : ''}${value.toStringAsFixed(1)}';
-  }
-  return value.toStringAsFixed(1);
 }
