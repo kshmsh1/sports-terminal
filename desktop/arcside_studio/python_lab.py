@@ -221,6 +221,7 @@ class PythonLabWindow(QMainWindow):
         self.mode = ""
         self._output_lines = 0
 
+        self.environment = QComboBox()
         self.tabs = QTabWidget()
         self.tabs.setTabsClosable(True)
         self.tabs.tabCloseRequested.connect(self._close_tab)
@@ -261,7 +262,6 @@ class PythonLabWindow(QMainWindow):
         self.addDockWidget(Qt.BottomDockWidgetArea, dock)
         self.resizeDocks([dock], [280], Qt.Vertical)
 
-        self.environment = QComboBox()
         self._toolbar()
         self._scan_interpreters()
         self.statusBar().showMessage("Python Lab · local execution · choose a project to begin")
@@ -433,7 +433,6 @@ class PythonLabWindow(QMainWindow):
         process.setArguments(args)
         process.setWorkingDirectory(str(folder or self.project))
         process.setProcessChannelMode(QProcess.MergedChannels)
-        process.setEnvironment(process.processEnvironment())
         process.readyReadStandardOutput.connect(lambda: self._append(
             bytes(process.readAllStandardOutput()).decode("utf-8", errors="replace")))
         process.finished.connect(lambda exit_code, _:
@@ -463,8 +462,8 @@ class PythonLabWindow(QMainWindow):
                      "or enter 'p variable' in the debug console.\n")
 
     def _debug_input(self, cmd: str):
-        if self.mode != "debug" or self.process is None or
-                self.process.state() != QProcess.Running:
+        if (self.mode != "debug" or self.process is None or
+                self.process.state() != QProcess.Running):
             self._append("\nStart Debug first to send debugger commands.\n")
             return
         self.process.write((cmd + "\n").encode("utf-8"))
