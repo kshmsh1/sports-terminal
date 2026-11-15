@@ -74,6 +74,11 @@ def create_app(settings: Settings) -> FastAPI:
         if not settings.authorized(x_arcside_token):
             raise HTTPException(401, "Invalid or missing Arcside token")
 
+    @app.get("/v1/ready")
+    async def ready():
+        # Startup probe only; discloses no project details or credentials.
+        return {"ready": True}
+
     @app.get("/v1/health", dependencies=[Depends(authorized)])
     async def health():
         return {"ok": True, "version": "0.1.0", "workspace": str(settings.workspace),
