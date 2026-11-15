@@ -115,11 +115,13 @@ test('real Python LSP performs semantic rename in workspace source',async({page}
       await lsp.start();
       lsp.open(file,source);
       const edits=await lsp.semanticRename(model,{lineNumber:1,column:6},'sum_total');
-      return edits.edits.map(edit=>({
-        text:edit.textEdit.text,start:edit.textEdit.range.startLineNumber,
-      }));
+      const programEdits=edits.edits.map(e=>({range:e.textEdit.range,text:e.textEdit.text}));
+      model.applyEdits(programEdits);
+      return {count:programEdits.length,source:model.getValue()};
     }finally{lsp.stop();model.dispose();runtime.disconnect();}
   },token);
-  expect(result.length).toBeGreaterThanOrEqual(2);
-  expect(result.every(edit=>edit.text==='sum_total')).toBe(true);
+  expect(result.count).toBeGreaterThanOrEqual(1);
+  expect(result.source).toContain('sum_total = 17');
+  expect(result.source).toContain('print(sum_total)');
+  expect(result.source).not.toContain('total_for_rename');
 });
