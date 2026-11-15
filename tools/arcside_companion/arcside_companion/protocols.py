@@ -4,7 +4,10 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import pty
+try:
+    import pty
+except ImportError:
+    pty = None  # Windows requires a separate ConPTY implementation.
 import re
 import shutil
 import signal
@@ -41,7 +44,9 @@ async def authenticate(ws: WebSocket, settings: Settings, channel: str) -> bool:
 
 
 def terminate_process(proc: asyncio.subprocess.Process | subprocess.Popen) -> None:
-    if proc.returncode is not None if isinstance(proc, asyncio.subprocess.Process) else proc.poll() is not None:
+    complete = (proc.returncode is not None if isinstance(proc, asyncio.subprocess.Process)
+                else proc.poll() is not None)
+    if complete:
         return
     try:
         if os.name != "nt":
@@ -55,7 +60,7 @@ def terminate_process(proc: asyncio.subprocess.Process | subprocess.Popen) -> No
 async def terminal(ws: WebSocket, settings: Settings) -> None:
     if not await authenticate(ws, settings, "terminal"):
         return
-    if os.name == "nt":
+    if os.name == "nt" or pty is None:
         await ws.send_json({"type": "error", "message": "PTY currently requires macOS or Linux; Windows ConPTY is not yet implemented"})
         await ws.close()
         return
