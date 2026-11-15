@@ -13,7 +13,7 @@ async function kernel(){
     importScripts(PYODIDE_URL+'pyodide.js');
     const py=await loadPyodide({indexURL:PYODIDE_URL});
     py.FS.mkdirTree(ROOT);
-    py.runPython(String.raw'
+    py.runPython(String.raw`
 import io, sys, traceback, json, contextlib, base64, ast, unittest, os
 _ARCSIDE_ROOT="/home/pyodide/arcside"
 if _ARCSIDE_ROOT not in sys.path:
@@ -80,7 +80,7 @@ def _arcside_execute(code,filename,mode,breakpoints):
     result["figures"]=figures
     result["events"]=events
     return json.dumps(result)
-');
+`);
     status('Python kernel ready');
     return py;
   })().catch(err=>{runtimePromise=null;throw err;});
