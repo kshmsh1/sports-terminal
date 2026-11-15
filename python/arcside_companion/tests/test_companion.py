@@ -74,7 +74,7 @@ def test_workspace_file_quota(client):
 
 
 def test_websocket_first_message_auth(client):
-    with client.websocket_connect("/ws/terminal", headers={"Origin": "http://127.0.0.1:8765"}) as ws:
+    with client.websocket_connect("/ws/terminal", headers={"Origin": "http://127.0.0.1:8765", "Host": "127.0.0.1:8766"}) as ws:
         ws.send_json({"type": "authenticate", "token": "test-secret"})
         assert ws.receive_json()["type"] == "authenticated"
 
