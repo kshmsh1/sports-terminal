@@ -8,6 +8,7 @@ OS permissions of the user who launched this companion.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import importlib.util
 import os
 import re
@@ -28,6 +29,12 @@ from .security import Security
 
 class FileSync(BaseModel):
     files: dict[str, str]
+    expected: dict[str, str] = Field(default_factory=dict)
+    force: bool = False
+
+
+class ReadRequest(BaseModel):
+    path: str
 
 
 class Execution(BaseModel):
@@ -139,14 +146,46 @@ def create_app(root: Path, origins: list[str] | None = None, token: str | None =
             raise HTTPException(413, "Project exceeds 8 MB sync quota")
         # Validate all paths first; avoid partially writing malformed projects.
         entries = []
+        conflicts = []
         for name, source in body.files.items():
             if len(source) > 700_000:
                 raise HTTPException(413, f"File too large: {name}")
-            entries.append((validate_file(name), source))
-        for path, source in entries:
+            path = validate_file(name)
+            content = source.encode("utf-8")
+            digest = hashlib.sha256(content).hexdigest()
+            if path.exists():
+                if not path.is_file():
+                    raise HTTPException(409, f"Not a regular file: {name}")
+                old = path.read_bytes()
+                old_hash = hashlib.sha256(old).hexdigest()
+                expected_hash = body.expected.get(name)
+                # Never silently overwrite a pre-existing local file. After
+                # first sync, updates require optimistic concurrency checks.
+                if old != content and not body.force and expected_hash != old_hash:
+                    conflicts.append(name)
+            entries.append((name, path, content, digest))
+        if conflicts:
+            raise HTTPException(409, "Local files changed or pre-exist: "+
+                                ", ".join(conflicts[:20])+
+                                ". Import them first; do not overwrite blindly.")
+        for _, path, content, _ in entries:
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(source, encoding="utf-8")
-        return {"written": len(entries)}
+            path.write_bytes(content)
+        return {"written": len(entries), "hashes": {name:digest for name,_,_,digest in entries}}
+
+    @app.post("/api/read", dependencies=[Depends(authorize)])
+    async def read_file(body: ReadRequest) -> dict:
+        path = validate_file(body.path)
+        if not path.is_file():
+            raise HTTPException(404, "File not found")
+        raw = path.read_bytes()
+        if len(raw) > 700_000:
+            raise HTTPException(413, "File exceeds 700 kB editor limit")
+        try:
+            source = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            raise HTTPException(415, "Binary files cannot be opened as text") from None
+        return {"path": body.path, "source": source, "sha256": hashlib.sha256(raw).hexdigest()}
 
     @app.get("/api/files", dependencies=[Depends(authorize)])
     async def files() -> dict:
@@ -156,7 +195,7 @@ def create_app(root: Path, origins: list[str] | None = None, token: str | None =
                 break
             if any(part in {".git", ".arcside", "__pycache__", "node_modules", ".venv"} for part in p.relative_to(security.root).parts):
                 continue
-            if p.is_file() and p.stat().st_size < 700_000:
+            if p.resolve().is_relative_to(security.root) and p.is_file() and p.stat().st_size < 700_000:
                 found.append(str(p.relative_to(security.root)).replace(os.sep, "/"))
         return {"files": sorted(found)}
 
