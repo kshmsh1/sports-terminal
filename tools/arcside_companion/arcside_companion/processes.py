@@ -9,6 +9,7 @@ import signal
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from collections.abc import Callable
 
 MAX_OUTPUT = 2_000_000
 PACKAGE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*(?:\[[A-Za-z0-9_.,-]+\])?(?:(?:==|!=|>=|<=|~=|>|<)[A-Za-z0-9_.+*-]+)?$")
@@ -26,7 +27,8 @@ class CommandResult:
                 "stderr": self.stderr, "timeout": self.timed_out}
 
 
-async def run_command(args: list[str], root: Path, timeout: int = 90) -> CommandResult:
+async def run_command(args: list[str], root: Path, timeout: int = 90,
+                      on_start: Callable[[asyncio.subprocess.Process], None] | None = None) -> CommandResult:
     """Never invoke a shell to execute user-controlled command arguments."""
     env = {**os.environ, "PYTHONUNBUFFERED": "1", "MPLBACKEND": "Agg"}
     proc = await asyncio.create_subprocess_exec(
@@ -34,6 +36,8 @@ async def run_command(args: list[str], root: Path, timeout: int = 90) -> Command
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         start_new_session=(os.name != "nt"),
     )
+    if on_start:
+        on_start(proc)
     expired = False
     try:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
