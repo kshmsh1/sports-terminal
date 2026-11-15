@@ -213,7 +213,11 @@ class _WebsitePlayerHistoryStatsTableState
   }
 
   double? _value(NbaStatsRow row, String key) {
-    final v = row.value(key) ?? _resolver.value(row, key);
+    final definition = nbaTerminalMetricByKey[key];
+    final v = (definition?.engineKey == null
+            ? _resolver.value(row, key)
+            : row.value(definition!.engineKey!) ?? _resolver.value(row, key)) ??
+        row.value(key);
     return v != null && v.isFinite ? v : null;
   }
 
@@ -222,6 +226,11 @@ class _WebsitePlayerHistoryStatsTableState
     if (metric != null) {
       final value = _value(row, key);
       if (value == null) return '—';
+      if (metric.format == NbaTerminalMetricFormat.feetInches) {
+        final feet = value ~/ 12;
+        final inches = (value % 12).round();
+        return '\$feet′\$inches″';
+      }
       if (metric.format == NbaTerminalMetricFormat.percent) {
         return '${(value * 100).toStringAsFixed(metric.decimals)}%';
       }
