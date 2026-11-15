@@ -22,6 +22,7 @@ import '../screens/website_nba_visualizations_screen.dart';
 import '../screens/website_nba_with_without_screen.dart';
 import '../screens/website_sports_home_screen.dart';
 import '../services/product_local_store.dart';
+import 'arcside_lab_webview.dart';
 import '../services/website_nba_api_service.dart';
 
 const _brandBlue = Color(0xFF6674C7);
@@ -154,17 +155,17 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
           icon: Icons.forum_rounded,
           builder: () => ProductCommunityV2Screen(session: widget.session),
         ),
-        const _Destination(
+        _Destination(
           id: 'python-lab',
           label: 'Python Lab',
           icon: Icons.code_rounded,
-          enabled: false,
+          builder: () => const ArcsideLabWebView(lab: 'python'),
         ),
-        const _Destination(
+        _Destination(
           id: 'excel-workspace',
           label: 'Excel Workspace',
           icon: Icons.table_chart_outlined,
-          enabled: false,
+          builder: () => const ArcsideLabWebView(lab: 'sheets'),
         ),
         _Destination(
           id: 'profile',
@@ -307,7 +308,7 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
                   child: Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        maxWidth: const {'trade', 'stats', 'advanced', 'financials', 'box-scores', 'player-compare', 'team-compare', 'with-without', 'rankings', 'visualizations'}.contains(_selected) ? 1920 : 1420,
+                        maxWidth: const {'trade', 'stats', 'advanced', 'financials', 'box-scores', 'player-compare', 'team-compare', 'with-without', 'rankings', 'visualizations', 'python-lab', 'excel-workspace'}.contains(_selected) ? 1920 : 1420,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -324,7 +325,7 @@ class _CanonicalProductShellState extends State<CanonicalProductShell> {
                             )
                           else
                             selected.builder!(),
-                          if (_selected != 'trade') ...[
+                          if (!const {'trade', 'python-lab', 'excel-workspace'}.contains(_selected)) ...[
                             const SizedBox(height: 56),
                             _SiteFooter(onSelect: _select),
                           ],

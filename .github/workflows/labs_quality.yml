@@ -1,0 +1,61 @@
+name: Arcside standalone labs quality
+
+on:
+  pull_request:
+    paths:
+      - 'web/labs/**'
+      - 'lib/widgets/arcside_lab_*.dart'
+      - 'lib/widgets/canonical_product_shell.dart'
+      - '.github/workflows/labs_quality.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'web/labs/**'
+
+jobs:
+  labs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax-check JavaScript
+        run: |
+          node --check web/labs/sheets/core.mjs
+          node --check web/labs/sheets/formula_functions.mjs
+          node --check web/labs/sheets/references.mjs
+          node --check web/labs/sheets/storage.mjs
+          node --check web/labs/sheets/app.mjs
+          node --check web/labs/sheets/xlsx.mjs
+          node --check web/labs/python/app.mjs
+          node --check web/labs/python/kernel.worker.js
+      - name: Test formula engine
+        run: node --test web/labs/tests/*.test.mjs
+      - name: Validate embedded Python bootstrap
+        run: python3 web/labs/tests/check_kernel_bootstrap.py
+
+  browser:
+    name: Playwright browser workspaces
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned browser harness
+        run: npm install --prefix web/labs --no-package-lock --ignore-scripts
+      - name: Install Chromium and browser dependencies
+        run: cd web/labs && npx playwright install --with-deps chromium
+      - name: Run actual browser interactions
+        run: cd web/labs && npx playwright test -c playwright.config.mjs
+      - name: Upload failed traces and screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arcside-lab-browser-failures
+          path: |
+            web/labs/test-results
+            web/labs/playwright-report
+          retention-days: 7

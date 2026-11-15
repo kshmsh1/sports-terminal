@@ -1,0 +1,13 @@
+*{box-sizing:border-box}html,body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b111a;color:#e7edf6;font-size:13px}
+button,input,select,textarea{font:inherit}button{border:1px solid transparent;background:transparent;color:#c4d2e3;border-radius:6px;cursor:pointer;padding:6px 9px;white-space:nowrap}
+button:hover{background:#2b3b51;color:#fff}button:focus-visible{outline:2px solid #7cabff}
+button.primary{background:#306bca;color:#fff;font-weight:700}button.primary:hover{background:#4180e7}
+button:disabled{opacity:.45;cursor:not-allowed}.spacer{flex:1}.dim{color:#879cb2}.status{color:#83a8cd;font-size:11px}
+.titlebar{height:53px;min-height:53px;display:flex;align-items:center;gap:12px;padding:0 14px;background:#111a26;border-bottom:1px solid #2c3a4d}
+.brand{font-size:15px;display:flex;align-items:center;gap:9px;white-space:nowrap;letter-spacing:-.02em}
+.brandmark{width:29px;height:29px;background:#355db9;color:#fff;border-radius:8px;display:grid;place-items:center;font-weight:900;font-size:17px}
+input,textarea,select{outline-color:#7cabff}
+.modal-backdrop[hidden]{display:none}.modal-backdrop{position:fixed;inset:0;display:grid;place-items:center;background:#000b;z-index:30;padding:18px}
+.modal-card{background:#162436;border:1px solid #40536e;border-radius:12px;padding:18px;box-shadow:0 18px 80px #0008;max-height:90vh;overflow:auto}
+.modal-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #2d4057;padding-bottom:10px;margin-bottom:13px;font-size:16px}
+.modal-card input,.modal-card select{padding:8px;background:#0c1928;color:#edf4fd;border:1px solid #3a4c63;border-radius:5px}

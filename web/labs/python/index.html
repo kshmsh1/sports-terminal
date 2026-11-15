@@ -1,0 +1,68 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arcside Python Lab</title><link rel="stylesheet" href="../shared.css"><link rel="stylesheet" href="./style.css"></head>
+<body><div class="app ide">
+<header class="titlebar">
+ <div class="brand"><span class="brandmark">A</span><span><b>Arcside</b> <span class="dim">/ Python Lab</span></span></div>
+ <input id="projectName" value="Untitled Project" aria-label="Project name" spellcheck="false">
+ <span class="status" id="status">Initializing editor…</span><div class="spacer"></div>
+ <button id="importFile">Import files</button><input id="picker" type="file" multiple accept=".py,.txt,.csv,.json,.md,.toml" hidden>
+ <button id="exportFile">Download .py</button><button id="exportProject">Export project</button><button id="runTests">Test</button><button id="runSelection" title="Execute selected Python lines">Run selection</button>
+ <button id="debug" title="Collect trace (F5)">Debug</button><button class="primary" id="run" title="Run (Ctrl/Cmd+Enter)">▶ Run</button>
+ <button id="stop" title="Terminate kernel (Shift+F5)">■ Stop</button>
+</header>
+<div class="workbench">
+ <aside class="explorer">
+  <div class="pane-title"><b>EXPLORER</b><button id="newFile" title="New file">＋</button></div>
+  <div class="project-head"><span>▾</span><strong id="projectLabel">UNTITLED PROJECT</strong></div>
+  <div id="files" role="tree"></div>
+  <div class="side-actions"><button id="renameFile">Rename</button><button id="deleteFile">Delete</button></div>
+  <div class="explorer-note">Virtual project files are saved in this browser. No repository is connected.</div>
+ </aside>
+ <main class="center-pane">
+  <div id="tabs" role="tablist"></div>
+  <div class="editor-wrap"><div id="editor"></div><textarea id="fallback" spellcheck="false" hidden aria-label="Python source"></textarea></div>
+  <div class="crumbs"><span id="activePath">main.py</span><span class="spacer"></span><span id="cursorPosition">Ln 1, Col 1</span><span>UTF-8</span><span>Python</span></div>
+  <section class="bottom-panel">
+   <div class="panel-tabs">
+    <button data-panel="output" class="active">Output</button><button data-panel="problems">Problems <span id="problemCount">0</span></button>
+    <button data-panel="debugger">Debug trace</button><button data-panel="plots">Plots <span id="plotCount">0</span></button>
+    <button data-panel="variables">Variables <span id="variableCount">0</span></button><button data-panel="console">Python Console</button><button data-panel="terminal">Virtual Terminal</button><div class="spacer"></div>
+    <button id="clearOutput">Clear</button>
+   </div>
+   <div id="output" class="panel-content"><pre id="stdout">Welcome to Arcside Python Lab. Press Run to initialize Python.</pre><pre id="stderr"></pre></div>
+   <div id="problems" class="panel-content" hidden><div id="problemList" class="message">No diagnostics</div></div>
+   <div id="debugger" class="panel-content" hidden>
+     <div class="debug-controls"><button id="prevTrace">← Previous</button><button id="nextTrace">Next →</button><span id="traceInfo">Run Debug to capture execution lines.</span></div>
+     <pre id="traceVars">No trace available</pre><div class="message">Trace replay records line-by-line variable snapshots; this is not a pause-and-resume debugger.</div>
+   </div>
+   <div id="variables" class="panel-content" hidden><div class="variable-layout"><div id="variableList"></div><div id="variablePreview"><div class="message">Run a script to inspect arrays, dataframes, and Python values.</div></div></div></div>
+   <div id="plots" class="panel-content" hidden><div id="figureGallery">Plots produced by Matplotlib appear here.</div></div>
+   <div id="console" class="panel-content" hidden>
+     <div class="message">Runs Python statements in the current browser kernel. This is a Python console, not an operating-system shell.</div>
+     <div class="repl"><label for="replInput">&gt;&gt;&gt;</label><input id="replInput" spellcheck="false" autocomplete="off" placeholder="print(2 + 2)"><button id="replRun">Execute</button></div>
+     <div class="repl"><label for="packageInput">Package</label><input id="packageInput" placeholder="e.g. numpy, pandas, scikit-learn" spellcheck="false"><button id="install">Install</button></div>
+   </div>
+   <div id="terminal" class="panel-content" hidden>
+     <div class="message">Virtual project commands only — not a real system shell or PTY.</div>
+     <pre id="terminalLog">Arcside virtual terminal. Type help to list commands.</pre>
+     <div class="repl"><label for="terminalInput">$</label><input id="terminalInput" autocomplete="off" spellcheck="false" placeholder="ls, cat main.py, python main.py, unittest"><button id="terminalExecute">Execute</button></div>
+   </div>
+  </section>
+ </main>
+ <aside class="right-pane">
+  <div class="pane-title">OUTLINE / ENVIRONMENT</div>
+  <div id="outline">Open a Python file to inspect symbols.</div>
+  <div class="pane-title">VARIABLES</div><div id="quickVariables" class="quick-variables">Run a script to inspect values.</div>
+  <div class="pane-title">RUNTIME</div>
+  <div class="runtime-info"><b>Browser Python</b><span>Pyodide / WebAssembly</span><span id="runtimeStatus">Not loaded</span><span>Runs inside a worker. No server interpreter or shell.</span></div>
+  <div class="pane-title">SHORTCUTS</div>
+  <div class="shortcut">Ctrl/Cmd+Enter <span>Run</span></div><div class="shortcut">F5 <span>Trace</span></div>
+  <div class="shortcut">Ctrl/Cmd+S <span>Save</span></div><div class="shortcut">Ctrl/Cmd+F <span>Find</span></div>
+  <div class="shortcut">Shift+F5 <span>Stop</span></div>
+ </aside>
+</div>
+<div class="statusbar"><span id="dirtyStatus">Saved locally</span><div class="spacer"></div><span id="kernelFlag">Kernel stopped</span><span>Arcside Lab · preview</span></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs/loader.js" defer></script>
+<script type="module" src="./app.mjs"></script>
+</body></html>
