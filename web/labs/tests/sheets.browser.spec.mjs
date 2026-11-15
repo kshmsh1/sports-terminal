@@ -117,7 +117,9 @@ test('edits persist across reload through IndexedDB',async({page})=>{
 
 test('Pivot Studio aggregates source data in a worker and refreshes after editing',async({page})=>{
   await page.locator('[data-action="pivotStudio"]').click();
-  await expect(page.locator('#modal .studio-controls select')).toHaveCount(7);
+  await expect(page.locator('#modal .studio-controls select')).toHaveCount(10);
+  await page.locator('#modal .studio-controls select').nth(5).selectOption('2');
+  await page.locator('#modal .studio-controls select').nth(6).selectOption('average');
   await page.locator('#modal').getByText('Create pivot sheet',{exact:true}).click();
   await expect(page.locator('.sheet-tab.active')).toContainText('Pivot');
   await expect(page.locator('.grid-cell').filter({hasText:'120000'}).first()).toBeVisible();
