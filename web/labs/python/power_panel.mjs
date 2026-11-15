@@ -145,8 +145,12 @@ export function setupPowerPanel(ctx) {
       await runtime.sync(ctx.getProject().files);
       const result=action==='format'
         ?await runtime.format(ctx.getActive()):await runtime.lint(ctx.getActive());
-      if(action==='format'&&result.returncode===0&&result.source!==undefined)
-        ctx.replaceActiveSource(result.source);
+      if(action==='format'&&result.returncode===0){
+        // Ruff wrote the local file: refresh its revision token before
+        // editing again, or optimistic sync would reject our next save.
+        const latest=await runtime.readFile(ctx.getActive());
+        ctx.replaceActiveSource(latest.source);
+      }
       logResult(action,result);
       return;
     }
