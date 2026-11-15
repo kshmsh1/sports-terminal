@@ -92,3 +92,22 @@ body.show-companion .right-pane{display:flex!important}
 
 #nativeTerminal{position:relative}
 .visually-hidden-terminal{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:pre-wrap;border:0}
+
+/* Native Jupyter notebook panel. Cell source persists, outputs stay in RAM. */
+.bottom-panel.notebook-expanded{height:min(72vh,780px);min-height:350px}
+.notebook-toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid #30455a}
+#notebookStatus{font:11px ui-monospace,monospace;color:#9fc5e7}
+#notebookCells{display:flex;flex-direction:column;gap:13px;padding:12px 0;max-width:100%}
+.notebook-cell{display:flex;flex-direction:column;gap:0;border:1px solid #355370;border-radius:6px;overflow:hidden;background:#0c192a}
+.notebook-cell-actions{display:flex;gap:7px;align-items:center;background:#172b42;padding:6px 10px;color:#a9d0fa;font:11px ui-monospace,monospace}
+.notebook-cell-actions span{flex:1}
+.notebook-cell-actions button{font:11px ui-monospace,monospace}
+.notebook-code{display:block;min-height:96px;resize:vertical;width:100%;padding:12px 16px;
+  background:#0c1625;color:#e5f3ff;border:0;outline:none;
+  font:12px/1.65 ui-monospace,Consolas,Menlo,monospace;tab-size:4}
+.notebook-code:focus{box-shadow:inset 3px 0 #54a9f7}
+.notebook-cell-output{padding:8px 16px;display:flex;flex-direction:column;gap:6px}
+.notebook-cell-output:empty{display:none}
+.notebook-cell-output pre{margin:0;font:12px/1.55 ui-monospace,monospace;white-space:pre-wrap;color:#c9e4ff}
+.notebook-cell-output pre.notebook-error{color:#ffaeb5}
+.notebook-cell-output img{max-width:100%;max-height:420px;object-fit:contain;align-self:flex-start;background:white}
