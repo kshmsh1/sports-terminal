@@ -26,7 +26,7 @@
    <div class="panel-tabs">
     <button data-panel="output" class="active">Output</button><button data-panel="problems">Problems <span id="problemCount">0</span></button>
     <button data-panel="debugger">Debug trace</button><button data-panel="plots">Plots <span id="plotCount">0</span></button>
-    <button data-panel="variables">Variables <span id="variableCount">0</span></button><button data-panel="console">Python Console</button><button data-panel="terminal">Terminal</button><div class="spacer"></div>
+    <button data-panel="variables">Variables <span id="variableCount">0</span></button><button data-panel="console">Python Console</button><button data-panel="terminal">Terminal</button><button data-panel="notebook">Notebook</button><div class="spacer"></div>
     <button id="clearOutput">Clear</button>
    </div>
    <div id="output" class="panel-content"><pre id="stdout">Welcome to Arcside Python Lab. Press Run to initialize Python.</pre><pre id="stderr"></pre></div>
@@ -42,6 +42,18 @@
      <div class="message">Runs Python statements in the current browser kernel. This is a Python console, not an operating-system shell.</div>
      <div class="repl"><label for="replInput">&gt;&gt;&gt;</label><input id="replInput" spellcheck="false" autocomplete="off" placeholder="print(2 + 2)"><button id="replRun">Execute</button></div>
      <div class="repl"><label for="packageInput">Package</label><input id="packageInput" placeholder="e.g. numpy, pandas, scikit-learn" spellcheck="false"><button id="install">Install</button></div>
+   </div>
+   <div id="notebook" class="panel-content" hidden>
+     <div class="notebook-toolbar">
+       <button id="startNotebook" disabled>Start local Jupyter kernel</button>
+       <button id="addNotebookCell">+ Code cell</button>
+       <button id="runNotebookAll">Run all</button>
+       <button id="interruptNotebook">Interrupt</button>
+       <button id="restartNotebook">Restart kernel</button>
+       <span id="notebookStatus">Connect the local companion to start notebook execution.</span>
+     </div>
+     <div id="notebookCells"></div>
+     <div class="message">Notebook cells execute in one persistent Python kernel. Images and plain-text outputs are supported; HTML display output is deliberately not rendered as raw HTML.</div>
    </div>
    <div id="terminal" class="panel-content" hidden>
      <div class="terminal-switch"><button id="openLocalTerminal" disabled>Start local PTY shell</button><button id="closeLocalTerminal" disabled>Close local shell</button><span id="terminalType">Browser-only virtual commands</span></div><div id="nativeTerminal" hidden></div><div id="virtualTerminal">
