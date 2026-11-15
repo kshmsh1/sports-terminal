@@ -196,3 +196,40 @@ def test_native_pytest_coverage_report(client):
     assert response.status_code==200,response.text
     assert response.json()["returncode"]==0,response.text
     assert "TOTAL" in response.json()["stdout"]
+
+
+def test_create_select_real_venv_and_run_interpreter(client, tmp_path):
+    result = client.post("/api/env/create", headers=auth(),
+        json={"name":"analytics","manager":"venv"})
+    assert result.status_code == 200, result.text
+    assert result.json()["returncode"] == 0, result.text
+    env = client.get("/api/env", headers=auth())
+    assert env.json()["active"] == "analytics"
+    assert "analytics" in env.json()["names"]
+    run = client.post("/api/run", headers=auth(), json={
+        "mode":"selection","source":"import sys; print(sys.prefix)\n"
+    })
+    assert run.status_code == 200
+    assert run.json()["returncode"] == 0
+    assert ".arcside/envs/analytics" in run.json()["stdout"].replace("\\","/")
+    switched=client.post("/api/env/select",headers=auth(),json={"name":"system"})
+    assert switched.status_code==200
+    assert switched.json()["active"]=="system"
+
+
+def test_file_import_lists_workspace_without_exposing_reserved_directories(client,tmp_path):
+    (tmp_path/"hello.py").write_text("print('hello')",encoding="utf-8")
+    (tmp_path/".arcside").mkdir()
+    (tmp_path/".arcside"/"private").write_text("secret")
+    (tmp_path/".git").mkdir()
+    (tmp_path/".git"/"config").write_text("not readable")
+    response=client.get("/api/files",headers=auth())
+    assert response.status_code==200
+    assert response.json()["files"]==["hello.py"]
+
+
+def test_pip_input_cannot_accept_command_or_url_arguments(client):
+    bad=["-e", "http://localhost/bad", "package;whoami", "../../bad", "--index-url"]
+    for p in bad:
+        response=client.post("/api/env/install",headers=auth(),json={"packages":[p]})
+        assert response.status_code==400, (p,response.text)
