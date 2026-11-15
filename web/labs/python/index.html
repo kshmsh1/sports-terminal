@@ -6,7 +6,7 @@
  <input id="projectName" value="Untitled Project" aria-label="Project name" spellcheck="false">
  <span class="status" id="status">Initializing editor…</span><div class="spacer"></div>
  <button id="importFile">Import files</button><input id="picker" type="file" multiple accept=".py,.txt,.csv,.json,.md,.toml" hidden>
- <button id="exportFile">Download .py</button><button id="exportProject">Export project</button><button id="runTests">Test</button>
+ <button id="exportFile">Download .py</button><button id="exportProject">Export project</button><button id="runTests">Test</button><button id="runSelection" title="Execute selected Python lines">Run selection</button>
  <button id="debug" title="Collect trace (F5)">Debug</button><button class="primary" id="run" title="Run (Ctrl/Cmd+Enter)">▶ Run</button>
  <button id="stop" title="Terminate kernel (Shift+F5)">■ Stop</button>
 </header>
@@ -26,7 +26,7 @@
    <div class="panel-tabs">
     <button data-panel="output" class="active">Output</button><button data-panel="problems">Problems <span id="problemCount">0</span></button>
     <button data-panel="debugger">Debug trace</button><button data-panel="plots">Plots <span id="plotCount">0</span></button>
-    <button data-panel="console">Python Console</button><button data-panel="terminal">Virtual Terminal</button><div class="spacer"></div>
+    <button data-panel="variables">Variables <span id="variableCount">0</span></button><button data-panel="console">Python Console</button><button data-panel="terminal">Virtual Terminal</button><div class="spacer"></div>
     <button id="clearOutput">Clear</button>
    </div>
    <div id="output" class="panel-content"><pre id="stdout">Welcome to Arcside Python Lab. Press Run to initialize Python.</pre><pre id="stderr"></pre></div>
@@ -35,6 +35,7 @@
      <div class="debug-controls"><button id="prevTrace">← Previous</button><button id="nextTrace">Next →</button><span id="traceInfo">Run Debug to capture execution lines.</span></div>
      <pre id="traceVars">No trace available</pre><div class="message">Trace replay records line-by-line variable snapshots; this is not a pause-and-resume debugger.</div>
    </div>
+   <div id="variables" class="panel-content" hidden><div class="variable-layout"><div id="variableList"></div><div id="variablePreview"><div class="message">Run a script to inspect arrays, dataframes, and Python values.</div></div></div></div>
    <div id="plots" class="panel-content" hidden><div id="figureGallery">Plots produced by Matplotlib appear here.</div></div>
    <div id="console" class="panel-content" hidden>
      <div class="message">Runs Python statements in the current browser kernel. This is a Python console, not an operating-system shell.</div>
@@ -51,6 +52,7 @@
  <aside class="right-pane">
   <div class="pane-title">OUTLINE / ENVIRONMENT</div>
   <div id="outline">Open a Python file to inspect symbols.</div>
+  <div class="pane-title">VARIABLES</div><div id="quickVariables" class="quick-variables">Run a script to inspect values.</div>
   <div class="pane-title">RUNTIME</div>
   <div class="runtime-info"><b>Browser Python</b><span>Pyodide / WebAssembly</span><span id="runtimeStatus">Not loaded</span><span>Runs inside a worker. No server interpreter or shell.</span></div>
   <div class="pane-title">SHORTCUTS</div>
