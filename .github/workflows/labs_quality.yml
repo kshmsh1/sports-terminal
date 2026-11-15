@@ -24,6 +24,7 @@ jobs:
         run: |
           node --check web/labs/sheets/core.mjs
           node --check web/labs/sheets/app.mjs
+          node --check web/labs/sheets/xlsx.mjs
           node --check web/labs/python/app.mjs
           node --check web/labs/python/kernel.worker.js
       - name: Test formula engine
