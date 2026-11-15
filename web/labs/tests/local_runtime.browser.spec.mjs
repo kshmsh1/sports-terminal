@@ -27,6 +27,8 @@ test('opt-in companion runs native CPython from Monaco and exposes Git',async({p
   await expect(page.locator('#localToolLog')).toContainText('Git init',{timeout:30000});
   await page.locator('#localGitStatus').click();
   await expect(page.locator('#localToolLog')).toContainText('Git status',{timeout:30000});
+  await page.locator('#localProfile').click();
+  await expect(page.locator('#localToolLog')).toContainText('function calls',{timeout:30000});
 });
 
 test('native real shell connects and accepts commands from editor',async({page})=>{
@@ -81,4 +83,15 @@ test('debugpy DAP controller launches an actual program and pauses at a breakpoi
   },token);
   expect(outcome.stop).toBe(true);
   expect(outcome.reportTypes).toContain('stopped');
+});
+
+
+test('Monaco receives diagnostics from actual python-lsp-server',async({page})=>{
+  await connect(page);
+  await expect(page.locator('#status')).toContainText('Python LSP connected',{timeout:30000});
+  await page.evaluate(()=>window.monaco.editor.getModels()
+    .find(m=>m.uri.path.endsWith('main.py'))
+    .setValue('def invalid_syntax(:\n    pass\n'));
+  await expect.poll(async()=>page.evaluate(()=>window.monaco.editor.getModelMarkers({owner:'arcside-pylsp'}).length),
+    {timeout:30000}).toBeGreaterThan(0);
 });
