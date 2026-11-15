@@ -1,4 +1,5 @@
 import {evaluateAdvanced} from './formula_functions.mjs';
+import {validateRule} from './conditional.mjs';
 // Arcside Sheets core: no eval(), dynamic code execution, or external formula service.
 // Storage and rendering are deliberately separate from the calculation engine.
 export class CellError extends Error {
@@ -266,7 +267,11 @@ export class Workbook {
     }
     for(const [ref,value] of Object.entries(record.styles??{})) styles[ref]={...value};
     for(const [col,width] of Object.entries(record.widths??{})) if(Number(width)>=55 && Number(width)<=420) widths[col]=Number(width);
-    this.sheets.set(name,{name,cells,styles,widths});
+    const conditions=[];
+    for(const rule of Array.isArray(record.conditions)?record.conditions.slice(0,50):[]){
+      try{conditions.push(validateRule(rule));}catch{}
+    }
+    this.sheets.set(name,{name,cells,styles,widths,conditions});
   }
   _key(sheet,ref) { return sheet+'!'+parseRef(ref).ref; }
   _rebuild() {
@@ -369,6 +374,31 @@ export class Workbook {
       return String(value);
     } catch(e) { return e instanceof CellError ? e.code : '#ERROR!'; }
   }
+  replaceSheetCells(sheet,entries) {
+    const data=this.sheets.get(sheet);
+    if(!data)throw new CellError('#REF!');
+    if(!Array.isArray(entries)||entries.length>100000)
+      throw Error('Output sheet exceeds 100,000 populated cells');
+    const cells={};
+    for(const [ref,raw] of entries){
+      const key=parseRef(ref).ref,content=String(raw??'');
+      if(content.length>10000)throw Error('Cell content too large');
+      if(content)cells[key]=content;
+    }
+    data.cells=cells;
+    this._rebuild();
+  }
+  setCondition(sheet,rule) {
+    const data=this.sheets.get(sheet);
+    if(!data)throw Error('Missing worksheet');
+    if(data.conditions.length>=50)throw Error('Maximum 50 conditional rules per sheet');
+    data.conditions.push(validateRule(rule));
+  }
+  clearConditions(sheet) {
+    const data=this.sheets.get(sheet);
+    if(!data)throw Error('Missing worksheet');
+    data.conditions=[];
+  }
   setStyle(sheet,ref,patch) {
     const data=this.sheets.get(sheet); if(!data) return;
     const id=parseRef(ref).ref;
@@ -376,7 +406,8 @@ export class Workbook {
   }
   toJSON() {
     return {version:1,active:this.active,analytics:this.analytics,sheets:[...this.sheets.values()].map(s=>({
-      name:s.name,cells:{...s.cells},styles:{...s.styles},widths:{...s.widths}
+      name:s.name,cells:{...s.cells},styles:{...s.styles},widths:{...s.widths},
+      conditions:s.conditions.map(rule=>({...rule,range:{...rule.range}}))
     }))};
   }
 }
