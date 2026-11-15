@@ -68,6 +68,27 @@ export function setupPowerPanel(ctx) {
       reportError(error);
     }finally{$('localConnect').disabled=false;}
   };
+  $('localOpenProject').onclick=async()=>{
+    try{
+      if(!runtime.connected)throw Error('Connect the companion first');
+      const listing=await runtime.listFiles();
+      const names=listing.files.filter(n=>/\.(?:py|pyi|md|json|ipynb|toml|txt|csv|ya?ml|ini|cfg)$/i.test(n)).slice(0,100);
+      if(!names.length){report('No supported source files found in this local workspace');return;}
+      if(!confirm('Replace your current browser project with '+names.length+' files from the local workspace? Export your browser project first if you need a backup.'))return;
+      const files={};
+      const failures=[];
+      for(const name of names){
+        try{
+          const value=await runtime.readFile(name);
+          files[name]=value.source;
+        }catch(e){failures.push(name+': '+e.message);}
+      }
+      if(!Object.keys(files).length)throw Error('No readable local project files');
+      ctx.replaceProjectFiles(files);
+      report('Opened '+Object.keys(files).length+' workspace files. Future saves use revision-checked sync.'+
+        (failures.length?'\nSkipped:\n'+failures.join('\n'):''));
+    }catch(error){reportError(error);}
+  };
   $('localDisconnect').onclick=()=>{
     lsp?.stop();lsp=null;
     void liveDebug?.stop();liveDebug=null;
