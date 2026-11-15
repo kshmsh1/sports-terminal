@@ -145,3 +145,26 @@ def test_stop_unknown_job_is_idempotent(companion):
     client,_=companion
     result=client.post("/v1/stop",json={"job_id":"does_not_exist"},**authorized())
     assert result.status_code == 200 and result.json()["stopped"] is False
+
+
+def test_native_output_is_bounded_even_for_multi_megabyte_logs(companion):
+    client, _ = companion
+    program = "import sys\nsys.stdout.write('x' * 2600000)\nsys.stderr.write('e' * 2700000)\n"
+    response=client.post("/v1/snippet",json={"code":program},**authorized())
+    assert response.status_code == 200
+    result=response.json()
+    assert result["exit_code"] == 0
+    assert "[Arcside output truncated at 2 MB]" in result["stdout"]
+    assert "[Arcside output truncated at 2 MB]" in result["stderr"]
+    assert len(result["stdout"]) < 2_001_000
+    assert len(result["stderr"]) < 2_001_000
+
+
+def test_native_run_times_out_and_terminates_process(companion):
+    client,_=companion
+    response=client.post("/v1/snippet",json={
+        "code":"import time\nprint('starting',flush=True)\ntime.sleep(5)\n",
+        "timeout":1},**authorized())
+    assert response.status_code == 200
+    assert response.json()["timeout"] is True
+    assert "starting" in response.json()["stdout"]
