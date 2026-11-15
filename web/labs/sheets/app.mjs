@@ -2,6 +2,7 @@ import {Workbook,parseRef,columnName,columnIndex,parseCsv,stringifyCsv,sampleWor
 import {importXlsx,exportXlsx} from './xlsx.mjs';
 import {rebaseFormula} from './references.mjs';
 import {buildPivot,filterTable} from './analytics.mjs';
+import {conditionalStyle,OPERATORS} from './conditional.mjs';
 import {loadWorkbook,storeWorkbook} from './storage.mjs';
 
 const $=id=>document.getElementById(id);
@@ -136,7 +137,8 @@ function render() {
     header.style.width='52px';header.style.height=ROW_HEIGHT+'px';header.textContent=r;
     header.onclick=()=>select(r,1);rowFragment.appendChild(header);
     for(let c=firstCol;c<=lastCol;c++) {
-      const id=ref(r,c),text=valueText(r,c),style=book.sheets.get(book.active).styles[id]??{};
+      const id=ref(r,c),text=valueText(r,c),sheetData=book.sheets.get(book.active),
+        style={...(sheetData.styles[id]??{}),...(conditionalStyle(sheetData.conditions,r,c,text)??{})};
       const item=document.createElement('div');
       item.className='grid-cell'+(r===selected.r&&c===selected.c?' selected':r>=chosen.a&&r<=chosen.b&&c>=chosen.l&&c<=chosen.r?' range':'');
       if(text[0]==='#')item.classList.add('error');
@@ -283,6 +285,67 @@ function fillRange(direction) {
   }
   changed();
 }
+
+function conditionDesigner(){
+  const sheet=book.active,area=bounds();
+  const root=document.createElement('div');root.className='condition-designer';
+  const description=document.createElement('p');
+  description.textContent='Conditional formatting rules for '+sheet+'. New rule applies to '+ref(area.a,area.l)+':'+ref(area.b,area.r)+' and updates when values recalculate.';
+  root.append(description);
+  const row=document.createElement('div');row.className='condition-controls';
+  function labeled(name,el){
+    const label=document.createElement('label');label.textContent=name;
+    label.append(el);row.append(label);return el;
+  }
+  const operator=document.createElement('select');operator.id='conditionOperator';
+  for(const name of OPERATORS){const option=document.createElement('option');option.value=name;option.textContent=name;operator.append(option);}
+  labeled('Condition',operator);
+  const value=document.createElement('input');value.id='conditionValue';value.placeholder='Threshold or text';
+  labeled('Value',value);
+  const value2=document.createElement('input');value2.id='conditionValue2';value2.placeholder='Upper threshold for between';
+  labeled('Second value',value2);
+  const fill=document.createElement('input');fill.id='conditionFill';fill.type='color';fill.value='#164e37';
+  labeled('Highlight fill',fill);
+  const text=document.createElement('input');text.id='conditionColor';text.type='color';text.value='#adf4d0';
+  labeled('Text color',text);
+  root.append(row);
+  const actions=document.createElement('div');actions.className='pivot-actions';
+  const add=document.createElement('button');add.id='addCondition';add.className='primary';add.textContent='Add rule';
+  const clear=document.createElement('button');clear.id='clearConditions';clear.textContent='Clear all rules';
+  actions.append(add,clear);root.append(actions);
+  const list=document.createElement('div');list.id='conditionRules';
+  root.append(list);
+  function renderRules(){
+    list.replaceChildren();
+    const rules=book.sheets.get(sheet)?.conditions??[];
+    for(const [index,rule] of rules.entries()){
+      const line=document.createElement('div');line.className='condition-rule';
+      const sample=document.createElement('span');sample.className='condition-sample';
+      sample.style.backgroundColor=rule.fill;sample.style.color=rule.color;sample.textContent='Aa';
+      const description=document.createElement('span');
+      description.textContent=ref(rule.range.a,rule.range.l)+':'+ref(rule.range.b,rule.range.r)+' · '+rule.operator+(rule.value?(' '+rule.value):'');
+      const remove=document.createElement('button');remove.textContent='Remove';remove.title='Remove rule '+(index+1);
+      remove.onclick=()=>{snapshot();book.sheets.get(sheet).conditions.splice(index,1);changed();renderRules();};
+      line.append(sample,description,remove);list.append(line);
+    }
+    if(!rules.length)list.textContent='No conditional formatting rules in this sheet.';
+  }
+  add.onclick=()=>{
+    try{
+      snapshot();
+      book.setCondition(sheet,{range:area,operator:operator.value,value:value.value,value2:value2.value,
+                               fill:fill.value,color:text.value});
+      changed();renderRules();
+    }catch(e){alert(e.message);}
+  };
+  clear.onclick=()=>{
+    if(!book.sheets.get(sheet).conditions.length)return;
+    snapshot();book.clearConditions(sheet);changed();renderRules();
+  };
+  renderRules();
+  modal('Conditional formatting',root);
+}
+
 function applyStyle(patch) {
   snapshot();forSelection((r,c)=>book.setStyle(book.active,ref(r,c),patch));changed();
 }
@@ -484,12 +547,13 @@ function writeAnalysisResult(name,result,kind,spec){
   if(!name)book.addSheet(sheet);
   const target=book.sheets.get(sheet);
   if(!target)throw Error('Output sheet was deleted');
-  for(const cell of Object.keys(target.cells))book.set(sheet,cell,'');
+  const entries=[];
   for(let ri=0;ri<data.length;ri++)for(let ci=0;ci<data[ri].length;ci++){
     const value=data[ri][ci];
-    if(value!==null&&value!==undefined&&value!=='')book.set(sheet,ref(ri+1,ci+1),value);
+    if(value!==null&&value!==undefined&&value!=='')entries.push([ref(ri+1,ci+1),value]);
     if(ri===0)book.setStyle(sheet,ref(ri+1,ci+1),{bold:true,fill:'#284a71'});
   }
+  book.replaceSheetCells(sheet,entries);
   book.analytics[sheet]={...spec,kind};
   book.active=sheet;select(1,1);changed();
   $('modal').hidden=true;
@@ -630,6 +694,7 @@ for(const button of document.querySelectorAll('[data-action]'))button.onclick=()
   if(action==='pivot')createPivot();
   if(action==='refreshPivot')void refreshAnalysis();
   if(action==='filterTable')filterDesigner();
+  if(action==='conditional')conditionDesigner();
   if(action==='sort')sortSelection();
   if(action==='fillDown')fillRange('down');
   if(action==='fillRight')fillRange('right');
