@@ -21,6 +21,7 @@ from fastapi import WebSocket
 from starlette.websockets import WebSocketDisconnect
 
 from .security import Settings
+from .processes import interpreter
 
 MAX_FRAME = 4_000_000
 
@@ -231,9 +232,7 @@ async def debugger(ws: WebSocket, settings: Settings) -> None:
             return
         await ws.send_json({"type": "adapter-ready",
                             "workspace": str(settings.workspace),
-                            "python": str(settings.workspace.joinpath(".venv", "bin", "python"))
-                                      if settings.workspace.joinpath(".venv", "bin", "python").is_file()
-                                      else sys.executable})
+                            "python": interpreter(settings.workspace)})
         await bridge(ws, reader, writer)
     except (WebSocketDisconnect, ConnectionError, asyncio.IncompleteReadError):
         pass
