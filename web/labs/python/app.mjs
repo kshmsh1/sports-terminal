@@ -218,9 +218,22 @@ $('picker').onchange=async e=>{
  let last=null;
  for(const file of e.target.files??[]){
  if(file.size>500000)continue;
+ const source=await file.text();
+ if(file.name.endsWith('.arcside-python.json')){
+   try{
+     const parsed=JSON.parse(source);
+     if(parsed.version!==1||!parsed.project?.files||!Object.keys(parsed.project.files).length)throw Error('Invalid Arcside project');
+     for(const m of Object.values(models))m.dispose();
+     models={};project=parsed.project;opened=[Object.keys(project.files)[0]];
+     active=opened[0];breakpoints={};
+     if(editor)editor.setModel(model(active));else $('fallback').value=project.files[active];
+     $('projectName').value=project.name;$('activePath').textContent=active;last=active;
+   }catch(error){alert('Cannot import project: '+error.message);}
+   continue;
+ }
  const name=file.name.replace(/[^a-zA-Z0-9_. -]/g,'_');
  if(!name)continue;
- project.files[name]=await file.text();last=name;
+ project.files[name]=source;last=name;
  }
  if(last){setActive(last);dirty(last);}
  e.target.value='';
@@ -229,6 +242,7 @@ function download(filename,text,mime){
  const blob=new Blob([text],{type:mime}),url=URL.createObjectURL(blob),a=document.createElement('a');
  a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
+$('exportFile').onclick=()=>{sync();download(active,project.files[active],'text/plain;charset=utf-8');};
 $('exportProject').onclick=()=>{
  sync();download(project.name.replace(/[^a-z0-9_-]+/gi,'_')+'.arcside-python.json',
  JSON.stringify({version:1,project},null,2),'application/json');
