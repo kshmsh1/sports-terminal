@@ -14,7 +14,7 @@ async function kernel(){
     const py=await loadPyodide({indexURL:PYODIDE_URL});
     py.FS.mkdirTree(ROOT);
     py.runPython(String.raw`
-import io, sys, traceback, json, contextlib, base64, ast, unittest, os
+import io, sys, traceback, json, contextlib, base64, ast, unittest, os, types
 _ARCSIDE_ROOT="/home/pyodide/arcside"
 if _ARCSIDE_ROOT not in sys.path:
     sys.path.insert(0,_ARCSIDE_ROOT)
@@ -25,6 +25,36 @@ def _arcside_analyze(code,filename):
         return json.dumps({"diagnostics":[]})
     except SyntaxError as exc:
         return json.dumps({"diagnostics":[{"line":exc.lineno or 1,"column":exc.offset or 1,"message":exc.msg or "Syntax error","severity":"error"}]})
+def _arcside_variable_inventory():
+    items=[]
+    for name,value in list(_arcside_namespace.items()):
+        if name.startswith("_") or name in ("__name__",):
+            continue
+        if isinstance(value,(types.ModuleType,type)) or callable(value):
+            continue
+        kind=type(value).__name__
+        record={"name":str(name)[:100],"type":kind,"preview":"","shape":"","table":None}
+        try:
+            if kind=="DataFrame" and hasattr(value,"iloc"):
+                record["shape"]=str(tuple(value.shape))
+                small=value.iloc[:25,:16]
+                record["table"]=json.loads(small.to_json(orient="split",date_format="iso"))
+                record["preview"]="pandas DataFrame "+record["shape"]
+            elif kind=="Series" and hasattr(value,"iloc"):
+                record["shape"]=str(tuple(value.shape))
+                record["preview"]=repr(value.iloc[:30])[:600]
+            elif kind=="ndarray" and hasattr(value,"ravel"):
+                record["shape"]=str(tuple(value.shape))
+                record["preview"]=repr(value.ravel()[:50].tolist())[:600]
+            else:
+                record["preview"]=repr(value)[:600]
+        except BaseException as exc:
+            record["preview"]="<preview unavailable: "+type(exc).__name__+">"
+        items.append(record)
+        if len(items)>=60:
+            break
+    return items
+
 def _arcside_execute(code,filename,mode,breakpoints):
     output,errors=io.StringIO(),io.StringIO()
     figures,events=[],[]
@@ -91,6 +121,7 @@ def _arcside_execute(code,filename,mode,breakpoints):
     result["stderr"]=errors.getvalue()[-120000:]
     result["figures"]=figures
     result["events"]=events
+    result["variables"]=_arcside_variable_inventory()
     return json.dumps(result)
 `);
     status('Python kernel ready');
