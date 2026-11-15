@@ -82,7 +82,7 @@ export class LocalRuntime {
     await this.sync(files);
     const job_id=crypto.randomUUID().replace(/-/g,'');
     this.activeJob=job_id;
-    const request={job_id,entry,mode:mode==='test'?'test':mode==='selection'?'selection':'run'};
+    const request={job_id,entry,mode:['test','coverage','profile','selection'].includes(mode)?mode:'run'};
     if(mode==='selection')request.source=source;
     try{return await this.post('/api/run',request);}
     finally{if(this.activeJob===job_id)this.activeJob=null;}
