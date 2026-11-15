@@ -121,20 +121,43 @@ def create_app(root: Path, origins: list[str] | None = None, token: str | None =
     @app.get("/api/status", dependencies=[Depends(authorize)])
     async def status() -> dict:
         interpreter = selected_python()
+        # Optional modules must be checked in the *selected environment*,
+        # not in the Python environment that hosts the companion API.
+        inventory_code = (
+            "import importlib.util, json, sys\n"
+            "names=('pylsp','debugpy','ruff','pytest','ipykernel','coverage')\n"
+            "print(json.dumps({'python':sys.version.split()[0],"
+            "'modules':{name:bool(importlib.util.find_spec(name)) for name in names}}))\n"
+        )
+        inventory = await command([str(interpreter), "-I", "-c", inventory_code],
+                                  security.root, timeout=10)
+        modules = {}
+        interpreter_version = "unknown"
+        if inventory["returncode"] == 0:
+            import json
+            try:
+                parsed = json.loads(inventory["stdout"])
+                modules = parsed.get("modules", {})
+                interpreter_version = parsed.get("python", "unknown")
+            except (ValueError, TypeError, AttributeError):
+                pass
         return {
             "workspace": str(security.root),
             "environment": app.state.environment,
             "interpreter": str(interpreter),
-            "python": sys.version.split()[0],
+            "python": interpreter_version,
             "capabilities": {
                 "terminal": os.name == "posix",
                 "environments": ["venv", *(["uv"] if shutil.which("uv") else []),
                                  *(["conda"] if shutil.which("conda") else [])],
-                "lsp": bool(importlib.util.find_spec("pylsp")),
-                "dap": bool(importlib.util.find_spec("debugpy")),
-                "notebook": bool(importlib.util.find_spec("jupyter_client")),
+                "lsp": modules.get("pylsp", False),
+                "dap": modules.get("debugpy", False),
+                "notebook": bool(importlib.util.find_spec("jupyter_client"))
+                and modules.get("ipykernel", False),
                 "git": shutil.which("git") is not None,
-                "formatter": bool(importlib.util.find_spec("ruff") or importlib.util.find_spec("black")),
+                "formatter": modules.get("ruff", False),
+                "coverage": modules.get("coverage", False),
+                "pytest": modules.get("pytest", False),
             },
         }
 
@@ -272,7 +295,7 @@ def create_app(root: Path, origins: list[str] | None = None, token: str | None =
         elif body.manager == "uv":
             if not shutil.which("uv"):
                 raise HTTPException(400, "Install uv first")
-            args = ["uv", "venv", str(folder)]
+            args = ["uv", "venv", "--seed", str(folder)]
         else:
             if not shutil.which("conda"):
                 raise HTTPException(400, "Install conda first")
