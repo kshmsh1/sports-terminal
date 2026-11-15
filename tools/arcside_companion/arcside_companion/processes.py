@@ -60,7 +60,9 @@ def interpreter(root: Path) -> str:
                      else (".venv", "bin", "python"),):
         path = root.joinpath(*relative)
         if path.is_file():
-            return str(path.resolve())
+            # Preserve the venv/conda launcher path: resolving a symlink can
+            # discard pyvenv.cfg and silently switch to global Python.
+            return str(path)
     for relative in ((".conda", "python.exe") if os.name == "nt"
                      else (".conda", "bin", "python"),):
         path = root.joinpath(*relative)
