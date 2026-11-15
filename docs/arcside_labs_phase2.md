@@ -8,7 +8,7 @@ Two paths are supported:
 
 1. **Browser**: Monaco editor + Pyodide, no local runtime required; browser
    spreadsheet with IndexedDB persistence. Phase I remains the default.
-2. **Trusted local**: owner starts \`arcside-companion\` on their own
+2. **Trusted local**: owner starts `arcside-companion` on their own
    Mac/Linux computer, supplies an explicit permitted Origin, and enters the
    generated connection token into Python Lab. The browser can then run
    native CPython, control the owner's terminal, and use IDE services.
@@ -44,18 +44,18 @@ trusted local runtime.
    Review its contents and do not run arbitrary downloaded code.
 2. From the repository root:
 
-   \`\`\`bash
+   ```bash
    cd python/arcside_companion
    python3 -m venv .venv
    source .venv/bin/activate
    pip install -e '.[all]'
    python -m arcside_companion --workspace ~/my-project \
      --allow-origin http://127.0.0.1:8765
-   \`\`\`
+   ```
 
 3. Serve Arcside from the exact permitted Origin. For a different hosted
    browser origin, restart the companion with an explicit alternate
-   \`--allow-origin\` value, never a wildcard. In Python Lab choose
+   `--allow-origin` value, never a wildcard. In Python Lab choose
    **Trusted local CPython**, then **Connect local**.
 4. Paste the token from the companion process into the **Dev tools** panel,
    then use **Open workspace files** before editing existing local source.
@@ -64,7 +64,7 @@ trusted local runtime.
    **Debug** to access native capabilities.
 
 Connection tokens are kept in tab memory, not copied into project exports
-or URL parameters. The server is bound to \`127.0.0.1:8766\`, checks strict
+or URL parameters. The server is bound to `127.0.0.1:8766`, checks strict
 Host and allowed-Origin values and first-message WebSocket authentication,
 and declines requests without the bearer token.
 
@@ -135,7 +135,7 @@ isolated worker formula recalculation.
 
 ## Automated validation
 
-\`\`\`bash
+```bash
 # Browser JS, spreadsheet unit/regression, and UI end-to-end
 node --test web/labs/tests/*.test.mjs
 cd web/labs
@@ -147,12 +147,12 @@ npx playwright test -c playwright.config.mjs
 cd ../../python/arcside_companion
 pip install -e '.[all]'
 python -m pytest -q tests
-\`\`\`
+```
 
 CI workflows:
-- \`.github/workflows/labs_quality.yml\` checks JS syntax, embedded Python
+- `.github/workflows/labs_quality.yml` checks JS syntax, embedded Python
   bootstrap, pure spreadsheet formulas and Chromium UI interactions.
-- \`.github/workflows/labs_power_quality.yml\` checks companion security
+- `.github/workflows/labs_power_quality.yml` checks companion security
   and actual CPython/PTY/Notebook/DAP/LSP Chromium-to-native integration.
   The native CI companion starts on localhost with a CI-only test token.
 
