@@ -1,11 +1,13 @@
 import {Workbook,parseRef,columnName,columnIndex,parseCsv,stringifyCsv,sampleWorkbook,expandRange} from './core.mjs';
 import {importXlsx,exportXlsx} from './xlsx.mjs';
+import {rebaseFormula} from './references.mjs';
 
 const $=id=>document.getElementById(id);
 const ROW_HEIGHT=28, HEADER_HEIGHT=28, DEFAULT_WIDTH=112, MAX_ROWS=100000, MAX_COLS=256;
 const STORAGE='arcside.sheets.v1';
 let book, name='Analysis Workbook', selected={r:1,c:1}, anchor={r:1,c:1};
 let edit=false, dragging=false, history=[], future=[], raf=false, dirty=false;
+let internalClipboard=null;
 function restore() {
   try {
     const data=JSON.parse(localStorage.getItem(STORAGE));
@@ -186,6 +188,8 @@ document.addEventListener('keydown',e=>{
   if(cmd&&e.key.toLowerCase()==='s'){e.preventDefault();persist();return;}
   if(cmd&&e.key.toLowerCase()==='z'){e.preventDefault();restoreHistory(e.shiftKey?future:history,e.shiftKey?history:future);return;}
   if(cmd&&e.key.toLowerCase()==='y'){e.preventDefault();restoreHistory(future,history);return;}
+  if(cmd&&e.key.toLowerCase()==='d'&&!isInput(e.target)){e.preventDefault();fillRange('down');return;}
+  if(cmd&&e.key.toLowerCase()==='r'&&!isInput(e.target)){e.preventDefault();fillRange('right');return;}
   if(cmd&&e.key.toLowerCase()==='b'&&!isInput(e.target)){e.preventDefault();applyStyle({bold:!book.sheets.get(book.active).styles[selectedRef()]?.bold});return;}
   if(isInput(e.target)||e.altKey||cmd)return;
   const navigation={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1],Enter:[1,0],Tab:[0,1]};
@@ -209,19 +213,44 @@ function selectionMatrix(raw=false) {
 }
 document.addEventListener('copy',e=>{
   if(isInput(e.target))return;
-  e.clipboardData.setData('text/plain',selectionMatrix().map(r=>r.join('\t')).join('\n'));e.preventDefault();
+  const text=selectionMatrix(true).map(r=>r.join('\t')).join('\n');
+  internalClipboard={text,source:bounds(),sheet:book.active};
+  e.clipboardData.setData('text/plain',text);e.preventDefault();
 });
 document.addEventListener('paste',e=>{
   if(isInput(e.target))return;
   const content=e.clipboardData.getData('text/plain');if(!content)return;
   const matrix=content.replace(/\r\n/g,'\n').split('\n').map(line=>line.split('\t'));
   if(matrix.length&&matrix[matrix.length-1].length===1&&matrix[matrix.length-1][0]==='')matrix.pop();
+  const from=internalClipboard?.text===content ? internalClipboard.source:null;
   snapshot();
   matrix.forEach((row,ri)=>row.forEach((raw,ci)=>{
-    if(selected.r+ri<=MAX_ROWS&&selected.c+ci<=MAX_COLS)book.set(book.active,ref(selected.r+ri,selected.c+ci),raw);
+    if(selected.r+ri>MAX_ROWS||selected.c+ci>MAX_COLS)return;
+    const rebased=from ? rebaseFormula(raw,selected.r+ri-from.a,selected.c+ci-from.l):raw;
+    book.set(book.active,ref(selected.r+ri,selected.c+ci),rebased);
   }));
   changed();e.preventDefault();
 });
+function fillRange(direction) {
+  const b=bounds();
+  if((direction==='down'&&b.a===b.b)||(direction==='right'&&b.l===b.r))return;
+  const area=(b.b-b.a+1)*(b.r-b.l+1);
+  if(area>100000){alert('Selection is too large to fill');return;}
+  const original=new Map();
+  if(direction==='down'){
+    for(let c=b.l;c<=b.r;c++)original.set(c,book.get(book.active,ref(b.a,c)));
+  }else{
+    for(let row=b.a;row<=b.b;row++)original.set(row,book.get(book.active,ref(row,b.l)));
+  }
+  snapshot();
+  for(let row=b.a;row<=b.b;row++)for(let c=b.l;c<=b.r;c++){
+    if(direction==='down'&&row>b.a)
+      book.set(book.active,ref(row,c),rebaseFormula(original.get(c),row-b.a,0));
+    if(direction==='right'&&c>b.l)
+      book.set(book.active,ref(row,c),rebaseFormula(original.get(row),0,c-b.l));
+  }
+  changed();
+}
 function applyStyle(patch) {
   snapshot();forSelection((r,c)=>book.setStyle(book.active,ref(r,c),patch));changed();
 }
@@ -389,8 +418,15 @@ function sortSelection() {
   if(b.a===b.b){alert('Select multiple rows to sort.');return;}
   const matrix=selectionMatrix(true);
   const direction=confirm('Sort ascending by the first selected column? (Cancel sorts descending)')?1:-1;
-  const head=matrix.shift();matrix.sort((a,b)=>String(a[0]).localeCompare(String(b[0]),undefined,{numeric:true})*direction);
-  snapshot();[head,...matrix].forEach((row,ri)=>row.forEach((value,ci)=>book.set(book.active,ref(b.a+ri,b.l+ci),value)));
+  const records=matrix.slice(1).map((row,i)=>({
+    row,sourceRow:b.a+i+1,key:book.display(book.active,ref(b.a+i+1,b.l)),
+  }));
+  records.sort((left,right)=>String(left.key).localeCompare(String(right.key),undefined,{numeric:true})*direction);
+  const output=[{row:matrix[0],sourceRow:b.a},...records];
+  snapshot();
+  output.forEach(({row,sourceRow},i)=>row.forEach((value,ci)=>{
+    book.set(book.active,ref(b.a+i,b.l+ci),rebaseFormula(value,b.a+i-sourceRow,0));
+  }));
   changed();
 }
 for(const button of document.querySelectorAll('[data-action]'))button.onclick=()=>{
@@ -404,6 +440,8 @@ for(const button of document.querySelectorAll('[data-action]'))button.onclick=()
   if(action==='chart')makeChart();
   if(action==='pivot')createPivot();
   if(action==='sort')sortSelection();
+  if(action==='fillDown')fillRange('down');
+  if(action==='fillRight')fillRange('right');
   if(action==='find'){
     const q=prompt('Find a value in '+book.active);if(!q)return;
     const lower=q.toLowerCase(),cells=book.sheets.get(book.active).cells;
