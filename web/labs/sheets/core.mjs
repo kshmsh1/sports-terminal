@@ -1,3 +1,4 @@
+import {evaluateAdvanced} from './formula_functions.mjs';
 // Arcside Sheets core: no eval(), dynamic code execution, or external formula service.
 // Storage and rendering are deliberately separate from the calculation engine.
 export class CellError extends Error {
@@ -153,8 +154,8 @@ function aggregate(name,args) {
   switch(name) {
     case 'SUM': return ns.reduce((a,b)=>a+b,0);
     case 'AVERAGE': case 'AVG': return ns.length ? ns.reduce((a,b)=>a+b,0)/ns.length : new CellError('#DIV/0!');
-    case 'MIN': return ns.length ? Math.min(...ns) : 0;
-    case 'MAX': return ns.length ? Math.max(...ns) : 0;
+    case 'MIN': return ns.length ? ns.reduce((a,b)=>a<b?a:b) : 0;
+    case 'MAX': return ns.length ? ns.reduce((a,b)=>a>b?a:b) : 0;
     case 'COUNT': return ns.length;
     case 'COUNTA': return arr.filter(v=>v!==null && v!=='').length;
     case 'MEDIAN': {
@@ -198,14 +199,19 @@ function resolve(node, book, sheet, stack) {
       if(name==='IF') return truth(resolve(node.args[0],book,sheet,stack))
         ? (node.args[1] ? resolve(node.args[1],book,sheet,stack) : true)
         : (node.args[2] ? resolve(node.args[2],book,sheet,stack) : false);
-      if(name==='IFERROR') {
+      if(name==='IFERROR'||name==='IFNA') {
         try { return resolve(node.args[0],book,sheet,stack); }
-        catch(e) { return node.args[1] ? resolve(node.args[1],book,sheet,stack) : ''; }
+        catch(e) {
+          if(name==='IFNA'&&e?.code!=='#N/A')throw e;
+          return node.args[1] ? resolve(node.args[1],book,sheet,stack) : '';
+        }
       }
       if(name==='AND') return node.args.every(x=>truth(resolve(x,book,sheet,stack)));
       if(name==='OR') return node.args.some(x=>truth(resolve(x,book,sheet,stack)));
       if(name==='NOT') return !truth(resolve(node.args[0],book,sheet,stack));
       const a=node.args.map(x=>resolve(x,book,sheet,stack));
+      const advanced=evaluateAdvanced(name,a,node,{CellError,parseRef});
+      if(advanced.handled)return advanced.value;
       if(['SUM','AVERAGE','AVG','MIN','MAX','COUNT','COUNTA','MEDIAN','STDEV'].includes(name)) {
         const result=aggregate(name,a);
         if(result instanceof CellError) throw result;
@@ -221,7 +227,10 @@ function resolve(node, book, sheet, stack) {
         case 'MOD': if(num(a[1])===0) throw new CellError('#DIV/0!'); return num(a[0])%num(a[1]);
         case 'LEN': return String(a[0]??'').length;
         case 'LEFT': return String(a[0]??'').slice(0,Math.max(0,num(a[1]??1)));
-        case 'RIGHT': return String(a[0]??'').slice(-Math.max(0,num(a[1]??1)));
+        case 'RIGHT': {
+          const width=Math.max(0,num(a[1]??1));
+          return width?String(a[0]??'').slice(-width):'';
+        }
         case 'UPPER': return String(a[0]??'').toUpperCase();
         case 'LOWER': return String(a[0]??'').toLowerCase();
         case 'TRIM': return String(a[0]??'').trim().replace(/\s+/g,' ');
