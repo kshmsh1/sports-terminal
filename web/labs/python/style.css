@@ -47,3 +47,17 @@ html,body,.ide{height:100%;overflow:hidden}.ide{display:flex;flex-direction:colu
 .arcside-breakpoint::before{content:'';position:absolute;left:7px;top:4px;width:10px;height:10px;background:#f15b68;border-radius:50%;box-shadow:0 0 0 1px #fcb7b7}
 
 #terminalLog{font:12px/1.6 ui-monospace,monospace;color:#b9dbfa;white-space:pre-wrap;margin:0 0 10px}
+
+.variable-layout{display:grid;grid-template-columns:210px minmax(0,1fr);height:100%;min-height:100px;gap:12px}
+#variableList{display:flex;flex-direction:column;gap:3px;overflow:auto;border-right:1px solid #354961;padding-right:8px}
+#variableList button{font:12px ui-monospace,monospace;text-align:left;white-space:normal;padding:6px;border-radius:4px}
+#variableList button.active{background:#2a4f72;color:#f0f7ff}
+#variablePreview{min-width:0;overflow:auto;font:12px/1.5 ui-monospace,monospace;color:#d1e2f7}
+#variablePreview .variable-title{font-size:14px;font-weight:700;color:#b7d5ff;margin-bottom:8px}
+#variablePreview pre{white-space:pre-wrap;overflow-wrap:anywhere}
+.variable-dataframe{border-collapse:collapse;width:max-content;min-width:100%}
+.variable-dataframe th,.variable-dataframe td{border:1px solid #34485f;padding:5px 9px;text-align:left;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.variable-dataframe th{position:sticky;top:0;background:#213853;color:#bfdbf8}
+.quick-variables{padding:10px 12px;display:flex;flex-direction:column;gap:4px;font:11px ui-monospace,monospace;color:#9db6d0}
+.quick-variables button{text-align:left;padding:4px;font:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:640px){.variable-layout{grid-template-columns:130px minmax(0,1fr)}}
