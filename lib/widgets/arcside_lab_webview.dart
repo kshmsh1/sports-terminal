@@ -4,14 +4,25 @@ import 'arcside_lab_platform_stub.dart'
     if (dart.library.js_interop) 'arcside_lab_platform_web.dart' as platform;
 
 /// Self-contained research applications are loaded only when selected.
-class ArcsideLabWebView extends StatelessWidget {
+class ArcsideLabWebView extends StatefulWidget {
   const ArcsideLabWebView({super.key, required this.lab});
 
   final String lab;
 
   @override
+  State<ArcsideLabWebView> createState() => _ArcsideLabWebViewState();
+}
+
+class _ArcsideLabWebViewState extends State<ArcsideLabWebView> {
+  @override
+  void initState() {
+    super.initState();
+    platform.registerLab(widget.lab);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final python = lab == 'python';
+    final python = widget.lab == 'python';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -37,7 +48,7 @@ class ArcsideLabWebView extends StatelessWidget {
         ),
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: SizedBox(height: 800, child: platform.labFrame(lab)),
+          child: SizedBox(height: 800, child: platform.labFrame(widget.lab)),
         ),
       ],
     );
