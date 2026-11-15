@@ -56,7 +56,19 @@ def _arcside_execute(code,filename,mode,breakpoints):
                 else:
                     if mode=="debug": sys.settrace(trace)
                     try:
-                        exec(compile(code,filename,"exec"),_arcside_namespace)
+                        if mode=="repl":
+                            parsed=ast.parse(code,filename=filename)
+                            if parsed.body and isinstance(parsed.body[-1],ast.Expr):
+                                prefix=ast.Module(body=parsed.body[:-1],type_ignores=[])
+                                exec(compile(prefix,filename,"exec"),_arcside_namespace)
+                                expression=ast.Expression(body=parsed.body[-1].value)
+                                displayed=eval(compile(expression,filename,"eval"),_arcside_namespace)
+                                if displayed is not None:
+                                    print(repr(displayed))
+                            else:
+                                exec(compile(parsed,filename,"exec"),_arcside_namespace)
+                        else:
+                            exec(compile(code,filename,"exec"),_arcside_namespace)
                     finally:
                         sys.settrace(prev_trace)
             except BaseException:
