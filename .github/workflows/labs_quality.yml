@@ -27,6 +27,7 @@ jobs:
           node --check web/labs/sheets/references.mjs
           node --check web/labs/sheets/storage.mjs
           node --check web/labs/sheets/analytics.mjs
+          node --check web/labs/sheets/conditional.mjs
           node --check web/labs/sheets/analytics.worker.mjs
           node --check web/labs/sheets/app.mjs
           node --check web/labs/sheets/xlsx.mjs
