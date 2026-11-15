@@ -61,3 +61,23 @@ test('debugpy DAP launches a real script and exposes step controls',async({page}
   await page.locator('#debugTerminate').click();
   await expect(page.locator('#nativeDebugControls')).toBeHidden();
 });
+
+
+test('persistent Jupyter kernel shares variables between code cells and exports ipynb',async({page})=>{
+  test.setTimeout(120000);
+  await page.locator('[data-panel="notebook"]').click();
+  await expect(page.locator('#notebook')).toBeVisible();
+  await page.locator('#startNotebook').click();
+  await expect(page.locator('#notebookStatus')).toContainText('Jupyter kernel ready',{timeout:45000});
+  await page.locator('.notebook-cell-actions button').first().click();
+  await expect(page.locator('.notebook-cell-output').first()).toContainText('Mean: 4.25',{timeout:45000});
+  await page.locator('#addNotebookCell').click();
+  await page.locator('.notebook-code').nth(1).fill('print("persisted",x[-1])');
+  await page.locator('.notebook-cell-actions button').nth(3).click();
+  await expect(page.locator('.notebook-cell-output').nth(1)).toContainText('persisted 7',{timeout:45000});
+  const promisedDownload=page.waitForEvent('download');
+  await page.locator('#exportNotebook').click();
+  expect((await promisedDownload).suggestedFilename()).toMatch(/\.ipynb$/);
+  await page.locator('#interruptNotebook').click();
+  await expect(page.locator('#notebookStatus')).toContainText('Interrupt',{timeout:30000});
+});
