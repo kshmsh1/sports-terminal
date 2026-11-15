@@ -46,7 +46,9 @@ may require network access.
 - Arithmetic and comparisons, plus SUM, AVERAGE, AVG, MIN, MAX, COUNT,
   COUNTA, MEDIAN, STDEV, IF, IFERROR, ROUND, ROUNDUP, ROUNDDOWN, ABS,
   SQRT, POWER, MOD, AND, OR, NOT, LEN, LEFT, RIGHT, UPPER, LOWER,
-  TRIM and CONCAT.
+  TRIM and CONCAT, plus COUNTIF/COUNTIFS, SUMIF/SUMIFS, AVERAGEIF,
+  VLOOKUP/XLOOKUP exact match, INDEX/MATCH, IFNA, PRODUCT,
+  MID/FIND/SEARCH/SUBSTITUTE and text type checks.
 - Browser-local save, CSV/TSV import, calculated CSV export, Arcside JSON
   backup/restore, SVG bar/line/pie charts and simple pivot summary sheets. An optional MIT-licensed ExcelJS 4.4.0
   adapter imports and exports XLSX workbooks (cell values, formulas, and basic
@@ -103,3 +105,15 @@ collaboration after conflict semantics are designed.
 
 These are initial working foundations, NOT complete replacements for
 VS Code, PyCharm, Microsoft Excel or Google Sheets.
+
+
+## Browser CI verification
+
+The standalone labs quality workflow includes real Chromium Playwright tests
+that launch the static HTML workspaces and execute Python via Pyodide, verify
+syntax highlighting/diagnostics, test unittest, recorded debug traces,
+pandas DataFrame previews, Matplotlib PNG output and spreadsheet formula
+editing, clipboard behavior, cross-sheet formulas, chart/pivot creation and
+XLSX interchange. Tests run on Ubuntu 24.04 and store failure screenshots
+and traces as GitHub Actions artifacts. Avoid assuming a passing Flutter build
+alone establishes Python runtime and browser editor behavior.
