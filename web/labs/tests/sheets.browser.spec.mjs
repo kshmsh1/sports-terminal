@@ -34,7 +34,7 @@ test('new sheets, cross-sheet references and formula circular errors', async ({p
   await expect(page.locator('.grid-cell').filter({hasText:'60000'}).first()).toBeVisible();
   await page.locator('#gridScroll').focus();
   await page.keyboard.press('ArrowDown');
-  await page.locator('#formulaInput').fill('=B2+1');
+  await page.locator('#formulaInput').fill('=A3+1');
   await page.locator('#formulaInput').press('Enter');
   await page.locator('#gridScroll').focus();
   await page.keyboard.press('ArrowDown');
