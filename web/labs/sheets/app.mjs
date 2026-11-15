@@ -1,6 +1,8 @@
 import {Workbook,parseRef,columnName,columnIndex,parseCsv,stringifyCsv,sampleWorkbook,expandRange} from './core.mjs';
 import {importXlsx,exportXlsx} from './xlsx.mjs';
 import {rebaseFormula} from './references.mjs';
+import {buildPivot,filterTable} from './analytics.mjs';
+import {conditionalStyle,OPERATORS} from './conditional.mjs';
 import {loadWorkbook,storeWorkbook} from './storage.mjs';
 
 const $=id=>document.getElementById(id);
@@ -135,7 +137,12 @@ function render() {
     header.style.width='52px';header.style.height=ROW_HEIGHT+'px';header.textContent=r;
     header.onclick=()=>select(r,1);rowFragment.appendChild(header);
     for(let c=firstCol;c<=lastCol;c++) {
-      const id=ref(r,c),text=valueText(r,c),style=book.sheets.get(book.active).styles[id]??{};
+      const id=ref(r,c),text=valueText(r,c),sheetData=book.sheets.get(book.active);
+      let conditionValue;
+      try{conditionValue=book.value(book.active,id);}
+      catch{conditionValue=book.display(book.active,id);}
+      const style={...(sheetData.styles[id]??{}),
+        ...(conditionalStyle(sheetData.conditions,r,c,conditionValue)??{})};
       const item=document.createElement('div');
       item.className='grid-cell'+(r===selected.r&&c===selected.c?' selected':r>=chosen.a&&r<=chosen.b&&c>=chosen.l&&c<=chosen.r?' range':'');
       if(text[0]==='#')item.classList.add('error');
@@ -282,6 +289,67 @@ function fillRange(direction) {
   }
   changed();
 }
+
+function conditionDesigner(){
+  const sheet=book.active,area=bounds();
+  const root=document.createElement('div');root.className='condition-designer';
+  const description=document.createElement('p');
+  description.textContent='Conditional formatting rules for '+sheet+'. New rule applies to '+ref(area.a,area.l)+':'+ref(area.b,area.r)+' and updates when values recalculate.';
+  root.append(description);
+  const row=document.createElement('div');row.className='condition-controls';
+  function labeled(name,el){
+    const label=document.createElement('label');label.textContent=name;
+    label.append(el);row.append(label);return el;
+  }
+  const operator=document.createElement('select');operator.id='conditionOperator';
+  for(const name of OPERATORS){const option=document.createElement('option');option.value=name;option.textContent=name;operator.append(option);}
+  labeled('Condition',operator);
+  const value=document.createElement('input');value.id='conditionValue';value.placeholder='Threshold or text';
+  labeled('Value',value);
+  const value2=document.createElement('input');value2.id='conditionValue2';value2.placeholder='Upper threshold for between';
+  labeled('Second value',value2);
+  const fill=document.createElement('input');fill.id='conditionFill';fill.type='color';fill.value='#164e37';
+  labeled('Highlight fill',fill);
+  const text=document.createElement('input');text.id='conditionColor';text.type='color';text.value='#adf4d0';
+  labeled('Text color',text);
+  root.append(row);
+  const actions=document.createElement('div');actions.className='pivot-actions';
+  const add=document.createElement('button');add.id='addCondition';add.className='primary';add.textContent='Add rule';
+  const clear=document.createElement('button');clear.id='clearConditions';clear.textContent='Clear all rules';
+  actions.append(add,clear);root.append(actions);
+  const list=document.createElement('div');list.id='conditionRules';
+  root.append(list);
+  function renderRules(){
+    list.replaceChildren();
+    const rules=book.sheets.get(sheet)?.conditions??[];
+    for(const [index,rule] of rules.entries()){
+      const line=document.createElement('div');line.className='condition-rule';
+      const sample=document.createElement('span');sample.className='condition-sample';
+      sample.style.backgroundColor=rule.fill;sample.style.color=rule.color;sample.textContent='Aa';
+      const description=document.createElement('span');
+      description.textContent=ref(rule.range.a,rule.range.l)+':'+ref(rule.range.b,rule.range.r)+' · '+rule.operator+(rule.value?(' '+rule.value):'');
+      const remove=document.createElement('button');remove.textContent='Remove';remove.title='Remove rule '+(index+1);
+      remove.onclick=()=>{snapshot();book.sheets.get(sheet).conditions.splice(index,1);changed();renderRules();};
+      line.append(sample,description,remove);list.append(line);
+    }
+    if(!rules.length)list.textContent='No conditional formatting rules in this sheet.';
+  }
+  add.onclick=()=>{
+    try{
+      snapshot();
+      book.setCondition(sheet,{range:area,operator:operator.value,value:value.value,value2:value2.value,
+                               fill:fill.value,color:text.value});
+      changed();renderRules();
+    }catch(e){alert(e.message);}
+  };
+  clear.onclick=()=>{
+    if(!book.sheets.get(sheet).conditions.length)return;
+    snapshot();book.clearConditions(sheet);changed();renderRules();
+  };
+  renderRules();
+  modal('Conditional formatting',root);
+}
+
 function applyStyle(patch) {
   snapshot();forSelection((r,c)=>book.setStyle(book.active,ref(r,c),patch));changed();
 }
@@ -423,27 +491,185 @@ function makeChart() {
   }
   chooser.onchange=()=>draw(chooser.value);draw('bar');modal('Insert chart',wrap);
 }
-function createPivot() {
-  const b=bounds();
-  const ext=b.a===b.b&&b.l===b.r?{a:1,b:usedExtent().r,l:1,r:2}:b;
-  if(ext.r-ext.l<1){alert('Select a two-column table: group key and numeric measure.');return;}
-  const header1=book.display(book.active,ref(ext.a,ext.l))||'Group',header2=book.display(book.active,ref(ext.a,ext.l+1))||'Value';
-  const groups=new Map();
-  for(let r=ext.a+1;r<=ext.b;r++){
-    const label=book.display(book.active,ref(r,ext.l));const n=Number(book.display(book.active,ref(r,ext.l+1)));
-    if(label&&!isNaN(n))groups.set(label,{sum:(groups.get(label)?.sum??0)+n,count:(groups.get(label)?.count??0)+1});
-  }
-  if(!groups.size){alert('No groups with numeric values found.');return;}
-  try{
-    snapshot();const sheet='Pivot'+(book.sheets.size+1);book.addSheet(sheet);
-    ['Group: '+header1,'Sum: '+header2,'Count','Average'].forEach((h,i)=>book.set(sheet,ref(1,i+1),h));
-    let r=2;for(const [label,s] of groups) {
-      book.set(sheet,ref(r,1),label);book.set(sheet,ref(r,2),s.sum);book.set(sheet,ref(r,3),s.count);
-      book.set(sheet,ref(r,4),'=IFERROR(B'+r+'/C'+r+',0)');r++;
+
+function sourceMatrix(spec){
+  const {sourceSheet,range}=spec;
+  if(!book.sheets.has(sourceSheet))throw Error('Source sheet is missing');
+  const {a,b,l,r}=range;
+  const count=(b-a+1)*(r-l+1);
+  if(count>480000||b-a>100000||r-l>255)throw Error('Select fewer than 480,000 source cells');
+  const matrix=[];
+  for(let row=a;row<=b;row++){
+    const values=[];
+    for(let col=l;col<=r;col++){
+      const id=ref(row,col);
+      try{values.push(book.value(sourceSheet,id));}
+      catch{values.push(book.display(sourceSheet,id));}
     }
-    select(1,1);changed();
-  }catch(e){alert(e.message);}
+    matrix.push(values);
+  }
+  return matrix;
 }
+async function workerAnalysis(kind,matrix,config){
+  if(typeof Worker==='undefined'){
+    return kind==='filter'?{matrix:filterTable(matrix,config)}:buildPivot(matrix,config);
+  }
+  return new Promise((resolve,reject)=>{
+    const worker=new Worker('./analytics.worker.mjs',{type:'module'});
+    const timer=setTimeout(()=>{worker.terminate();reject(Error('Analysis exceeded 60 seconds'));},60000);
+    worker.onmessage=({data})=>{
+      clearTimeout(timer);worker.terminate();
+      if(data.ok)resolve(data.result);
+      else reject(Error(data.error??'Analysis failed'));
+    };
+    worker.onerror=error=>{clearTimeout(timer);worker.terminate();reject(Error(error.message??'Analysis worker failed'));};
+    worker.postMessage({id:1,kind,matrix,config});
+  });
+}
+function pivotSourceRange(){
+  const selectedBounds=bounds(),single=selectedBounds.a===selectedBounds.b&&selectedBounds.l===selectedBounds.r;
+  if(!single)return selectedBounds;
+  const extent=usedExtent();
+  return {a:1,b:Math.max(2,extent.r),l:1,r:Math.min(24,Math.max(2,extent.c))};
+}
+function selectField(title,fields,defaultIndex=0,empty=false){
+  const wrap=document.createElement('label');wrap.className='pivot-field';wrap.textContent=title;
+  const input=document.createElement('select');input.setAttribute('aria-label',title);
+  if(empty){const opt=document.createElement('option');opt.value='-1';opt.textContent='(none)';input.append(opt);}
+  for(const [i,field] of fields.entries()){
+    const option=document.createElement('option');option.value=String(i);option.textContent=(i+1)+'. '+String(field||('Column '+(i+1)));
+    input.append(option);
+  }
+  input.value=String(defaultIndex);wrap.append(input);
+  return {wrap,input};
+}
+function writeAnalysisResult(name,result,kind,spec){
+  const data=result.matrix;
+  if(!Array.isArray(data)||!data.length||data.length>100000||data[0].length>256)throw Error('Invalid analysis output');
+  snapshot();
+  const sheet=name||('Pivot'+(book.sheets.size+1));
+  if(!name)book.addSheet(sheet);
+  const target=book.sheets.get(sheet);
+  if(!target)throw Error('Output sheet was deleted');
+  const entries=[];
+  for(let ri=0;ri<data.length;ri++)for(let ci=0;ci<data[ri].length;ci++){
+    const value=data[ri][ci];
+    if(value!==null&&value!==undefined&&value!=='')entries.push([ref(ri+1,ci+1),value]);
+    if(ri===0)book.setStyle(sheet,ref(ri+1,ci+1),{bold:true,fill:'#284a71'});
+  }
+  book.replaceSheetCells(sheet,entries);
+  book.analytics[sheet]={...spec,kind};
+  book.active=sheet;select(1,1);changed();
+  $('modal').hidden=true;
+}
+function pivotDesigner(){
+  const range=pivotSourceRange(),sourceSheet=book.active;
+  const baseSpec={sourceSheet,range};
+  const row0=sourceMatrix({...baseSpec,range:{...range,b:range.a}})[0];
+  if(row0.length<2){alert('Select data with multiple columns and a header row.');return;}
+  const names=row0.map((v,i)=>v==null||v===''?'Column '+(i+1):String(v));
+  const root=document.createElement('div');root.className='pivot-builder';
+  const description=document.createElement('p');
+  description.textContent='Choose row groups, an optional column dimension, a measure, and aggregation. Source: '+sourceSheet+'!'+ref(range.a,range.l)+':'+ref(range.b,range.r);
+  root.append(description);
+  const grid=document.createElement('div');grid.className='pivot-fields';
+  const row1=selectField('Row field',names,0),
+        row2=selectField('Additional row field',names,-1,true),
+        col=selectField('Column dimension',names,-1,true),
+        val=selectField('Value field',names,Math.min(1,names.length-1)),
+        filterCol=selectField('Filter field',names,-1,true);
+  for(const control of [row1,row2,col,val,filterCol])grid.append(control.wrap);
+  const aggregate=document.createElement('label');aggregate.className='pivot-field';aggregate.textContent='Aggregation';
+  const aggInput=document.createElement('select');aggInput.id='pivotAggregate';
+  for(const name of ['sum','count','countDistinct','average','min','max','median']){
+    const option=document.createElement('option');option.value=name;option.textContent=name;aggInput.append(option);
+  }
+  aggregate.append(aggInput);grid.append(aggregate);
+  const filterMode=document.createElement('label');filterMode.className='pivot-field';filterMode.textContent='Filter condition';
+  const filterModeInput=document.createElement('select');
+  for(const item of ['equals','notEquals','contains','notBlank']){
+    const option=document.createElement('option');option.value=item;option.textContent=item;filterModeInput.append(option);
+  }
+  filterMode.append(filterModeInput);grid.append(filterMode);
+  const filterValue=document.createElement('label');filterValue.className='pivot-field';filterValue.textContent='Filter value';
+  const filterInput=document.createElement('input');filterInput.placeholder='Optional exact value or substring';
+  filterValue.append(filterInput);grid.append(filterValue);
+  root.append(grid);
+  const controls=document.createElement('div');controls.className='pivot-actions';
+  const previewButton=document.createElement('button');previewButton.id='previewPivot';previewButton.textContent='Preview';
+  const createButton=document.createElement('button');createButton.id='createPivot';createButton.textContent='Create pivot sheet';
+  createButton.className='primary';controls.append(previewButton,createButton);root.append(controls);
+  const output=document.createElement('div');output.id='pivotPreview';output.className='pivot-preview';
+  root.append(output);
+  function config(){
+    const rows=[Number(row1.input.value)];
+    if(Number(row2.input.value)>=0&&!rows.includes(Number(row2.input.value)))rows.push(Number(row2.input.value));
+    return {rows,column:Number(col.input.value)<0?null:Number(col.input.value),
+      value:Number(val.input.value),aggregate:aggInput.value,grandTotal:true,
+      filter:Number(filterCol.input.value)<0?null:
+        {field:Number(filterCol.input.value),mode:filterModeInput.value,value:filterInput.value}};
+  }
+  async function generate(commit=false){
+    for(const button of [previewButton,createButton])button.disabled=true;
+    output.textContent='Calculating in a background worker…';
+    try{
+      const cfg=config(),spec={...baseSpec,config:cfg};
+      const result=await workerAnalysis('pivot',sourceMatrix(baseSpec),cfg);
+      if(commit){writeAnalysisResult(null,result,'pivot',spec);return;}
+      const table=document.createElement('table');table.className='preview-table';
+      for(const [i,row] of result.matrix.slice(0,24).entries()){
+        const tr=document.createElement('tr');
+        for(const value of row.slice(0,16)){
+          const cell=document.createElement(i===0?'th':'td');
+          cell.textContent=value===null?'':String(value);tr.append(cell);
+        }
+        table.append(tr);
+      }
+      output.replaceChildren(table);
+      const note=document.createElement('div');note.className='message';
+      note.textContent=result.meta.records+' source rows · '+result.meta.groups+' groups · '+result.matrix.length+' output rows';
+      output.append(note);
+    }catch(e){output.textContent='Analysis error: '+e.message;}
+    finally{for(const button of [previewButton,createButton])button.disabled=false;}
+  }
+  previewButton.onclick=()=>generate(false);createButton.onclick=()=>generate(true);
+  modal('Pivot table designer',root);
+}
+async function refreshAnalysis(){
+  const sheet=book.active,spec=book.analytics[sheet];
+  if(!spec){alert('Current sheet is not a generated pivot/filter report.');return;}
+  try{
+    $('saveStatus').textContent='Refreshing report…';
+    const result=await workerAnalysis(spec.kind,sourceMatrix(spec),spec.config);
+    writeAnalysisResult(sheet,result,spec.kind,spec);
+  }catch(e){alert('Cannot refresh: '+e.message);$('saveStatus').textContent='Refresh failed';}
+}
+function filterDesigner(){
+  const range=pivotSourceRange(),sourceSheet=book.active,source={sourceSheet,range};
+  const names=sourceMatrix({...source,range:{...range,b:range.a}})[0].map((x,i)=>String(x??'Field '+(i+1)));
+  const root=document.createElement('div');root.className='pivot-builder';
+  const field=selectField('Column to filter',names,0);
+  const mode=document.createElement('select');mode.id='filterMode';
+  for(const x of ['contains','equals','notEquals','notBlank']){
+    const option=document.createElement('option');option.value=x;option.textContent=x;mode.append(option);
+  }
+  const term=document.createElement('input');term.id='filterValue';term.placeholder='Match text';
+  const sort=document.createElement('select');sort.id='filterSort';
+  for(const x of ['none','asc','desc']){const option=document.createElement('option');option.value=x;option.textContent=x;sort.append(option);}
+  const action=document.createElement('button');action.id='applyFilter';action.textContent='Create filtered table';action.className='primary';
+  root.append(field.wrap,mode,term,sort,action);
+  action.onclick=async()=>{
+    action.disabled=true;
+    try{
+      const config={field:Number(field.input.value),mode:mode.value,value:term.value,sort:sort.value};
+      const result=await workerAnalysis('filter',sourceMatrix(source),config);
+      writeAnalysisResult(null,result,'filter',{...source,config});
+    }catch(e){alert('Filter failed: '+e.message);}
+    finally{action.disabled=false;}
+  };
+  modal('Filter and sort data',root);
+}
+function createPivot(){pivotDesigner();}
 function sortSelection() {
   const b=bounds();
   if(b.a===b.b){alert('Select multiple rows to sort.');return;}
@@ -470,6 +696,9 @@ for(const button of document.querySelectorAll('[data-action]'))button.onclick=()
   if(action==='exportWorkbook')download(safeFilename(name)+'.arcside.json',JSON.stringify({name,workbook:book.toJSON()},null,2),'application/json');
   if(action==='chart')makeChart();
   if(action==='pivot')createPivot();
+  if(action==='refreshPivot')void refreshAnalysis();
+  if(action==='filterTable')filterDesigner();
+  if(action==='conditional')conditionDesigner();
   if(action==='sort')sortSelection();
   if(action==='fillDown')fillRange('down');
   if(action==='fillRight')fillRange('right');

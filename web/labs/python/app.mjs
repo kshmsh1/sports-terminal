@@ -1,3 +1,5 @@
+import {LocalIde} from './companion_ui.mjs';
+
 const $=id=>document.getElementById(id);
 const KEY='arcside.pythonlab.v1';
 const defaults={
@@ -8,6 +10,7 @@ const defaults={
 let project={name:'Untitled Project',entry:'main.py',files:{...defaults}},active='main.py',opened=['main.py'];
 let models={},editor=null,worker=null,busy=false,requests=new Map(),nextId=1,breakpoints={},decorations=[];
 let diagnostics=[],trace=[],traceIndex=0,figures=[],variables=[],changedFiles=new Set(),saveTimer,lintTimer;
+let companion=null;
 try {
 const saved=JSON.parse(localStorage.getItem(KEY));
 if(saved?.version===1&&saved.project?.files&&Object.keys(saved.project.files).length){
@@ -77,6 +80,7 @@ function model(name){
  const m=monaco.editor.createModel(project.files[name]??'',language(name),uri);
  m.onDidChangeContent(()=>{
  project.files[name]=m.getValue();dirty(name);
+ companion?.documentChanged(name,m.getValue());
  if(name===active){clearTimeout(lintTimer);lintTimer=setTimeout(analyze,1300);}
  });
  models[name]=m;return m;
@@ -117,6 +121,7 @@ function initEditor(){
  }))};
  }});
  $('fallback').hidden=true;status('Editor ready; Python loads on Run');
+ companion?.registerEditor();
  showBreakpoints();renderOutline();
  },()=>useFallback());
 }
@@ -146,9 +151,10 @@ function showBreakpoints(){
  range:new monaco.Range(line,1,line,1),options:{glyphMarginClassName:'arcside-breakpoint',glyphMarginHoverMessage:{value:'Trace breakpoint'}}
  })));
 }
-function setActive(name){
+function setActive(name,skipSync=false){
  if(!(name in project.files))return;
- sync();active=name;
+ if(!skipSync)sync();active=name;
+ companion?.language?.open(name,project.files[name]);
  if(!opened.includes(name))opened.push(name);
  if(editor)editor.setModel(model(name));
  else $('fallback').value=project.files[name];
@@ -202,7 +208,7 @@ $('renameFile').onclick=()=>{
  const old=active;sync();project.files[name]=project.files[old];delete project.files[old];
  if(models[old]){models[old].dispose();delete models[old];}
  opened=opened.map(n=>n===old?name:n);breakpoints[name]=breakpoints[old]??[];delete breakpoints[old];
- if(project.entry===old)project.entry=name;active=name;setActive(name);dirty(name);
+ if(project.entry===old)project.entry=name;active=name;setActive(name,true);dirty(name);
 };
 $('deleteFile').onclick=()=>{
  if(Object.keys(project.files).length<=1){alert('At least one file is required');return;}
@@ -210,7 +216,7 @@ $('deleteFile').onclick=()=>{
  const old=active;delete project.files[old];
  if(models[old]){models[old].dispose();delete models[old];}
  opened=opened.filter(n=>n!==old);active=opened[0]??Object.keys(project.files)[0];
- if(project.entry===old)project.entry=active;setActive(active);dirty(active);
+ if(project.entry===old)project.entry=active;setActive(active,true);dirty(active);
 };
 $('projectName').onchange=e=>{project.name=e.target.value.trim()||'Untitled Project';renderFiles();save();};
 $('importFile').onclick=()=>$('picker').click();
@@ -271,6 +277,7 @@ async function analyze(){
  }catch(e){console.warn('Syntax checks:',e);}
 }
 async function execute(mode,extra={}){
+ if(companion?.usingLocal&&['run','debug','test','repl'].includes(mode))return companion.execute(mode,extra);
  if(busy)return;
  sync();
  if(['run','debug','test'].includes(mode))setPanel('output');
@@ -369,7 +376,7 @@ function renderTrace(){
 $('prevTrace').onclick=()=>{traceIndex=Math.max(0,traceIndex-1);renderTrace();};
 $('nextTrace').onclick=()=>{traceIndex=Math.min(trace.length-1,traceIndex+1);renderTrace();};
 function setPanel(name){
- for(const id of ['output','problems','debugger','plots','variables','console','terminal'])$(id).hidden=id!==name;
+ for(const id of ['output','problems','debugger','plots','variables','console','terminal','notebook'])$(id).hidden=id!==name;
  for(const el of document.querySelectorAll('[data-panel]'))el.classList.toggle('active',el.dataset.panel===name);
 }
 for(const el of document.querySelectorAll('[data-panel]'))el.onclick=()=>setPanel(el.dataset.panel);
@@ -403,8 +410,28 @@ document.addEventListener('keydown',e=>{
  const cmd=e.ctrlKey||e.metaKey;
  if(cmd&&e.key.toLowerCase()==='s'){e.preventDefault();sync();save();}
  if(cmd&&e.key==='Enter'){e.preventDefault();execute('run');}
- if(e.key==='F5'){e.preventDefault();if(e.shiftKey)terminate();else execute('debug');}
+ if(e.key==='F5'){e.preventDefault();if(e.shiftKey){if(companion?.usingLocal)companion.stop();else terminate();}else execute('debug');}
 });
 window.addEventListener('beforeunload',save);
 renderFiles();renderTabs();renderOutline();$('activePath').textContent=active;
+companion=new LocalIde({
+  project:()=>project,
+  active:()=>active,
+  breakpoints:()=>breakpoints[active]??[],
+  sync,
+  output,
+  status,
+  setPanel,
+  running,
+  editor:()=>editor,
+  models:()=>models,
+  browserStop:terminate,
+  replaceSource:(source)=>{
+    if(editor&&models[active])models[active].setValue(source);
+    else $('fallback').value=source;
+    project.files[active]=source;dirty(active);
+  },
+});
+companion.initialize();
+$('stop').onclick=()=>companion?.usingLocal?companion.stop():terminate();
 running(false);setTimeout(initEditor,120);

@@ -5,7 +5,7 @@
  <div class="brand"><span class="brandmark">A</span><span><b>Arcside</b> <span class="dim">/ Python Lab</span></span></div>
  <input id="projectName" value="Untitled Project" aria-label="Project name" spellcheck="false">
  <span class="status" id="status">Initializing editor…</span><div class="spacer"></div>
- <button id="importFile">Import files</button><input id="picker" type="file" multiple accept=".py,.txt,.csv,.json,.md,.toml" hidden>
+ <button id="showCompanion" title="Configure optional local interpreter">Local IDE</button><button id="importFile">Import files</button><input id="picker" type="file" multiple accept=".py,.txt,.csv,.json,.md,.toml" hidden>
  <button id="exportFile">Download .py</button><button id="exportProject">Export project</button><button id="runTests">Test</button><button id="runSelection" title="Execute selected Python lines">Run selection</button>
  <button id="debug" title="Collect trace (F5)">Debug</button><button class="primary" id="run" title="Run (Ctrl/Cmd+Enter)">▶ Run</button>
  <button id="stop" title="Terminate kernel (Shift+F5)">■ Stop</button>
@@ -26,13 +26,14 @@
    <div class="panel-tabs">
     <button data-panel="output" class="active">Output</button><button data-panel="problems">Problems <span id="problemCount">0</span></button>
     <button data-panel="debugger">Debug trace</button><button data-panel="plots">Plots <span id="plotCount">0</span></button>
-    <button data-panel="variables">Variables <span id="variableCount">0</span></button><button data-panel="console">Python Console</button><button data-panel="terminal">Virtual Terminal</button><div class="spacer"></div>
+    <button data-panel="variables">Variables <span id="variableCount">0</span></button><button data-panel="console">Python Console</button><button data-panel="terminal">Terminal</button><button data-panel="notebook">Notebook</button><div class="spacer"></div>
     <button id="clearOutput">Clear</button>
    </div>
    <div id="output" class="panel-content"><pre id="stdout">Welcome to Arcside Python Lab. Press Run to initialize Python.</pre><pre id="stderr"></pre></div>
    <div id="problems" class="panel-content" hidden><div id="problemList" class="message">No diagnostics</div></div>
    <div id="debugger" class="panel-content" hidden>
-     <div class="debug-controls"><button id="prevTrace">← Previous</button><button id="nextTrace">Next →</button><span id="traceInfo">Run Debug to capture execution lines.</span></div>
+     <div id="nativeDebugControls" class="debug-controls" hidden><button id="debugContinue">Continue (F5)</button><button id="debugOver">Step over (F10)</button><button id="debugIn">Step in (F11)</button><button id="debugOut">Step out (Shift+F11)</button><button id="debugTerminate">Stop debug</button></div><div id="debugStack"></div><div id="debugWatch" hidden><input id="watchExpression" placeholder="Watch expression" aria-label="Watch expression"><button id="evaluateWatch">Evaluate</button><span id="watchResult"></span></div>
+     <div class="debug-controls" id="browserTraceControls"><button id="prevTrace">← Previous</button><button id="nextTrace">Next →</button><span id="traceInfo">Run Debug to capture execution lines.</span></div>
      <pre id="traceVars">No trace available</pre><div class="message">Trace replay records line-by-line variable snapshots; this is not a pause-and-resume debugger.</div>
    </div>
    <div id="variables" class="panel-content" hidden><div class="variable-layout"><div id="variableList"></div><div id="variablePreview"><div class="message">Run a script to inspect arrays, dataframes, and Python values.</div></div></div></div>
@@ -42,10 +43,23 @@
      <div class="repl"><label for="replInput">&gt;&gt;&gt;</label><input id="replInput" spellcheck="false" autocomplete="off" placeholder="print(2 + 2)"><button id="replRun">Execute</button></div>
      <div class="repl"><label for="packageInput">Package</label><input id="packageInput" placeholder="e.g. numpy, pandas, scikit-learn" spellcheck="false"><button id="install">Install</button></div>
    </div>
+   <div id="notebook" class="panel-content" hidden>
+     <div class="notebook-toolbar">
+       <button id="startNotebook" disabled>Start local Jupyter kernel</button>
+       <button id="addNotebookCell">+ Code cell</button>
+       <button id="runNotebookAll">Run all</button>
+       <button id="interruptNotebook">Interrupt</button>
+       <button id="restartNotebook">Restart kernel</button><button id="exportNotebook">Export .ipynb</button><button id="importNotebook">Import .ipynb</button><input id="notebookPicker" type="file" accept=".ipynb" hidden><button id="expandNotebook">Expand</button>
+       <span id="notebookStatus">Connect the local companion to start notebook execution.</span>
+     </div>
+     <div id="notebookCells"></div>
+     <div class="message">Notebook cells execute in one persistent Python kernel. Images and plain-text outputs are supported; HTML display output is deliberately not rendered as raw HTML.</div>
+   </div>
    <div id="terminal" class="panel-content" hidden>
+     <div class="terminal-switch"><button id="openLocalTerminal" disabled>Start local PTY shell</button><button id="closeLocalTerminal" disabled>Close local shell</button><span id="terminalType">Browser-only virtual commands</span></div><div id="nativeTerminal" hidden></div><div id="virtualTerminal">
      <div class="message">Virtual project commands only — not a real system shell or PTY.</div>
      <pre id="terminalLog">Arcside virtual terminal. Type help to list commands.</pre>
-     <div class="repl"><label for="terminalInput">$</label><input id="terminalInput" autocomplete="off" spellcheck="false" placeholder="ls, cat main.py, python main.py, unittest"><button id="terminalExecute">Execute</button></div>
+     <div class="repl"><label for="terminalInput">$</label><input id="terminalInput" autocomplete="off" spellcheck="false" placeholder="ls, cat main.py, python main.py, unittest"><button id="terminalExecute">Execute</button></div></div>
    </div>
   </section>
  </main>
@@ -53,6 +67,26 @@
   <div class="pane-title">OUTLINE / ENVIRONMENT</div>
   <div id="outline">Open a Python file to inspect symbols.</div>
   <div class="pane-title">VARIABLES</div><div id="quickVariables" class="quick-variables">Run a script to inspect values.</div>
+  <div class="pane-title">LOCAL COMPANION</div>
+  <div class="companion-controls">
+    <div class="message">Optional, trusted, user-started local Python runtime. Local shells and scripts have your OS permissions.</div>
+    <input id="companionUrl" value="http://127.0.0.1:8766" aria-label="Local companion address" spellcheck="false">
+    <input id="companionToken" type="password" placeholder="Paste session token" aria-label="Companion session token" autocomplete="off">
+    <div class="companion-actions"><button id="connectCompanion">Connect</button><button id="disconnectCompanion" disabled>Disconnect</button></div>
+    <div id="companionStatus">Not connected</div>
+    <label for="companionMode">Execution runtime</label><select id="companionMode"><option value="browser">Browser Python (Pyodide)</option><option value="local" disabled>Local interpreter</option></select>
+    <div id="localEnvironment" hidden>
+      <div id="localEnvDescription" class="message">No local interpreter selected</div>
+      <select id="environmentManager" aria-label="Environment manager"><option value="venv">Python venv</option><option value="uv">uv</option><option value="conda">conda</option></select>
+      <button id="createEnvironment">Create environment</button>
+      <input id="nativePackages" placeholder="numpy pandas pytest" aria-label="Python package names">
+      <button id="installNativePackages">Install packages</button>
+      <button id="enableLsp">Start language server</button>
+      <button id="nativeFormat">Format with Ruff</button><button id="nativeLint">Lint with Ruff</button>
+      <button id="nativeGit">Git status</button>
+      <div class="message">Files are synced into the selected local workspace when you run a script or debug. Do not connect untrusted pages to your companion.</div>
+    </div>
+  </div>
   <div class="pane-title">RUNTIME</div>
   <div class="runtime-info"><b>Browser Python</b><span>Pyodide / WebAssembly</span><span id="runtimeStatus">Not loaded</span><span>Runs inside a worker. No server interpreter or shell.</span></div>
   <div class="pane-title">SHORTCUTS</div>
@@ -64,5 +98,8 @@
 <div class="statusbar"><span id="dirtyStatus">Saved locally</span><div class="spacer"></div><span id="kernelFlag">Kernel stopped</span><span>Arcside Lab · preview</span></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs/loader.js" defer></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css">
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js" defer></script>
 <script type="module" src="./app.mjs"></script>
 </body></html>

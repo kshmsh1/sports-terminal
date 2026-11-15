@@ -1,4 +1,5 @@
 import {evaluateAdvanced} from './formula_functions.mjs';
+import {validateRule} from './conditional.mjs';
 // Arcside Sheets core: no eval(), dynamic code execution, or external formula service.
 // Storage and rendering are deliberately separate from the calculation engine.
 export class CellError extends Error {
@@ -251,6 +252,7 @@ export class Workbook {
   constructor(data) {
     this.sheets=new Map(); this.cache=new Map(); this.deps=new Map(); this.reverse=new Map(); this.trees=new Map();
     this.active='';
+    this.analytics=JSON.parse(JSON.stringify(data?.analytics??{}));
     const input=data && data.version===1 && Array.isArray(data.sheets) ? data.sheets : [{name:'Sheet1',cells:{},styles:{},widths:{}}];
     for(const item of input) this._addRaw(item.name,item);
     if(!this.sheets.size) this._addRaw('Sheet1',{});
@@ -265,7 +267,11 @@ export class Workbook {
     }
     for(const [ref,value] of Object.entries(record.styles??{})) styles[ref]={...value};
     for(const [col,width] of Object.entries(record.widths??{})) if(Number(width)>=55 && Number(width)<=420) widths[col]=Number(width);
-    this.sheets.set(name,{name,cells,styles,widths});
+    const conditions=[];
+    for(const rule of Array.isArray(record.conditions)?record.conditions.slice(0,50):[]){
+      try{conditions.push(validateRule(rule));}catch{}
+    }
+    this.sheets.set(name,{name,cells,styles,widths,conditions});
   }
   _key(sheet,ref) { return sheet+'!'+parseRef(ref).ref; }
   _rebuild() {
@@ -307,6 +313,8 @@ export class Workbook {
     const item=this.sheets.get(oldName);
     this.sheets.delete(oldName); item.name=newName; this.sheets.set(newName,item);
     if(this.active===oldName) this.active=newName;
+    if(this.analytics[oldName]){this.analytics[newName]=this.analytics[oldName];delete this.analytics[oldName];}
+    for(const spec of Object.values(this.analytics))if(spec.sourceSheet===oldName)spec.sourceSheet=newName;
     // Text formulas referencing renamed sheets must also change.
     const escaped=oldName.replace(/[.*+?^$()|[\]{}\\]/g,'\\$&');
     const direct=new RegExp('\\b'+escaped+'!', 'gi');
@@ -320,6 +328,8 @@ export class Workbook {
   deleteSheet(name) {
     if(this.sheets.size<=1) throw new Error('At least one sheet is required');
     this.sheets.delete(name);
+    delete this.analytics[name];
+    for(const [sheet,spec] of Object.entries(this.analytics))if(spec.sourceSheet===name)delete this.analytics[sheet];
     if(this.active===name) this.active=this.sheets.keys().next().value;
     this._rebuild();
   }
@@ -364,14 +374,40 @@ export class Workbook {
       return String(value);
     } catch(e) { return e instanceof CellError ? e.code : '#ERROR!'; }
   }
+  replaceSheetCells(sheet,entries) {
+    const data=this.sheets.get(sheet);
+    if(!data)throw new CellError('#REF!');
+    if(!Array.isArray(entries)||entries.length>100000)
+      throw Error('Output sheet exceeds 100,000 populated cells');
+    const cells={};
+    for(const [ref,raw] of entries){
+      const key=parseRef(ref).ref,content=String(raw??'');
+      if(content.length>10000)throw Error('Cell content too large');
+      if(content)cells[key]=content;
+    }
+    data.cells=cells;
+    this._rebuild();
+  }
+  setCondition(sheet,rule) {
+    const data=this.sheets.get(sheet);
+    if(!data)throw Error('Missing worksheet');
+    if(data.conditions.length>=50)throw Error('Maximum 50 conditional rules per sheet');
+    data.conditions.push(validateRule(rule));
+  }
+  clearConditions(sheet) {
+    const data=this.sheets.get(sheet);
+    if(!data)throw Error('Missing worksheet');
+    data.conditions=[];
+  }
   setStyle(sheet,ref,patch) {
     const data=this.sheets.get(sheet); if(!data) return;
     const id=parseRef(ref).ref;
     data.styles[id]={...(data.styles[id]??{}),...patch};
   }
   toJSON() {
-    return {version:1,active:this.active,sheets:[...this.sheets.values()].map(s=>({
-      name:s.name,cells:{...s.cells},styles:{...s.styles},widths:{...s.widths}
+    return {version:1,active:this.active,analytics:this.analytics,sheets:[...this.sheets.values()].map(s=>({
+      name:s.name,cells:{...s.cells},styles:{...s.styles},widths:{...s.widths},
+      conditions:s.conditions.map(rule=>({...rule,range:{...rule.range}}))
     }))};
   }
 }
