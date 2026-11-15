@@ -102,3 +102,53 @@ test('negative out-of-bounds relative references become REF errors',async()=>{
   const {rebaseFormula}=await import('../sheets/references.mjs');
   assert.equal(rebaseFormula('=A1',-1,0),'=#REF!');
 });
+
+
+test('COUNTIF/SUMIF/AVERAGEIF and wildcard criteria evaluate correctly',()=>{
+  const x=wb();
+  for(const [ref,value] of Object.entries({A1:1,A2:2,A3:2,B1:10,B2:20,B3:30,C1:'NY',C2:'CA',C3:'NY'}))x.set('Sheet1',ref,value);
+  x.set('Sheet1','D1','=COUNTIF(A1:A3,">=2")');
+  x.set('Sheet1','D2','=SUMIF(C1:C3,"NY",B1:B3)');
+  x.set('Sheet1','D3','=AVERAGEIF(A1:A3,">=2",B1:B3)');
+  x.set('Sheet1','D4','=COUNTIF(C1:C3,"N*")');
+  assert.equal(x.display('Sheet1','D1'),'2');
+  assert.equal(x.display('Sheet1','D2'),'40');
+  assert.equal(x.display('Sheet1','D3'),'25');
+  assert.equal(x.display('Sheet1','D4'),'2');
+});
+test('SUMIFS and COUNTIFS evaluate multiple filters',()=>{
+  const x=wb();
+  for(const [ref,value] of Object.entries({A1:1,A2:2,A3:2,B1:10,B2:20,B3:30,C1:'NY',C2:'CA',C3:'NY'}))x.set('Sheet1',ref,value);
+  x.set('Sheet1','D1','=SUMIFS(B1:B3,C1:C3,"NY",A1:A3,">=2")');
+  x.set('Sheet1','D2','=COUNTIFS(C1:C3,"NY",A1:A3,">=2")');
+  assert.equal(x.display('Sheet1','D1'),'30');
+  assert.equal(x.display('Sheet1','D2'),'1');
+});
+test('exact lookup functions, no-match error and IFNA handling',()=>{
+  const x=wb();
+  for(const [ref,value] of Object.entries({A1:1,A2:2,A3:3,B1:10,B2:20,B3:30}))x.set('Sheet1',ref,value);
+  x.set('Sheet1','C1','=VLOOKUP(2,A1:B3,2,FALSE)');
+  x.set('Sheet1','C2','=XLOOKUP(3,A1:A3,B1:B3)');
+  x.set('Sheet1','C3','=INDEX(A1:B3,1,2)');
+  x.set('Sheet1','C4','=MATCH(20,B1:B3,0)');
+  x.set('Sheet1','C5','=IFNA(XLOOKUP(8,A1:A3,B1:B3),"not found")');
+  x.set('Sheet1','C6','=IFNA(1/0,"should fail")');
+  assert.deepEqual(['C1','C2','C3','C4','C5','C6'].map(ref=>x.display('Sheet1',ref)),
+    ['20','30','10','2','not found','#DIV/0!']);
+});
+test('rounding follows Excel direction for negative numbers',()=>{
+  const x=wb();
+  x.set('Sheet1','A1','=ROUND(-1.5,0)');
+  x.set('Sheet1','A2','=ROUNDUP(-1.2,0)');
+  x.set('Sheet1','A3','=ROUNDDOWN(-1.7,0)');
+  assert.deepEqual([1,2,3].map(i=>x.display('Sheet1','A'+i)),['-2','-2','-1']);
+});
+test('text functions handle empty RIGHT, MID, FIND, SUBSTITUTE',()=>{
+  const x=wb();
+  x.set('Sheet1','A1','=RIGHT("hello",0)');
+  x.set('Sheet1','A2','=MID("Arcside",2,3)');
+  x.set('Sheet1','A3','=FIND("s","Arcside")');
+  x.set('Sheet1','A4','=SUBSTITUTE("NBA NBA","NBA","Arcside")');
+  assert.deepEqual([1,2,3,4].map(i=>x.display('Sheet1','A'+i)),
+    ['','rcs','4','Arcside Arcside']);
+});
