@@ -5,7 +5,7 @@ export class ArcsideLsp {
   constructor(runtime,monaco,models,editor,status=()=>{}) {
     this.runtime=runtime;this.monaco=monaco;this.models=models;this.editor=editor;
     this.status=status;this.ws=null;this.seq=0;this.pending=new Map();
-    this.opened=new Set();this.registrations=[];
+    this.opened=new Set();this.versions=new Map();this.registrations=[];
   }
   get connected(){return this.ws?.readyState===WebSocket.OPEN;}
   get workspace(){return this.runtime.info?.workspace??'';}
@@ -89,11 +89,11 @@ export class ArcsideLsp {
     const uri=this.toUri(name);
     if(this.opened.has(name)){
       this.notify('textDocument/didChange',{
-        textDocument:{uri,version:Date.now()},
+        textDocument:{uri,version:(this.versions.set(name,(this.versions.get(name)??1)+1),this.versions.get(name))},
         contentChanges:[{text:source}],
       });
     }else{
-      this.opened.add(name);
+      this.opened.add(name);this.versions.set(name,1);
       this.notify('textDocument/didOpen',{
         textDocument:{uri,languageId:'python',version:1,text:source},
       });
@@ -156,6 +156,47 @@ export class ArcsideLsp {
       }};
     }).filter(Boolean);
   }
+  async semanticRename(model,position,newName){
+    const active=Object.keys(this.models).find(k=>this.models[k]===model);
+    if(!active)throw Error('File not in local project');
+    const result=await this.request('textDocument/rename',{
+      textDocument:{uri:this.toUri(active)},
+      position:{line:position.lineNumber-1,character:position.column-1},
+      newName,
+    });
+    const entries=[];
+    for(const [uri,edits] of Object.entries(result?.changes??{}))
+      entries.push({uri,edits});
+    for(const item of result?.documentChanges??[]){
+      if(item.kind || !item.textDocument?.uri)
+        throw Error('Refactoring file operations are not supported in this workspace');
+      entries.push({uri:item.textDocument.uri,edits:item.edits??[]});
+    }
+    const changes=[];
+    for(const {uri,edits} of entries){
+      const name=this.fromUri(uri);
+      const target=name&&this.models[name];
+      if(!target)throw Error('Refactoring references a file not currently loaded: '+uri);
+      for(const edit of edits){
+        const range=edit.range;
+        if(!range)continue;
+        changes.push({
+          resource:target.uri,
+          textEdit:{
+            range:{
+              startLineNumber:range.start.line+1,
+              startColumn:range.start.character+1,
+              endLineNumber:range.end.line+1,
+              endColumn:range.end.character+1,
+            },
+            text:edit.newText??'',
+          },
+          versionId:target.getVersionId(),
+        });
+      }
+    }
+    return {edits:changes};
+  }
   registerProviders(){
     const lang=this.monaco.languages;
     this.registrations.push(lang.registerCompletionItemProvider('python',{
@@ -164,6 +205,9 @@ export class ArcsideLsp {
     }));
     this.registrations.push(lang.registerHoverProvider('python',{
       provideHover:(model,pos)=>this.hover(model,pos).catch(()=>({contents:[]})),
+    }));
+    this.registrations.push(lang.registerRenameProvider('python',{
+      provideRenameEdits:(model,position,newName)=>this.semanticRename(model,position,newName),
     }));
     this.registrations.push(lang.registerDefinitionProvider('python',{
       provideDefinition:(model,pos)=>this.definition(model,pos).catch(()=>[]),
@@ -174,6 +218,6 @@ export class ArcsideLsp {
     this.registrations.length=0;
     if(this.connected)this.notify('shutdown',null);
     this.ws?.close();
-    this.ws=null;this.opened.clear();
+    this.ws=null;this.opened.clear();this.versions.clear();
   }
 }
