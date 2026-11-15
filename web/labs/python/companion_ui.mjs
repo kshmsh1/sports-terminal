@@ -157,7 +157,11 @@ export class LocalIde {
       const result=await this.connection.request(url,action==='git'?undefined:{entry:this.hooks.active()},
         action==='git'?'GET':'POST');
       this.report(result,action==='git'?'Git status':action==='lint'?'Ruff lint':'Ruff format');
-      if(action==='format'&&result.exit_code===0)this.hooks.status('Formatted local file; reload it into the browser editor to view changes');
+      if(action==='format'&&result.exit_code===0){
+        const updated=await this.connection.request('/v1/files/read',{entry:this.hooks.active()});
+        this.hooks.replaceSource(updated.source);
+        this.hooks.status('Formatted local Python and refreshed browser editor');
+      }
     });
   }
   async background(work){
