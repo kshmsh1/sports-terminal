@@ -138,3 +138,24 @@ test('filter designer creates a separate source-backed table',async({page})=>{
   await page.locator('[data-action="refreshPivot"]').click();
   await expect(page.locator('.sheet-tab.active')).toContainText('Pivot');
 });
+
+
+test('conditional formatting responds to live formula changes and persists across reload',async({page})=>{
+  await page.locator('.grid-cell[title="=B2-C2"]').click();
+  await page.locator('[data-action="conditional"]').click();
+  await expect(page.locator('#conditionOperator')).toBeVisible();
+  await page.locator('#conditionOperator').selectOption('greaterThan');
+  await page.locator('#conditionValue').fill('40000');
+  await page.locator('#addCondition').click();
+  await expect(page.locator('#conditionRules .condition-rule')).toHaveCount(1);
+  await page.locator('#closeModal').click();
+  const cell=page.locator('.grid-cell[title="=B2-C2"]');
+  await expect(cell).not.toHaveCSS('background-color','rgb(22, 78, 55)');
+  await page.locator('.grid-cell[title="120000"]').dblclick();
+  await page.locator('#cellEditor').fill('130000');
+  await page.locator('#cellEditor').press('Enter');
+  await expect(page.locator('.grid-cell[title="=B2-C2"]')).toHaveCSS('background-color','rgb(22, 78, 55)');
+  await expect(page.locator('#saveStatus')).toContainText('IndexedDB',{timeout:30000});
+  await page.reload();
+  await expect(page.locator('.grid-cell[title="=B2-C2"]')).toHaveCSS('background-color','rgb(22, 78, 55)');
+});
