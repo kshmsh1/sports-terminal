@@ -1,0 +1,26 @@
+name: Arcside local companion quality
+on:
+  pull_request:
+    paths:
+      - 'python/arcside_companion/**'
+      - 'web/labs/python/**'
+      - '.github/workflows/labs_power_quality.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'python/arcside_companion/**'
+jobs:
+  companion:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install development and integration dependencies
+        run: python -m pip install -e 'python/arcside_companion[all]'
+      - name: Static compile all companion modules
+        run: python -m compileall -q python/arcside_companion/arcside_companion
+      - name: Validate trusted local endpoints and protocols
+        run: python -m pytest -q python/arcside_companion/tests
