@@ -24,19 +24,24 @@ async def terminate(proc: asyncio.subprocess.Process) -> None:
 
 
 async def command(args: list[str], cwd: Path, timeout: float = 90, *, env: dict | None = None,
-                  stdin: bytes | None = None) -> dict:
+                  stdin: bytes | None = None, on_start=None) -> dict:
     """No shell=True. Executables may still execute arbitrary trusted code."""
     proc = await asyncio.create_subprocess_exec(
         *args, cwd=str(cwd), stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         env=env, start_new_session=(os.name == "posix"),
     )
+    if on_start:
+        on_start(proc)
     try:
         out, err = await asyncio.wait_for(proc.communicate(stdin), timeout=timeout)
     except asyncio.TimeoutError:
         await terminate(proc)
         return {"returncode": 124, "stdout": "", "stderr": f"Process timed out after {timeout}s",
                 "timed_out": True}
+    except asyncio.CancelledError:
+        await terminate(proc)
+        raise
     return {"returncode": proc.returncode,
             "stdout": out[:MAX_OUTPUT].decode("utf-8", "replace"),
             "stderr": err[:MAX_OUTPUT].decode("utf-8", "replace"),
