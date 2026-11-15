@@ -1,3 +1,4 @@
+import {setupPowerPanel} from './power_panel.mjs';
 const $=id=>document.getElementById(id);
 const KEY='arcside.pythonlab.v1';
 const defaults={
@@ -8,6 +9,7 @@ const defaults={
 let project={name:'Untitled Project',entry:'main.py',files:{...defaults}},active='main.py',opened=['main.py'];
 let models={},editor=null,worker=null,busy=false,requests=new Map(),nextId=1,breakpoints={},decorations=[];
 let diagnostics=[],trace=[],traceIndex=0,figures=[],variables=[],changedFiles=new Set(),saveTimer,lintTimer;
+let power=null;
 try {
 const saved=JSON.parse(localStorage.getItem(KEY));
 if(saved?.version===1&&saved.project?.files&&Object.keys(saved.project.files).length){
@@ -25,6 +27,7 @@ function save(){
  }catch(e){$('dirtyStatus').textContent='Storage full: export project';}
 }
 function dirty(name=active){
+ power?.onEdit(name,project.files[name]);
  changedFiles.add(name);$('dirtyStatus').textContent='Unsaved changes…';
  clearTimeout(saveTimer);saveTimer=setTimeout(save,450);
  renderFiles();renderTabs();renderOutline();
@@ -57,6 +60,7 @@ async function send(mode,extra={}){
  try{return await promise;}finally{running(false);}
 }
 function terminate(){
+ if(power?.active){void power.stop();return;}
  if(worker)worker.terminate();worker=null;
  for(const req of requests.values())req.reject(Error('Kernel terminated'));
  requests.clear();running(false);status('Stopped — next Run restarts Python');
@@ -148,12 +152,14 @@ function showBreakpoints(){
 }
 function setActive(name){
  if(!(name in project.files))return;
- sync();active=name;
+ if(name!==active && active in project.files)sync();
+ active=name;
  if(!opened.includes(name))opened.push(name);
  if(editor)editor.setModel(model(name));
  else $('fallback').value=project.files[name];
  $('activePath').textContent=name;
  renderFiles();renderTabs();renderOutline();showBreakpoints();updateProblems([]);save();
+ power?.onActive(name,project.files[name]);
 }
 function renderFiles(){
  const root=$('files');root.replaceChildren();
@@ -202,12 +208,13 @@ $('renameFile').onclick=()=>{
  const old=active;sync();project.files[name]=project.files[old];delete project.files[old];
  if(models[old]){models[old].dispose();delete models[old];}
  opened=opened.map(n=>n===old?name:n);breakpoints[name]=breakpoints[old]??[];delete breakpoints[old];
+ power?.onDelete(old);
  if(project.entry===old)project.entry=name;active=name;setActive(name);dirty(name);
 };
 $('deleteFile').onclick=()=>{
  if(Object.keys(project.files).length<=1){alert('At least one file is required');return;}
  if(!confirm('Delete '+active+'?'))return;
- const old=active;delete project.files[old];
+ const old=active;power?.onDelete(old);delete project.files[old];
  if(models[old]){models[old].dispose();delete models[old];}
  opened=opened.filter(n=>n!==old);active=opened[0]??Object.keys(project.files)[0];
  if(project.entry===old)project.entry=active;setActive(active);dirty(active);
@@ -264,7 +271,7 @@ function updateProblems(items){
  items.map(d=>({startLineNumber:d.line,endLineNumber:d.line,startColumn:d.column,endColumn:d.column+1,severity:monaco.MarkerSeverity.Error,message:d.message})));
 }
 async function analyze(){
- if(busy||!active.endsWith('.py'))return;
+ if(power?.active||busy||!active.endsWith('.py'))return;
  const file=active;try{
  const data=await send('analyze',{entry:active,code:code()});
  if(file===active)updateProblems(data.diagnostics??[]);
@@ -272,6 +279,7 @@ async function analyze(){
 }
 async function execute(mode,extra={}){
  if(busy)return;
+ if(power?.active)return power.execute(mode,extra);
  sync();
  if(['run','debug','test'].includes(mode))setPanel('output');
  const start=performance.now();
@@ -369,7 +377,7 @@ function renderTrace(){
 $('prevTrace').onclick=()=>{traceIndex=Math.max(0,traceIndex-1);renderTrace();};
 $('nextTrace').onclick=()=>{traceIndex=Math.min(trace.length-1,traceIndex+1);renderTrace();};
 function setPanel(name){
- for(const id of ['output','problems','debugger','plots','variables','console','terminal'])$(id).hidden=id!==name;
+ for(const id of ['output','problems','debugger','plots','variables','console','terminal','notebook','tools'])$(id).hidden=id!==name;
  for(const el of document.querySelectorAll('[data-panel]'))el.classList.toggle('active',el.dataset.panel===name);
 }
 for(const el of document.querySelectorAll('[data-panel]'))el.onclick=()=>setPanel(el.dataset.panel);
@@ -379,6 +387,7 @@ function terminalCommand(){
  $('terminalInput').value='';
  const log=$('terminalLog');
  function write(text){log.textContent+='\n'+text;log.scrollTop=log.scrollHeight;}
+ if(power?.active){void power.terminal(value).catch(e=>write('Local shell error: '+e.message));return;}
  write('$ '+value);
  const [command,...rest]=value.split(/\s+/);
  const arg=rest.join(' ');
@@ -407,4 +416,17 @@ document.addEventListener('keydown',e=>{
 });
 window.addEventListener('beforeunload',save);
 renderFiles();renderTabs();renderOutline();$('activePath').textContent=active;
-running(false);setTimeout(initEditor,120);
+running(false);
+power=setupPowerPanel({
+ getProject:()=>project,getActive:()=>active,getEditor:()=>editor,
+ getModels:()=>models,ensureModel:name=>model(name),
+ getBreakpoints:()=>breakpoints,
+ setStatus:status,setPanel,running,setRunning:running,
+ writeOutput:(stdout='',stderr='')=>output(stdout,stderr),
+ sync,save,
+ replaceActiveSource:source=>{
+   if(editor&&models[active])models[active].setValue(source);
+   else {project.files[active]=source;$('fallback').value=source;dirty(active);}
+ },
+});
+setTimeout(initEditor,120);
