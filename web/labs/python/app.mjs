@@ -310,10 +310,36 @@ function renderTrace(){
 $('prevTrace').onclick=()=>{traceIndex=Math.max(0,traceIndex-1);renderTrace();};
 $('nextTrace').onclick=()=>{traceIndex=Math.min(trace.length-1,traceIndex+1);renderTrace();};
 function setPanel(name){
- for(const id of ['output','problems','debugger','plots','console'])$(id).hidden=id!==name;
+ for(const id of ['output','problems','debugger','plots','console','terminal'])$(id).hidden=id!==name;
  for(const el of document.querySelectorAll('[data-panel]'))el.classList.toggle('active',el.dataset.panel===name);
 }
 for(const el of document.querySelectorAll('[data-panel]'))el.onclick=()=>setPanel(el.dataset.panel);
+
+function terminalCommand(){
+ const value=$('terminalInput').value.trim();if(!value)return;
+ $('terminalInput').value='';
+ const log=$('terminalLog');
+ function write(text){log.textContent+='\n'+text;log.scrollTop=log.scrollHeight;}
+ write('$ '+value);
+ const [command,...rest]=value.split(/\s+/);
+ const arg=rest.join(' ');
+ if(command==='help')write('Commands: help, pwd, ls, cat <file>, open <file>, python <file>, unittest, pip install <package>, clear. This is not an OS shell.');
+ else if(command==='pwd')write('/arcside/'+project.name.replace(/\s+/g,'_'));
+ else if(command==='ls')write(Object.keys(project.files).sort().join('\n')||'(empty)');
+ else if(command==='clear')log.textContent='';
+ else if(command==='cat')write(project.files[arg]??'File not found: '+arg);
+ else if(command==='open'){if(arg in project.files){setActive(arg);write('Opened '+arg);}else write('File not found: '+arg);}
+ else if(command==='python'){
+   if(arg in project.files){setActive(arg);execute('run');write('Python execution started. See Output panel.');}
+   else write('File not found: '+arg);
+ }
+ else if(command==='unittest'){execute('test');write('Test execution started. See Output panel.');}
+ else if(command==='pip'&&rest[0]==='install'&&rest[1]){execute('install',{package:rest[1]});write('Installation started. See Output panel.');}
+ else write('Unsupported virtual command: '+command+'. Type help.');
+}
+$('terminalExecute').onclick=terminalCommand;
+$('terminalInput').onkeydown=e=>{if(e.key==='Enter')terminalCommand();};
+
 document.addEventListener('keydown',e=>{
  const cmd=e.ctrlKey||e.metaKey;
  if(cmd&&e.key.toLowerCase()==='s'){e.preventDefault();sync();save();}
