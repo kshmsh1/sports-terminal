@@ -127,3 +127,48 @@ async def test_framed_protocol_roundtrip():
     reader.feed_data(encode_frame(obj))
     reader.feed_eof()
     assert await read_frame(reader) == obj
+
+
+def test_read_local_project_and_safe_revision_checked_updates(client,tmp_path):
+    (tmp_path/"main.py").write_text("print('existing')\n",encoding="utf-8")
+    response=client.post("/api/sync",headers=auth(),json={
+        "files":{"main.py":"print('replacement')\n"},
+    })
+    assert response.status_code==409
+    assert (tmp_path/"main.py").read_text()=="print('existing')\n"
+    opened=client.post("/api/read",headers=auth(),json={"path":"main.py"})
+    assert opened.status_code==200
+    assert opened.json()["source"]=="print('existing')\n"
+    sha=opened.json()["sha256"]
+    response=client.post("/api/sync",headers=auth(),json={
+        "files":{"main.py":"print('edited')\n"},"expected":{"main.py":sha},
+    })
+    assert response.status_code==200,response.text
+    updated=response.json()["hashes"]["main.py"]
+    assert len(updated)==64
+    (tmp_path/"main.py").write_text("print('external edit')\n")
+    conflicting=client.post("/api/sync",headers=auth(),json={
+        "files":{"main.py":"print('stale edit')\n"},"expected":{"main.py":updated},
+    })
+    assert conflicting.status_code==409
+    assert (tmp_path/"main.py").read_text()=="print('external edit')\n"
+
+
+def test_file_read_denies_symlink_escape(client,tmp_path):
+    target=tmp_path.parent / ("secret-"+tmp_path.name+".txt")
+    target.write_text("not accessible",encoding="utf-8")
+    (tmp_path/"secret.txt").symlink_to(target)
+    response=client.post("/api/read",headers=auth(),json={"path":"secret.txt"})
+    assert response.status_code==403
+    assert "not accessible" not in response.text
+
+
+def test_local_execution_timeout_kills_process(client):
+    r=client.post("/api/run",headers=auth(),json={
+        "mode":"selection",
+        "source":"import time;time.sleep(5)",
+        "timeout":1,
+    })
+    assert r.status_code==200
+    assert r.json()["timed_out"] is True
+    assert r.json()["returncode"]==124
