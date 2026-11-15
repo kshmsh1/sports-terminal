@@ -11,7 +11,7 @@ export class LocalIde {
   constructor(hooks){
     this.hooks=hooks;this.connection=new CompanionConnection();
     this.language=null;this.debug=null;this.terminal=null;this.termUi=null;
-    this.activeJob=null;this.isBusy=false;this.mounted=false;
+    this.activeJob=null;this.isBusy=false;this.mounted=false;this.syncConfirmed=false;
   }
   get usingLocal(){return this.connection.connected&&$('companionMode').value==='local';}
   get debugging(){return Boolean(this.debug?.active);}
@@ -59,7 +59,7 @@ export class LocalIde {
   disconnect(){
     this.stopTerminal();this.language?.stop();this.language=null;
     if(this.debug)this.debug.stop();this.debug=null;
-    this.connection.disconnect();
+    this.connection.disconnect();this.syncConfirmed=false;
     $('companionToken').value='';
     $('disconnectCompanion').disabled=true;
     $('openLocalTerminal').disabled=true;
@@ -81,6 +81,11 @@ export class LocalIde {
   async syncProject(){
     this.hooks.sync();
     const files=this.hooks.project().files;
+    if(!this.syncConfirmed){
+      const approved=confirm('This will write '+Object.keys(files).length+' browser project files into '+this.connection.health.workspace+' and OVERWRITE any files with matching names. Continue?');
+      if(!approved)throw Error('Local file synchronization was cancelled.');
+      this.syncConfirmed=true;
+    }
     return this.connection.sync(files);
   }
   report(result,title){
