@@ -1,0 +1,44 @@
+html,body,.ide{height:100%;overflow:hidden}.ide{display:flex;flex-direction:column;background:#0b111a}
+.titlebar #projectName{font-weight:750;background:transparent;border:1px solid transparent;color:#f1f5fa;padding:6px;min-width:90px;width:190px}
+.titlebar #projectName:focus{border-color:#517aa8}
+.workbench{display:flex;flex:1;min-height:0}.explorer,.right-pane{width:226px;flex:none;overflow:auto;background:#101b29;border-right:1px solid #27374b;display:flex;flex-direction:column}
+.right-pane{width:215px;border-right:0;border-left:1px solid #27374b}
+.pane-title{display:flex;align-items:center;justify-content:space-between;padding:12px;font-size:11px;font-weight:750;color:#7f97b3;letter-spacing:.06em;border-bottom:1px solid #26364a}
+.project-head{display:flex;align-items:center;gap:7px;padding:12px 8px;font-size:11px;letter-spacing:.04em;color:#d9e6f6}
+#projectLabel{overflow:hidden;text-overflow:ellipsis}
+#files{overflow:auto;flex:1}.file{display:flex;align-items:center;gap:7px;padding:6px 10px 6px 17px;font-family:ui-monospace,monospace;font-size:12px;color:#a9bdd3;cursor:pointer;white-space:nowrap;overflow:hidden}
+.file:hover{background:#223247}.file.selected{background:#254563;color:#f2faff}.file .file-icon{color:#ffd76d}.file .filename{overflow:hidden;text-overflow:ellipsis}
+.side-actions{display:flex;gap:4px;border-top:1px solid #293b51;padding:8px}.side-actions button{font-size:11px}
+.explorer-note{color:#7890aa;font-size:11px;padding:12px;line-height:1.5}
+.center-pane{display:flex;flex:1;min-width:0;flex-direction:column;background:#0d1420}
+#tabs{height:38px;min-height:38px;display:flex;align-items:stretch;overflow-x:auto;background:#141f2e;border-bottom:1px solid #2b3c53}
+.tab{display:flex;align-items:center;gap:9px;padding:8px 13px;border-radius:0;border-right:1px solid #27374b;background:#1a2737;color:#abbfd4}
+.tab.active{background:#0d1420;color:#f1f6fe;border-top:2px solid #58a1ff}
+.tab .close{padding:1px 3px;font-size:12px;border-radius:3px}
+.tab .unsaved{color:#ffc676}
+.editor-wrap{flex:1;min-height:120px;position:relative}
+#editor,#fallback{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0e1623;color:#ecf4fc;resize:none;padding:0}
+#fallback{font-family:ui-monospace,monospace;font-size:13px;padding:18px;white-space:pre;tab-size:4}
+.crumbs{display:flex;align-items:center;gap:15px;padding:5px 11px;font-size:11px;color:#8a9fbc;background:#142033;border-top:1px solid #26374c}
+.bottom-panel{height:255px;min-height:170px;display:flex;flex-direction:column;border-top:1px solid #345171}
+.panel-tabs{height:36px;display:flex;align-items:center;background:#121d2c;border-bottom:1px solid #2a4059;padding:0 8px}
+.panel-tabs button.active{border-bottom:2px solid #69a9f2;color:#e4f3ff;border-radius:0}
+.panel-content{flex:1;min-height:0;overflow:auto;padding:12px;background:#0e1826}
+.panel-content[hidden]{display:none}
+#stdout,#stderr,#traceVars{font-family:ui-monospace,monospace;font-size:12px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+#stdout{color:#cde5fc}#stderr{color:#ffa6a6;margin-top:6px}
+.debug-controls{display:flex;gap:8px;align-items:center;padding-bottom:8px}.debug-controls span{font-size:12px;color:#9bb1c7}
+.message{color:#8fa7bf;font-size:12px;line-height:1.5;padding:4px 0 8px}
+#problemList .problem{padding:8px;border-bottom:1px solid #283a50;cursor:pointer;color:#ffb2b2;font-size:12px}
+#figureGallery{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+#figureGallery img{max-width:min(100%,680px);max-height:350px;background:white;border-radius:5px}
+.repl{display:flex;gap:7px;align-items:center;margin:10px 0;font-family:ui-monospace,monospace}
+.repl input{flex:1;background:#162338;border:1px solid #3b5776;color:#edf6ff;border-radius:5px;padding:9px;min-width:0}
+.repl label{width:66px;color:#76baff}
+#outline{padding:10px;display:flex;flex-direction:column;gap:7px;color:#aac0d7;font-family:ui-monospace,monospace;font-size:11px;min-height:100px}
+#outline .symbol{cursor:pointer;padding:3px}
+#outline .symbol:hover{background:#2a4056}
+.runtime-info{display:flex;flex-direction:column;gap:10px;padding:12px;color:#9cb1c7;font-size:12px}
+.runtime-info b{color:#dfedff}.shortcut{display:flex;justify-content:space-between;padding:8px 12px;font-size:11px;color:#8aa1ba}
+.shortcut span{color:#c2d1e4}.statusbar{height:27px;min-height:27px;display:flex;align-items:center;gap:17px;background:#20416c;color:#dfedff;padding:0 10px;font-size:11px}
+@media(max-width:1000px){.right-pane{display:none}}@media(max-width:630px){.explorer{width:135px}.titlebar{flex-wrap:wrap;min-height:53px;height:auto;padding:5px}.titlebar #projectName{width:90px}.explorer-note{display:none}.bottom-panel{height:230px}}
