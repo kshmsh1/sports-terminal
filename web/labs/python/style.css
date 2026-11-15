@@ -87,3 +87,5 @@ html,body,.ide{height:100%;overflow:hidden}.ide{display:flex;flex-direction:colu
 #nativeShellInput{width:100%;background:#0c1c2a;color:#eff6ff;border:1px solid #344e69;padding:7px}
 body.show-companion .right-pane{display:flex!important}
 @media(max-width:700px){body.show-companion .right-pane{width:190px;flex:none}}
+
+#nativeDebugControls[hidden]{display:none}
