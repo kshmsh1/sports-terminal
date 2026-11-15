@@ -31,3 +31,25 @@ html,body{height:100%;overflow:hidden}.sheets{height:100%;display:flex;flex-dire
 .chart{max-width:100%;width:700px;height:330px;background:#0c1828;border:1px solid #33475c;border-radius:9px}
 .modal-card{width:min(830px,96vw)}.help-list{line-height:1.9;font-size:13px;color:#c6d5e5}.mini{font-size:12px;color:#94a8bd}
 @media(max-width:650px){.titlebar #workbookName{width:130px}.ribbon .sectionlabel,.hint{display:none}.sheet-area{min-height:210px}}
+
+/* Configurable analysis designers, scrollable controls, and editable rules. */
+.menubar{overflow-x:auto;white-space:nowrap}
+.menubar button{flex:none}
+.studio{min-width:300px;padding:6px 4px}
+.studio-intro{font-size:12px;line-height:1.55;color:#b8cbe0;margin:0 0 12px}
+.studio-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;margin-bottom:12px}
+.studio-field{display:flex;flex-direction:column;gap:6px;font-size:11px;color:#a7c8e8}
+.studio-field input,.studio-field select{width:100%;min-width:0;padding:8px;border:1px solid #476283;border-radius:5px;background:#15253a;color:#e0efff}
+.studio-actions{display:flex;gap:10px;align-items:center;margin:12px 0;font-size:12px;color:#b3cbe5}
+.studio-preview{overflow:auto;max-height:210px;border:1px solid #314862}
+.studio-preview-table{border-collapse:collapse;white-space:nowrap;font-size:11px;width:100%}
+.studio-preview-table th,.studio-preview-table td{border:1px solid #344b66;padding:6px 9px;text-align:left}
+.studio-preview-table th{background:#243b54;color:#d7e7fa}
+.chart-series-options{display:flex;flex-wrap:wrap;gap:7px;padding:8px;background:#15273a;border-radius:5px}
+.chart-series-options label{display:flex;gap:4px;align-items:center}
+.chart-series-options input{width:15px}
+.rule-entry{display:flex;align-items:center;gap:9px;padding:8px;border-bottom:1px solid #324861;color:#c6dcf3;font-size:12px}
+.rule-entry button{margin-left:auto;font-size:11px}
+.rules-list{max-height:250px;overflow:auto}
+.modal-card{max-width:min(96vw,980px);max-height:92vh;overflow:auto}
+@media(max-width:600px){.studio-controls{grid-template-columns:1fr}.modal-card{max-width:99vw}}
