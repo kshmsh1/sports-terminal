@@ -424,6 +424,32 @@ power=setupPowerPanel({
  setStatus:status,setPanel,running,setRunning:running,
  writeOutput:(stdout='',stderr='')=>output(stdout,stderr),
  sync,save,
+ replaceProjectFiles:files=>{
+   const names=Object.keys(files);
+   if(!names.length)throw Error('No files to open');
+   if(editor)editor.setModel(null);
+   for(const old of Object.values(models))old.dispose();
+   models={};project.files={...files};
+   active=names.includes('main.py')?'main.py':names[0];
+   project.entry=active;opened=[active];breakpoints={};
+   const notebookFile=names.find(n=>n.endsWith('.ipynb'));
+   if(notebookFile){
+     try{
+       const notebook=JSON.parse(files[notebookFile]);
+       project.notebook=(notebook.cells??[]).filter(cell=>cell.cell_type==='code')
+         .slice(0,200).map(cell=>({
+           id:crypto.randomUUID(),
+           source:Array.isArray(cell.source)?cell.source.join(''):String(cell.source??''),
+         }));
+     }catch(e){console.warn('Cannot parse notebook:',e);}
+   }
+   if(editor)editor.setModel(model(active));
+   else $('fallback').value=project.files[active];
+   $('activePath').textContent=active;
+   renderFiles();renderTabs();renderOutline();updateProblems([]);save();
+   power?.onActive(active,project.files[active]);
+   power?.refreshNotebook?.();
+ },
  replaceActiveSource:source=>{
    if(editor&&models[active])models[active].setValue(source);
    else {project.files[active]=source;$('fallback').value=source;dirty(active);}
