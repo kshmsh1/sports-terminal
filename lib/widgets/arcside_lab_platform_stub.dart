@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+void registerLab(String lab) {}
+
 Widget labFrame(String lab) => Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
