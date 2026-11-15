@@ -394,6 +394,7 @@ export function setupPowerPanel(ctx) {
       ctx.setRunning(false);
     },
     terminal:terminalInput,
+    refreshNotebook:notebookRender,
     onEdit(name,source){if(allowed())lsp?.change(name,source);},
     onActive(name,source){if(allowed())lsp?.open(name,source);},
     onDelete(name){lsp?.close(name);},
