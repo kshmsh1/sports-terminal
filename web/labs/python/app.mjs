@@ -7,7 +7,7 @@ const defaults={
 };
 let project={name:'Untitled Project',entry:'main.py',files:{...defaults}},active='main.py',opened=['main.py'];
 let models={},editor=null,worker=null,busy=false,requests=new Map(),nextId=1,breakpoints={},decorations=[];
-let diagnostics=[],trace=[],traceIndex=0,figures=[],changedFiles=new Set(),saveTimer,lintTimer;
+let diagnostics=[],trace=[],traceIndex=0,figures=[],variables=[],changedFiles=new Set(),saveTimer,lintTimer;
 try {
 const saved=JSON.parse(localStorage.getItem(KEY));
 if(saved?.version===1&&saved.project?.files&&Object.keys(saved.project.files).length){
@@ -32,7 +32,7 @@ function dirty(name=active){
 function status(s){$('status').textContent=s;$('runtimeStatus').textContent=s;}
 function running(value){
  busy=value;
- for(const id of ['run','debug','runTests','replRun','install'])$(id).disabled=value;
+ for(const id of ['run','debug','runTests','runSelection','replRun','install'])$(id).disabled=value;
  $('stop').disabled=!value;
 }
 function kernel(){
@@ -283,10 +283,16 @@ async function execute(mode,extra={}){
  if(data.ok===false&&!(data.stderr??''))output('','Execution failed.');
  status((data.ok===false?'Failed':'Completed')+' in '+((performance.now()-start)/1000).toFixed(2)+'s');
  figures=data.figures??[];renderFigures();trace=data.events??[];traceIndex=0;renderTrace();
+ variables=data.variables??variables;renderVariables();
  if(mode==='debug')setPanel('debugger');
  }catch(e){output('',String(e.message??e));}
 }
-$('run').onclick=()=>execute('run');$('debug').onclick=()=>execute('debug');$('runTests').onclick=()=>execute('test');
+$('run').onclick=()=>execute('run');
+$('runSelection').onclick=()=>{
+ const selected=editor?.getModel()?.getValueInRange(editor.getSelection())??'';
+ if(!selected.trim()){execute('run');return;}
+ execute('repl',{code:selected});
+};$('debug').onclick=()=>execute('debug');$('runTests').onclick=()=>execute('test');
 $('clearOutput').onclick=()=>output();
 $('replRun').onclick=()=>{
  const cmd=$('replInput').value;if(!cmd.trim())return;
@@ -294,6 +300,59 @@ $('replRun').onclick=()=>{
 };
 $('replInput').onkeydown=e=>{if(e.key==='Enter')$('replRun').click();};
 $('install').onclick=()=>{const name=$('packageInput').value.trim();if(name)execute('install',{package:name});};
+
+function renderVariables() {
+  $('variableCount').textContent=variables.length;
+  const list=$('variableList'),quick=$('quickVariables');
+  list.replaceChildren();quick.replaceChildren();
+  if(!variables.length){
+    list.textContent='No Python variables yet';
+    quick.textContent='No variables captured';
+    $('variablePreview').textContent='Run Python to inspect live values.';
+    return;
+  }
+  for(const variable of variables) {
+    const button=document.createElement('button');
+    button.textContent=variable.name+' · '+variable.type+(variable.shape?' '+variable.shape:'');
+    button.onclick=()=>showVariable(variable,button);
+    list.appendChild(button);
+    if(quick.children.length<9){
+      const small=document.createElement('button');
+      small.textContent=variable.name+' : '+variable.type;
+      small.onclick=()=>{setPanel('variables');showVariable(variable,button);};
+      quick.appendChild(small);
+    }
+  }
+  showVariable(variables[0],list.firstChild);
+}
+function showVariable(item,button){
+  for(const el of $('variableList').children)el.classList.toggle('active',el===button);
+  const root=$('variablePreview');root.replaceChildren();
+  const title=document.createElement('div');title.className='variable-title';
+  title.textContent=item.name+' · '+item.type+(item.shape?' '+item.shape:'');
+  root.appendChild(title);
+  if(item.table&&Array.isArray(item.table.data)){
+    const table=document.createElement('table');table.className='variable-dataframe';
+    const head=document.createElement('thead'),header=document.createElement('tr');
+    for(const label of ['#',...(item.table.columns??[])]) {
+      const th=document.createElement('th');th.textContent=label;header.appendChild(th);
+    }
+    head.appendChild(header);table.appendChild(head);
+    const body=document.createElement('tbody');
+    for(const [i,values] of item.table.data.entries()){
+      const row=document.createElement('tr');
+      for(const value of [item.table.index?.[i]??i,...values]){
+        const td=document.createElement('td');
+        td.textContent=value===null?'':String(value);row.appendChild(td);
+      }
+      body.appendChild(row);
+    }
+    table.appendChild(body);root.appendChild(table);
+  }else{
+    const pre=document.createElement('pre');pre.textContent=item.preview??'';
+    root.appendChild(pre);
+  }
+}
 function renderFigures(){
  $('plotCount').textContent=figures.length;const root=$('figureGallery');root.replaceChildren();
  if(!figures.length){root.textContent='No Matplotlib plots generated.';return;}
@@ -310,7 +369,7 @@ function renderTrace(){
 $('prevTrace').onclick=()=>{traceIndex=Math.max(0,traceIndex-1);renderTrace();};
 $('nextTrace').onclick=()=>{traceIndex=Math.min(trace.length-1,traceIndex+1);renderTrace();};
 function setPanel(name){
- for(const id of ['output','problems','debugger','plots','console','terminal'])$(id).hidden=id!==name;
+ for(const id of ['output','problems','debugger','plots','variables','console','terminal'])$(id).hidden=id!==name;
  for(const el of document.querySelectorAll('[data-panel]'))el.classList.toggle('active',el.dataset.panel===name);
 }
 for(const el of document.querySelectorAll('[data-panel]'))el.onclick=()=>setPanel(el.dataset.panel);
