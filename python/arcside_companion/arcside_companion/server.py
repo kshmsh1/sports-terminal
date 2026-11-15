@@ -40,7 +40,7 @@ class ReadRequest(BaseModel):
 class Execution(BaseModel):
     entry: str = "main.py"
     source: str | None = None
-    mode: Literal["run", "selection", "test", "coverage"] = "run"
+    mode: Literal["run", "selection", "test", "coverage", "profile"] = "run"
     timeout: int = Field(default=90, ge=1, le=300)
     job_id: str = Field(default_factory=lambda: uuid.uuid4().hex)
 
@@ -211,6 +211,11 @@ def create_app(root: Path, origins: list[str] | None = None, token: str | None =
                 args = [str(python), "-m", "unittest", "discover", "-v"]
         elif body.mode == "coverage":
             args = [str(python), "-m", "coverage", "run", "-m", "pytest", "-q"]
+        elif body.mode == "profile":
+            entry = validate_file(body.entry)
+            if not entry.is_file():
+                raise HTTPException(404, "Entry source has not been synced")
+            args = [str(python), "-m", "cProfile", "-s", "cumulative", str(entry)]
         elif body.mode == "selection":
             if not body.source or len(body.source) > 150_000:
                 raise HTTPException(400, "Selection is empty or too large")
@@ -221,6 +226,10 @@ def create_app(root: Path, origins: list[str] | None = None, token: str | None =
                 raise HTTPException(404, "Entry source has not been synced")
             args = [str(python), str(entry)]
         result = await run_job(args, body.timeout, body.job_id)
+        if body.mode == "coverage" and not result.get("timed_out"):
+            report = await run_job([str(python), "-m", "coverage", "report", "-m"], 30)
+            result["stdout"] += "\n" + report.get("stdout", "")
+            result["stderr"] += report.get("stderr", "")
         return {"job_id": body.job_id, **result}
 
     @app.post("/api/interrupt", dependencies=[Depends(authorize)])
