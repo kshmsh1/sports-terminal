@@ -23,6 +23,8 @@ jobs:
       - name: Syntax-check JavaScript
         run: |
           node --check web/labs/sheets/core.mjs
+          node --check web/labs/sheets/formula_functions.mjs
+          node --check web/labs/sheets/references.mjs
           node --check web/labs/sheets/app.mjs
           node --check web/labs/sheets/xlsx.mjs
           node --check web/labs/python/app.mjs
