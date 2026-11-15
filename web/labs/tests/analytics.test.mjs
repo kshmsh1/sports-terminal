@@ -62,7 +62,7 @@ test('median, min, max and source filters work without mutating data',()=>{
   assert.equal(sales.length,6);
 });
 test('filter and numeric sort preserve header and do not rewrite original table',()=>{
-  const filtered=filterTable(sales,{field:0,mode:'equals',value:'east',sort:'desc'});
+  const filtered=filterTable(sales,{field:0,mode:'equals',value:'east',sort:'desc',sortField:3});
   assert.equal(filtered.length,4);
   assert.equal(filtered[0][0],'Region');
   assert.equal(filtered[1][3],700);
