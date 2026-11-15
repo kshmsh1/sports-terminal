@@ -23,6 +23,7 @@ export class LocalRuntime {
     this.info=null;
     this.activeJob=null;
     this.sockets=new Set();
+    this.knownHashes={};
   }
   get connected(){return Boolean(this.token && this.info);}
   async connect(address,token) {
@@ -42,6 +43,7 @@ export class LocalRuntime {
     for(const socket of this.sockets)socket.close();
     this.sockets.clear();
     this.info=null;this.token='';this.activeJob=null;
+    this.knownHashes={};
   }
   async request(path,body) {
     if(!this.token)throw Error('Local runtime is not connected');
@@ -65,7 +67,17 @@ export class LocalRuntime {
   }
   get(path){return this.request(path);}
   post(path,body){return this.request(path,body);}
-  async sync(files) {return this.post('/api/sync',{files});}
+  async sync(files) {
+    const result=await this.post('/api/sync',{files,expected:this.knownHashes});
+    Object.assign(this.knownHashes,result.hashes??{});
+    return result;
+  }
+  listFiles(){return this.get('/api/files');}
+  async readFile(path){
+    const result=await this.post('/api/read',{path});
+    this.knownHashes[path]=result.sha256;
+    return result;
+  }
   async run(files,entry,mode='run',source) {
     await this.sync(files);
     const job_id=crypto.randomUUID().replace(/-/g,'');
