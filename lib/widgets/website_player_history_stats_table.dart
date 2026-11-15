@@ -95,7 +95,12 @@ class _WebsitePlayerHistoryStatsTableState
                   : NbaStatsSeasonType.regular,
             ).where((row) => _matchesPlayer(row, playerId)).toList();
       final combined = normalized.where((row) =>
-          RegExp(r'^[2-9]TM
+          RegExp(r'^[2-9]TM$').hasMatch(row.team.toUpperCase()) ||
+          row.team.toUpperCase() == 'TOT' ||
+          row.raw['team_stints'] is List).toList();
+      final parent = combined.isNotEmpty
+          ? combined.first
+          : normalized.isNotEmpty ? normalized.first : null;
       // Match only by player ID and season, never by name. Preserve historical
       // dossier rows when a season shard is absent or has incomplete coverage.
       final fallback = matching.firstWhere(
