@@ -376,7 +376,7 @@ function renderTrace(){
 $('prevTrace').onclick=()=>{traceIndex=Math.max(0,traceIndex-1);renderTrace();};
 $('nextTrace').onclick=()=>{traceIndex=Math.min(trace.length-1,traceIndex+1);renderTrace();};
 function setPanel(name){
- for(const id of ['output','problems','debugger','plots','variables','console','terminal'])$(id).hidden=id!==name;
+ for(const id of ['output','problems','debugger','plots','variables','console','terminal','notebook'])$(id).hidden=id!==name;
  for(const el of document.querySelectorAll('[data-panel]'))el.classList.toggle('active',el.dataset.panel===name);
 }
 for(const el of document.querySelectorAll('[data-panel]'))el.onclick=()=>setPanel(el.dataset.panel);
