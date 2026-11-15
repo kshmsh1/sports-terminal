@@ -5,7 +5,7 @@ import 'package:web/web.dart' as web;
 
 final Set<String> _registered = <String>{};
 
-Widget labFrame(String lab) {
+void registerLab(String lab) {
   final kind = lab == 'python' ? 'python' : 'sheets';
   final viewType = 'arcside-independent-$kind';
   if (_registered.add(viewType)) {
@@ -21,5 +21,10 @@ Widget labFrame(String lab) {
       return frame;
     });
   }
-  return HtmlElementView(viewType: viewType);
+
 }
+
+Widget labFrame(String lab) => HtmlElementView(
+      viewType: 'arcside-independent-${lab == 'python' ? 'python' : 'sheets'}',
+    );
+
