@@ -60,7 +60,8 @@ may require network access.
   VLOOKUP/XLOOKUP exact match, INDEX/MATCH, IFNA, PRODUCT,
   MID/FIND/SEARCH/SUBSTITUTE and text type checks.
 - Browser-local IndexedDB save with localStorage fallback, CSV/TSV import, calculated CSV export, Arcside JSON
-  backup/restore, SVG bar/line/pie charts and **configurable pivot-table
+  backup/restore, SVG bar/line/pie charts, bounded conditional formatting
+  rules (numeric/text/blank/error-based), and **configurable pivot-table
   designer**: multiple grouping dimensions, column cross-tabs, SUM/AVERAGE,
   COUNT/DISTINCT COUNT, MIN/MAX/MEDIAN, optional filters, preview, source-backed
   refresh and separate filtered tables. Pivot/filter computation runs in a
@@ -72,7 +73,8 @@ Not yet available: complete XLSX feature fidelity (charts, macros, all Excel
 functions/formatting), full Excel function catalogue,
 array/dynamic spill formulas, named ranges, fully Excel-compatible
 multi-measure/GETPIVOTDATA pivot features, chart series customization,
-collaborative editing, conditional formatting, merged cells, industrial
+collaborative editing, formula-driven conditional formats and icon sets,
+merged cells, industrial
 calculation performance or complete XLSX fidelity.
 Clipboard copy, fill and sorting now rebase relative formulas, but complex
 structured references and formula rewriters remain incomplete. Storage is IndexedDB (with a localStorage fallback for smaller workbooks),
@@ -116,7 +118,8 @@ reuse the restricted existing Python runtime as an unrestricted public API.
 Excel Workspace: pivots and filters now calculate in a dedicated worker.
 Next: broader calculation-worker offloading, dynamic arrays, named ranges,
 more XLSX fidelity, drag-to-fill, structured tables, advanced chart design,
-conditional formatting, pane freezing, accessible navigation and collaboration
+advanced formula-based conditional formatting, pane freezing, accessible
+navigation and collaboration
 only after conflict semantics are designed.
 
 These are initial working foundations, NOT complete replacements for
@@ -141,7 +144,8 @@ workspace and token for Chromium Playwright tests. The expanded suite
 successfully exercised real native Python/pytest, terminal PTY echo,
 pylsp connection, debugpy pause/step, live Jupyter/ipykernel cell state,
 notebook .ipynb exports, browser Pyodide, XLSX roundtrip, pivot design and
-refresh, and browser IndexedDB persistence. Native package tests run on
+refresh, dynamically recalculated conditional formatting, and browser
+IndexedDB persistence. Native package tests run on
 Python 3.11, 3.12 and 3.13. File sync requires consent and authenticated
 loopback origin validation. Native execution is *trusted*, not sandboxed.
 
