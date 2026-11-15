@@ -172,3 +172,27 @@ def test_local_execution_timeout_kills_process(client):
     assert r.status_code==200
     assert r.json()["timed_out"] is True
     assert r.json()["returncode"]==124
+
+
+def test_native_cprofile_reports_call_stats(client):
+    client.post("/api/sync",headers=auth(),json={
+        "files":{"profile.py":"from statistics import mean\nprint(mean([2, 4, 6]))\n"}
+    })
+    response=client.post("/api/run",headers=auth(),json={
+        "mode":"profile","entry":"profile.py",
+    })
+    assert response.status_code==200,response.text
+    assert response.json()["returncode"]==0,response.text
+    assert "function calls" in response.json()["stdout"]
+
+
+def test_native_pytest_coverage_report(client):
+    client.post("/api/sync",headers=auth(),json={"files":{
+        "sample.py":"def double(x): return x*2\n",
+        "test_sample.py":"from sample import double\n"
+                         "def test_double(): assert double(8)==16\n",
+    }})
+    response=client.post("/api/run",headers=auth(),json={"mode":"coverage"})
+    assert response.status_code==200,response.text
+    assert response.json()["returncode"]==0,response.text
+    assert "TOTAL" in response.json()["stdout"]
