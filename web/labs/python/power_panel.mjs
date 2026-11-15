@@ -223,8 +223,9 @@ export function setupPowerPanel(ctx) {
     if(terminalSocket?.readyState===WebSocket.OPEN)return terminalSocket;
     terminalSocket=await runtime.socket('terminal',message=>{
       if(message.type==='output'){
+        const log=$('terminalLog');
+        log.textContent=(log.textContent+message.data).slice(-120000);
         if(terminalScreen)terminalScreen.write(message.data);
-        else $('terminalLog').textContent+=message.data;
       }else if(message.type==='error')$('terminalStatus').textContent=message.message;
     },()=>{
       terminalSocket=null;
