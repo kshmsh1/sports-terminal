@@ -34,6 +34,7 @@ class _WebsitePlayerHistoryStatsTableState
   final _engine = const NbaStatsWorkstationEngine();
   final _resolver = const NbaTerminalMetricResolver();
   final _snapshots = <String, Future<NbaTerminalSeedSnapshot>>{};
+  Future<List<_HistoricalRow>>? _rowsFuture;
   final _expanded = <String>{};
   final _expandedStints = <String>{};
   String _family = 'basic';
@@ -45,6 +46,11 @@ class _WebsitePlayerHistoryStatsTableState
   void didUpdateWidget(covariant WebsitePlayerHistoryStatsTable oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.playerKey != widget.playerKey) _snapshots.clear();
+    if (oldWidget.playerKey != widget.playerKey ||
+        oldWidget.seasonType != widget.seasonType ||
+        !identical(oldWidget.dossierRows, widget.dossierRows)) {
+      _rowsFuture = null;
+    }
     if (oldWidget.playerKey != widget.playerKey ||
         oldWidget.seasonType != widget.seasonType) {
       _expandedStints.clear();
@@ -59,6 +65,7 @@ class _WebsitePlayerHistoryStatsTableState
 
   Future<List<_HistoricalRow>> _loadRows() async {
     final source = widget.dossierRows;
+    if (source.isEmpty) return const [];
     final seasons = source.map((r) => _seasonId(r['season_id']))
         .where((s) => s.isNotEmpty).toSet().toList()..sort();
     if (seasons.isEmpty) return const [];
@@ -99,7 +106,8 @@ class _WebsitePlayerHistoryStatsTableState
         (row) => _isCombined(row),
         orElse: () => matching.first,
       );
-      result.add(_HistoricalRow(season, parent ?? _fromDossier(fallback), false));
+      result.add(_HistoricalRow(season,
+          parent == null ? _fromDossier(fallback) : _withDossierValues(parent, fallback), false));
       final recorded = parent == null
           ? <NbaStatsRow>[]
           : _engine.teamStintRows(parent, basis: _basis);
@@ -137,6 +145,23 @@ class _WebsitePlayerHistoryStatsTableState
     if (year == null) return text;
     final start = int.parse(year.group(1)!);
     return '$start-${((start + 1) % 100).toString().padLeft(2, '0')}';
+  }
+
+  NbaStatsRow _withDossierValues(NbaStatsRow row, Map<String, dynamic> dossier) {
+    final merged = <String, dynamic>{...dossier, ...row.raw};
+    for (final entry in dossier.entries) {
+      if (merged[entry.key] == null) merged[entry.key] = entry.value;
+    }
+    return NbaStatsRow(
+      playerId: row.playerId,
+      player: row.player,
+      team: row.team,
+      position: row.position,
+      values: row.values,
+      percentiles: row.percentiles,
+      raw: merged,
+      possessionsEstimated: row.possessionsEstimated,
+    );
   }
 
   NbaStatsRow _fromDossier(Map<String, dynamic> row) {
@@ -188,13 +213,26 @@ class _WebsitePlayerHistoryStatsTableState
   }
 
   double? _value(NbaStatsRow row, String key) {
-    final v = _resolver.value(row, key) ?? row.value(key);
+    final v = row.value(key) ?? _resolver.value(row, key);
     return v != null && v.isFinite ? v : null;
   }
 
   String _format(NbaStatsRow row, String key) {
     final metric = nbaTerminalMetricByKey[key];
-    if (metric != null) return _resolver.format(row, key);
+    if (metric != null) {
+      final value = _value(row, key);
+      if (value == null) return '—';
+      if (metric.format == NbaTerminalMetricFormat.percent) {
+        return '${(value * 100).toStringAsFixed(metric.decimals)}%';
+      }
+      if (metric.format == NbaTerminalMetricFormat.integer) {
+        return value.round().toString();
+      }
+      if (metric.format == NbaTerminalMetricFormat.signed) {
+        return '${value >= 0 ? '+' : ''}${value.toStringAsFixed(metric.decimals)}';
+      }
+      return value.toStringAsFixed(metric.decimals);
+    }
     final value = _value(row, key);
     if (value == null) return '—';
     if (key == 'bpm') {
@@ -242,7 +280,10 @@ class _WebsitePlayerHistoryStatsTableState
                 items: [for (final basis in NbaStatsBasis.values)
                   DropdownMenuItem(value: basis, child: Text(basis.label))],
                 onChanged: (next) {
-                  if (next != null) setState(() => _basis = next);
+                  if (next != null) setState(() {
+                    _basis = next;
+                    _rowsFuture = null;
+                  });
                 },
               ),
             ),
@@ -253,7 +294,7 @@ class _WebsitePlayerHistoryStatsTableState
         const SizedBox(height: 10),
         FutureBuilder<List<_HistoricalRow>>(
           // FutureBuilder needs a stable computation across UI-only rebuilds.
-          future: _loadRows(),
+          future: _rowsFuture ??= _loadRows(),
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
               if (snapshot.hasError) return Text('Unable to load player statistics: ${snapshot.error}');
