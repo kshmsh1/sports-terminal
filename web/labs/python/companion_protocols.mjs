@@ -188,7 +188,7 @@ export class DebugSession {
         name:'Arcside Debug',type:'python',request:'launch',
         program:target,cwd:this.connection.health.workspace,
         python:adapter.python,console:'internalConsole',redirectOutput:true,
-        justMyCode:false,subProcess:false
+        justMyCode:false,stopOnEntry:true,subProcess:false
       });
       await initialized;
       await channel.request('setBreakpoints',{
