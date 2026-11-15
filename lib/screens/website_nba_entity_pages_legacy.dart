@@ -189,7 +189,7 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                       ),
                       const SizedBox(height: 10),
                       WebsitePlayerHistoryStatsTable(
-                        key: ValueKey('career-\${widget.playerKey}-\$_segment'),
+                        key: ValueKey('career-${widget.playerKey}-$_segment'),
                         playerKey: widget.playerKey,
                         dossierRows: selectedRows,
                         seasonType: _segment,
@@ -198,7 +198,7 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                       const _SectionTitle('Advanced statistics'),
                       const SizedBox(height: 10),
                       WebsitePlayerHistoryStatsTable(
-                        key: ValueKey('advanced-\${widget.playerKey}-\$_segment'),
+                        key: ValueKey('advanced-${widget.playerKey}-$_segment'),
                         playerKey: widget.playerKey,
                         dossierRows: selectedRows,
                         seasonType: _segment,
