@@ -295,7 +295,7 @@ export function setupPowerPanel(ctx) {
     if(notebookSocket?.readyState===WebSocket.OPEN)return;
     notebookSocket=await runtime.socket('notebook',message=>{
       if(message.type==='ready'){$('notebookStatus').textContent='Jupyter ready · '+message.interpreter;return;}
-      if(message.type==='error'){$('notebookStatus').textContent=message.message;return;}
+      if(message.type==='error'){$('notebookStatus').textContent='Kernel error: '+message.message;return;}
       const node=[...document.querySelectorAll('.notebook-output')]
         .find(el=>el.dataset.cellId===String(message.id));
       if(!node)return;
@@ -318,7 +318,7 @@ export function setupPowerPanel(ctx) {
         const plain=body.data?.['text/plain'];
         if(plain)appendText(node,Array.isArray(plain)?plain.join(''):plain);
       }
-    },()=>{notebookSocket=null;$('notebookStatus').textContent='Kernel stopped';});
+    },()=>{notebookSocket=null;if(!$('notebookStatus').textContent.startsWith('Kernel error'))$('notebookStatus').textContent='Kernel stopped';});
     $('notebookStatus').textContent='Starting kernel…';
   }
   function appendText(node,value){
