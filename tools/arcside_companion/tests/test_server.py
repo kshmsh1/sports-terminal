@@ -110,3 +110,38 @@ def test_dap_message_framing_is_utf8_and_bounded():
     header, content = framed.split(b"\r\n\r\n", 1)
     assert int(re.search(rb"\d+", header).group()) == len(content)
     assert "Arcside Ω".encode("utf8") in content
+
+
+def test_read_file_roundtrip_and_no_secret_leaks(companion):
+    client, root = companion
+    assert client.get("/v1/ready").json() == {"ready": True}
+    source="import sys\nprint(sys.version_info.major)\n"
+    assert client.post("/v1/files/sync", json={"files": {"analysis.py": source}},
+                       **authorized()).status_code == 200
+    response=client.post("/v1/files/read", json={"entry": "analysis.py"}, **authorized())
+    assert response.status_code == 200
+    assert response.json()["source"] == source
+    assert "test-secret" not in str(response.json())
+    assert client.post("/v1/files/read",json={"entry":"../bad.py"},
+                       **authorized()).status_code == 400
+
+
+def test_snippet_execution_and_native_environment_creation(companion):
+    client,root=companion
+    result=client.post("/v1/snippet",json={"code":"print('native-snippet', 7*7)"},
+                       **authorized())
+    assert result.status_code == 200
+    assert "native-snippet 49" in result.json()["stdout"]
+    created=client.post("/v1/environment/create",json={"manager":"venv"},**authorized())
+    assert created.status_code == 200
+    assert created.json()["exit_code"] == 0
+    info=client.get("/v1/environment",**authorized()).json()
+    assert ".venv" in info["interpreter"]
+    assert client.post("/v1/environment/create",json={"manager":"venv"},
+                       **authorized()).status_code == 400
+
+
+def test_stop_unknown_job_is_idempotent(companion):
+    client,_=companion
+    result=client.post("/v1/stop",json={"job_id":"does_not_exist"},**authorized())
+    assert result.status_code == 200 and result.json()["stopped"] is False
