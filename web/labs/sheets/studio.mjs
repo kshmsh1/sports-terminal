@@ -50,7 +50,7 @@ export function pivotDesigner(rows,{onCreate,initial}={}) {
   const headers=rows[0].map((v,i)=>String(v)||'Field '+(i+1));
   const wrap=element('div','studio');
   const intro=element('p','studio-intro',
-    'Group by multiple fields, optionally split into columns, and summarize a measure. Calculations run in a Web Worker.');
+    'Group by multiple fields, optionally split into columns, and summarize multiple measures. Calculations run in a Web Worker.');
   wrap.append(intro);
   const controls=element('div','studio-controls');
   const row=fieldSelect(headers,{value:initial?.rows?.[0]??0});
@@ -59,6 +59,13 @@ export function pivotDesigner(rows,{onCreate,initial}={}) {
   const value=fieldSelect(headers,{value:initial?.metrics?.[0]?.field??1});
   const aggregate=optionSelect(['sum','count','average','min','max','median','stdev','distinctCount'],
     initial?.metrics?.[0]?.aggregate??'sum');
+  const secondMeasure=fieldSelect(headers,{optional:true,value:initial?.metrics?.[1]?.field??''});
+  const secondAggregate=optionSelect(['sum','count','average','min','max','median','stdev','distinctCount'],
+    initial?.metrics?.[1]?.aggregate??'average');
+  const sortOrder=optionSelect(['Ascending','Descending'],
+    initial?.sortDescending?'Descending':'Ascending');
+  const totals=document.createElement('input');totals.type='checkbox';
+  totals.checked=initial?.totals!==false;
   const filterField=fieldSelect(headers,{optional:true,value:initial?.filters?.[0]?.field??''});
   const filterOp=optionSelect(['equals','notEquals','contains','startsWith','greater','greaterOrEqual','less','lessOrEqual','notBlank'],
     initial?.filters?.[0]?.op??'equals');
@@ -67,6 +74,8 @@ export function pivotDesigner(rows,{onCreate,initial}={}) {
   for(const [labelText,control] of [
     ['Row field',row],['Second row field',second],['Pivot column',column],
     ['Numeric measure',value],['Aggregate',aggregate],
+    ['Second measure',secondMeasure],['Second aggregate',secondAggregate],
+    ['Group sorting',sortOrder],['Grand totals',totals],
     ['Filter field',filterField],['Filter operator',filterOp],['Filter value',filterValue],
   ])controls.append(line(labelText,control));
   wrap.append(controls);
@@ -97,8 +106,9 @@ export function pivotDesigner(rows,{onCreate,initial}={}) {
     return {
       rows:[Number(row.value),...(second.value===''?[]:[Number(second.value)])],
       column:column.value===''?null:Number(column.value),
-      metrics:[{field:Number(value.value),aggregate:aggregate.value}],
-      filters,totals:true,
+      metrics:[{field:Number(value.value),aggregate:aggregate.value},
+        ...(secondMeasure.value===''?[]:[{field:Number(secondMeasure.value),aggregate:secondAggregate.value}])],
+      filters,totals:totals.checked,sortDescending:sortOrder.value==='Descending',
     };
   }
   for(const control of controls.querySelectorAll('input,select'))
