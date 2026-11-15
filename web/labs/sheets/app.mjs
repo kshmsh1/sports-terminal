@@ -137,8 +137,12 @@ function render() {
     header.style.width='52px';header.style.height=ROW_HEIGHT+'px';header.textContent=r;
     header.onclick=()=>select(r,1);rowFragment.appendChild(header);
     for(let c=firstCol;c<=lastCol;c++) {
-      const id=ref(r,c),text=valueText(r,c),sheetData=book.sheets.get(book.active),
-        style={...(sheetData.styles[id]??{}),...(conditionalStyle(sheetData.conditions,r,c,text)??{})};
+      const id=ref(r,c),text=valueText(r,c),sheetData=book.sheets.get(book.active);
+      let conditionValue;
+      try{conditionValue=book.value(book.active,id);}
+      catch{conditionValue=book.display(book.active,id);}
+      const style={...(sheetData.styles[id]??{}),
+        ...(conditionalStyle(sheetData.conditions,r,c,conditionValue)??{})};
       const item=document.createElement('div');
       item.className='grid-cell'+(r===selected.r&&c===selected.c?' selected':r>=chosen.a&&r<=chosen.b&&c>=chosen.l&&c<=chosen.r?' range':'');
       if(text[0]==='#')item.classList.add('error');
