@@ -1,5 +1,6 @@
 import {CompanionConnection} from './companion_connection.mjs';
 import {LanguageSession,DebugSession} from './companion_protocols.mjs';
+import {LocalNotebook} from './companion_notebook.mjs';
 
 const $=id=>document.getElementById(id);
 
@@ -12,10 +13,12 @@ export class LocalIde {
     this.hooks=hooks;this.connection=new CompanionConnection();
     this.language=null;this.debug=null;this.terminal=null;this.termUi=null;
     this.activeJob=null;this.isBusy=false;this.mounted=false;this.syncConfirmed=false;
+    this.notebook=new LocalNotebook(this.connection,message=>this.hooks.status(message));
   }
   get usingLocal(){return this.connection.connected&&$('companionMode').value==='local';}
   get debugging(){return Boolean(this.debug?.active);}
   initialize(){
+    this.notebook.initialize();
     $('showCompanion').onclick=()=>document.body.classList.toggle('show-companion');
     $('connectCompanion').onclick=()=>this.connect();
     $('disconnectCompanion').onclick=()=>this.disconnect();
@@ -42,6 +45,7 @@ export class LocalIde {
     try{
       const info=await this.connection.connect($('companionUrl').value,$('companionToken').value);
       $('companionToken').value=''; // bearer token stays in RAM, not DOM or persistent storage.
+      this.notebook.connectionChanged();
       $('companionStatus').textContent='Connected · '+info.workspace;
       $('disconnectCompanion').disabled=false;
       $('openLocalTerminal').disabled=false;
@@ -59,7 +63,8 @@ export class LocalIde {
   disconnect(){
     this.stopTerminal();this.language?.stop();this.language=null;
     if(this.debug)this.debug.stop();this.debug=null;
-    this.connection.disconnect();this.syncConfirmed=false;
+    this.notebook.disconnect();
+    this.connection.disconnect();this.notebook.connectionChanged();this.syncConfirmed=false;
     $('companionToken').value='';
     $('disconnectCompanion').disabled=true;
     $('openLocalTerminal').disabled=true;
