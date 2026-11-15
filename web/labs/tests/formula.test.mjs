@@ -85,3 +85,20 @@ test('CSV roundtrip commas, quotes, Unicode and line breaks',()=>{
 test('oversized ranges are rejected',()=>{
   assert.throws(()=>expandRange('A1','Z99999'),error=>error.code==='#REF!');
 });
+
+
+test('relative references rebase but absolute row and column anchors remain fixed',async()=>{
+  const {rebaseFormula}=await import('../sheets/references.mjs');
+  assert.equal(rebaseFormula('=A1+$B2+C$3+$D$4',2,1),'=B3+$B4+D$3+$D$4');
+  assert.equal(rebaseFormula('=$A$1',100,200),'=$A$1');
+});
+test('quoted strings and sheet names are not accidentally modified',async()=>{
+  const {rebaseFormula}=await import('../sheets/references.mjs');
+  assert.equal(rebaseFormula('=IF(A1="B2",A1,0)',1,1),'=IF(B2="B2",B2,0)');
+  assert.equal(rebaseFormula("='A1'!C3+ASDF2!B4",1,2),"='A1'!E4+ASDF2!D5");
+  assert.equal(rebaseFormula('=AA12&"A1"',0,1),'=AB12&"A1"');
+});
+test('negative out-of-bounds relative references become REF errors',async()=>{
+  const {rebaseFormula}=await import('../sheets/references.mjs');
+  assert.equal(rebaseFormula('=A1',-1,0),'=#REF!');
+});
