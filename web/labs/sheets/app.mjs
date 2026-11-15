@@ -449,7 +449,7 @@ for(const button of document.querySelectorAll('[data-action]'))button.onclick=()
     if(found){const pos=parseRef(found);select(pos.row,pos.col);ensureVisible();}else alert('No match');
   }
   if(action==='help')modal('Formula reference',
-    'Supported: +, -, *, /, ^, &, comparisons, parentheses; cell references such as A1, $B$2 and other sheets such as Sheet2!A1. Functions: SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, MEDIAN, STDEV, IF, IFERROR, ROUND, ROUNDUP, ROUNDDOWN, ABS, SQRT, POWER, MOD, AND, OR, NOT, LEN, LEFT, RIGHT, UPPER, LOWER, TRIM, CONCAT. Circular references show #CYCLE!. Charts and pivot summaries are created from the current selection. Import/export: CSV, TSV, Arcside JSON.');
+    'Supported: +, -, *, /, ^, &, comparisons, parentheses; cell references such as A1, $B$2 and other sheets such as Sheet2!A1. Functions: SUM, SUMIF, SUMIFS, AVERAGE, AVERAGEIF, COUNT, COUNTIF, COUNTIFS, COUNTA, MIN, MAX, MEDIAN, STDEV, PRODUCT, VLOOKUP (exact), XLOOKUP (exact), INDEX, MATCH (exact), IF, IFERROR, IFNA, ROUND, ROUNDUP, ROUNDDOWN, ABS, SQRT, POWER, MOD, AND, OR, NOT, LEN, LEFT, RIGHT, MID, FIND, SEARCH, SUBSTITUTE, UPPER, LOWER, TRIM, CONCAT. Circular references show #CYCLE!. Charts and pivot summaries are created from the current selection. Import/export: CSV, TSV, Arcside JSON.');
 };
 document.addEventListener('visibilitychange',()=>{if(document.hidden)persist();});
 window.addEventListener('beforeunload',persist);
