@@ -30,13 +30,14 @@ run it as root or enable a wildcard Origin.
 
 What is real and supported:
 - Native CPython execution, syntax errors, subprocess output, pytest/unittest.
-- Workspace-scoped file sync and real filesystem paths.
+- Workspace-scoped file sync and real filesystem paths, with optimistic SHA-256
+  revision checks to prevent overwriting pre-existing or externally edited files.
 - Python venv, optional uv/conda, pip installation, environment selection.
 - Unix PTY shell with live input; no PTY claim for Windows.
 - Optional python-lsp-server over LSP WebSocket bridge.
 - Optional debugpy DAP bridge, supporting launch/true pause/step and stack scopes.
 - Optional Jupyter client kernel using the selected interpreter, if ipykernel is installed.
-- Ruff format/lint and Git status/diff/staging/commit.
+- Ruff format/lint, cProfile profiling, test coverage, and Git status/diff/staging/commit.
 
 Important limitations: binding is loopback only; local network and public
 deployment are intentionally unsupported. The web UI requires an explicit
