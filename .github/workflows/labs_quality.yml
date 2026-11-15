@@ -31,3 +31,28 @@ jobs:
         run: node --test web/labs/tests/*.test.mjs
       - name: Validate embedded Python bootstrap
         run: python3 web/labs/tests/check_kernel_bootstrap.py
+
+  browser:
+    name: Playwright browser workspaces
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned browser harness
+        run: npm install --prefix web/labs --no-package-lock --ignore-scripts
+      - name: Install Chromium and browser dependencies
+        run: cd web/labs && npx playwright install --with-deps chromium
+      - name: Run actual browser interactions
+        run: cd web/labs && npx playwright test -c playwright.config.mjs
+      - name: Upload failed traces and screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arcside-lab-browser-failures
+          path: |
+            web/labs/test-results
+            web/labs/playwright-report
+          retention-days: 7
