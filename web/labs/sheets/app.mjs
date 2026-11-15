@@ -1,6 +1,7 @@
 import {Workbook,parseRef,columnName,columnIndex,parseCsv,stringifyCsv,sampleWorkbook,expandRange} from './core.mjs';
 import {importXlsx,exportXlsx} from './xlsx.mjs';
 import {rebaseFormula} from './references.mjs';
+import {loadWorkbook,storeWorkbook} from './storage.mjs';
 
 const $=id=>document.getElementById(id);
 const ROW_HEIGHT=28, HEADER_HEIGHT=28, DEFAULT_WIDTH=112, MAX_ROWS=100000, MAX_COLS=256;
@@ -17,18 +18,48 @@ function restore() {
 }
 restore();
 $('workbookName').value=name;
+let editRevision=0,saveRevision=0,saveQueue=Promise.resolve();
+async function loadDurableWorkbook(){
+  try{
+    const data=await loadWorkbook();
+    if(!data?.workbook||editRevision!==0)return;
+    book=new Workbook(data.workbook);
+    name=data.name??name;
+    $('workbookName').value=name;
+    requestRender();
+  }catch(error){console.warn('IndexedDB restore unavailable; using local workbook',error);}
+}
+void loadDurableWorkbook();
 function persist() {
-  try { localStorage.setItem(STORAGE,JSON.stringify({name,workbook:book.toJSON()}));$('saveStatus').textContent='Saved in this browser'; }
-  catch(e) {$('saveStatus').textContent='Storage unavailable — export a copy';}
+  const revision=++saveRevision;
+  const state={name,workbook:book.toJSON()};
+  let fallback=false;
+  try{
+    const serialized=JSON.stringify(state);
+    if(serialized.length<=2500000){
+      localStorage.setItem(STORAGE,serialized);
+      fallback=true;
+    }else localStorage.removeItem(STORAGE);
+  }catch(error){console.warn('Local storage is full; relying on IndexedDB',error);}
+  saveQueue=saveQueue.catch(()=>{}).then(()=>storeWorkbook(state)).then(()=>{
+    if(revision===saveRevision)$('saveStatus').textContent='Saved locally · IndexedDB';
+  }).catch(error=>{
+    console.warn('IndexedDB save unavailable',error);
+    if(revision===saveRevision)$('saveStatus').textContent=fallback?'Saved locally · limited storage':'Storage full — export workbook';
+  });
+  return saveQueue;
 }
 let saveTimer;
 function changed() {
+  editRevision++;
   dirty=true;$('saveStatus').textContent='Saving…';
   clearTimeout(saveTimer);saveTimer=setTimeout(persist,350);requestRender();
 }
 function snapshot() {
-  history.push(JSON.stringify(book.toJSON()));
-  if(history.length>60) history.shift();
+  const current=JSON.stringify(book.toJSON());
+  history.push(current);
+  const budget=current.length>6000000?4:current.length>1000000?12:60;
+  while(history.length>budget)history.shift();
   future=[];
   $('undo').disabled=false;$('redo').disabled=true;
 }
