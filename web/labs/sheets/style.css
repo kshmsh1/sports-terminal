@@ -47,3 +47,16 @@ html,body{height:100%;overflow:hidden}.sheets{height:100%;display:flex;flex-dire
 .preview-table th{position:sticky;top:0;background:#274565;color:#d8eeff}
 @media(max-width:750px){.pivot-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.pivot-fields{grid-template-columns:minmax(0,1fr)}}
+
+/* Spreadsheet conditional formatting designer */
+.condition-designer{display:flex;flex-direction:column;gap:12px}
+.condition-designer>p{font-size:12px;color:#a9bed8}
+.condition-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.condition-controls label{display:flex;flex-direction:column;gap:5px;color:#a9bed8;font-size:12px}
+.condition-controls select,.condition-controls input{min-width:0;width:100%;background:#17283b;color:#e5f1ff;border:1px solid #395574;border-radius:5px;padding:8px}
+.condition-controls input[type=color]{height:37px;padding:2px}
+#conditionRules{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow:auto;color:#a3b6cb;font-size:12px}
+.condition-rule{display:flex;align-items:center;gap:10px;border:1px solid #2d4058;background:#132235;border-radius:6px;padding:6px}
+.condition-rule>span:nth-child(2){flex:1;font-family:ui-monospace,monospace;font-size:11px}
+.condition-sample{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:24px;border-radius:4px}
+@media(max-width:650px){.condition-controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
