@@ -38,21 +38,60 @@ async def run_command(args: list[str], root: Path, timeout: int = 90,
     )
     if on_start:
         on_start(proc)
+    # subprocess.communicate() buffers *all* output, regardless of the
+    # truncation applied afterwards. Drain both pipes continuously with hard
+    # memory caps instead, so logging a giant dataset cannot exhaust memory.
+    async def drain(stream: asyncio.StreamReader) -> str:
+        chunks: list[bytes] = []
+        remaining = MAX_OUTPUT
+        truncated = False
+        while block := await stream.read(65536):
+            if len(block) > remaining:
+                truncated = True
+            if remaining:
+                kept = block[:remaining]
+                chunks.append(kept)
+                remaining -= len(kept)
+        output = b"".join(chunks).decode("utf-8", "replace")
+        return output + ("\n[Arcside output truncated at 2 MB]\n" if truncated else "")
+
+    stdout_task = asyncio.create_task(drain(proc.stdout))
+    stderr_task = asyncio.create_task(drain(proc.stderr))
     expired = False
     try:
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-    except asyncio.TimeoutError:
-        expired = True
-        if os.name != "nt":
-            try:
-                os.killpg(proc.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-        else:
-            proc.kill()
-        stdout, stderr = await proc.communicate()
-    return CommandResult(proc.returncode or 0, stdout[:MAX_OUTPUT].decode("utf-8", "replace"),
-                         stderr[:MAX_OUTPUT].decode("utf-8", "replace"), expired)
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=timeout)
+        except asyncio.TimeoutError:
+            expired = True
+            if os.name != "nt":
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            else:
+                proc.kill()
+            await proc.wait()
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                asyncio.gather(stdout_task, stderr_task), timeout=4)
+        except asyncio.TimeoutError:
+            for task in (stdout_task, stderr_task):
+                task.cancel()
+            stdout, stderr = "", "Output streams remained open after process exit"
+    finally:
+        if proc.returncode is None:
+            if os.name != "nt":
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            else:
+                proc.kill()
+            await proc.wait()
+        for task in (stdout_task, stderr_task):
+            if not task.done():
+                task.cancel()
+    return CommandResult(proc.returncode or 0, stdout, stderr, expired)
 
 
 def interpreter(root: Path) -> str:
@@ -67,7 +106,7 @@ def interpreter(root: Path) -> str:
                      else (".conda", "bin", "python"),):
         path = root.joinpath(*relative)
         if path.is_file():
-            return str(path.resolve())
+            return str(path)
     return sys.executable
 
 
