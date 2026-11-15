@@ -30,6 +30,7 @@ test('native pytest discovers and reports Python unit tests',async({page})=>{
 });
 
 test('native PTY terminal and real pylsp language server can connect',async({page})=>{
+  await page.locator('[data-panel="terminal"]').click();
   await page.locator('#openLocalTerminal').click();
   await expect(page.locator('#terminalType')).toContainText('Real local shell',{timeout:20000});
   await expect(page.locator('#nativeTerminal')).toBeVisible();
