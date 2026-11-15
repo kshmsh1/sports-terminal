@@ -48,9 +48,12 @@ may require network access.
   SQRT, POWER, MOD, AND, OR, NOT, LEN, LEFT, RIGHT, UPPER, LOWER,
   TRIM and CONCAT.
 - Browser-local save, CSV/TSV import, calculated CSV export, Arcside JSON
-  backup/restore, SVG bar/line/pie charts and simple pivot summary sheets.
+  backup/restore, SVG bar/line/pie charts and simple pivot summary sheets. An optional MIT-licensed ExcelJS 4.4.0
+  adapter imports and exports XLSX workbooks (cell values, formulas, and basic
+  styling) from the browser on demand; Excel will recalculate cached formulas.
 
-Not yet available: robust XLSX read/write, full Excel function catalogue,
+Not yet available: complete XLSX feature fidelity (charts, macros, all Excel
+functions/formatting), full Excel function catalogue,
 array/dynamic spill formulas, named ranges, Excel-level pivot tables,
 chart series customization, collaborative editing, conditional formatting,
 merged cells, advanced filters, or industrial calculation performance.
@@ -63,6 +66,7 @@ with browser quota limitations rather than IndexedDB.
 From repo root:
 - node --check web/labs/sheets/core.mjs
 - node --check web/labs/sheets/app.mjs
+- node --check web/labs/sheets/xlsx.mjs
 - node --check web/labs/python/app.mjs
 - node --check web/labs/python/kernel.worker.js
 - node --test web/labs/tests/*.test.mjs
@@ -73,7 +77,7 @@ Manual checks:
 1. Edit Analysis!B2: D2/D6 must recalculate. Test a circular reference,
    cross-sheet references, TSV paste and formula bar.
 2. Select a range to insert a chart or generate a pivot summary. Export/import
-   an Arcside workbook JSON file and roundtrip CSV.
+   an Arcside workbook JSON file and roundtrip CSV/XLSX.
 3. Python Lab: run main.py; see pandas/NumPy output; uncomment Matplotlib
    example and inspect Plots; inject a syntax error and inspect Problems.
 4. Run unittest in test_math.py; set a breakpoint in the editor gutter,
