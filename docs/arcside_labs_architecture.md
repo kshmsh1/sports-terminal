@@ -49,7 +49,7 @@ may require network access.
   TRIM and CONCAT, plus COUNTIF/COUNTIFS, SUMIF/SUMIFS, AVERAGEIF,
   VLOOKUP/XLOOKUP exact match, INDEX/MATCH, IFNA, PRODUCT,
   MID/FIND/SEARCH/SUBSTITUTE and text type checks.
-- Browser-local save, CSV/TSV import, calculated CSV export, Arcside JSON
+- Browser-local IndexedDB save with localStorage fallback, CSV/TSV import, calculated CSV export, Arcside JSON
   backup/restore, SVG bar/line/pie charts and simple pivot summary sheets. An optional MIT-licensed ExcelJS 4.4.0
   adapter imports and exports XLSX workbooks (cell values, formulas, and basic
   styling) from the browser on demand; Excel will recalculate cached formulas.
@@ -60,8 +60,8 @@ array/dynamic spill formulas, named ranges, Excel-level pivot tables,
 chart series customization, collaborative editing, conditional formatting,
 merged cells, advanced filters, or industrial calculation performance.
 Sorting moves literal/formula source without fixing relative references;
-avoid sorting blocks containing formulas until addressed. Storage is localStorage
-with browser quota limitations rather than IndexedDB.
+avoid sorting blocks containing formulas until addressed. Storage is IndexedDB (with a localStorage fallback for smaller workbooks),
+subject to browser quota and device-storage limitations.
 
 ## Validation
 
@@ -100,7 +100,7 @@ reuse the restricted existing Python runtime as an unrestricted public API.
 Excel Workspace: move expensive recalculation into a worker, add XLSX file
 fidelity, richer formula typing, array formulas, relative-reference rewrites,
 drag-to-fill, true pivots/filters/tables, advanced charts, pane freezing,
-screen-reader/keyboard coverage, IndexedDB version history and optional
+screen-reader/keyboard coverage, versioned IndexedDB history and optional
 collaboration after conflict semantics are designed.
 
 These are initial working foundations, NOT complete replacements for
