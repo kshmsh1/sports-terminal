@@ -171,7 +171,9 @@ async def notebook(ws: WebSocket, root: Path, interpreter: Path) -> None:
     # Explicit spec pins the notebook to the currently selected environment.
     # ipykernel must be installed in that environment.
     km = AsyncKernelManager(kernel_name="python3")
-    km.kernel_spec = KernelSpec(
+    # KernelManager.kernel_spec is read-only; _kernel_spec is its cache.
+    # Inject the interpreter-specific spec before kernel provisioner startup.
+    km._kernel_spec = KernelSpec(
         argv=[str(interpreter), "-m", "ipykernel_launcher", "-f", "{connection_file}"],
         display_name="Arcside Python", language="python",
     )
