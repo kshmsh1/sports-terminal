@@ -101,3 +101,15 @@ test('XLSX export and import preserves formulas and values',async({page})=>{
   await expect(page.locator('.grid-cell[title="=B2-C2"]')).toBeVisible({timeout:70000});
   await expect(page.locator('.grid-cell').filter({hasText:'38000'}).first()).toBeVisible();
 });
+
+
+test('edits persist across reload through IndexedDB',async({page})=>{
+  await page.locator('.grid-cell[title="120000"]').dblclick();
+  await page.locator('#cellEditor').fill('131000');
+  await page.locator('#cellEditor').press('Enter');
+  await expect(page.locator('#saveStatus')).toContainText('IndexedDB',{timeout:30000});
+  await page.reload();
+  await expect(page.locator('.grid-cell').filter({hasText:'49000'}).first()).toBeVisible({timeout:30000});
+  await page.locator('.grid-cell[title="=B2-C2"]').click();
+  await expect(page.locator('#formulaInput')).toHaveValue('=B2-C2');
+});
