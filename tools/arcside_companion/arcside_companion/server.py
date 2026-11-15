@@ -190,6 +190,13 @@ def create_app(settings: Settings) -> FastAPI:
             raise HTTPException(400, str(error)) from error
         return result.dictionary()
 
+    @app.post("/v1/files/read", dependencies=[Depends(authorized)])
+    async def read_file(payload: EntryPayload):
+        target = valid_entry(payload.entry)
+        if target.stat().st_size > MAX_FILE:
+            raise HTTPException(413, "File exceeds 2 MB")
+        return {"name": payload.entry, "source": target.read_text(encoding="utf-8")}
+
     @app.post("/v1/format", dependencies=[Depends(authorized)])
     async def formatter(payload: EntryPayload):
         target = valid_entry(payload.entry)
