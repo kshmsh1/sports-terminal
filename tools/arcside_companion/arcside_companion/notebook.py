@@ -52,7 +52,10 @@ async def notebook(ws: WebSocket, settings: Settings) -> None:
                                         stop_on_error=True)
                 deadline = asyncio.get_running_loop().time() + 120
                 while asyncio.get_running_loop().time() < deadline:
-                    message = await asyncio.wait_for(client.get_iopub_msg(), timeout=25)
+                    try:
+                        message = await asyncio.wait_for(client.get_iopub_msg(), timeout=25)
+                    except asyncio.TimeoutError:
+                        continue
                     if message.get("parent_header", {}).get("msg_id") != msg_id:
                         continue
                     kind = message.get("msg_type")
@@ -73,8 +76,6 @@ async def notebook(ws: WebSocket, settings: Settings) -> None:
                         await ws.send_json({"type": "error-output", "id": request_id,
                                             "traceback": "\n".join(content.get("traceback", []))[:500000]})
                     elif kind == "status" and content.get("execution_state") == "idle":
-                        await ws.send_json({"type": "finished", "id": request_id,
-                                            "execution": "idle"})
                         return
                 await ws.send_json({"type": "error-output", "id": request_id,
                                     "traceback": "Notebook cell timed out (120 seconds)"})
@@ -83,6 +84,12 @@ async def notebook(ws: WebSocket, settings: Settings) -> None:
             except Exception as error:
                 await ws.send_json({"type": "error-output", "id": request_id,
                                     "traceback": str(error)})
+            finally:
+                try:
+                    await ws.send_json({"type": "finished", "id": request_id,
+                                        "execution": "idle"})
+                except Exception:
+                    pass
 
         while True:
             payload = await ws.receive_json()
