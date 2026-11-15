@@ -113,3 +113,61 @@ test('edits persist across reload through IndexedDB',async({page})=>{
   await page.locator('.grid-cell[title="=B2-C2"]').click();
   await expect(page.locator('#formulaInput')).toHaveValue('=B2-C2');
 });
+
+
+test('Pivot Studio aggregates source data in a worker and refreshes after editing',async({page})=>{
+  await page.locator('[data-action="pivotStudio"]').click();
+  await expect(page.locator('#modal .studio-controls select')).toHaveCount(7);
+  await page.locator('#modal').getByText('Create pivot sheet',{exact:true}).click();
+  await expect(page.locator('.sheet-tab.active')).toContainText('Pivot');
+  await expect(page.locator('.grid-cell').filter({hasText:'120000'}).first()).toBeVisible();
+  await page.locator('.sheet-tab').filter({hasText:'Analysis'}).click();
+  await page.locator('.grid-cell[title="120000"]').dblclick();
+  await page.locator('#cellEditor').fill('130000');
+  await page.locator('#cellEditor').press('Enter');
+  await page.locator('[data-action="refreshPivots"]').click();
+  await expect(page.locator('#saveStatus')).toContainText('refreshed');
+  await page.locator('.sheet-tab').filter({hasText:'Pivot'}).click();
+  await expect(page.locator('.grid-cell').filter({hasText:'130000'}).first()).toBeVisible();
+});
+
+test('conditional format rule highlights cells and survives reload',async({page})=>{
+  await page.locator('.grid-cell[title="120000"]').click();
+  await page.locator('[data-action="conditional"]').click();
+  await expect(page.locator('#modal')).toBeVisible();
+  const fields=page.locator('#modal .studio-controls');
+  await fields.locator('select').selectOption('greaterThan');
+  await fields.locator('input').first().fill('100000');
+  await page.locator('#modal').getByText('Add formatting rule').click();
+  await page.locator('#closeModal').click();
+  await expect(page.locator('.grid-cell[title="120000"]')).toHaveCSS('background-color','rgb(24, 108, 81)');
+  await expect(page.locator('#saveStatus')).toContainText('IndexedDB');
+  await page.reload();
+  await expect(page.locator('.grid-cell[title="120000"]')).toHaveCSS('background-color','rgb(24, 108, 81)');
+});
+
+test('Chart Studio can save and reopen multi-series SVG chart definitions',async({page})=>{
+  await page.locator('[data-action="chartStudio"]').click();
+  await expect(page.locator('#modal svg.chart')).toBeVisible();
+  const checks=page.locator('#modal .chart-series-options input[type="checkbox"]');
+  expect(await checks.count()).toBeGreaterThanOrEqual(3);
+  await checks.nth(1).check();
+  await page.locator('#modal').getByText('Save chart to workbook').click();
+  await page.locator('#closeModal').click();
+  await page.locator('[data-action="savedCharts"]').click();
+  await expect(page.locator('#modal')).toContainText('Arcside analysis');
+  await page.locator('#modal').getByText('Open / edit').click();
+  await expect(page.locator('#modal svg.chart')).toBeVisible();
+});
+
+test('advanced filter generates a non-destructive filtered result sheet',async({page})=>{
+  await page.locator('[data-action="filterStudio"]').click();
+  await expect(page.locator('#modal')).toContainText('Advanced filter');
+  await page.locator('#modal .studio-controls input').fill('Gamma');
+  await page.locator('#modal').getByText('Create filtered sheet').click();
+  await expect(page.locator('.sheet-tab.active')).toContainText('Filter');
+  await expect(page.locator('.grid-cell').filter({hasText:'Gamma'}).first()).toBeVisible();
+  await expect(page.locator('.grid-cell').filter({hasText:'Alpha'})).toHaveCount(0);
+  await page.locator('.sheet-tab').filter({hasText:'Analysis'}).click();
+  await expect(page.locator('.grid-cell').filter({hasText:'Alpha'}).first()).toBeVisible();
+});
