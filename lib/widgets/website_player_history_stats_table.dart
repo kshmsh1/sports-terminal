@@ -215,10 +215,9 @@ class _WebsitePlayerHistoryStatsTableState
 
   double? _value(NbaStatsRow row, String key) {
     final definition = nbaTerminalMetricByKey[key];
-    final v = (definition?.engineKey == null
-            ? _resolver.value(row, key)
-            : row.value(definition!.engineKey!) ?? _resolver.value(row, key)) ??
-        row.value(key);
+    final v = definition?.engineKey == null
+        ? (_resolver.value(row, key) ?? row.value(key))
+        : (row.value(definition!.engineKey!) ?? _resolver.value(row, key));
     return v != null && v.isFinite ? v : null;
   }
 
