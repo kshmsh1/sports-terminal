@@ -7,6 +7,7 @@ import '../services/nba_stats_metric_catalog.dart';
 import '../services/nba_player_profile_format.dart';
 import '../services/website_nba_api_service.dart';
 import '../widgets/nba_percentage_heat_cell.dart';
+import '../widgets/website_player_history_stats_table.dart';
 
 Future<void> openWebsiteNbaPlayerPage(
   BuildContext context, {
@@ -187,27 +188,21 @@ class _WebsiteNbaPlayerPageState extends State<WebsiteNbaPlayerPage> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      _PlayerCareerTable(rows: selectedRows),
+                      WebsitePlayerHistoryStatsTable(
+                        key: ValueKey('career-${widget.playerKey}-$_segment'),
+                        playerKey: widget.playerKey,
+                        dossierRows: selectedRows,
+                        seasonType: _segment,
+                      ),
                       const SizedBox(height: 30),
                       const _SectionTitle('Advanced statistics'),
                       const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 7, runSpacing: 6, children: [
-                          for (final category in _advancedCategories)
-                            ChoiceChip(
-                              label: Text(category.name),
-                              selected: _advancedCategory == category.name,
-                              onSelected: (_) => setState(
-                                () => _advancedCategory = category.name),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      _PlayerAdvancedTable(
-                        rows: selectedRows,
-                        category: _advancedCategories.firstWhere(
-                          (item) => item.name == _advancedCategory,
-                        ),
+                      WebsitePlayerHistoryStatsTable(
+                        key: ValueKey('advanced-${widget.playerKey}-$_segment'),
+                        playerKey: widget.playerKey,
+                        dossierRows: selectedRows,
+                        seasonType: _segment,
+                        advanced: true,
                       ),
                       const SizedBox(height: 30),
                       const _SectionTitle('Contract'),
