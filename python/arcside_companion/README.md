@@ -5,20 +5,19 @@ Python, a PTY terminal, Python environments, a live debugger, a language server
 and Jupyter kernels, install the **opt-in local companion** in the project
 folder on your own Mac or Linux computer:
 
-\`\`\`bash
+```bash
 cd python/arcside_companion
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -e '.[all]'
 python -m arcside_companion --workspace ~/my-python-project \
   --allow-origin http://127.0.0.1:8765
-\`\`\`
+```
 
 For an Arcside site hosted at a different address, explicitly pass that
-exact origin using another \`--allow-origin\` argument. Open **Python Lab**,
+exact origin using another `--allow-origin` argument. Open **Python Lab**,
 select **Local runtime**, and paste the generated 256-bit connection token
-into the local-only connection form. The token is kept only in this tab's
-\`sessionStorage\`, not in a source file, repository or URL.
+into the local-only connection form. The token stays only in the active browser page's memory, not in session storage, source files, repository content, or URLs. Reloading the page requires reconnecting.
 
 The runtime listens **only on 127.0.0.1:8766**, and all code-execution
 routes require the token and trusted Origin. Directories accessed through
@@ -48,7 +47,7 @@ does not allow arbitrary process attach. Browser/OS security settings may
 block the HTTP loopback bridge from certain HTTPS origins.
 
 Run the companion tests:
-\`\`\`bash
+```bash
 python -m pip install -e '.[test,ide,notebook]'
 python -m pytest -q
-\`\`\`
+```
