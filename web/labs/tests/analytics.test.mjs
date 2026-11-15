@@ -73,3 +73,17 @@ test('invalid pivots reject unsupported source dimensions',()=>{
   assert.throws(()=>buildPivot(sales,{rows:[15],value:3}),/Invalid pivot/);
   assert.throws(()=>buildPivot(sales,{rows:[0],value:3,aggregate:'javascript'}),/Invalid pivot/);
 });
+
+
+test('large 20,000-row pivot aggregates without materializing a grid-sized DOM',()=>{
+  const rows=[['Region','FiscalYear','Value']];
+  for(let i=0;i<20000;i++)
+    rows.push(['Division'+(i%40),2025+i%2,i%7]);
+  const result=buildPivot(rows,{rows:[0],column:1,value:2,aggregate:'sum'});
+  assert.equal(result.meta.records,20000);
+  assert.equal(result.meta.groups,40);
+  assert.equal(result.matrix.length,42); // Header, 40 groups, grand total.
+  assert.equal(result.matrix[0].length,4);
+  const expected=rows.slice(1).reduce((sum,row)=>sum+row[2],0);
+  assert.equal(result.matrix.at(-1).at(-1),expected);
+});
