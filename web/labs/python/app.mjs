@@ -426,6 +426,11 @@ companion=new LocalIde({
   editor:()=>editor,
   models:()=>models,
   browserStop:terminate,
+  replaceSource:(source)=>{
+    if(editor&&models[active])models[active].setValue(source);
+    else $('fallback').value=source;
+    project.files[active]=source;dirty(active);
+  },
 });
 companion.initialize();
 $('stop').onclick=()=>companion?.usingLocal?companion.stop():terminate();
