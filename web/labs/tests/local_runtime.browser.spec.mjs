@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 
 const token=process.env.ARCSIDE_LOCAL_E2E_TOKEN;
 test.skip(!token,'Real local companion is only launched in the dedicated integration job');
-test.setTimeout(120000);
+test.describe.configure({timeout:120000});
 
 async function connect(page){
   await page.goto('/labs/python/index.html');
