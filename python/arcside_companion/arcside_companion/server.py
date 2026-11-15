@@ -215,7 +215,19 @@ def create_app(root: Path, origins: list[str] | None = None, token: str | None =
             entry = validate_file(body.entry)
             if not entry.is_file():
                 raise HTTPException(404, "Entry source has not been synced")
-            args = [str(python), "-m", "cProfile", "-s", "cumulative", str(entry)]
+            # Isolated interpreter startup prevents a project file named
+            # profile.py from shadowing the stdlib module used by cProfile.
+            profiler_code = (
+                "import cProfile, runpy, sys, os\n"
+                "target = os.path.abspath(sys.argv[1])\n"
+                "sys.path.insert(0, os.path.dirname(target))\n"
+                "profiler = cProfile.Profile()\n"
+                "try:\n"
+                "    profiler.runcall(runpy.run_path, target, run_name='__main__')\n"
+                "finally:\n"
+                "    profiler.print_stats('cumulative')\n"
+            )
+            args = [str(python), "-I", "-c", profiler_code, str(entry)]
         elif body.mode == "selection":
             if not body.source or len(body.source) > 150_000:
                 raise HTTPException(400, "Selection is empty or too large")
