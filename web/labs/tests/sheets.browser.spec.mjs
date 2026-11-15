@@ -68,3 +68,31 @@ test('grid mounts at a mobile viewport without creating millions of DOM nodes', 
   expect(count).toBeGreaterThan(10);
   expect(count).toBeLessThan(3000);
 });
+
+
+test('fill right rebases dependent formulas based on target column',async({page})=>{
+  await page.locator('.grid-cell[title="=B2-C2"]').click();
+  await page.locator('.grid-cell[title="=IFERROR(D2/B2,0)"]').click({modifiers:['Shift']});
+  await page.locator('[data-action="fillRight"]').click();
+  await expect(page.locator('.grid-cell[title="=C2-D2"]')).toBeVisible();
+  await expect(page.locator('.grid-cell').filter({hasText:'44000'}).first()).toBeVisible();
+});
+
+test('internal copy and paste rebases formula rather than pasting computed values',async({page})=>{
+  await page.locator('.grid-cell[title="=B2-C2"]').click();
+  await page.keyboard.press('ControlOrMeta+C');
+  await page.locator('.grid-cell[title="D7"]').click();
+  await page.keyboard.press('ControlOrMeta+V');
+  await expect(page.locator('#formulaInput')).toHaveValue('=B7-C7');
+});
+
+test('XLSX export and import preserves formulas and values',async({page})=>{
+  test.setTimeout(120000);
+  const downloadPromise=page.waitForEvent('download',{timeout:70000});
+  await page.locator('#xlsxExport').click();
+  const download=await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/\.xlsx$/);
+  await page.locator('#filePicker').setInputFiles(await download.path());
+  await expect(page.locator('.grid-cell[title="=B2-C2"]')).toBeVisible({timeout:70000});
+  await expect(page.locator('.grid-cell').filter({hasText:'38000'}).first()).toBeVisible();
+});
