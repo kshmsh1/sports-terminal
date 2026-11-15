@@ -95,3 +95,31 @@ test('Monaco receives diagnostics from actual python-lsp-server',async({page})=>
   await expect.poll(async()=>page.evaluate(()=>window.monaco.editor.getModelMarkers({owner:'arcside-pylsp'}).length),
     {timeout:30000}).toBeGreaterThan(0);
 });
+
+
+test('real Python LSP performs semantic rename in workspace source',async({page})=>{
+  await page.goto('/labs/python/index.html');
+  await expect(page.locator('#editor .monaco-editor')).toBeVisible({timeout:60000});
+  const result=await page.evaluate(async(token)=>{
+    const {LocalRuntime}=await import('/labs/python/local_runtime.mjs');
+    const {ArcsideLsp}=await import('/labs/python/lsp_client.mjs');
+    const runtime=new LocalRuntime();
+    await runtime.connect('http://127.0.0.1:8766',token);
+    const file='semantic_test.py';
+    const source='total_for_rename = 17\nprint(total_for_rename)\n';
+    await runtime.sync({[file]:source});
+    const uri=window.monaco.Uri.parse('file:///arcside/semantic_test.py');
+    const model=window.monaco.editor.createModel(source,'python',uri);
+    const lsp=new ArcsideLsp(runtime,window.monaco,{[file]:model},null,()=>{});
+    try{
+      await lsp.start();
+      lsp.open(file,source);
+      const edits=await lsp.semanticRename(model,{lineNumber:1,column:6},'sum_total');
+      return edits.edits.map(edit=>({
+        text:edit.textEdit.text,start:edit.textEdit.range.startLineNumber,
+      }));
+    }finally{lsp.stop();model.dispose();runtime.disconnect();}
+  },token);
+  expect(result.length).toBeGreaterThanOrEqual(2);
+  expect(result.every(edit=>edit.text==='sum_total')).toBe(true);
+});
