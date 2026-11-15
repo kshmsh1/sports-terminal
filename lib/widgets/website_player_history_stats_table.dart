@@ -230,7 +230,7 @@ class _WebsitePlayerHistoryStatsTableState
       if (metric.format == NbaTerminalMetricFormat.feetInches) {
         final feet = value ~/ 12;
         final inches = (value % 12).round();
-        return '\$feet′\$inches″';
+        return '$feet′$inches″';
       }
       if (metric.format == NbaTerminalMetricFormat.percent) {
         return '${(value * 100).toStringAsFixed(metric.decimals)}%';
