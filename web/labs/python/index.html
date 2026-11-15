@@ -26,7 +26,7 @@
    <div class="panel-tabs">
     <button data-panel="output" class="active">Output</button><button data-panel="problems">Problems <span id="problemCount">0</span></button>
     <button data-panel="debugger">Debug trace</button><button data-panel="plots">Plots <span id="plotCount">0</span></button>
-    <button data-panel="console">Python Console</button><div class="spacer"></div>
+    <button data-panel="console">Python Console</button><button data-panel="terminal">Virtual Terminal</button><div class="spacer"></div>
     <button id="clearOutput">Clear</button>
    </div>
    <div id="output" class="panel-content"><pre id="stdout">Welcome to Arcside Python Lab. Press Run to initialize Python.</pre><pre id="stderr"></pre></div>
@@ -40,6 +40,11 @@
      <div class="message">Runs Python statements in the current browser kernel. This is a Python console, not an operating-system shell.</div>
      <div class="repl"><label for="replInput">&gt;&gt;&gt;</label><input id="replInput" spellcheck="false" autocomplete="off" placeholder="print(2 + 2)"><button id="replRun">Execute</button></div>
      <div class="repl"><label for="packageInput">Package</label><input id="packageInput" placeholder="e.g. numpy, pandas, scikit-learn" spellcheck="false"><button id="install">Install</button></div>
+   </div>
+   <div id="terminal" class="panel-content" hidden>
+     <div class="message">Virtual project commands only — not a real system shell or PTY.</div>
+     <pre id="terminalLog">Arcside virtual terminal. Type help to list commands.</pre>
+     <div class="repl"><label for="terminalInput">$</label><input id="terminalInput" autocomplete="off" spellcheck="false" placeholder="ls, cat main.py, python main.py, unittest"><button id="terminalExecute">Execute</button></div>
    </div>
   </section>
  </main>
