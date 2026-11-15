@@ -1,4 +1,5 @@
 import {Workbook,parseRef,columnName,columnIndex,parseCsv,stringifyCsv,sampleWorkbook,expandRange} from './core.mjs';
+import {importXlsx,exportXlsx} from './xlsx.mjs';
 
 const $=id=>document.getElementById(id);
 const ROW_HEIGHT=28, HEADER_HEIGHT=28, DEFAULT_WIDTH=112, MAX_ROWS=100000, MAX_COLS=256;
@@ -266,15 +267,30 @@ function exportCsv() {
   download(safeFilename(name)+'_'+safeFilename(book.active)+'.csv',stringifyCsv(lines),'text/csv;charset=utf-8');
 }
 $('exportButton').onclick=exportCsv;
+$('xlsxExport').onclick=async()=>{
+  const button=$('xlsxExport');button.disabled=true;
+  $('saveStatus').textContent='Preparing XLSX…';
+  try{
+    const bytes=await exportXlsx(book);
+    download(safeFilename(name)+'.xlsx',bytes,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    $('saveStatus').textContent='XLSX exported';
+  }catch(e){alert('XLSX export failed: '+e.message);$('saveStatus').textContent='XLSX unavailable';}
+  finally{button.disabled=false;}
+};
 $('importButton').onclick=()=>$('filePicker').click();
 $('filePicker').onchange=async e=>{
   const file=e.target.files?.[0];if(!file)return;
   try {
-    const text=await file.text();snapshot();
-    if(file.name.toLowerCase().endsWith('.json')){
-      const data=JSON.parse(text);book=new Workbook(data.workbook??data);name=data.name??file.name.replace(/\.json$/,'');
-      $('workbookName').value=name;
+    snapshot();
+    if(file.name.toLowerCase().endsWith('.xlsx')){
+      $('saveStatus').textContent='Importing XLSX…';
+      book=await importXlsx(await file.arrayBuffer());
+      name=file.name.replace(/\.xlsx$/i,'');$('workbookName').value=name;
+    } else if(file.name.toLowerCase().endsWith('.json')){
+      const data=JSON.parse(await file.text());book=new Workbook(data.workbook??data);
+      name=data.name??file.name.replace(/\.json$/,'');$('workbookName').value=name;
     } else {
+      const text=await file.text();
       const matrix=file.name.toLowerCase().endsWith('.tsv')
         ? text.replace(/\r\n/g,'\n').split('\n').map(row=>row.split('\t')):parseCsv(text);
       const newName='Import'+(book.sheets.size+1);book.addSheet(newName);
