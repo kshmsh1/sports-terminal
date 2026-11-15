@@ -150,7 +150,7 @@ export function setupPowerPanel(ctx) {
       logResult(action,result);
       return;
     }
-    if(action==='test'||action==='coverage'){
+    if(['test','coverage','profile'].includes(action)){
       const result=await runtime.run(ctx.getProject().files,ctx.getActive(),action);
       logResult(action,result);return;
     }
@@ -164,7 +164,7 @@ export function setupPowerPanel(ctx) {
     logResult('Git '+action,await runtime.git(action));
   }
   const controls={
-    localFormat:'format',localLint:'lint',localTests:'test',localCoverage:'coverage',
+    localFormat:'format',localLint:'lint',localTests:'test',localCoverage:'coverage',localProfile:'profile',
     localGitStatus:'status',localGitDiff:'diff',localGitLog:'log',
     localGitInit:'init',localGitAdd:'add',localGitCommit:'commit',
   };
