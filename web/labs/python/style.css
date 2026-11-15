@@ -42,3 +42,6 @@ html,body,.ide{height:100%;overflow:hidden}.ide{display:flex;flex-direction:colu
 .runtime-info b{color:#dfedff}.shortcut{display:flex;justify-content:space-between;padding:8px 12px;font-size:11px;color:#8aa1ba}
 .shortcut span{color:#c2d1e4}.statusbar{height:27px;min-height:27px;display:flex;align-items:center;gap:17px;background:#20416c;color:#dfedff;padding:0 10px;font-size:11px}
 @media(max-width:1000px){.right-pane{display:none}}@media(max-width:630px){.explorer{width:135px}.titlebar{flex-wrap:wrap;min-height:53px;height:auto;padding:5px}.titlebar #projectName{width:90px}.explorer-note{display:none}.bottom-panel{height:230px}}
+
+.arcside-breakpoint{position:relative}
+.arcside-breakpoint::before{content:'';position:absolute;left:7px;top:4px;width:10px;height:10px;background:#f15b68;border-radius:50%;box-shadow:0 0 0 1px #fcb7b7}
