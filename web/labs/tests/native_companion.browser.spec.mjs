@@ -34,6 +34,15 @@ test('native PTY terminal and real pylsp language server can connect',async({pag
   await page.locator('#openLocalTerminal').click();
   await expect(page.locator('#terminalType')).toContainText('Real local shell',{timeout:20000});
   await expect(page.locator('#nativeTerminal')).toBeVisible();
+  if(await page.locator('#nativeTerminal .xterm-helper-textarea').count()){
+    await page.locator('#nativeTerminal .xterm-helper-textarea').focus();
+    await page.keyboard.type('echo ARCSIDE_PTY_ROUNDTRIP');
+    await page.keyboard.press('Enter');
+  }else{
+    await page.locator('#nativeShellInput').fill('echo ARCSIDE_PTY_ROUNDTRIP');
+    await page.locator('#nativeShellInput').press('Enter');
+  }
+  await expect(page.locator('#nativeTerminalOutput')).toContainText('ARCSIDE_PTY_ROUNDTRIP',{timeout:20000});
   await page.locator('#closeLocalTerminal').click();
   await expect(page.locator('#nativeTerminal')).toBeHidden();
   await page.locator('#enableLsp').click();
