@@ -168,12 +168,17 @@ async function run(message) {
   }
   status(mode==='debug'?'Collecting Python trace…':mode==='test'?'Running unittest suite…':'Running Python…');
   await py.loadPackagesFromImports(code);
-  // Matplotlib's WebAgg backend requires window.document, unavailable in Workers.
-  // Force headless Agg for figure-to-PNG output before importing pyplot.
-  if (/\bmatplotlib\b/.test(code)) py.runPython("import matplotlib; matplotlib.use('Agg', force=True)");
   if(mode==='test') {
     for(const [path,text] of Object.entries(message.files??{}))
       if(path.startsWith('test_')||path.includes('/test_'))await py.loadPackagesFromImports(text);
+  }
+  // The WebAgg backend requires document, which Workers do not expose.
+  // Match actual import statements, not comments or string literals.
+  const importSources=mode==='test'?
+    Object.entries(message.files??{}).filter(([path])=>path.endsWith('.py')).map(([,text])=>text).join('\n'):code;
+  if (/^\s*(?:import|from)\s+[^#\n]*\bmatplotlib\b/m.test(importSources)) {
+    await py.loadPackage('matplotlib');
+    py.runPython("import matplotlib; matplotlib.use('Agg', force=True)");
   }
   py.globals.set('arcside_code',code);
   py.globals.set('arcside_filename',filename);
