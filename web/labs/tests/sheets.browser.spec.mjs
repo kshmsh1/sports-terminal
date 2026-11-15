@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { test, expect } from '@playwright/test';
 
 test.beforeEach(async ({page}) => {
@@ -92,7 +93,11 @@ test('XLSX export and import preserves formulas and values',async({page})=>{
   await page.locator('#xlsxExport').click();
   const download=await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/\.xlsx$/);
-  await page.locator('#filePicker').setInputFiles(await download.path());
+  await page.locator('#filePicker').setInputFiles({
+    name:download.suggestedFilename(),
+    mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer:await readFile(await download.path()),
+  });
   await expect(page.locator('.grid-cell[title="=B2-C2"]')).toBeVisible({timeout:70000});
   await expect(page.locator('.grid-cell').filter({hasText:'38000'}).first()).toBeVisible();
 });
