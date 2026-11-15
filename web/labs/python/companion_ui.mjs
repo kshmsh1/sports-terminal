@@ -183,6 +183,9 @@ export class LocalIde {
       $('openLocalTerminal').disabled=true;$('closeLocalTerminal').disabled=false;
       $('terminalType').textContent='Real local shell · '+this.connection.health.workspace;
       const root=$('nativeTerminal');root.replaceChildren();
+      const accessible=document.createElement('pre');accessible.id='nativeTerminalOutput';
+      accessible.className='visually-hidden-terminal';accessible.setAttribute('role','log');
+      accessible.setAttribute('aria-label','Local shell output');root.append(accessible);
       if(window.Terminal){
         const term=new window.Terminal({convertEol:true,cursorBlink:true,scrollback:2500,
           fontSize:12,theme:{background:'#0b1420',foreground:'#dae9f8'}});
@@ -209,6 +212,8 @@ export class LocalIde {
     }catch(e){$('terminalType').textContent=e.message;this.hooks.status(e.message);}
   }
   appendTerminal(data){
+    const accessible=$('nativeTerminalOutput');
+    if(accessible)accessible.textContent=(accessible.textContent+data).slice(-20000);
     if(this.termUi)this.termUi.write(data);
     else{
       const el=$('nativeShellLog');
