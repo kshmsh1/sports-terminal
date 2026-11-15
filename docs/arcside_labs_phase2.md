@@ -97,9 +97,9 @@ simple filter conditions, sort direction, grand totals, and a preview.
 The final result is written into a new sheet, with source spec persisted
 so **Refresh pivots** can recompute from the updated source.
 
-The UI currently exposes two row fields and one measure per designer
-interaction; the underlying analysis engine supports more for future
-advanced designs.
+The UI currently exposes two row fields and two independently aggregated
+measures, with group sorting and optional grand totals. The underlying engine
+supports up to four row fields and eight aggregate measures.
 
 ### Chart Studio
 
