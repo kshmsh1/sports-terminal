@@ -126,7 +126,7 @@ test('pivot designer supports multidimensional aggregation and refreshes from ed
   await expect(page.locator('.sheet-tab.active')).toContainText('Pivot');
   await page.locator('[data-action="refreshPivot"]').click();
   await expect(page.locator('.sheet-tab.active')).toContainText('Pivot');
-  await expect(page.locator('#saveStatus')).toContainText('Saving');
+  await expect(page.locator('#saveStatus')).toContainText('Saved',{timeout:30000});
 });
 
 test('filter designer creates a separate source-backed table',async({page})=>{
