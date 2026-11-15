@@ -26,9 +26,14 @@ jobs:
           node --check web/labs/sheets/formula_functions.mjs
           node --check web/labs/sheets/references.mjs
           node --check web/labs/sheets/storage.mjs
+          node --check web/labs/sheets/analytics.mjs
+          node --check web/labs/sheets/analytics.worker.mjs
           node --check web/labs/sheets/app.mjs
           node --check web/labs/sheets/xlsx.mjs
           node --check web/labs/python/app.mjs
+          node --check web/labs/python/companion_connection.mjs
+          node --check web/labs/python/companion_protocols.mjs
+          node --check web/labs/python/companion_ui.mjs
           node --check web/labs/python/kernel.worker.js
       - name: Test formula engine
         run: node --test web/labs/tests/*.test.mjs
@@ -48,7 +53,11 @@ jobs:
         run: npm install --prefix web/labs --no-package-lock --ignore-scripts
       - name: Install Chromium and browser dependencies
         run: cd web/labs && npx playwright install --with-deps chromium
+      - name: Install optional local Python test companion
+        run: python3 -m pip install -e "./tools/arcside_companion[test]" python-lsp-server ruff
       - name: Run actual browser interactions
+        env:
+          ARCSIDE_NATIVE_TEST: "1"
         run: cd web/labs && npx playwright test -c playwright.config.mjs
       - name: Upload failed traces and screenshots
         if: failure()
