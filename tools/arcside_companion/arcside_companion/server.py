@@ -13,6 +13,8 @@ import argparse
 import asyncio
 import json
 import os
+import re
+import signal
 from pathlib import Path
 import shutil
 import sys
@@ -36,6 +38,17 @@ class SyncPayload(BaseModel):
 class EntryPayload(BaseModel):
     entry: str = "main.py"
     timeout: int = Field(default=90, ge=1, le=120)
+    job_id: str = Field(default="foreground", pattern=r"^[A-Za-z0-9_-]{1,80}$")
+
+
+class SnippetPayload(BaseModel):
+    code: str = Field(max_length=500_000)
+    timeout: int = Field(default=60, ge=1, le=120)
+    job_id: str = Field(default="foreground", pattern=r"^[A-Za-z0-9_-]{1,80}$")
+
+
+class CancelPayload(BaseModel):
+    job_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,80}$")
 
 
 class EnvironmentPayload(BaseModel):
@@ -49,6 +62,7 @@ class InstallPayload(BaseModel):
 def create_app(settings: Settings) -> FastAPI:
     app = FastAPI(title="Arcside local Python companion", version="0.1.0",
                   docs_url=None, redoc_url=None, openapi_url=None)
+    active_jobs: dict[str, asyncio.subprocess.Process] = {}
     app.add_middleware(CORSMiddleware, allow_origins=list(settings.origins),
                        allow_credentials=False, allow_methods=["GET", "POST", "OPTIONS"],
                        allow_headers=["X-Arcside-Token", "Content-Type"])
@@ -102,19 +116,47 @@ def create_app(settings: Settings) -> FastAPI:
             raise HTTPException(404, "Python entry file not found")
         return target
 
+    async def tracked(args: list[str], timeout: int, job_id: str):
+        if job_id in active_jobs:
+            raise HTTPException(409, "A job with that identifier is already running")
+        def register(proc: asyncio.subprocess.Process) -> None:
+            active_jobs[job_id] = proc
+        try:
+            return (await run_command(args, settings.workspace, timeout,
+                                      on_start=register)).dictionary()
+        finally:
+            active_jobs.pop(job_id, None)
+
     @app.post("/v1/run", dependencies=[Depends(authorized)])
     async def run(payload: EntryPayload):
         entry = valid_entry(payload.entry)
-        result = await run_command([interpreter(settings.workspace), str(entry)],
-                                   settings.workspace, payload.timeout)
-        return result.dictionary()
+        return await tracked([interpreter(settings.workspace), str(entry)],
+                             payload.timeout, payload.job_id)
+
+    @app.post("/v1/snippet", dependencies=[Depends(authorized)])
+    async def snippet(payload: SnippetPayload):
+        return await tracked([interpreter(settings.workspace), "-c", payload.code],
+                             payload.timeout, payload.job_id)
 
     @app.post("/v1/tests", dependencies=[Depends(authorized)])
     async def tests(payload: EntryPayload):
-        result = await run_command([interpreter(settings.workspace), "-m", "pytest",
-                                    "-q", "--disable-warnings", "--maxfail=10"],
-                                   settings.workspace, payload.timeout)
-        return result.dictionary()
+        return await tracked([interpreter(settings.workspace), "-m", "pytest",
+                             "-q", "--disable-warnings", "--maxfail=10"],
+                             payload.timeout, payload.job_id)
+
+    @app.post("/v1/stop", dependencies=[Depends(authorized)])
+    async def stop(payload: CancelPayload):
+        proc = active_jobs.get(payload.job_id)
+        if proc is None or proc.returncode is not None:
+            return {"ok": True, "stopped": False}
+        if os.name != "nt":
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        else:
+            proc.kill()
+        return {"ok": True, "stopped": True}
 
     @app.get("/v1/environment", dependencies=[Depends(authorized)])
     async def environment():
