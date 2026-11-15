@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 from .processes import (available_tools, create_environment, install_packages,
                         interpreter, run_command)
 from .protocols import debugger, language_server, terminal
+from .notebook import notebook
 from .security import MAX_FILE, MAX_FILES, MAX_PROJECT, Settings
 
 
@@ -232,6 +233,10 @@ def create_app(settings: Settings) -> FastAPI:
     @app.websocket("/v1/ws/lsp")
     async def ws_lsp(ws: WebSocket):
         await language_server(ws, settings)
+
+    @app.websocket("/v1/ws/notebook")
+    async def ws_notebook(ws: WebSocket):
+        await notebook(ws, settings)
 
     @app.websocket("/v1/ws/debug")
     async def ws_debug(ws: WebSocket):
