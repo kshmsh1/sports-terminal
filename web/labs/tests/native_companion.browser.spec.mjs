@@ -4,6 +4,7 @@ import {test,expect} from '@playwright/test';
 test.skip(!process.env.ARCSIDE_NATIVE_TEST,'Only CI with throwaway native companion.');
 
 test.beforeEach(async({page})=>{
+  page.on('dialog',dialog=>dialog.accept());
   await page.goto('/labs/python/index.html');
   await expect(page.locator('#editor .monaco-editor')).toBeVisible({timeout:60000});
   await page.locator('#companionToken').fill('arcside-ci-throwaway-token');
