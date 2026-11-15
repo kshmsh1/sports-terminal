@@ -109,12 +109,12 @@ export function buildPivot(matrix,config){
                            sourceColumns:headers.length}};
 }
 /** Filter rows without mutating the source table, optionally sort a column. */
-export function filterTable(matrix,{field=0,mode='contains',value='',sort='none'}={}){
+export function filterTable(matrix,{field=0,mode='contains',value='',sort='none',sortField=field}={}){
   if(!matrix.length)return [];
   const [header,...rows]=matrix;
   const filtered=rows.filter(row=>match(row,{field,mode,value}));
   if(sort==='asc'||sort==='desc'){
-    filtered.sort((a,b)=>natural(a[field]??'',b[field]??'')*(sort==='asc'?1:-1));
+    filtered.sort((a,b)=>natural(a[sortField]??'',b[sortField]??'')*(sort==='asc'?1:-1));
   }
   return [header,...filtered];
 }
