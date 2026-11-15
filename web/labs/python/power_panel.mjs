@@ -40,6 +40,23 @@ export function setupPowerPanel(ctx) {
   }
   $('runtimeMode').onchange=e=>toggleMode(e.target.value);
   $('connectLocal').onclick=()=>{ctx.setPanel('tools');$('localToken').focus();};
+  async function attachLanguageServer(info){
+    lsp?.stop();lsp=null;
+    if(!info?.capabilities?.lsp)return;
+    if(!ctx.getEditor()||!window.monaco)return;
+    try{
+      const models=ctx.getModels();
+      for(const name of Object.keys(ctx.getProject().files))
+        if(name.endsWith('.py'))ctx.ensureModel(name);
+      lsp=new ArcsideLsp(runtime,window.monaco,models,ctx.getEditor(),ctx.setStatus);
+      await lsp.start();
+      for(const [name,source] of Object.entries(ctx.getProject().files))
+        if(name.endsWith('.py'))lsp.open(name,source);
+    }catch(error){
+      lsp?.stop();lsp=null;
+      report('Local runtime connected; language server unavailable: '+error.message);
+    }
+  }
   $('localConnect').onclick=async()=>{
     $('localConnect').disabled=true;
     try{
@@ -51,18 +68,7 @@ export function setupPowerPanel(ctx) {
       report('Connected to '+info.workspace+'\nInterpreter: '+info.interpreter+
         '\nFiles executed here have YOUR local user account permissions.');
       await refreshEnvironments();
-      if(lsp){lsp.stop();lsp=null;}
-      if(info.capabilities?.lsp&&ctx.getEditor()&&window.monaco){
-        try{
-          const models=ctx.getModels();
-          for(const [name] of Object.entries(ctx.getProject().files))
-            if(name.endsWith('.py'))ctx.ensureModel(name);
-          lsp=new ArcsideLsp(runtime,window.monaco,models,ctx.getEditor(),ctx.setStatus);
-          await lsp.start();
-          for(const [name,source] of Object.entries(ctx.getProject().files))
-            lsp.open(name,source);
-        }catch(error){report('Connected; LSP unavailable: '+error.message);}
-      }
+      await attachLanguageServer(info);
     }catch(error){
       $('localStatus').textContent='Connection failed';
       reportError(error);
@@ -127,6 +133,7 @@ export function setupPowerPanel(ctx) {
       lsp?.stop();lsp=null;
       ctx.setStatus('Using '+data.active);
       await refreshEnvironments();
+      await attachLanguageServer(runtime.info);
     }catch(error){reportError(error);}
   };
   async function installInput(source){
