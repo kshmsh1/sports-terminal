@@ -105,7 +105,9 @@ export class LocalIde {
       this.hooks.status('Running native Python…');
       if(mode!=='repl')await this.syncProject();
       const path=mode==='test'?'/v1/tests':mode==='repl'?'/v1/snippet':'/v1/run';
-      const payload=mode==='repl'?{code:String(extra.code??'')}:{entry:this.hooks.active(),timeout:120};
+      const job_id='arcside_'+crypto.randomUUID().replaceAll('-','');
+      this.activeJob=job_id;
+      const payload=mode==='repl'?{code:String(extra.code??''),job_id}:{entry:this.hooks.active(),timeout:120,job_id};
       const result=await this.connection.request(path,payload);
       this.report(result,mode==='test'?'Native pytest':mode==='repl'?'Native Python':'Native Python run');
       return true;
@@ -114,7 +116,7 @@ export class LocalIde {
       this.hooks.status('Native runtime error');
       this.hooks.setPanel('output');
       return true;
-    }finally{this.isBusy=false;this.hooks.running(false);}
+    }finally{this.isBusy=false;this.activeJob=null;this.hooks.running(false);}
   }
   async createEnvironment(){
     if(!this.connection.connected)return;
@@ -336,7 +338,13 @@ export class LocalIde {
   async stop(){
     if(this.debugging)await this.stopDebug();
     // The local shell is deliberately independent of editor Stop.
-    else if(this.usingLocal)this.hooks.status('Local runs are bounded by server timeout; use Ctrl+C in the PTY for interactive processes.');
+    else if(this.usingLocal&&this.activeJob){
+      const job_id=this.activeJob;
+      try{
+        const result=await this.connection.request('/v1/stop',{job_id});
+        this.hooks.status(result.stopped?'Stopped local Python process':'Process already finished');
+      }catch(e){this.hooks.status('Stop failed: '+e.message);}
+    }
     else this.hooks.browserStop();
   }
 }
