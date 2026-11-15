@@ -10,7 +10,7 @@ const staticServer={
 const nativeServer={
   command: 'python3 tools/arcside_companion/tests/browser_server.py',
   cwd: '../..',
-  url: 'http://127.0.0.1:8766/',
+  url: 'http://127.0.0.1:8766/v1/ready',
   reuseExistingServer: !process.env.CI,
   timeout: 30000,
 };
