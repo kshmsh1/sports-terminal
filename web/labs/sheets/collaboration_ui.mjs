@@ -89,7 +89,9 @@ export function setupCollaboration(ctx){
     const key=h('input',{id:'collabKey',type:'password',placeholder:'Paste owner, editor, or viewer access key'});
     const join=h('button',{id:'collabJoin',text:'Join room'});
     const leave=h('button',{id:'collabLeave',text:'Leave shared room'});
-    joinSection.append(field('Room ID',room),field('Room access key',key),join,leave);
+    const history=h('button',{id:'collabHistory',text:'Version history'});
+    const revisionList=h('div',{id:'collabHistoryItems',cls:'collab-history'});
+    joinSection.append(field('Room ID',room),field('Room access key',key),join,leave,history,revisionList);
     const note=h('p',{cls:'collab-note',text:'Local version: you can keep editing offline after leaving, '
       +'but disconnected edits do not automatically merge. Join replaces the current browser workbook '
       +'with the shared workbook; export a copy first if needed.'});
@@ -125,6 +127,44 @@ export function setupCollaboration(ctx){
         showInfo('Connected as '+response.role+' · revision '+response.revision);
       }catch(e){showError(e);}
       finally{join.disabled=false;}
+    };
+    history.onclick=async()=>{
+      try{
+        const data=await collab.history();
+        revisionList.replaceChildren();
+        const items=[...data.events];
+        if(!items.length||items.at(-1).revision<1)
+          items.push({revision:0,kind:'created',time_ms:Date.now()});
+        for(const item of items){
+          const entry=h('div',{cls:'collab-history-row'});
+          const date=new Date(item.time_ms).toLocaleString();
+          entry.append(h('span',{text:'Revision '+item.revision+' · '+item.kind+' · '+date}));
+          const inspect=h('button',{text:'Preview'});
+          inspect.onclick=async()=>{
+            try{
+              const data=await collab.version(item.revision);
+              const detail=h('pre',{text:JSON.stringify(data.snapshot,null,2).slice(0,14000)});
+              detail.className='collab-version-preview';
+              revisionList.querySelector('.collab-version-preview')?.remove();
+              revisionList.append(detail);
+            }catch(e){showError(e);}
+          };
+          entry.append(inspect);
+          if(collab.role==='owner'){
+            const restore=h('button',{text:'Restore'});
+            restore.onclick=async()=>{
+              if(!confirm('Restore workbook revision '+item.revision+' for all collaborators? '
+                +'This creates a new revision, and current shared state remains in version history.'))return;
+              try{
+                await collab.restore(item.revision);
+                showInfo('Restoring revision '+item.revision+'…');
+              }catch(e){showError(e);}
+            };
+            entry.append(restore);
+          }
+          revisionList.append(entry);
+        }
+      }catch(e){showError(e);}
     };
     leave.onclick=()=>{
       collab.disconnect();
