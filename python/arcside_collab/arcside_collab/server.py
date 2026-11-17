@@ -144,6 +144,11 @@ def create_app(db_path: Path, *, origins: list[str] | None = None,
       payload TEXT NOT NULL, time_ms INTEGER NOT NULL,
       PRIMARY KEY (room,revision)
     );
+    CREATE TABLE IF NOT EXISTS versions (
+      room TEXT NOT NULL, revision INTEGER NOT NULL,
+      snapshot TEXT NOT NULL, time_ms INTEGER NOT NULL,
+      PRIMARY KEY (room,revision)
+    );
     """)
     app=FastAPI(title="Arcside Sheets local collaboration",version="0.1",
                 docs_url=None,redoc_url=None,openapi_url=None)
@@ -206,6 +211,8 @@ def create_app(db_path: Path, *, origins: list[str] | None = None,
             db.execute("BEGIN IMMEDIATE")
             try:
                 db.execute("INSERT INTO rooms VALUES (?,?,?,?)",(room,0,_json(snapshot),int(time.time())))
+                db.execute("INSERT INTO versions VALUES (?,?,?,?)",
+                           (room,0,_json(snapshot),int(time.time()*1000)))
                 db.executemany("INSERT INTO grants VALUES (?,?,?)",[
                     (room,_hash(owner),"owner"),(room,_hash(editor),"editor"),
                     (room,_hash(viewer),"viewer")])
@@ -227,6 +234,16 @@ def create_app(db_path: Path, *, origins: list[str] | None = None,
             "SELECT revision,client,kind,time_ms FROM events WHERE room=? "
             "ORDER BY revision DESC LIMIT ?",(room,MAX_EVENT_ROWS)).fetchall()
         return {"events":[dict(row) for row in history]}
+
+    @app.get("/api/rooms/{room}/versions/{revision}")
+    def workbook_version(request:Request,room:str,revision:int)->dict:
+        require(request,room)
+        if revision<0:raise HTTPException(400,"Invalid revision")
+        old=db.execute("SELECT snapshot,time_ms FROM versions WHERE room=? AND revision=?",
+                       (room,revision)).fetchone()
+        if old is None:raise HTTPException(404,"Snapshot version unavailable")
+        return {"revision":revision,"snapshot":json.loads(old["snapshot"]),
+                "time_ms":old["time_ms"]}
 
     async def announce(room:str,event:dict,*,exclude:WebSocket|None=None)->None:
         dead=[]
@@ -301,6 +318,8 @@ def create_app(db_path: Path, *, origins: list[str] | None = None,
                    (revision,_json(data),room))
         db.execute("INSERT INTO events VALUES (?,?,?,?,?,?)",
                    (room,revision,client,kind,_json(payload),int(time.time()*1000)))
+        db.execute("INSERT INTO versions VALUES (?,?,?,?)",
+                   (room,revision,_json(data),int(time.time()*1000)))
         return event
 
     def apply_replace(room:str,client:str,payload:dict)->dict:
@@ -365,16 +384,34 @@ def create_app(db_path: Path, *, origins: list[str] | None = None,
                         await announce(room,{"type":"cursor","client":cid,"name":username,
                                              "sheet":sheet,"ref":ref},exclude=ws)
                     continue
-                if kind not in ("patch","replace"):
+                if kind not in ("patch","replace","restore"):
                     await ws.send_json({"type":"error","message":"Unknown event type"})
                     continue
                 if grant=="viewer":
                     await ws.send_json({"type":"error","message":"Read-only room access"})
                     continue
+                if kind=="restore" and grant!="owner":
+                    await ws.send_json({"type":"error","message":"Only room owner may restore revisions"})
+                    continue
                 async with guard:
                     db.execute("BEGIN IMMEDIATE")
                     try:
-                        result=(apply_patch if kind=="patch" else apply_replace)(room,cid,payload)
+                        if kind=="patch":
+                            result=apply_patch(room,cid,payload)
+                        elif kind=="replace":
+                            result=apply_replace(room,cid,payload)
+                        else:
+                            target=payload.get("target")
+                            if not isinstance(target,int) or target<0:
+                                raise ValueError("Invalid restore target")
+                            saved=db.execute(
+                                "SELECT snapshot FROM versions WHERE room=? AND revision=?",
+                                (room,target)).fetchone()
+                            if saved is None:raise ValueError("Requested version unavailable")
+                            result=apply_replace(room,cid,{
+                                "base":payload.get("base"),
+                                "snapshot":json.loads(saved["snapshot"]),
+                            })
                         db.execute("COMMIT")
                     except (ValueError,TypeError,sqlite3.Error) as error:
                         db.execute("ROLLBACK")
