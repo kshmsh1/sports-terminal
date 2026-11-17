@@ -1,7 +1,7 @@
 import {Workbook,parseRef,columnName,columnIndex,parseCsv,stringifyCsv,sampleWorkbook,expandRange} from './core.mjs';
 import {importXlsx,exportXlsx} from './xlsx.mjs';
 import {rebaseFormula} from './references.mjs';
-import {loadWorkbook,storeWorkbook} from './storage.mjs';
+import {loadWorkbook,storeWorkbook,listNamedWorkbooks,saveNamedWorkbook,loadNamedWorkbook,deleteNamedWorkbook} from './storage.mjs';
 import {conditionalStyle} from './analytics.mjs';
 import {runAnalytics,pivotDesigner,chartDesigner,formatDesigner} from './studio.mjs';
 import {setupCollaboration} from './collaboration_ui.mjs';
@@ -12,6 +12,7 @@ const STORAGE='arcside.sheets.v1';
 let book, name='Analysis Workbook', selected={r:1,c:1}, anchor={r:1,c:1};
 let edit=false, dragging=false, history=[], future=[], raf=false, dirty=false;
 let internalClipboard=null;
+let namedWorkbookId=null;
 let ruleStatsCache=new Map();
 let collaboration=null;
 function restore() {
@@ -38,6 +39,7 @@ void loadDurableWorkbook();
 function persist() {
   const revision=++saveRevision;
   const state={name,workbook:book.toJSON()};
+  const namedId=namedWorkbookId;
   let fallback=false;
   try{
     const serialized=JSON.stringify(state);
@@ -46,7 +48,10 @@ function persist() {
       fallback=true;
     }else localStorage.removeItem(STORAGE);
   }catch(error){console.warn('Local storage is full; relying on IndexedDB',error);}
-  saveQueue=saveQueue.catch(()=>{}).then(()=>storeWorkbook(state)).then(()=>{
+  saveQueue=saveQueue.catch(()=>{}).then(async()=>{
+    await storeWorkbook(state);
+    if(namedId)await saveNamedWorkbook(namedId,state.name,state);
+  }).then(()=>{
     if(revision===saveRevision)$('saveStatus').textContent='Saved locally · IndexedDB';
   }).catch(error=>{
     console.warn('IndexedDB save unavailable',error);
@@ -644,6 +649,72 @@ function filterStudio(){
     modal('Advanced filter · '+sourceSheet,panel);
   }catch(error){alert(error.message);}
 }
+async function workbookLibrary(){
+  if(collaboration?.connected){
+    alert('Leave the shared room before switching local workbooks. Export a backup if needed.');
+    return;
+  }
+  const root=document.createElement('div');root.className='workbook-library';
+  const tip=document.createElement('p');
+  tip.textContent='Saved workbooks stay in this browser. Shared rooms use separate cloud-style room storage on the local collaboration service.';
+  root.append(tip);
+  const actions=document.createElement('div');actions.className='studio-actions';
+  const saveCopy=document.createElement('button');saveCopy.className='primary';
+  saveCopy.textContent='Save a copy of current workbook';
+  actions.append(saveCopy);root.append(actions);
+  const list=document.createElement('div');root.append(list);
+  async function refresh(){
+    const files=await listNamedWorkbooks();
+    list.replaceChildren();
+    if(!files.length){
+      const empty=document.createElement('p');empty.textContent='No saved workbooks yet.';
+      list.append(empty);return;
+    }
+    for(const item of files){
+      const row=document.createElement('div');row.className='workbook-library-row';
+      const summary=document.createElement('div');
+      const title=document.createElement('strong');title.textContent=item.title;
+      const meta=document.createElement('span');
+      meta.textContent=item.sheets+' sheets · saved '+new Date(item.updatedAt).toLocaleString();
+      summary.append(title,meta);
+      const open=document.createElement('button');open.textContent='Open';
+      open.onclick=async()=>{
+        try{
+          await persist();
+          const state=await loadNamedWorkbook(item.id);
+          if(!state)throw Error('Saved workbook not found');
+          book=new Workbook(state.workbook);
+          name=state.name??item.title;
+          namedWorkbookId=item.id;
+          $('workbookName').value=name;
+          history=[];future=[];
+          $('undo').disabled=true;$('redo').disabled=true;
+          selected={r:1,c:1};anchor={...selected};
+          changed({remote:true});
+          $('modal').hidden=true;
+        }catch(error){alert('Cannot open workbook: '+error.message);}
+      };
+      const remove=document.createElement('button');remove.textContent='Delete';
+      remove.onclick=async()=>{
+        if(!confirm('Delete saved workbook '+item.title+'? This cannot be undone.'))return;
+        await deleteNamedWorkbook(item.id);
+        if(namedWorkbookId===item.id)namedWorkbookId=null;
+        await refresh();
+      };
+      row.append(summary,open,remove);list.append(row);
+    }
+  }
+  saveCopy.onclick=async()=>{
+    const title=prompt('Save copy as',name);
+    if(!title)return;
+    try{
+      const id=await saveNamedWorkbook(null,title,{name:title,workbook:book.toJSON()});
+      namedWorkbookId=id;name=title;$('workbookName').value=title;
+      changed({remote:true});await refresh();
+    }catch(error){alert('Cannot save workbook: '+error.message);}
+  };
+  await refresh();modal('Workbook library',root);
+}
 function sortSelection() {
   const b=bounds();
   if(b.a===b.b){alert('Select multiple rows to sort.');return;}
@@ -662,13 +733,14 @@ function sortSelection() {
 }
 for(const button of document.querySelectorAll('[data-action]'))button.onclick=()=>{
   const action=button.dataset.action;
-  if(action==='new'){if(!confirm('Start a new workbook? Download the current one first if needed.'))return;snapshot();book=new Workbook();name='Untitled workbook';$('workbookName').value=name;changed();}
+  if(action==='new'){if(!confirm('Start a new workbook? Download the current one first if needed.'))return;snapshot();book=new Workbook();namedWorkbookId=null;name='Untitled workbook';$('workbookName').value=name;changed();}
   if(action==='addSheet')addSheet();
   if(action==='bold')applyStyle({bold:!book.sheets.get(book.active).styles[selectedRef()]?.bold});
   if(action==='italic')applyStyle({italic:!book.sheets.get(book.active).styles[selectedRef()]?.italic});
   if(['left','center','right'].includes(action))applyStyle({align:{left:'flex-start',center:'center',right:'flex-end'}[action]});
   if(action==='exportWorkbook')download(safeFilename(name)+'.arcside.json',JSON.stringify({name,workbook:book.toJSON()},null,2),'application/json');
   if(action==='chart')makeChart();
+  if(action==='workbookLibrary')void workbookLibrary().catch(e=>alert(e.message));
   if(action==='chartStudio')chartStudio();
   if(action==='savedCharts')savedChartGallery();
   if(action==='pivotStudio')pivotStudio();
