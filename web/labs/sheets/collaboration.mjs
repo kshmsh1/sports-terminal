@@ -119,6 +119,7 @@ export class WorkbookCollaboration{
       socket.onerror=()=>{if(!started){clearTimeout(timeout);reject(Error('Cannot connect to collaboration server'));}};
       socket.onclose=event=>{
         clearTimeout(timeout);
+        if(this.socket!==socket)return;
         const expected=!this.client;
         this.client=null;this.pending=null;
         if(!started)reject(Error('Collaboration rejected: '+(event.reason||event.code)));
@@ -206,8 +207,9 @@ export class WorkbookCollaboration{
     }
   }
   applyEvent(event){
-    if(event.revision<=this.revision)return;
-    this.revision=event.revision;
+    // Out-of-order queued events can precede our own ACK; each delivery is
+    // unique and still needs to update the baseline even if ACK is newer.
+    this.revision=Math.max(this.revision,event.revision);
     if(event.kind==='replace'){
       this.baseline=comparable(event.snapshot);
       this.loadState(event.snapshot);
