@@ -80,3 +80,28 @@ test('sheet creation broadcasts an atomic workbook structure replacement',async(
     await expect(b.locator('.sheet-tab').filter({hasText:'Collab Data'})).toBeVisible({timeout:15000});
   }finally{await first.close();await second.close();}
 });
+
+
+test('owner can inspect a prior workbook revision and restore it for editors',async({browser})=>{
+  const first=await browser.newContext(),second=await browser.newContext();
+  const a=await first.newPage(),b=await second.newPage();
+  try{
+    const keys=await createRoom(a);
+    await joinRoom(b,keys.room,keys.editor);
+    await a.locator('.grid-cell[title="120000"]').dblclick();
+    await a.locator('#cellEditor').fill('222000');
+    await a.locator('#cellEditor').press('Enter');
+    await expect(b.locator('.grid-cell[title="222000"]')).toBeVisible({timeout:15000});
+    await a.locator('#shareWorkbook').click();
+    await a.locator('#collabHistory').click();
+    await expect(a.locator('#collabHistoryItems')).toContainText('Revision 1');
+    await expect(a.locator('#collabHistoryItems')).toContainText('Revision 0');
+    const rows=a.locator('.collab-history-row');
+    const earliest=rows.filter({hasText:'Revision 0'});
+    a.once('dialog',dialog=>dialog.accept());
+    await earliest.getByText('Restore').click();
+    await a.locator('#closeModal').click();
+    await expect(a.locator('.grid-cell[title="120000"]')).toBeVisible({timeout:15000});
+    await expect(b.locator('.grid-cell[title="120000"]')).toBeVisible({timeout:15000});
+  }finally{await first.close();await second.close();}
+});
