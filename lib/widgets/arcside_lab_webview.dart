@@ -53,7 +53,7 @@ class _ArcsideLabWebViewState extends State<ArcsideLabWebView> {
           borderRadius: BorderRadius.circular(12),
           child: SizedBox(
             height: (MediaQuery.sizeOf(context).height * 0.82)
-                .clamp(720.0, 1400.0),
+                .clamp(720.0, 1400.0).toDouble(),
             child: platform.labFrame(widget.lab),
           ),
         ),
