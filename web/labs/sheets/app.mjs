@@ -209,6 +209,7 @@ function render() {
 function select(r,c,extend=false) {
   selected={r:Math.min(MAX_ROWS,Math.max(1,r)),c:Math.min(MAX_COLS,Math.max(1,c))};
   if(!extend)anchor={...selected};
+  collaboration?.select(book.active,selectedRef());
   requestRender();
 }
 window.addEventListener('pointerup',()=>dragging=false);
