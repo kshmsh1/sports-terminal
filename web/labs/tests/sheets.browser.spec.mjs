@@ -173,3 +173,27 @@ test('advanced filter generates a non-destructive filtered result sheet',async({
   await page.locator('.sheet-tab').filter({hasText:'Analysis'}).click();
   await expect(page.locator('.grid-cell').filter({hasText:'Alpha'}).first()).toBeVisible();
 });
+
+
+test('named workbook library saves multiple independent workbooks and opens after reload',async({page})=>{
+  await page.locator('[data-action="workbookLibrary"]').click();
+  await expect(page.locator('#modal')).toContainText('Workbook library');
+  page.once('dialog',dialog=>dialog.accept('Quarterly model'));
+  await page.locator('#modal').getByText('Save a copy of current workbook').click();
+  await expect(page.locator('#modal')).toContainText('Quarterly model');
+  await page.locator('#closeModal').click();
+  await page.locator('.grid-cell[title="120000"]').dblclick();
+  await page.locator('#cellEditor').fill('215000');
+  await page.locator('#cellEditor').press('Enter');
+  await expect(page.locator('#saveStatus')).toContainText('Saved');
+  await page.reload();
+  await page.locator('[data-action="workbookLibrary"]').click();
+  await expect(page.locator('#modal')).toContainText('Quarterly model');
+  await page.locator('#modal').getByText('Open',{exact:true}).click();
+  await expect(page.locator('#workbookName')).toHaveValue('Quarterly model');
+  await expect(page.locator('.grid-cell[title="215000"]')).toBeVisible();
+  await page.locator('[data-action="workbookLibrary"]').click();
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('#modal').getByText('Delete',{exact:true}).click();
+  await expect(page.locator('#modal')).toContainText('No saved workbooks yet');
+});
