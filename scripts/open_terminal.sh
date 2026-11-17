@@ -5,15 +5,18 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 FORCE_STATIC=0
-for arg in "$@"; do
-  case "$arg" in
+WEB_PORT=''
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
     --rebuild-static) FORCE_STATIC=1 ;;
+    --web-port) shift; WEB_PORT="${1:-}"; if [[ ! "$WEB_PORT" =~ ^[0-9]+$ ]]; then echo 'Missing numeric --web-port' >&2;exit 2;fi ;;
     *)
       echo "Unknown option: $arg" >&2
-      echo "Usage: bash scripts/open_terminal.sh [--rebuild-static]" >&2
+      echo "Usage: bash scripts/open_terminal.sh [--rebuild-static] [--web-port PORT]" >&2
       exit 2
       ;;
   esac
+  shift
 done
 
 find_history_db() {
@@ -161,4 +164,7 @@ echo "Resolving Flutter dependencies..."
 flutter pub get
 
 echo "Opening Sports Terminal in Chrome..."
+if [[ -n "$WEB_PORT" ]]; then
+  exec flutter run -d chrome --web-port "$WEB_PORT" --web-hostname 127.0.0.1
+fi
 exec flutter run -d chrome
