@@ -77,3 +77,9 @@ html,body{height:100%;overflow:hidden}.sheets{height:100%;display:flex;flex-dire
 .collab-dialog-status.error{color:#ffb8b8}
 .collab-note{font-size:11px;color:#9bb3cd}
 @media(max-width:700px){.collab-common{grid-template-columns:1fr}.collab-secret{flex-wrap:wrap}.collab-secret input{width:65%}.collab-people{display:none}}
+
+.collab-history{display:flex;flex-direction:column;gap:5px;max-height:220px;overflow:auto}
+.collab-history-row{display:flex;align-items:center;gap:8px;padding:7px;border-bottom:1px solid #334d68}
+.collab-history-row span{flex:1;min-width:0}
+.collab-history-row button{font-size:11px}
+.collab-version-preview{max-height:150px;overflow:auto;padding:8px;font:11px/1.4 ui-monospace,monospace;background:#0a1827;color:#d4e6fb;white-space:pre-wrap}
