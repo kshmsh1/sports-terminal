@@ -320,6 +320,11 @@ def create_app(db_path: Path, *, origins: list[str] | None = None,
                    (room,revision,client,kind,_json(payload),int(time.time()*1000)))
         db.execute("INSERT INTO versions VALUES (?,?,?,?)",
                    (room,revision,_json(data),int(time.time()*1000)))
+        # Bound disk usage for workbooks with frequent edits; keep the latest
+        # 200 revisions (plus their event metadata) per room.
+        cutoff=max(0,revision-199)
+        db.execute("DELETE FROM versions WHERE room=? AND revision<?",(room,cutoff))
+        db.execute("DELETE FROM events WHERE room=? AND revision<?",(room,cutoff))
         return event
 
     def apply_replace(room:str,client:str,payload:dict)->dict:
