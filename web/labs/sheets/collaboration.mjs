@@ -85,6 +85,27 @@ export class WorkbookCollaboration{
     if(!adminKey)throw Error('Room creation key required');
     return await this.request('/api/rooms',adminKey,{snapshot});
   }
+  history(){
+    if(!this.connected)throw Error('Join a room to view its history');
+    return this.request('/api/rooms/'+this.room+'/history',this.key);
+  }
+  version(revision){
+    if(!this.connected)throw Error('Join a room to view saved revisions');
+    return this.request('/api/rooms/'+this.room+'/versions/'+revision,this.key);
+  }
+  async restore(revision){
+    if(!this.connected||this.role!=='owner')throw Error('Only an owner may restore a workbook');
+    if(this.pending)throw Error('Current edits are still syncing');
+    if(diffWorkbook(this.baseline,comparable(this.getState())))
+      throw Error('Export or sync local edits before restoring an earlier version');
+    const value=await this.version(revision);
+    const id=crypto.randomUUID();
+    this.pending={id,submitted:comparable(value.snapshot),restoreSnapshot:value.snapshot};
+    this.socket.send(JSON.stringify({
+      type:'restore',id,base:this.revision,target:revision,
+    }));
+    this.onStatus('Restoring workbook revision '+revision+'…');
+  }
   async join({address='http://127.0.0.1:8767',room,key,name='Editor'}){
     this.disconnect();
     this.base=collaborationEndpoint(address);
@@ -173,7 +194,9 @@ export class WorkbookCollaboration{
     if(message.type==='ack'){
       if(!this.pending||message.id!==this.pending.id)return;
       this.baseline=this.pending.submitted;
+      const restoreSnapshot=this.pending.restoreSnapshot;
       this.pending=null;this.revision=message.revision;
+      if(restoreSnapshot)this.loadState(restoreSnapshot);
       this.onStatus('Synced · '+this.role+' · revision '+this.revision);
       const queue=this.queued.splice(0);
       for(const event of queue)this.applyEvent(event);
