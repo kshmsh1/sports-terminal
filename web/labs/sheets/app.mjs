@@ -4,6 +4,7 @@ import {rebaseFormula} from './references.mjs';
 import {loadWorkbook,storeWorkbook} from './storage.mjs';
 import {conditionalStyle} from './analytics.mjs';
 import {runAnalytics,pivotDesigner,chartDesigner,formatDesigner} from './studio.mjs';
+import {setupCollaboration} from './collaboration_ui.mjs';
 
 const $=id=>document.getElementById(id);
 const ROW_HEIGHT=28, HEADER_HEIGHT=28, DEFAULT_WIDTH=112, MAX_ROWS=100000, MAX_COLS=256;
@@ -12,6 +13,7 @@ let book, name='Analysis Workbook', selected={r:1,c:1}, anchor={r:1,c:1};
 let edit=false, dragging=false, history=[], future=[], raf=false, dirty=false;
 let internalClipboard=null;
 let ruleStatsCache=new Map();
+let collaboration=null;
 function restore() {
   try {
     const data=JSON.parse(localStorage.getItem(STORAGE));
@@ -53,11 +55,12 @@ function persist() {
   return saveQueue;
 }
 let saveTimer;
-function changed() {
+function changed({remote=false}={}) {
   ruleStatsCache.clear();
   editRevision++;
   dirty=true;$('saveStatus').textContent='Saving…';
   clearTimeout(saveTimer);saveTimer=setTimeout(persist,350);requestRender();
+  if(!remote)collaboration?.edit();
 }
 function snapshot() {
   const current=JSON.stringify(book.toJSON());
@@ -175,6 +178,12 @@ function render() {
       if(style.color)item.style.color=style.color;
       if(style.align)item.style.justifyContent=style.align;
       item.textContent=text;item.title=book.get(book.active,id)||id;
+      const peer=collaboration?.cursor(book.active,id);
+      if(peer){
+        item.classList.add('peer-cursor');
+        item.style.boxShadow='inset 0 0 0 2px #eea54b';
+        item.title+=' · editing near '+peer.name;
+      }
       item.addEventListener('pointerdown',event=>{
         if(event.button!==0)return;
         dragging=true;select(r,c,event.shiftKey);scroll.focus({preventScroll:true});
@@ -680,4 +689,36 @@ for(const button of document.querySelectorAll('[data-action]'))button.onclick=()
 };
 document.addEventListener('visibilitychange',()=>{if(document.hidden)persist();});
 window.addEventListener('beforeunload',persist);
+collaboration=setupCollaboration({
+  getState:()=>({name,workbook:book.toJSON()}),
+  getActiveSheet:()=>book.active,
+  isChanged:baseline=>{
+    const here={name,workbook:book.toJSON()};
+    delete here.workbook.active;
+    return JSON.stringify(here)!==JSON.stringify(baseline);
+  },
+  loadState:state=>{
+    const previous=book?.active;
+    book=new Workbook(state.workbook);
+    if(previous&&book.sheets.has(previous))book.active=previous;
+    name=state.name??name;$('workbookName').value=name;
+    history=[];future=[];$('undo').disabled=true;$('redo').disabled=true;
+    selected={r:1,c:1};anchor={...selected};
+    changed({remote:true});
+  },
+  applyRemote:changes=>{
+    for(const value of changes){
+      if(!book.sheets.has(value.sheet))continue;
+      if(value.field==='raw')book.set(value.sheet,value.ref,value.value);
+      if(value.field==='style'){
+        const styles=book.sheets.get(value.sheet).styles;
+        if(value.value===null)delete styles[value.ref];
+        else styles[value.ref]={...value.value};
+      }
+    }
+    changed({remote:true});
+  },
+  refresh:requestRender,
+  modal,
+});
 requestRender();
