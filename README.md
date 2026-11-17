@@ -17,7 +17,7 @@ The normal NBA customer experience includes:
 - global player/team search in the website header;
 - the 2026-27 Trade Machine;
 - Front Office, Research and Community;
-- visible but intentionally disconnected Python Lab and Excel Workspace navigation placeholders.
+- standalone Python Lab and Excel Workspace, available from Arcside navigation and in dedicated full-screen tabs. NBA data connections remain intentionally deferred.
 
 ## Static-first historical data
 
@@ -39,6 +39,31 @@ The static corpus includes season indexes and shards, player/team indexes, canon
 Optional already-normalized NBA.com captures can enrich static seasons with source-backed fields such as deflections. `tools/nba_com_static_enrichment.py` performs no network requests. When those local captures do not exist, NBA.com-only metrics stay unavailable.
 
 The intended active-season model is **static historical base + live current-season overlay**. When 2026-27 begins, a live layer can populate the active season without changing completed historical seasons. At season end, that season can be frozen into the static corpus.
+
+## Launch the integrated Python Lab and Excel Workspace
+
+The new local launcher starts both Labs plus the private CPython and
+collaboration services with one command. It does not require an NBA dataset
+in standalone preview mode:
+
+```bash
+bash scripts/launch_arcside.sh --labs
+```
+
+For the full Arcside Flutter website (requires your existing
+`data/warehouse/nba_history.sqlite` and a Flutter SDK):
+
+```bash
+bash scripts/launch_arcside.sh --platform
+```
+
+The launcher prints separate connection keys for the Python IDE and the
+live workbook sharing service. Inside Sheets use **Share workbook** to
+create/join permission-scoped rooms, or **My workbooks** to save independent
+local workbooks. Use **Open full workspace** in Flutter to open either Lab
+outside the embedded frame.
+
+See [Labs launch, collaboration and compatibility guide](docs/arcside_labs_collaboration_launch.md).
 
 ## Local launch
 
