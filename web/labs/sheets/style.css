@@ -83,3 +83,11 @@ html,body{height:100%;overflow:hidden}.sheets{height:100%;display:flex;flex-dire
 .collab-history-row span{flex:1;min-width:0}
 .collab-history-row button{font-size:11px}
 .collab-version-preview{max-height:150px;overflow:auto;padding:8px;font:11px/1.4 ui-monospace,monospace;background:#0a1827;color:#d4e6fb;white-space:pre-wrap}
+
+.workbook-library{min-width:350px;display:flex;flex-direction:column;gap:12px}
+.workbook-library p{font-size:12px;color:#adc4dd}
+.workbook-library-row{display:flex;align-items:center;gap:8px;border-bottom:1px solid #354d68;padding:9px 3px}
+.workbook-library-row>div{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
+.workbook-library-row strong{font-size:13px;color:#e0f0ff}
+.workbook-library-row span{font-size:11px;color:#9caec5}
+.workbook-library-row button{font-size:11px}
