@@ -28,3 +28,11 @@ Widget labFrame(String lab) => HtmlElementView(
       viewType: 'arcside-independent-${lab == 'python' ? 'python' : 'sheets'}',
     );
 
+
+
+/// Open the complete full-height lab in a new browser tab, outside Flutter's iframe.
+void openLab(String lab){
+  final kind=lab=='python'?'python':'sheets';
+  final url=Uri.base.resolve('labs/$kind/index.html').toString();
+  web.window.open(url,'_blank');
+}
