@@ -76,3 +76,38 @@ jobs:
             web/labs/test-results
             web/labs/playwright-report
           retention-days: 7
+
+  launch-smoke:
+    name: Launch both labs and services from one command
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare the local launcher environment
+        run: |
+          python -m venv .arcside-labs-venv
+          .arcside-labs-venv/bin/python -m pip install -e python/arcside_companion -e python/arcside_collab
+      - name: Run standalone Arcside Labs using the actual launcher
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/launch_arcside.sh --labs --no-browser --skip-install >/tmp/arcside-startup.log 2>&1 &
+          runner_pid=$!
+          trap 'kill "$runner_pid" 2>/dev/null || true; wait "$runner_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 50); do
+            if curl -fsS http://127.0.0.1:8765/labs/sheets/index.html >/dev/null 2>&1 &&
+               curl -fsS http://127.0.0.1:8765/labs/python/index.html >/dev/null 2>&1 &&
+               curl -fsS http://127.0.0.1:8766/health >/dev/null 2>&1 &&
+               curl -fsS http://127.0.0.1:8767/health >/dev/null 2>&1;then
+              echo "All four endpoints are accessible."
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8765/labs/sheets/index.html | grep -q 'Arcside Sheets'
+          curl -fsS http://127.0.0.1:8765/labs/python/index.html | grep -q 'Arcside Python Lab'
+          curl -fsS http://127.0.0.1:8766/health
+          curl -fsS http://127.0.0.1:8767/health
