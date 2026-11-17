@@ -133,7 +133,7 @@ export function setupCollaboration(ctx){
         const data=await collab.history();
         revisionList.replaceChildren();
         const items=[...data.events];
-        if(!items.length||items.at(-1).revision<1)
+        if(items.length<200)
           items.push({revision:0,kind:'created',time_ms:Date.now()});
         for(const item of items){
           const entry=h('div',{cls:'collab-history-row'});
