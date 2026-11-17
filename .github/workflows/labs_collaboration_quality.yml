@@ -1,0 +1,78 @@
+name: Arcside collaborative workspaces quality
+on:
+  pull_request:
+    paths:
+      - 'python/arcside_collab/**'
+      - 'web/labs/sheets/**'
+      - 'web/labs/tests/collaboration*'
+      - 'scripts/launch_arcside.sh'
+      - '.github/workflows/labs_collaboration_quality.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'python/arcside_collab/**'
+      - 'web/labs/sheets/**'
+jobs:
+  collaboration-api:
+    name: Authenticated SQLite collaboration API
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install local collaboration and test dependencies
+        run: python -m pip install -e 'python/arcside_collab[test]'
+      - name: Compile and verify service
+        run: |
+          python -m compileall -q python/arcside_collab/arcside_collab
+          python -m pytest -v python/arcside_collab/tests
+          bash -n scripts/launch_arcside.sh scripts/open_terminal.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify collaboration client diff semantics
+        run: |
+          node --check web/labs/sheets/collaboration.mjs
+          node --check web/labs/sheets/collaboration_ui.mjs
+          node --test web/labs/tests/collaboration.test.mjs
+
+  browser-collaboration:
+    name: Two live Chromium collaboration clients
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install service and Playwright
+        run: |
+          python -m pip install -e 'python/arcside_collab[test]'
+          npm install --prefix web/labs --no-package-lock --ignore-scripts
+          cd web/labs && npx playwright install --with-deps chromium
+      - name: Start isolated test collaboration service
+        run: |
+          python -c 'import uvicorn; from pathlib import Path; from arcside_collab.server import create_app; uvicorn.run(create_app(Path("/tmp/arcside-e2e-collab.sqlite"), origins=["http://127.0.0.1:8765"],admin_token="arcside-collab-e2e-secret-admin"), host="127.0.0.1", port=8767, access_log=False)' >/tmp/arcside-collab.log 2>&1 &
+          for attempt in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:8767/health; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8767/health
+      - name: Exercise cross-tab workbook collaboration
+        env:
+          ARCSIDE_COLLAB_E2E_ADMIN: arcside-collab-e2e-secret-admin
+        run: cd web/labs && npx playwright test tests/collaboration.browser.spec.mjs -c playwright.config.mjs --workers=1
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arcside-collaboration-browser-failures
+          path: |
+            web/labs/test-results
+            web/labs/playwright-report
+          retention-days: 7
