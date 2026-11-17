@@ -100,3 +100,11 @@ app.*.map.json
 *.env
 .env*
 !.env.example
+
+# Arcside Labs local launch state (never check in access keys or workbooks)
+/.arcside-labs-venv/
+/.arcside-labs-runtime/
+/arcside-python-workspace/
+*.arcside.sqlite
+*.arcside.sqlite-shm
+*.arcside.sqlite-wal
