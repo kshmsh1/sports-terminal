@@ -53,3 +53,27 @@ html,body{height:100%;overflow:hidden}.sheets{height:100%;display:flex;flex-dire
 .rules-list{max-height:250px;overflow:auto}
 .modal-card{max-width:min(96vw,980px);max-height:92vh;overflow:auto}
 @media(max-width:600px){.studio-controls{grid-template-columns:1fr}.modal-card{max-width:99vw}}
+
+/* Shared workbook collaboration, designed for a localhost-first workflow. */
+.collab-state{font-size:11px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.collab-people{font-size:11px;color:#b9dbec;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.share-button{background:#1b6858;color:#e2fff4;border-color:#2b9b80}
+.share-button:hover{background:#237e68}
+.grid-cell.peer-cursor{outline:1px dashed #f4bb66;outline-offset:-3px}
+.collab-dialog{max-width:100%;display:flex;flex-direction:column;gap:12px;color:#d2e4f8;font-size:12px}
+.collab-dialog p{margin:3px 0;line-height:1.55;color:#b5cde5}
+.collab-common{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.collab-section{padding:13px 14px;background:#13243a;border:1px solid #334f6e;border-radius:8px;display:flex;flex-direction:column;gap:10px}
+.collab-section h3{margin:0;color:#e4f2ff;font-size:14px}
+.collab-field{display:flex;flex-direction:column;gap:5px;color:#b2c9e4;font-size:11px}
+.collab-field input,.collab-generated input{padding:9px 10px;background:#0b1b2e;border:1px solid #3c5b79;border-radius:5px;color:#eaf3ff;min-width:0;font:12px ui-monospace,monospace}
+.collab-section>button{align-self:flex-start}
+.collab-generated{display:flex;flex-direction:column;gap:8px}
+.collab-secret{display:flex;align-items:center;gap:8px}
+.collab-secret strong{width:70px;flex:none}
+.collab-secret input{flex:1;min-width:0}
+.collab-secret button{flex:none;font-size:11px}
+.collab-dialog-status{padding:9px 0;color:#a7e4c5;font-size:12px}
+.collab-dialog-status.error{color:#ffb8b8}
+.collab-note{font-size:11px;color:#9bb3cd}
+@media(max-width:700px){.collab-common{grid-template-columns:1fr}.collab-secret{flex-wrap:wrap}.collab-secret input{width:65%}.collab-people{display:none}}
