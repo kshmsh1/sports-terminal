@@ -11,7 +11,7 @@ while [[ "$#" -gt 0 ]]; do
     --rebuild-static) FORCE_STATIC=1 ;;
     --web-port) shift; WEB_PORT="${1:-}"; if [[ ! "$WEB_PORT" =~ ^[0-9]+$ ]]; then echo 'Missing numeric --web-port' >&2;exit 2;fi ;;
     *)
-      echo "Unknown option: $arg" >&2
+      echo "Unknown option: $1" >&2
       echo "Usage: bash scripts/open_terminal.sh [--rebuild-static] [--web-port PORT]" >&2
       exit 2
       ;;
