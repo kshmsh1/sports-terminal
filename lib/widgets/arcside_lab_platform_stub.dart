@@ -13,3 +13,6 @@ Widget labFrame(String lab) => Center(
         ),
       ),
     );
+
+
+void openLab(String lab) {}
