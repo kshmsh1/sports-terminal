@@ -111,3 +111,28 @@ jobs:
           curl -fsS http://127.0.0.1:8765/labs/python/index.html | grep -q 'Arcside Python Lab'
           curl -fsS http://127.0.0.1:8766/health
           curl -fsS http://127.0.0.1:8767/health
+
+  flutter-ui:
+    name: Flutter lab embedding, analysis and web release build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 32
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Get Flutter dependencies
+        run: flutter pub get
+      - name: Analyze integration widgets
+        run: |
+          flutter analyze lib/widgets/arcside_lab_webview.dart \
+            lib/widgets/arcside_lab_platform_web.dart \
+            lib/widgets/arcside_lab_platform_stub.dart
+      - name: Compile production Flutter website with integrated labs
+        run: flutter build web --release
+      - name: Ensure built workspaces were copied into Flutter web assets
+        run: |
+          test -s build/web/labs/python/index.html
+          test -s build/web/labs/sheets/index.html
+          test -s build/web/labs/sheets/collaboration.mjs
