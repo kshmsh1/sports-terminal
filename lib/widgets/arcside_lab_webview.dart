@@ -41,14 +41,21 @@ class _ArcsideLabWebViewState extends State<ArcsideLabWebView> {
                       ),
                 ),
               ),
-              const Text('Independent browser workspace',
-                  style: TextStyle(fontSize: 12)),
+              TextButton.icon(
+                onPressed: () => platform.openLab(widget.lab),
+                icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                label: const Text('Open full workspace'),
+              ),
             ],
           ),
         ),
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: SizedBox(height: 800, child: platform.labFrame(widget.lab)),
+          child: SizedBox(
+            height: (MediaQuery.sizeOf(context).height * 0.82)
+                .clamp(720.0, 1400.0).toDouble(),
+            child: platform.labFrame(widget.lab),
+          ),
         ),
       ],
     );

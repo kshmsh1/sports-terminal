@@ -6,14 +6,14 @@
 <header class="titlebar">
   <div class="brand"><span class="brandmark">A</span><span><strong>Arcside</strong> <span class="dim">/ Sheets</span></span></div>
   <input id="workbookName" aria-label="Workbook name" value="Untitled workbook">
-  <span class="status" id="saveStatus">Stored in this browser</span>
+  <span class="status" id="saveStatus">Stored in this browser</span><span class="status collab-state" id="collabStatus">Local only</span><span id="collabPeople" class="collab-people" aria-label="Active collaborators"></span>
   <div class="spacer"></div>
   <button id="undo" title="Undo (Ctrl/Cmd+Z)">↶ Undo</button><button id="redo" title="Redo (Ctrl/Cmd+Shift+Z)">↷ Redo</button>
-  <button id="importButton">Import</button><button id="xlsxExport">Export XLSX</button><button id="exportButton" class="primary">Export CSV</button>
+  <button id="shareWorkbook" class="share-button" title="Share workbook for authenticated, persistent, real-time collaboration">Share workbook</button><button id="importButton">Import</button><button id="xlsxExport">Export XLSX</button><button id="exportButton" class="primary">Export CSV</button>
   <input id="filePicker" type="file" accept=".csv,.tsv,.json,.xlsx" hidden>
 </header>
 <div class="menubar">
-  <button data-action="new">New workbook</button><button data-action="addSheet">+ Sheet</button>
+  <button data-action="new">New workbook</button><button data-action="workbookLibrary">My workbooks</button><button data-action="addSheet">+ Sheet</button>
   <button data-action="sort">Sort selected</button><button data-action="fillDown" title="Fill selected range downward (Ctrl+D)">Fill ↓</button><button data-action="fillRight" title="Fill selected range rightward (Ctrl+R)">Fill →</button><button data-action="pivot">Quick pivot</button><button data-action="pivotStudio">Pivot Studio</button><button data-action="refreshPivots">Refresh pivots</button>
   <button data-action="chart">Quick chart</button><button data-action="chartStudio">Chart Studio</button><button data-action="savedCharts">Saved charts</button><button data-action="filterStudio">Filter table</button><button data-action="find">Find</button>
   <button data-action="help">Formulas</button><span class="spacer"></span>

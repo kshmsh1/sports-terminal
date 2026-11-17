@@ -29,6 +29,8 @@ jobs:
           node --check web/labs/sheets/analytics.worker.mjs
           node --check web/labs/sheets/studio.mjs
           node --check web/labs/sheets/storage.mjs
+          node --check web/labs/sheets/collaboration.mjs
+          node --check web/labs/sheets/collaboration_ui.mjs
           node --check web/labs/sheets/app.mjs
           node --check web/labs/sheets/xlsx.mjs
           node --check web/labs/python/app.mjs

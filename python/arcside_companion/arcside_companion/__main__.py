@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 import uvicorn
@@ -20,12 +21,14 @@ def main() -> None:
     if not 1024 <= args.port <= 65535:
         parser.error("Port must be 1024–65535")
     origins = args.allow_origin or ["http://127.0.0.1:8765", "http://localhost:8765"]
-    app = create_app(args.workspace, origins)
+    app = create_app(args.workspace, origins,
+                     token=os.environ.get('ARCSIDE_COMPANION_TOKEN') or None)
     token = app.state.security.token
     print("\nArcside local companion — TRUSTED PROJECTS ONLY", flush=True)
     print(f"Workspace: {app.state.security.root}", flush=True)
     print(f"URL: http://127.0.0.1:{args.port}", flush=True)
-    print(f"Connection token (paste in Arcside Python Lab): {token}", flush=True)
+    if not os.environ.get('ARCSIDE_HIDE_TOKEN_IN_OUTPUT'):
+        print(f"Connection token (paste in Arcside Python Lab): {token}", flush=True)
     print("Token grants local code execution. Never share it or expose this process publicly.", flush=True)
     print("Browser origins allowed: " + ", ".join(origins) + "\n", flush=True)
     uvicorn.run(app, host="127.0.0.1", port=args.port, access_log=False)
