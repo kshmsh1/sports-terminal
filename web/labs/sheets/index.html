@@ -6,10 +6,10 @@
 <header class="titlebar">
   <div class="brand"><span class="brandmark">A</span><span><strong>Arcside</strong> <span class="dim">/ Sheets</span></span></div>
   <input id="workbookName" aria-label="Workbook name" value="Untitled workbook">
-  <span class="status" id="saveStatus">Stored in this browser</span>
+  <span class="status" id="saveStatus">Stored in this browser</span><span class="status collab-state" id="collabStatus">Local only</span><span id="collabPeople" class="collab-people" aria-label="Active collaborators"></span>
   <div class="spacer"></div>
   <button id="undo" title="Undo (Ctrl/Cmd+Z)">↶ Undo</button><button id="redo" title="Redo (Ctrl/Cmd+Shift+Z)">↷ Redo</button>
-  <button id="importButton">Import</button><button id="xlsxExport">Export XLSX</button><button id="exportButton" class="primary">Export CSV</button>
+  <button id="shareWorkbook" class="share-button" title="Share workbook for authenticated, persistent, real-time collaboration">Share workbook</button><button id="importButton">Import</button><button id="xlsxExport">Export XLSX</button><button id="exportButton" class="primary">Export CSV</button>
   <input id="filePicker" type="file" accept=".csv,.tsv,.json,.xlsx" hidden>
 </header>
 <div class="menubar">
