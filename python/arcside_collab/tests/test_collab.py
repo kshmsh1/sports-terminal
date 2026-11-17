@@ -151,3 +151,33 @@ def test_reject_duplicate_patch_keys_and_overlong_value(server,room):
         ws.send_json({"type":"patch","id":"huge","base":0,"changes":[{**change,"value":"x"*10001}]})
         assert ws.receive_json()["type"]=="error"
     assert server.get("/api/rooms/"+rid,headers=auth(room["owner_key"])).json()["revision"]==0
+
+
+def test_version_history_authentication_and_owner_only_restore(server,room):
+    rid=room["room"]
+    with join(server,rid,room["editor_key"]) as editor:
+        login(editor,room["editor_key"])
+        editor.send_json({"type":"patch","id":"one","base":0,"changes":[
+            {"sheet":"Analysis","ref":"B2","field":"raw","value":"111"}]})
+        assert editor.receive_json()["revision"]==1
+        editor.send_json({"type":"patch","id":"two","base":1,"changes":[
+            {"sheet":"Analysis","ref":"B2","field":"raw","value":"222"}]})
+        assert editor.receive_json()["revision"]==2
+        editor.send_json({"type":"restore","id":"denied","base":2,"target":0})
+        assert editor.receive_json()["type"]=="error"
+    for revision,expected in [(0,"10"),(1,"111"),(2,"222")]:
+        response=server.get(f"/api/rooms/{rid}/versions/{revision}",
+                            headers=auth(room["viewer_key"]))
+        assert response.status_code==200
+        assert response.json()["snapshot"]["workbook"]["sheets"][0]["cells"]["B2"]==expected
+    assert server.get(f"/api/rooms/{rid}/versions/0",headers=auth("bad")).status_code==401
+    with join(server,rid,room["owner_key"]) as owner:
+        login(owner,room["owner_key"])
+        owner.send_json({"type":"restore","id":"undo","base":2,"target":0})
+        assert owner.receive_json()["type"]=="ack"
+    state=server.get("/api/rooms/"+rid,headers=auth(room["viewer_key"])).json()
+    assert state["revision"]==3
+    assert state["snapshot"]["workbook"]["sheets"][0]["cells"]["B2"]=="10"
+    history=server.get("/api/rooms/"+rid+"/history",headers=auth(room["owner_key"])).json()
+    assert len(history["events"])==3
+    assert history["events"][0]["kind"]=="replace"
