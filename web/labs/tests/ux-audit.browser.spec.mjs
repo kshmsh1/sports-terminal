@@ -316,3 +316,30 @@ test('Labs work inside embedded iframes with independent focus and responsive co
   await expect(pythonFrame.locator('#problems')).toBeVisible();
   await capture(page,info,'two-embedded-workspaces');
 });
+
+
+test('Spreadsheet sort, search, fill-to-empty and worksheet rename/delete mutate real addresses',async({page})=>{
+  await sheet(page);
+  await page.locator('.grid-cell[title="Company"]').click();
+  await page.locator('.grid-cell[title="Delta"]').click({modifiers:['Shift']});
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('[data-action="sort"]').click();
+  await expect(page.locator('.grid-cell[title="Delta"]')).toHaveCSS('top','84px');
+  page.once('dialog',dialog=>dialog.accept('Delta'));
+  await page.locator('[data-action="find"]').click();
+  await expect(page.locator('#nameBox')).toHaveValue('A4');
+  await sheet(page);
+  await page.locator('.grid-cell[title="=B2-C2"]').click();
+  await page.locator('.grid-cell[title="D7"]').click({modifiers:['Shift']});
+  await page.locator('[data-action="fillDown"]').click();
+  await expect(page.locator('.grid-cell[title="=B7-C7"]')).toBeVisible();
+  page.once('dialog',dialog=>dialog.accept('QA rename'));
+  await page.locator('[data-action="addSheet"]').click();
+  await expect(page.locator('.sheet-tab.active')).toContainText('QA rename');
+  page.once('dialog',dialog=>dialog.accept('Renamed sheet'));
+  await page.locator('.sheet-tab.active').dblclick();
+  await expect(page.locator('.sheet-tab.active')).toHaveText('Renamed sheet');
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('.sheet-tab.active').click({button:'right'});
+  await expect(page.locator('.sheet-tab')).not.toContainText('Renamed sheet');
+});
