@@ -93,3 +93,56 @@ html,body,.ide{height:100%;overflow:hidden}.ide{display:flex;flex-direction:colu
 .notebook-output pre{font:12px/1.5 ui-monospace,monospace;color:#a9ddff;white-space:pre-wrap}
 .notebook-output img{max-width:100%;max-height:350px;background:white}
 @media(max-width:760px){.bottom-panel{height:290px}.runtime-picker select{max-width:110px}.local-tools{grid-template-columns:1fr}.live-debug-columns{grid-template-columns:1fr}}
+
+
+/* UX v2: a deliberate hierarchy—run/debug remain primary; secondary tools have
+   their own compact row. Panels can be hidden and resized with keyboard/mouse. */
+.ide{--explorer-width:226px;--inspector-width:215px;--bottom-height:255px}
+.ide .titlebar{min-height:55px;height:auto;padding:8px 13px;gap:9px;flex-wrap:wrap}
+.ide .titlebar .brand{font-size:14px}
+.ide .titlebar #projectName{width:clamp(115px,13vw,210px);min-width:110px;max-width:210px}
+.ide .titlebar #status{flex:0 1 190px;max-width:190px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.ide .titlebar #run{padding:8px 16px;font-weight:750}
+.ide .titlebar #stop{padding:8px 9px}
+.ide .titlebar #connectLocal{border:1px solid #334861}
+.chrome-toggle{min-width:32px;min-height:33px;border:1px solid #34465d;font-size:16px}
+.chrome-toggle[aria-pressed=false]{color:#7593b1}
+.ide .actionbar{display:flex;align-items:center;flex-wrap:nowrap;gap:7px;min-height:37px;overflow-x:auto;padding:4px 13px;background:#142131;border-bottom:1px solid #2c3e53}
+.actionbar button{font-size:12px;padding:5px 9px}
+.action-group-name{font-weight:800;font-size:10px;color:#829bb6;letter-spacing:.09em}
+.action-divider{height:20px;border-left:1px solid #3d546d;margin:0 4px}
+.actionbar-hint{margin-left:auto;font-size:11px;color:#829dbb;white-space:nowrap}
+.ide .explorer{width:var(--explorer-width);min-width:0;max-width:45vw}
+.ide .right-pane{width:var(--inspector-width);min-width:0;max-width:40vw}
+.ide .bottom-panel{height:var(--bottom-height);min-height:160px;max-height:70vh;border-top:0}
+.ide .panel-tabs{overflow-x:auto;min-height:36px;flex:none;gap:1px;scrollbar-width:thin}
+.ide .panel-tabs button{font-size:11px;padding:7px 10px;flex:none}
+.ide .pane-resize{flex:none;position:relative;background:#1a3049;transition:background-color .12s;touch-action:none}
+.ide .pane-resize:hover,.ide .pane-resize.dragging,.ide .pane-resize:focus-visible{background:#5485ba}
+.ide .pane-resize-x{width:5px;cursor:col-resize}
+.ide .pane-resize-y{height:6px;cursor:row-resize}
+.ide.explorer-hidden .explorer,.ide.explorer-hidden #explorerHandle{display:none}
+.ide.inspector-hidden .right-pane,.ide.inspector-hidden #inspectorHandle{display:none}
+.ide #outline{min-height:50px}
+.ide .right-pane .pane-title{padding:11px 12px}
+.ide .runtime-info{line-height:1.5}
+.ide #editor{background:#0e1623}
+.ide #tabs .tab{min-height:37px}
+.ide .statusbar{background:#173859}
+@media(max-width:1300px){
+ .ide .titlebar #status{max-width:140px}
+ .actionbar-hint{display:none}
+ .ide .right-pane{width:min(var(--inspector-width),180px)}
+}
+@media(max-width:1000px){
+ .ide .right-pane,.ide #inspectorHandle{display:none}
+ .ide .titlebar #status{display:none}
+}
+@media(max-width:650px){
+ .ide .titlebar .brand{font-size:13px}
+ .ide .titlebar #projectName{width:120px}
+ .ide .explorer{width:min(var(--explorer-width),150px)}
+ .ide .actionbar{padding:3px 7px}
+ .ide .panel-tabs button{padding:6px 8px}
+ .ide .titlebar .arcside-command-trigger kbd{display:none}
+}
