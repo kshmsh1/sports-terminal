@@ -22,6 +22,7 @@ jobs:
           node-version: '22'
       - name: Syntax-check JavaScript
         run: |
+          node --check web/labs/workbench.mjs
           node --check web/labs/sheets/core.mjs
           node --check web/labs/sheets/formula_functions.mjs
           node --check web/labs/sheets/references.mjs
@@ -58,11 +59,11 @@ jobs:
         run: cd web/labs && npx playwright install --with-deps chromium
       - name: Run actual browser interactions
         run: cd web/labs && npx playwright test -c playwright.config.mjs
-      - name: Upload failed traces and screenshots
-        if: failure()
+      - name: Upload automated UX journey screenshots and traces
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: arcside-lab-browser-failures
+          name: arcside-lab-ux-evidence
           path: |
             web/labs/test-results
             web/labs/playwright-report
