@@ -1,16 +1,27 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Arcside Python Lab</title><link rel="stylesheet" href="../shared.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css"><link rel="stylesheet" href="./style.css"></head>
 <body><div class="app ide">
-<header class="titlebar">
+<header class="titlebar" role="banner">
+ <button id="toggleExplorer" class="chrome-toggle" title="Show or hide file explorer" aria-label="Hide file explorer" aria-pressed="true">☰</button>
  <div class="brand"><span class="brandmark">A</span><span><b>Arcside</b> <span class="dim">/ Python Lab</span></span></div>
  <input id="projectName" value="Untitled Project" aria-label="Project name" spellcheck="false">
- <span class="status" id="status">Initializing editor…</span><div class="spacer"></div>
- <label class="runtime-picker">Python <select id="runtimeMode"><option value="browser">Browser / Pyodide</option><option value="local">Trusted local CPython</option></select></label><button id="connectLocal">Connect local</button>
- <button id="importFile">Import files</button><input id="picker" type="file" multiple accept=".py,.txt,.csv,.json,.md,.toml" hidden>
- <button id="exportFile">Download .py</button><button id="exportProject">Export project</button><button id="runTests">Test</button><button id="runSelection" title="Execute selected Python lines">Run selection</button>
- <button id="debug" title="Collect trace (F5)">Debug</button><button class="primary" id="run" title="Run (Ctrl/Cmd+Enter)">▶ Run</button>
- <button id="stop" title="Terminate kernel (Shift+F5)">■ Stop</button>
+ <span class="status" id="status" role="status" aria-live="polite">Initializing editor…</span><div class="spacer"></div>
+ <label class="runtime-picker">Python <select id="runtimeMode" aria-label="Python runtime"><option value="browser">Browser / Pyodide</option><option value="local">Trusted local CPython</option></select></label><button id="connectLocal" title="Configure trusted local Python connection">Connect local</button>
+ <button id="commandPaletteButton" class="arcside-command-trigger" title="Search every workbench action"><span>⌕ Commands</span><kbd>⌘K</kbd></button>
+ <button id="toggleInspector" class="chrome-toggle" title="Show or hide inspector" aria-label="Hide right inspector" aria-pressed="true">◫</button>
+ <button id="debug" title="Debug the active Python file (F5)">Debug</button>
+ <button class="primary" id="run" title="Run Python (Ctrl/Cmd+Enter)">▶ Run</button>
+ <button id="stop" title="Stop Python execution (Shift+F5)">■ Stop</button>
 </header>
+<nav class="actionbar" aria-label="Python project and development tools">
+ <span class="action-group-name">PROJECT</span>
+ <button id="importFile" title="Import .py, .json, CSV, Markdown or text files into the project">Import files</button><input id="picker" type="file" multiple accept=".py,.txt,.csv,.json,.md,.toml,.ipynb" hidden>
+ <button id="exportFile" title="Download the active source file">Download file</button><button id="exportProject" title="Download all files as an Arcside project">Export project</button>
+ <span class="action-divider"></span><span class="action-group-name">DEVELOP</span>
+ <button id="runTests" title="Discover and execute unit tests">Run tests</button>
+ <button id="runSelection" title="Execute selected Python lines">Run selection</button>
+ <span class="actionbar-hint">Your files save locally as you edit.</span>
+</nav>
 <div class="workbench">
  <aside class="explorer">
   <div class="pane-title"><b>EXPLORER</b><button id="newFile" title="New file">＋</button></div>
@@ -19,10 +30,12 @@
   <div class="side-actions"><button id="renameFile">Rename</button><button id="deleteFile">Delete</button></div>
   <div class="explorer-note">Virtual project files are saved in this browser. No repository is connected.</div>
  </aside>
+ <div id="explorerHandle" class="pane-resize pane-resize-x" role="separator" aria-label="Resize file explorer" aria-orientation="vertical" aria-valuemin="145" aria-valuemax="460" tabindex="0"></div>
  <main class="center-pane">
   <div id="tabs" role="tablist"></div>
   <div class="editor-wrap"><div id="editor"></div><textarea id="fallback" spellcheck="false" hidden aria-label="Python source"></textarea></div>
   <div class="crumbs"><span id="activePath">main.py</span><span class="spacer"></span><span id="cursorPosition">Ln 1, Col 1</span><span>UTF-8</span><span>Python</span></div>
+  <div id="panelHandle" class="pane-resize pane-resize-y" role="separator" aria-label="Resize output panel" aria-orientation="horizontal" aria-valuemin="160" aria-valuemax="650" tabindex="0"></div>
   <section class="bottom-panel">
    <div class="panel-tabs">
     <button data-panel="output" class="active">Output</button><button data-panel="problems">Problems <span id="problemCount">0</span></button>
@@ -84,6 +97,7 @@
    </div>
   </section>
  </main>
+ <div id="inspectorHandle" class="pane-resize pane-resize-x" role="separator" aria-label="Resize inspector" aria-orientation="vertical" aria-valuemin="175" aria-valuemax="430" tabindex="0"></div>
  <aside class="right-pane">
   <div class="pane-title">OUTLINE / ENVIRONMENT</div>
   <div id="outline">Open a Python file to inspect symbols.</div>
@@ -96,7 +110,7 @@
   <div class="shortcut">Shift+F5 <span>Stop</span></div>
  </aside>
 </div>
-<div class="statusbar"><span id="dirtyStatus">Saved locally</span><div class="spacer"></div><span id="kernelFlag">Kernel stopped</span><span>Arcside Lab · preview</span></div>
+<div class="statusbar"><span id="dirtyStatus">Saved locally</span><div class="spacer"></div><span id="kernelFlag">Kernel stopped</span><span>Arcside Python Workbench</span></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs/loader.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js" defer></script>
