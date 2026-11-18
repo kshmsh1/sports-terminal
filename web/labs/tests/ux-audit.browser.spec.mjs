@@ -288,7 +288,7 @@ test('Sheets command search, editable address navigation and true zoom work with
 
 test('Labs work inside embedded iframes with independent focus and responsive commands',async({page},info)=>{
   await page.setViewportSize({width:1260,height:780});
-  await page.goto('about:blank');
+  await page.goto('/labs/');
   await page.evaluate(()=>{
     document.body.replaceChildren();
     document.body.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;height:100vh;padding:8px';
