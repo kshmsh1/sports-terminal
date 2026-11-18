@@ -178,7 +178,7 @@ export function setupPythonLayout(){
         (kind==='vertical'?255:kind==='reverse'?215:226);
       const direction=['ArrowRight','ArrowUp'].includes(e.key)?1:-1;
       update(e.key==='Home'?min:e.key==='End'?max:now+
-        (kind==='vertical'||kind==='reverse'?-direction:direction)*18);
+        (kind==='reverse'?-direction:direction)*18);
     });
   }
   // Panel hidden state and resizing are layout-only. Interpreter/kernels are retained.
