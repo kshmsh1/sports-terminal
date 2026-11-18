@@ -388,12 +388,14 @@ function renderTabs() {
   for(const sheet of book.sheets.keys()) {
     const b=document.createElement('button');b.className='sheet-tab'+(sheet===book.active?' active':'');
     b.textContent=sheet;b.title='Double-click to rename; right-click to delete';
+    b.setAttribute('role','tab');b.setAttribute('aria-selected',String(sheet===book.active));
     b.onclick=()=>{book.active=sheet;select(1,1);changed();};
     b.ondblclick=()=>{const next=prompt('Rename sheet',sheet);if(next&&next!==sheet){try{snapshot();book.renameSheet(sheet,next);changed();}catch(e){alert(e.message);}}};
     b.oncontextmenu=e=>{e.preventDefault();if(confirm('Delete '+sheet+'?')){try{snapshot();book.deleteSheet(sheet);changed();}catch(e){alert(e.message);}}};
     target.appendChild(b);
   }
-  const add=document.createElement('button');add.textContent='＋';add.title='Add sheet';add.onclick=addSheet;
+  const add=document.createElement('button');add.textContent='＋';add.title='Add sheet';
+  add.setAttribute('aria-label','Add worksheet');add.onclick=addSheet;
   target.appendChild(add);
 }
 function addSheet() {
