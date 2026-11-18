@@ -12,6 +12,10 @@ on:
     paths:
       - 'python/arcside_collab/**'
       - 'web/labs/sheets/**'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   collaboration-api:
     name: Authenticated SQLite collaboration API
