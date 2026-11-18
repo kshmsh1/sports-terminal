@@ -5,9 +5,11 @@ import {loadWorkbook,storeWorkbook,listNamedWorkbooks,saveNamedWorkbook,loadName
 import {conditionalStyle} from './analytics.mjs';
 import {runAnalytics,pivotDesigner,chartDesigner,formatDesigner} from './studio.mjs';
 import {setupCollaboration} from './collaboration_ui.mjs';
+import {createCommandPalette} from '../workbench.mjs';
 
 const $=id=>document.getElementById(id);
-const ROW_HEIGHT=28, HEADER_HEIGHT=28, DEFAULT_WIDTH=112, MAX_ROWS=100000, MAX_COLS=256;
+let ROW_HEIGHT=28, HEADER_HEIGHT=28, DEFAULT_WIDTH=112, gridScale=1;
+const MAX_ROWS=100000, MAX_COLS=256;
 const STORAGE='arcside.sheets.v1';
 let book, name='Analysis Workbook', selected={r:1,c:1}, anchor={r:1,c:1};
 let edit=false, dragging=false, history=[], future=[], raf=false, dirty=false;
@@ -86,7 +88,7 @@ $('undo').onclick=()=>restoreHistory(history,future);
 $('redo').onclick=()=>restoreHistory(future,history);
 $('undo').disabled=true;$('redo').disabled=true;
 $('workbookName').onchange=e=>{name=e.target.value.trim()||'Untitled workbook'; changed();};
-function colWidth(c) {return book.sheets.get(book.active)?.widths?.[columnName(c)]??DEFAULT_WIDTH;}
+function colWidth(c) {return Math.round((book.sheets.get(book.active)?.widths?.[columnName(c)]??112)*gridScale);}
 function columnMetrics() {
   const offsets=[0];
   for(let c=1;c<=MAX_COLS;c++) offsets[c]=offsets[c-1]+colWidth(c);
@@ -107,7 +109,9 @@ function getRuleStats(rule) {
   if(area>20000)return {min:0,max:100};
   let min=Infinity,max=-Infinity;
   for(let row=b.a;row<=b.b;row++)for(let col=b.l;col<=b.r;col++){
-    const val=Number(book.display(rule.sheet,ref(row,col)));
+    const display=book.display(rule.sheet,ref(row,col));
+    if(display==='')continue;
+    const val=Number(display);
     if(!Number.isFinite(val))continue;
     min=Math.min(min,val);max=Math.max(max,val);
   }
@@ -202,7 +206,7 @@ function render() {
   columns.replaceChildren(colFragment);
   rows.replaceChildren(rowFragment);
   renderTabs();
-  $('nameBox').textContent=(chosen.a===chosen.b&&chosen.l===chosen.r)?selectedRef():ref(chosen.a,chosen.l)+':'+ref(chosen.b,chosen.r);
+  if(document.activeElement!==$('nameBox'))$('nameBox').value=(chosen.a===chosen.b&&chosen.l===chosen.r)?selectedRef():ref(chosen.a,chosen.l)+':'+ref(chosen.b,chosen.r);
   if(document.activeElement!==$('formulaInput')&&!edit)$('formulaInput').value=book.get(book.active,selectedRef());
   const count=(chosen.b-chosen.a+1)*(chosen.r-chosen.l+1);
   let sum=0,n=0;
@@ -220,6 +224,55 @@ function select(r,c,extend=false) {
 window.addEventListener('pointerup',()=>dragging=false);
 scroll.addEventListener('scroll',requestRender,{passive:true});
 new ResizeObserver(requestRender).observe(scroll);
+// The name box works like Excel's: type M150 to go directly there.
+// Numeric zoom actually changes grid row/column dimensions and text scaling;
+// it never changes underlying cell values or serialized workbook data.
+$('nameBox').addEventListener('keydown',event=>{
+  if(event.key==='Escape'){
+    event.preventDefault();$('nameBox').blur();requestRender();return;
+  }
+  if(event.key!=='Enter')return;
+  event.preventDefault();
+  try{
+    const label=$('nameBox').value.trim().toUpperCase().replace(/\$/g,'');
+    const [first,last]=label.split(':');
+    const start=parseRef(first);
+    if(start.row>MAX_ROWS||start.col>MAX_COLS)
+      throw Error('Outside supported worksheet');
+    select(start.row,start.col);
+    if(last){
+      const end=parseRef(last);
+      if(end.row>MAX_ROWS||end.col>MAX_COLS)
+        throw Error('Outside supported worksheet');
+      anchor={r:start.row,c:start.col};
+      select(end.row,end.col,true);
+    }
+    ensureVisible();scroll.focus({preventScroll:true});
+  }catch(error){
+    $('saveStatus').textContent='Invalid range · use A1 or A1:C10';
+    $('nameBox').select();
+  }
+});
+function setGridZoom(value){
+  const percent=Number(value);
+  if(![80,100,125,150].includes(percent))return;
+  gridScale=percent/100;
+  ROW_HEIGHT=Math.round(28*gridScale);
+  HEADER_HEIGHT=Math.round(28*gridScale);
+  DEFAULT_WIDTH=Math.round(112*gridScale);
+  const surface=$('sheetArea');
+  surface.style.setProperty('--header-height',HEADER_HEIGHT+'px');
+  surface.style.setProperty('--grid-font-size',Math.max(11,Math.round(12*gridScale))+'px');
+  scroll.scrollTop=0;scroll.scrollLeft=0;
+  requestRender();
+  try{localStorage.setItem('arcside.sheets.zoom',String(percent));}catch{}
+}
+$('gridZoom').addEventListener('change',event=>setGridZoom(event.target.value));
+try{
+  const saved=Number(localStorage.getItem('arcside.sheets.zoom'));
+  if([80,100,125,150].includes(saved))$('gridZoom').value=String(saved);
+}catch{}
+setGridZoom($('gridZoom').value);
 function ensureVisible() {
   const metrics=columnMetrics(),left=metrics[selected.c-1],right=metrics[selected.c],top=(selected.r-1)*ROW_HEIGHT,bottom=top+ROW_HEIGHT;
   if(left<scroll.scrollLeft)scroll.scrollLeft=left;
@@ -410,9 +463,15 @@ function modal(title,content) {
   if(typeof content==='string')$('modalBody').textContent=content;
   else $('modalBody').appendChild(content);
   $('modal').hidden=false;
+  $('closeModal').focus();
 }
 $('closeModal').onclick=()=>$('modal').hidden=true;
 $('modal').addEventListener('click',e=>{if(e.target===$('modal'))$('modal').hidden=true;});
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&!$('modal').hidden){
+    event.preventDefault();$('modal').hidden=true;
+  }
+});
 function makeChart() {
   const b=bounds();
   const extent=(b.a===b.b&&b.l===b.r)?{a:1,b:Math.min(20,usedExtent().r),l:1,r:Math.min(2,usedExtent().c)}:b;
@@ -793,5 +852,40 @@ collaboration=setupCollaboration({
   },
   refresh:requestRender,
   modal,
+});
+const commandCatalog=[
+  ...[
+    ['Workbook','new','New workbook'],['Workbook','workbookLibrary','My saved workbooks'],
+    ['Workbook','addSheet','Add worksheet'],['Workbook','exportWorkbook','Download Arcside workbook'],
+    ['Edit','sort','Sort selected rows'],['Edit','fillDown','Fill downward'],
+    ['Edit','fillRight','Fill right'],['Edit','find','Find cell value'],
+    ['Edit','bold','Bold selection'],['Edit','italic','Italic selection'],
+    ['Edit','left','Align left'],['Edit','center','Align center'],
+    ['Edit','right','Align right'],['Analyze','pivot','Quick pivot'],
+    ['Analyze','pivotStudio','Open Pivot Studio'],
+    ['Analyze','refreshPivots','Refresh saved pivots'],
+    ['Analyze','filterStudio','Filter table'],
+    ['Analyze','conditional','Conditional formatting'],
+    ['Visualize','chart','Quick chart'],['Visualize','chartStudio','Open Chart Studio'],
+    ['Visualize','savedCharts','View saved charts'],
+    ['Help','help','Formula reference'],
+  ].map(([section,action,label],index)=>({
+    section,label,order:index,
+    run:()=>document.querySelector('[data-action="'+action+'"]')?.click(),
+  })),
+  {section:'Workbook',label:'Import CSV, JSON or XLSX',order:24,run:()=>$('importButton').click()},
+  {section:'Workbook',label:'Export Excel XLSX',order:25,run:()=>$('xlsxExport').click()},
+  {section:'Workbook',label:'Export current CSV',order:26,run:()=>$('exportButton').click()},
+  {section:'Collaboration',label:'Share live workbook',order:27,run:()=>$('shareWorkbook').click()},
+  {section:'Edit',label:'Undo last change',shortcut:'⌘ Z',order:28,run:()=>$('undo').click()},
+  {section:'Edit',label:'Redo change',shortcut:'⌘ ⇧ Z',order:29,run:()=>$('redo').click()},
+  {section:'Navigate',label:'Go to cell address',shortcut:'Name box',order:30,
+    run:()=>{$('nameBox').focus();$('nameBox').select();}},
+  {section:'Navigate',label:'Focus formula bar',order:31,run:()=>$('formulaInput').focus()},
+];
+createCommandPalette({
+  trigger:'#commandPaletteButton',
+  placeholder:'Search worksheet, chart, analysis and file commands…',
+  commands:commandCatalog,
 });
 requestRender();
