@@ -227,3 +227,92 @@ test('embedded iframe and full workspace have equivalent focus and no horizontal
   await expect(page.locator('#editor .monaco-editor')).toBeVisible();
   await capture(page,info,'python-small');
 });
+
+
+test('Python command search runs actual actions and panels can be hidden, resized and restored',async({page},info)=>{
+  await python(page);
+  await page.keyboard.press('ControlOrMeta+K');
+  await expect(page.locator('.arcside-palette-layer')).toBeVisible();
+  await page.locator('.arcside-palette-search').fill('Open Jupyter notebooks');
+  await page.locator('.arcside-palette-search').press('Enter');
+  await expect(page.locator('#notebook')).toBeVisible();
+  await page.locator('#commandPaletteButton').click();
+  await page.locator('.arcside-palette-search').fill('Toggle file explorer');
+  await page.locator('.arcside-palette-search').press('Enter');
+  await expect(page.locator('.ide')).toHaveClass(/explorer-hidden/);
+  await page.locator('#toggleExplorer').click();
+  await expect(page.locator('.ide')).not.toHaveClass(/explorer-hidden/);
+  const grip=page.locator('#explorerHandle');
+  const before=await page.locator('.explorer').boundingBox();
+  const handle=await grip.boundingBox();
+  await page.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2);
+  await page.mouse.down();
+  await page.mouse.move(handle.x+handle.width/2+70,handle.y+handle.height/2,{steps:6});
+  await page.mouse.up();
+  const after=await page.locator('.explorer').boundingBox();
+  expect(after.width).toBeGreaterThan(before.width+30);
+  const bottom=page.locator('#panelHandle');
+  await bottom.focus();
+  await bottom.press('ArrowUp');
+  await page.locator('#toggleInspector').click();
+  await expect(page.locator('.ide')).toHaveClass(/inspector-hidden/);
+  await page.reload();
+  await expect(page.locator('.ide')).toHaveClass(/inspector-hidden/);
+  await expect.poll(async()=>page.locator('.explorer').evaluate(el=>el.getBoundingClientRect().width))
+    .toBeGreaterThan(before.width+30);
+  await capture(page,info,'python-polished');
+});
+
+test('Sheets command search, editable address navigation and true zoom work with keyboard only',async({page},info)=>{
+  await sheet(page);
+  await page.keyboard.press('ControlOrMeta+K');
+  await expect(page.locator('.arcside-palette-layer')).toBeVisible();
+  await page.locator('.arcside-palette-search').fill('Open Pivot Studio');
+  await page.locator('.arcside-palette-search').press('Enter');
+  await expect(page.locator('#modal')).toContainText('Pivot Studio');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#modal')).toBeHidden();
+  const width100=await page.locator('.grid-cell').first().evaluate(el=>el.getBoundingClientRect().width);
+  await page.locator('#gridZoom').selectOption('125');
+  await expect.poll(async()=>page.locator('.grid-cell').first().evaluate(el=>el.getBoundingClientRect().width))
+    .toBeGreaterThan(width100+15);
+  await page.locator('#nameBox').fill('M150');
+  await page.locator('#nameBox').press('Enter');
+  await expect(page.locator('#nameBox')).toHaveValue('M150');
+  expect(await page.locator('#gridScroll').evaluate(el=>el.scrollTop)).toBeGreaterThan(0);
+  await page.locator('#nameBox').fill('A1');
+  await page.locator('#nameBox').press('Enter');
+  await expect(page.locator('#nameBox')).toHaveValue('A1');
+  await capture(page,info,'sheets-polished');
+});
+
+test('Labs work inside embedded iframes with independent focus and responsive commands',async({page},info)=>{
+  await page.setViewportSize({width:1260,height:780});
+  await page.goto('/labs/sheets/index.html');
+  await page.evaluate(()=>{
+    document.body.replaceChildren();
+    document.body.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;height:100vh;padding:8px';
+    for(const [name,path] of [['Embedded Sheets','/labs/sheets/index.html'],
+                              ['Embedded Python','/labs/python/index.html']]){
+      const frame=document.createElement('iframe');
+      frame.title=name;frame.src=path;
+      frame.style.cssText='width:100%;height:100%;border:1px solid #46617d';
+      document.body.append(frame);
+    }
+  });
+  const sheetFrame=page.frameLocator('iframe[title="Embedded Sheets"]');
+  const pythonFrame=page.frameLocator('iframe[title="Embedded Python"]');
+  await expect(sheetFrame.locator('#gridScroll')).toBeVisible();
+  await expect(pythonFrame.locator('#editor .monaco-editor')).toBeVisible({timeout:60000});
+  await sheetFrame.locator('#commandPaletteButton').click();
+  await expect(sheetFrame.locator('.arcside-palette-layer')).toBeVisible();
+  await sheetFrame.locator('.arcside-palette-search').fill('chart studio');
+  await sheetFrame.locator('.arcside-palette-search').press('Enter');
+  await expect(sheetFrame.locator('#modal')).toBeVisible();
+  await pythonFrame.locator('#commandPaletteButton').click();
+  await expect(pythonFrame.locator('.arcside-palette-layer')).toBeVisible();
+  await pythonFrame.locator('.arcside-palette-search').fill('open problems');
+  await pythonFrame.locator('.arcside-palette-search').press('Enter');
+  await expect(pythonFrame.locator('#problems')).toBeVisible();
+  await capture(page,info,'two-embedded-workspaces');
+});
