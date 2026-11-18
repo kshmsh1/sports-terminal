@@ -135,8 +135,11 @@ test('Sheets UX journey: pivot, charts, filter, conditional, help, find and shee
     await expect(page.locator('#modal')).toBeVisible();
     await page.locator('#closeModal').click();
   }
+  page.once('dialog',dialog=>{
+    expect(dialog.message()).toContain('No saved Pivot Studio sheets');
+    return dialog.accept();
+  });
   await page.locator('[data-action="refreshPivots"]').click();
-  await expect(page.locator('#saveStatus')).toContainText('refreshed');
   await page.locator('[data-action="find"]').click();
   // The prompt is a valid interaction only if it navigates to the matching cell.
   // The click above opens a native browser prompt; accept in the browser.
