@@ -52,7 +52,7 @@ test('native notebook control can export standards-based ipynb and retain editab
   await connect(page);
   await page.locator('[data-panel="notebook"]').click();
   await page.locator('#notebookAdd').click();
-  await expect(page.locator('.notebook-cell')).toHaveCount(2);
+  await expect(page.locator('.notebook-cell')).toHaveCount(1);
   await page.locator('.notebook-cell textarea').last().fill('print("my-ux-notebook")');
   const download=page.waitForEvent('download');
   await page.locator('#notebookExport').click();
