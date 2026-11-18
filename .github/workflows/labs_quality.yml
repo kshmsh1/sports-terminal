@@ -12,6 +12,10 @@ on:
     paths:
       - 'web/labs/**'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   labs:
     runs-on: ubuntu-latest
