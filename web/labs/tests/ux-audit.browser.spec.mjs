@@ -341,5 +341,5 @@ test('Spreadsheet sort, search, fill-to-empty and worksheet rename/delete mutate
   await expect(page.locator('.sheet-tab.active')).toHaveText('Renamed sheet');
   page.once('dialog',dialog=>dialog.accept());
   await page.locator('.sheet-tab.active').click({button:'right'});
-  await expect(page.locator('.sheet-tab')).not.toContainText('Renamed sheet');
+  await expect(page.locator('.sheet-tab').filter({hasText:'Renamed sheet'})).toHaveCount(0);
 });
