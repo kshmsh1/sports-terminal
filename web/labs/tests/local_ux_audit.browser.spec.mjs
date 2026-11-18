@@ -18,6 +18,7 @@ test('native IDE actions: Run, Run selection, Ruff lint/format, pytest, coverage
   });
   await page.locator('#run').click();
   await expect(page.locator('#stdout')).toContainText('native-ui-action 7',{timeout:30000});
+  await page.locator('[data-panel="tools"]').click();
   await page.locator('#localLint').click();
   await expect(page.locator('#localToolLog')).toContainText('lint',{timeout:30000});
   await page.locator('#localFormat').click();
