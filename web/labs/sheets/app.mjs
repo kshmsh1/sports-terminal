@@ -17,12 +17,25 @@ let internalClipboard=null;
 let namedWorkbookId=null;
 let ruleStatsCache=new Map();
 let collaboration=null;
+// Presentation-only migration of the original demo model. Existing users
+// may have stored the unformatted example in IndexedDB/localStorage, so make
+// its standard margin ratios readable without touching formulas or values.
+function upgradeSampleMarginStyles(workbook){
+  const ws=workbook.sheets.get('Analysis');
+  if(!ws||ws.cells.A1!=='Company'||ws.cells.B1!=='Revenue'||
+     ws.cells.C1!=='Cost'||ws.cells.D1!=='Profit'||ws.cells.E1!=='Margin')return;
+  for(let r=2;r<=6;r++){
+    const ref='E'+r;
+    if(ws.cells[ref]!==('=IFERROR(D'+r+'/B'+r+',0)'))continue;
+    if(!ws.styles[ref]?.numberFormat)workbook.setStyle('Analysis',ref,{numberFormat:'percent'});
+  }
+}
 function restore() {
   try {
     const data=JSON.parse(localStorage.getItem(STORAGE));
-    if(data?.workbook) { book=new Workbook(data.workbook); name=data.name??name; return; }
+    if(data?.workbook) { book=new Workbook(data.workbook); upgradeSampleMarginStyles(book); name=data.name??name; return; }
   } catch(e) { console.warn('Saved workbook could not be loaded',e); }
-  book=sampleWorkbook();
+  book=sampleWorkbook();upgradeSampleMarginStyles(book);
 }
 restore();
 $('workbookName').value=name;
@@ -32,6 +45,7 @@ async function loadDurableWorkbook(){
     const data=await loadWorkbook();
     if(!data?.workbook||editRevision!==0)return;
     book=new Workbook(data.workbook);
+    upgradeSampleMarginStyles(book);
     name=data.name??name;
     $('workbookName').value=name;
     requestRender();
