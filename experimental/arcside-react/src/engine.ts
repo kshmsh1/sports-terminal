@@ -55,8 +55,8 @@ function scaleValue(x:number|null,factor:number|null):number|null {
  return x===null||factor===null ? null : x*factor;
 }
 function position(raw:JsonRow,profile:JsonRow):string {
- const original=String(value(raw,['position','pos','primary_position']) ??
-     value(profile,['position','pos','primary_position','position_abbrev']) ?? '').trim();
+ const original=String(value(raw,['positions','position','pos','primary_position']) ??
+     value(profile,['primary_position','positions','position','pos','position_abbrev']) ?? '').trim();
  const normalized=original.toUpperCase().replaceAll(' ','');
  for(const p of ['PG','SG','SF','PF','C']) if(normalized===p||normalized.startsWith(p+'-')||normalized.endsWith('-'+p))return p;
  if(normalized.includes('GUARD'))return 'G';
@@ -81,7 +81,7 @@ export function normalize(raw:JsonRow, profile:JsonRow, basis:RateBasis):Row {
  const threePm=total(raw,gp,['three_pointers_made','fg3','three_pm'],['three_pointers_made_per_game','three_pm_per_game']);
  const threePa=total(raw,gp,['three_point_attempts','fg3a','three_pa'],['three_point_attempts_per_game','three_pa_per_game']);
  const ftm=total(raw,gp,['free_throws_made','ft','ftm'],['free_throws_made_per_game','ftm_per_game']);
- const fta=total(raw,gp,['free_throw_attempts','fta'],['free_throw_attempts_per_game','ftm_per_game']);
+ const fta=total(raw,gp,['free_throw_attempts','fta'],['free_throw_attempts_per_game','fta_per_game']);
  const directPoss=firstNumber(raw,'possessions','poss','estimated_possessions');
  let estimated=directPoss===null;
  let possessions=directPoss;

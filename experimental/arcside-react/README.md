@@ -21,6 +21,8 @@ npm run dev
 
 **Do not run a static rebuild just to preview.** The Vite development server serves the existing `web/data/nba_static` files and original `web/labs` under the SAME origin. The React SPA does not fetch basketball data from third parties or start any Python services. To use opt-in local Python or Sheets collaboration, start the pre-existing Labs services separately using the existing scripts; the React shell never handles their tokens.
 
+Run `node scripts/inspect_corpus.mjs --out evidence/local-corpus-audit.json` to validate the **actual local release** without a rebuild. It prints the manifest SHA-256/fingerprint, checked season/segment row counts, missing-value coverage and recorded team stints for selected early/middle/latest seasons. This tool will fail visibly when the real release is absent or inconsistent; it never substitutes mock records. Use `--seasons 1995-96,2025-26` to inspect additional exact cohorts.
+
 `npm run build` bundles only the React shell. Production static hosting must explicitly mount the same `/data/nba_static` and `/labs` paths, and must never publish local secrets or the warehouse. `npm run preview` uses the same development resource mounts for local comparison.
 
 ## Pilot surfaces

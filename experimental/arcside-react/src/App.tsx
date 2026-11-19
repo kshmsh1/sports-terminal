@@ -10,7 +10,7 @@ function fromUrl():ViewState {
  const p=new URLSearchParams(location.search);
  const segment=p.get('segment')==='playoffs'?'playoffs':'regular';
  const rawBasis=p.get('basis') as RateBasis;
- return {path:location.pathname,season:p.get('season')??'',segment,basis:bases.some(x=>x.value===rawBasis)?rawBasis:'perGame'};
+ return {path:location.pathname==='/'?'/stats':location.pathname,season:p.get('season')??'',segment,basis:bases.some(x=>x.value===rawBasis)?rawBasis:'perGame'};
 }
 function urlFor(v:ViewState):string {
  const qs=new URLSearchParams();
@@ -27,6 +27,7 @@ function labelFor(route:string):string {
 }
 export function App(){
  const [view,setView]=useState(fromUrl);
+ useEffect(()=>{if(location.pathname==='/')history.replaceState({},'',urlFor(fromUrl()))},[]);
  const [theme,setTheme]=useState(()=>{try{return localStorage.getItem('arcside.phase3.theme')==='light'?'light':'dark'}catch{return 'dark'}});
  const [manifest,setManifest]=useState<Manifest|null>(null);
  const [seasons,setSeasons]=useState<Season[]>([]);
@@ -185,9 +186,9 @@ export function App(){
       tabIndex={0} role="region" aria-label="Scrollable player stats">
       <table className="stats-table"><thead><tr>
        <th scope="col">#</th><th scope="col" className="player-header">Player</th><th scope="col">Team</th>
-       <th scope="col">Pos</th>{keys.map(k=><th scope="col" key={k}>
+       <th scope="col">Pos</th>{keys.map(k=><th scope="col" key={k} aria-sort={sort===k?(descending?'descending':'ascending'):undefined}>
         <button className="sort-button" aria-label={'Sort by '+metricLabel(k)}
-         aria-sort={undefined} onClick={()=>{setSort(k);setDescending(s=>k===sort?!s:true)}}>
+         onClick={()=>{setSort(k);setDescending(s=>k===sort?!s:true)}}>
          {metricLabel(k)} {sort===k?(descending?'↓':'↑'):''}</button></th>)}
        </tr></thead><tbody>
        {start>0&&<tr aria-hidden="true" className="spacer-row"><td style={{height:start*ROW_HEIGHT}} colSpan={4+keys.length}/></tr>}

@@ -27,7 +27,7 @@ export function Chart({rows,basis}:{rows:Row[];basis:RateBasis}) {
  const [reset,setReset]=useState(0);
  const host=useRef<HTMLDivElement>(null);
  const chart=useRef<echarts.ECharts|null>(null);
- const settingsRef=useRef(settings);settingsRef.current=settings;
+ const viewport=useRef<{rows:Row[];basis:RateBasis;x:MetricKey;y:MetricKey;reset:number}|null>(null);
  const update=(patch:Partial<ChartSettings>)=>setSettings(s=>({...s,...patch}));
  useEffect(()=>{try{localStorage.setItem(storeKey,JSON.stringify(settings));}catch{/* private mode */}},[settings]);
  const dataset=useMemo(()=>rows.filter(r=>r.values[settings.x]!==null&&r.values[settings.y]!==null),
@@ -65,9 +65,18 @@ export function Chart({rows,basis}:{rows:Row[];basis:RateBasis}) {
   const denominator=n*sxx-sx*sx;
   const slope=n>1&&Math.abs(denominator)>1e-12?(n*sxy-sx*sy)/denominator:null;
   const intercept=slope===null?null:(sy-slope*sx)/n;
-  const minX=Math.min(...numeric.map(p=>p[0])),maxX=Math.max(...numeric.map(p=>p[0]));
+  // A real 25k-point workload should not spread all values onto the JS call stack.
+  let minX=Infinity,maxX=-Infinity;
+  for(const [x] of numeric){if(x<minX)minX=x;if(x>maxX)maxX=x;}
   const line=slope===null||!Number.isFinite(minX)||!Number.isFinite(maxX)?[]:
    [[minX,slope*minX+intercept!],[maxX,slope*maxX+intercept!]];
+  // Selection, regression and pan-mode updates MUST NOT discard the user's zoom.
+  // Switching the underlying data, axes or explicitly resetting intentionally resets it.
+  const previous=viewport.current;
+  const preserve=previous?.rows===rows&&previous.basis===basis&&previous.x===settings.x&&
+    previous.y===settings.y&&previous.reset===reset;
+  const prior=preserve ? chart.current?.getOption().dataZoom as
+    {start?:number;end?:number}[]|undefined : undefined;
   const option={
    backgroundColor:'transparent',
    textStyle:{color:'#c4d4e6'},
@@ -86,9 +95,11 @@ export function Chart({rows,basis}:{rows:Row[];basis:RateBasis}) {
       safe(metricLabel(settings.y))+': '+formatMetric(settings.y,d.value[1]);
    }},
    dataZoom:[{type:'inside' as const,xAxisIndex:0,zoomOnMouseWheel:!settings.pan,
-     moveOnMouseMove:settings.pan,moveOnMouseWheel:false},
+     moveOnMouseMove:settings.pan,moveOnMouseWheel:false,
+     start:prior?.[0]?.start??0,end:prior?.[0]?.end??100},
     {type:'inside' as const,yAxisIndex:0,zoomOnMouseWheel:!settings.pan,
-     moveOnMouseMove:settings.pan,moveOnMouseWheel:false}],
+     moveOnMouseMove:settings.pan,moveOnMouseWheel:false,
+     start:prior?.[1]?.start??0,end:prior?.[1]?.end??100}],
    series:[
     {name:'Players',type:'scatter' as const,large:false,data:points,emphasis:{focus:'self' as const}},
     ...(settings.regression&&line.length?[
@@ -97,7 +108,8 @@ export function Chart({rows,basis}:{rows:Row[];basis:RateBasis}) {
    ]
   };
   chart.current?.setOption(option,true);
- },[dataset,settings.x,settings.y,settings.pan,settings.regression,settings.selected,reset]);
+  viewport.current={rows,basis,x:settings.x,y:settings.y,reset};
+ },[rows,basis,dataset,settings.x,settings.y,settings.pan,settings.regression,settings.selected,reset]);
  return <section className="panel" aria-labelledby="visual-title">
   <div className="panel-title">
    <div><p className="eyebrow">VISUALIZATION STUDIO / EXPERIMENT</p><h2 id="visual-title">Player scatter explorer</h2>
@@ -115,7 +127,7 @@ export function Chart({rows,basis}:{rows:Row[];basis:RateBasis}) {
     {scatterKeys.map(k=><option key={k} value={k}>{metricLabel(k)}</option>)}</select></label>
    <label className="check"><input type="checkbox" checked={settings.regression}
     onChange={e=>update({regression:e.target.checked})}/> Linear reference</label>
-   <span className="hint">Click a point to persist the selected player. Scroll to zoom or drag to pan.</span>
+   <span className="hint">Click a point to persist the selected player. Wheel zoom and drag pan are separate. Changing axes resets the view.</span>
   </div>
   <div ref={host} className="chart" role="img" aria-label={'Scatter plot of '+metricLabel(settings.x)+' against '+metricLabel(settings.y)+', '+dataset.length+' players'}/>
   {!dataset.length&&<div className="empty chart-empty">No players have both selected source-backed metrics for these filters.</div>}

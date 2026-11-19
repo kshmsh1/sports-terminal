@@ -46,6 +46,14 @@ describe('limited NbaStatsWorkstationEngine port; anchored to original Dart test
   expect(rows[0].percentiles.tov).toBe(0);
   expect(rows[1].percentiles.tov).toBe(100);
  });
+ it('keeps distinct per-game free throws attempted and made, and published positions',()=>{
+  const row=normalize({player_id:'ft',player_name:'Original Athlete',games:10,
+   free_throws_made_per_game:2,free_throw_attempts_per_game:7,positions:'SG'}, {}, 'totals');
+  expect(row.values.ftm).toBe(20);
+  expect(row.values.fta).toBe(70);
+  expect(row.values.ft_pct).toBeCloseTo(2/7,8);
+  expect(row.position).toBe('SG');
+ });
  it('preserves canonically supplied historical percentages when attempts are unavailable',()=>{
   const row=normalize({player_id:'historical',games:30,minutes:900,points:400,
    field_goal_percentage:.47,three_point_percentage:.35,free_throw_percentage:.79,

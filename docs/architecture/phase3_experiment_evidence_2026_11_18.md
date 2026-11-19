@@ -15,8 +15,8 @@ This ledger is deliberately not a GO decision. Review alongside the exact [Phase
 ## Scope delivered for local evaluation
 
 - Separate React/TypeScript/Vite project under `experimental/arcside-react/` with original source-based NBA adapter.
-- Virtualized Stats/Advanced slice, filters, regular/playoffs toggle, 50/4 qualification, rate bases, recorded team stints, null-aware formatting and stable sort. Exact visual/semantic parity against full Flutter catalog is **not yet proven**.
-- One ECharts Canvas chart with source-backed fields, team colors, tooltips, selection/settings persistence, optional linear fit and explicit wheel zoom versus drag-pan controls.
+- Virtualized Stats/Advanced slice, filters, regular/playoffs toggle, 50/4 qualification, rate bases, recorded team stints, null-aware formatting and stable sort. Added actual-v5-corpus inspection command and fixed fallback FTA-vs-FTM ambiguity and published `positions` alias. These fixes remain subject to real release/parity inspection. Exact visual/semantic parity against full Flutter catalog is **not yet proven**.
+- One ECharts Canvas chart with source-backed fields, team colors, tooltips, selection/settings persistence, optional linear fit and explicit wheel zoom versus drag-pan controls. Preserves the active zoom on selection, regression and interaction-mode updates, and resets it when source data/axes change or the user explicitly resets.
 - Two original browser-native Labs embedded through same-origin iframes, standalone routes, light/dark shell and typed season context handshake. No Lab engine rewriting.
 - Selected `NbaStatsWorkstationEngine` outputs checked against synthetic fixtures from the actual Dart tests. The intentional null-vs-0 improvement differs from Dart's `_total` missing-field fallback; this must be reconciled and documented before mandatory golden equality.
 - Original-Dart CBA scenario JSON exporter, suitable for approved goldens. Full CBA golden comparison against a new-stack rules engine is **not performed** because no new-stack trade engine was ported for this minimal visual pilot.
@@ -27,7 +27,7 @@ This ledger is deliberately not a GO decision. Review alongside the exact [Phase
 | Gate | Status | Evidence / outstanding action |
 | --- | --- | --- |
 | React implementation and isolated branch | Implemented, compile pending | POC source, dedicated Vite config, new branch; Flutter `main` not touched |
-| Original v5 manifest & source-backed shards | Unverified locally | Run with owner's `nba_history.sqlite` and record fingerprint, row counts, missing coverage |
+| Original v5 manifest & source-backed shards | Unverified locally | `node experimental/arcside-react/scripts/inspect_corpus.mjs --out experimental/arcside-react/evidence/local-corpus-audit.json` checks exact available real assets and writes machine-readable evidence; requires owner's untracked release |
 | Reference Flutter renderers, screenshot exports | Not run | Capture real Chromium, WebKit/Safari and Firefox on owner's Mac/OS |
 | Identical Stats/Advanced metrics & 50/4 | Partial unit coverage | Need every displayed advanced field, null/error, 2P/rim/mid tiers, playoff split, 2TM/3TM, source provenance and exact golden review |
 | 1k/10k/50k table and 300/5k/25k chart | Instrumentation present; not measured | Run `npm run benchmark`, preserve raw JSON/CSV and browser metadata; Flutter same-hardware baseline required |
