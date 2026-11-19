@@ -87,8 +87,11 @@ npm run dev
 From a third terminal in `experimental/arcside-react`:
 
 ```bash
-npx playwright install chromium firefox webkit
-ARCSIDE_REAL_BROWSERS=chromium,firefox,webkit npm run test:real
+# Google Chrome on macOS works without downloading Playwright Chromium:
+ARCSIDE_BROWSER_CHANNEL=chrome ARCSIDE_REAL_BROWSERS=chromium npm run test:real
+# Only when bundled browser engines are actually installed:
+# npx playwright install chromium firefox webkit
+# ARCSIDE_REAL_BROWSERS=chromium,firefox,webkit npm run test:real
 ```
 
 The checker **fails** if either server serves an absent or byte-different `manifest.json` than the owner's actual local source. It traverses historical regular and playoff Stats/Advanced/Visualization and Labs context handshakes, producing `evidence/real/real-source-journeys.json` plus comparison screenshots. It captures a Flutter reference screenshot but does **not** compare Flutter widget interactions automatically; Flutter widget trees are not equivalent to React DOM selectors.
@@ -96,7 +99,7 @@ The checker **fails** if either server serves an absent or byte-different `manif
 **Matched same-machine Flutter/React workflow measurements** (interactive and operator-verified):
 
 ```bash
-ARCSIDE_GUIDED_COLD_RUNS=5 ARCSIDE_GUIDED_WARM_RUNS=10 npm run compare:guided
+ARCSIDE_BROWSER_CHANNEL=chrome ARCSIDE_GUIDED_COLD_RUNS=5 ARCSIDE_GUIDED_WARM_RUNS=10 npm run compare:guided
 ```
 
 Use both apps with the same static data and Chromium version. Follow the prompts for three pre-registered critical tasks: regular/playoffs switching; rate basis + sorting; and visualization zoom/pan/axes. Each application gets **5 cold and 10 warm trials**, alternating order. The same small stopwatch controller appears in both windows. Click **Start** immediately before the task and **Finish** only after verifying the correct result; use **Fail** for incorrect or broken tasks. The report at `evidence/guided/guided-matched-task-timings.json` contains raw timings, p50/p95, hardware, source fingerprint and whether the proposed 10% p95 regression rule was satisfied. Trials depend on careful manual setup of Flutter's equivalent screen; timing is human-controlled and not an automated dropped-frame benchmark.
