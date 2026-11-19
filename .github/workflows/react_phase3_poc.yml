@@ -41,8 +41,11 @@ jobs:
           npm run dev -- --port 5173 > /tmp/arcside-react-vite.log 2>&1 &
           for i in $(seq 1 30); do curl --fail --silent http://127.0.0.1:5173/ >/dev/null && break; sleep 1; done
           ARCSIDE_COLD_RUNS=1 ARCSIDE_WARM_RUNS=2 npm run benchmark
-      - name: Offline corpus-probe syntax check (actual local release not in GitHub)
-        run: node --check scripts/inspect_corpus.mjs
+      - name: Validate locally executable real-corpus and Flutter comparison tools
+        run: |
+          node --check scripts/inspect_corpus.mjs
+          node --check scripts/real_corpus_journeys.mjs
+          node --check scripts/paired_guided_tasks.mjs
       - name: Retain synthetic benchmark samples
         if: always()
         uses: actions/upload-artifact@v4
