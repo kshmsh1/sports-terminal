@@ -1,0 +1,334 @@
+{
+  "schema": "arcside-architecture-evaluation-scorecard-v1",
+  "date": "2026-11-18",
+  "baseline": "feature/arcside-labs-ux-qa-hardening@3d8b0deb40cfbeb2b86b7fff62bd7112e59c433b",
+  "phase1_report": "docs/architecture/phase1_arcside_architecture_audit_2026_11_18.md",
+  "status": "subjective hypothesis-based expert assessment, NOT an empirical benchmark",
+  "scoring_method": "0-5 ordinal values with permitted 0.5 and tenths; weighted score = SUM(criteria.weight * option.score) / 100, maximum 5. Scores reflect CURRENT code reuse and FUTURE architecture fit, NOT measured runtime speed or precise cost.",
+  "criteria": [
+    {
+      "id": "tables",
+      "name": "Dense tables, keyboard interaction and data-grid ergonomics",
+      "weight": 14
+    },
+    {
+      "id": "charts",
+      "name": "Charting, scientific plots, zoom/pan and visualization flexibility",
+      "weight": 14
+    },
+    {
+      "id": "labs",
+      "name": "Direct use of existing JS Python and Sheets workspaces",
+      "weight": 14
+    },
+    {
+      "id": "delivery",
+      "name": "Preserving existing Dart domain behavior, migration and delivery risk",
+      "weight": 16
+    },
+    {
+      "id": "access",
+      "name": "Browser-native navigation, accessibility and UI integration",
+      "weight": 10
+    },
+    {
+      "id": "hosting",
+      "name": "Static-first hosting simplicity and infrastructure fit",
+      "weight": 9
+    },
+    {
+      "id": "perf",
+      "name": "Potential for performance tuning (not measured performance)",
+      "weight": 7
+    },
+    {
+      "id": "seo",
+      "name": "Public pages, static generation and SEO options",
+      "weight": 4
+    },
+    {
+      "id": "mobile",
+      "name": "Native mobile code-sharing strategy",
+      "weight": 4
+    },
+    {
+      "id": "ecosystem",
+      "name": "Libraries, interoperability, hiring and maintenance",
+      "weight": 8
+    }
+  ],
+  "options": [
+    {
+      "id": "react_vite",
+      "name": "React + TypeScript + Vite, client-side routed SPA",
+      "scores": [
+        5,
+        4.5,
+        5,
+        2,
+        4.5,
+        5,
+        4,
+        2.5,
+        2.5,
+        5
+      ],
+      "rationale": "Best direct fit for a static-first browser workbench and existing JS Labs, but large Dart UI/rule port, data schema work, limited SEO without pre-rendering.",
+      "baseline_score": 4.13
+    },
+    {
+      "id": "react_next",
+      "name": "React + TypeScript + Next.js App Router",
+      "scores": [
+        5,
+        4.5,
+        5,
+        1.8,
+        4.5,
+        3.5,
+        4,
+        5,
+        2.5,
+        5
+      ],
+      "rationale": "React tools and server-rendered public routes, with additional framework/runtime/static-export constraints for browser-only IDE and Sheets.",
+      "baseline_score": 4.063
+    },
+    {
+      "id": "flutter_hybrid",
+      "name": "Retain Flutter shell and Dart analytics with browser-native feature modules",
+      "scores": [
+        4.5,
+        4.5,
+        3.5,
+        4.5,
+        3.5,
+        4,
+        3.5,
+        2,
+        4,
+        4
+      ],
+      "rationale": "Fastest low-risk evolutionary path without a full rewrite; adds iframe/DOM integration, two UI rendering systems, accessibility and keyboard ownership complexity.",
+      "baseline_score": 3.985
+    },
+    {
+      "id": "vue_nuxt",
+      "name": "Vue 3 + Nuxt",
+      "scores": [
+        4.5,
+        4.5,
+        4.5,
+        1.8,
+        4.5,
+        4,
+        4,
+        5,
+        2.5,
+        4
+      ],
+      "rationale": "Credible web-native alternative with hybrid rendering but no Arcside-specific gain over React to offset porting costs.",
+      "baseline_score": 3.888
+    },
+    {
+      "id": "sveltekit",
+      "name": "Svelte + SvelteKit",
+      "scores": [
+        4.5,
+        4.5,
+        4.5,
+        1.8,
+        4.5,
+        4,
+        4,
+        4.5,
+        2.5,
+        3.5
+      ],
+      "rationale": "Credible lean UI framework; Arcside's current Monaco/JS assets integrate, but smaller matched tooling/integration evidence.",
+      "baseline_score": 3.828
+    },
+    {
+      "id": "flutter_refactor",
+      "name": "Keep Flutter and modularly refactor screens",
+      "scores": [
+        3.5,
+        4,
+        2.5,
+        5,
+        3,
+        4,
+        3.5,
+        2,
+        5,
+        3.5
+      ],
+      "rationale": "Best preservation and native reuse, capable custom chart painter, but browser-native grids/Labs shell integration and DOM semantics need extra work.",
+      "baseline_score": 3.665
+    }
+  ],
+  "scenarios": {
+    "baseline": {
+      "tables": 14,
+      "charts": 14,
+      "labs": 14,
+      "delivery": 16,
+      "access": 10,
+      "hosting": 9,
+      "perf": 7,
+      "seo": 4,
+      "mobile": 4,
+      "ecosystem": 8
+    },
+    "seo_growth": {
+      "tables": 10,
+      "charts": 10,
+      "labs": 10,
+      "delivery": 12,
+      "access": 10,
+      "hosting": 9,
+      "perf": 7,
+      "seo": 20,
+      "mobile": 4,
+      "ecosystem": 8
+    },
+    "native_mobile": {
+      "tables": 10,
+      "charts": 9,
+      "labs": 8,
+      "delivery": 16,
+      "access": 10,
+      "hosting": 6,
+      "perf": 7,
+      "seo": 1,
+      "mobile": 25,
+      "ecosystem": 8
+    },
+    "short_horizon_delivery": {
+      "tables": 10,
+      "charts": 10,
+      "labs": 10,
+      "delivery": 35,
+      "access": 10,
+      "hosting": 9,
+      "perf": 7,
+      "seo": 1,
+      "mobile": 4,
+      "ecosystem": 4
+    }
+  },
+  "scenario_rankings": {
+    "baseline": [
+      {
+        "id": "react_vite",
+        "score": 4.13
+      },
+      {
+        "id": "react_next",
+        "score": 4.063
+      },
+      {
+        "id": "flutter_hybrid",
+        "score": 3.985
+      },
+      {
+        "id": "vue_nuxt",
+        "score": 3.888
+      },
+      {
+        "id": "sveltekit",
+        "score": 3.828
+      },
+      {
+        "id": "flutter_refactor",
+        "score": 3.665
+      }
+    ],
+    "seo_growth": [
+      {
+        "id": "react_next",
+        "score": 4.211
+      },
+      {
+        "id": "vue_nuxt",
+        "score": 4.076
+      },
+      {
+        "id": "sveltekit",
+        "score": 3.936
+      },
+      {
+        "id": "react_vite",
+        "score": 3.87
+      },
+      {
+        "id": "flutter_hybrid",
+        "score": 3.625
+      },
+      {
+        "id": "flutter_refactor",
+        "score": 3.385
+      }
+    ],
+    "native_mobile": [
+      {
+        "id": "flutter_refactor",
+        "score": 4.045
+      },
+      {
+        "id": "flutter_hybrid",
+        "score": 4.03
+      },
+      {
+        "id": "react_vite",
+        "score": 3.705
+      },
+      {
+        "id": "react_next",
+        "score": 3.608
+      },
+      {
+        "id": "vue_nuxt",
+        "score": 3.468
+      },
+      {
+        "id": "sveltekit",
+        "score": 3.423
+      }
+    ],
+    "short_horizon_delivery": [
+      {
+        "id": "flutter_hybrid",
+        "score": 4.12
+      },
+      {
+        "id": "flutter_refactor",
+        "score": 4.015
+      },
+      {
+        "id": "react_vite",
+        "score": 3.655
+      },
+      {
+        "id": "react_next",
+        "score": 3.475
+      },
+      {
+        "id": "vue_nuxt",
+        "score": 3.38
+      },
+      {
+        "id": "sveltekit",
+        "score": 3.355
+      }
+    ]
+  },
+  "uncertainty": "A difference of 0.145/5 between first and third candidates is too small to justify a rewrite without matched proof of concept. React+Vite wins baseline assumptions; Flutter hybrid wins short-horizon delivery; Next.js wins SEO-first; Flutter wins native mobile first.",
+  "decision": "Conditional preference: React+Vite for long-term browser-first workbench, Flutter+web hybrid as near-term fallback; no migration authorized until Phase 3 empirical gates pass.",
+  "source_types": [
+    "Phase 1 GitHub source audit",
+    "official Flutter/React/Vite/Next/Vue/Nuxt/Svelte documentation",
+    "official chart/grid editor library documentation"
+  ],
+  "data_quality": "no controlled browser benchmark or engineering work-hour measurement available"
+}
