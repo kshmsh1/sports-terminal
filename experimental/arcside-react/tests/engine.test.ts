@@ -93,4 +93,17 @@ describe('limited NbaStatsWorkstationEngine port; anchored to original Dart test
   };
   expect(buildRows(play,'perGame').map(r=>r.id)).toEqual(['beta']);
  });
+ it('tied source values receive the same deterministic midpoint percentile',()=>{
+  const duplicate={...alpha,player_id:'alpha-copy',player_label:'Alpha Copy'};
+  const rows=buildRows({...fixture,player_season_totals:[alpha,duplicate,beta]},'perGame');
+  expect(rows.find(r=>r.id==='alpha')?.percentiles.pts).toBe(75);
+  expect(rows.find(r=>r.id==='alpha-copy')?.percentiles.pts).toBe(75);
+ });
+ it('absent +/- is unavailable and explicitly measured zero is not missing',()=>{
+  const sparse={...alpha};delete sparse.plus_minus;
+  expect(normalize(sparse,{},'perGame').values.plus_minus).toBeNull();
+  expect(formatMetric('plus_minus',null)).toBe('—');
+  expect(normalize({...sparse,plus_minus:0},{},'perGame').values.plus_minus).toBe(0);
+ });
+
 });
