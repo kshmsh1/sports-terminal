@@ -8,7 +8,7 @@ const url=process.env.ARCSIDE_POC_URL??'http://127.0.0.1:5173';
 const output=process.env.ARCSIDE_BENCH_DIR??'./evidence/benchmarks';
 const cold=Number(process.env.ARCSIDE_COLD_RUNS??5),warm=Number(process.env.ARCSIDE_WARM_RUNS??10);
 const browser=await chromium.launch({headless:true});
-const results=[],meta={method:'synthetic UI load only; no Flutter comparison',browser:browser.version(),
+const results=[],meta={method:'synthetic UI load only; no Flutter comparison. Cold=fresh browser context, not cold OS process',browser:browser.version(),
  os:platform()+' '+release()+' '+arch(),cpu:cpus()[0]?.model,cores:cpus().length,ram:totalmem(),node:process.version,
  baseUrl:url,runs:{cold,warm},createdAt:new Date().toISOString()};
 function rows(count,segment='regular'){
@@ -39,10 +39,8 @@ async function sample(context,kind,n,run,coldStart){
  const target=kind==='table'?'stats':'visualizations';
  const start=performance.now();
  await page.goto(url+'/'+target+'?season=2025-26&segment=regular&basis=perGame');
- await page.getByText(n.toLocaleString()+' of '+n.toLocaleString()+' player rows').waitFor({state:'visible'}).catch(async()=>{
-  if(kind==='chart')await page.getByText(n.toLocaleString()+' plotted').waitFor({state:'visible'});
-  else throw Error('Stats fixture not loaded');
- });
+ if(kind==='table')await page.getByText(n.toLocaleString()+' of '+n.toLocaleString()+' player rows').waitFor({state:'visible'});
+ else await page.getByText(n.toLocaleString()+' plotted').waitFor({state:'visible'});
  const firstVisibleMs=performance.now()-start;
  let interactionMs=null;
  if(kind==='table'){
@@ -66,14 +64,15 @@ async function sample(context,kind,n,run,coldStart){
 try{
  for(const [kind,counts] of [['table',[1000,10000,50000]],['chart',[300,5000,25000]]]){
   for(const n of counts){
-   const ctx=await browser.newContext();
+   const warmContext=await browser.newContext();
    for(let i=0;i<cold+warm;i++){
     const isCold=i<cold;
-    if(isCold)await ctx.clearCookies();
-    await sample(ctx,kind,n,i+1,isCold);
-    if(isCold)await ctx.clearCookies();
+    // Cookies alone do not clear HTTP cache. Cold samples use fresh browser contexts.
+    const context=isCold?await browser.newContext():warmContext;
+    await sample(context,kind,n,i+1,isCold);
+    if(isCold)await context.close();
    }
-   await ctx.close();
+   await warmContext.close();
   }
  }
 }finally{await browser.close();}

@@ -48,3 +48,15 @@ test('original embedded Python and Sheets receive strictly typed, same-origin co
  await expect(frame.locator('#arcside-shell-context')).toContainText('2025-26 / regular');
  await expect(frame.locator('#workbookName')).toBeVisible();
 });
+
+test('semantic sort announcement and keyboard reachability',async({page})=>{
+ await page.goto('/stats?season=2025-26&segment=regular&basis=perGame');
+ const header=page.getByRole('columnheader',{name:/PTS/});
+ await expect(header).toHaveAttribute('aria-sort','descending');
+ await page.getByRole('button',{name:'Sort by PTS'}).click();
+ await expect(header).toHaveAttribute('aria-sort','ascending');
+ await page.getByRole('link',{name:'Skip to content'}).focus();
+ await expect(page.getByRole('link',{name:'Skip to content'})).toBeFocused();
+ await page.getByRole('button',{name:'Open Advanced Stats'}).click();
+ await expect(page).toHaveURL(/advanced/);
+});

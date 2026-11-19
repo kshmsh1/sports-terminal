@@ -28,10 +28,25 @@ jobs:
         run: npm run build
       - name: Contract unit tests
         run: npm test
-      - name: Install Chromium for isolated synthetic UI journey tests
-        run: npx playwright install --with-deps chromium
-      - name: Browser journeys (synthetic fixtures, not performance acceptance)
+      - name: Install three Playwright browser engines for synthetic journeys
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Browser journeys (synthetic fixtures, not real Safari/assistive technology)
         run: npm run test:browser
+      - name: Offline synthetic UI benchmark smoke (NOT a Flutter comparison)
+        run: |
+          npm run dev -- --port 5173 > /tmp/arcside-react-vite.log 2>&1 &
+          for i in $(seq 1 30); do curl --fail --silent http://127.0.0.1:5173/ >/dev/null && break; sleep 1; done
+          ARCSIDE_COLD_RUNS=1 ARCSIDE_WARM_RUNS=2 npm run benchmark
+      - name: Offline corpus-probe syntax check (actual local release not in GitHub)
+        run: node --check scripts/inspect_corpus.mjs
+      - name: Retain synthetic benchmark samples
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arcside-react-phase3-synthetic-benchmark
+          path: experimental/arcside-react/evidence/benchmarks
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Retain traces and screenshots
         if: always()
         uses: actions/upload-artifact@v4

@@ -27,7 +27,7 @@ try{
  const catalog=await readJson('seasons.json');
  if(!Array.isArray(catalog.data)||!catalog.data.length)throw Error('Empty or invalid canonical seasons catalog');
  const seasons=catalog.data.map(s=>s.season_id);
- if(seasons.some(s=>typeof s!=='string'||!/^\\d{4}-\\d{2}$/.test(s)))throw Error('Malformed catalog season ID');
+ if(seasons.some(s=>typeof s!=='string'||!/^\d{4}-\d{2}$/.test(s)))throw Error('Malformed catalog season ID');
  if(new Set(seasons).size!==seasons.length)issues.push('Duplicate season identifiers in catalog');
  if(meta.season_count!==seasons.length)issues.push('Manifest/catalog season_count mismatch');
  const selected=requested.length?requested:[seasons[0],seasons[Math.floor((seasons.length-1)/2)],seasons.at(-1)];
@@ -60,7 +60,7 @@ try{
    fingerprint:meta.database_fingerprint,seasonCount:meta.season_count,compilerVersion:meta.compiler_version,
    entityDossiers:meta.entity_dossiers},catalogSha256:catalog.sha256,inspectedSeasons:[...new Set(selected)],
   samples,issues,claim:'Actual local source-shard inspection only; NOT a Flutter/React parity or performance benchmark'};
- if(out){await mkdir(path.dirname(path.resolve(out)),{recursive:true});await writeFile(out,JSON.stringify(report,null,2)+'\\n');}
+ if(out){await mkdir(path.dirname(path.resolve(out)),{recursive:true});await writeFile(out,JSON.stringify(report,null,2)+'\n');}
  console.log(JSON.stringify(report,null,2));
  if(issues.length)process.exitCode=1;
 }catch(err){console.error('Real corpus inspection FAILED:',err.message);process.exitCode=1;}

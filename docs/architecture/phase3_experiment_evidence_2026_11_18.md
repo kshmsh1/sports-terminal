@@ -30,13 +30,13 @@ This ledger is deliberately not a GO decision. Review alongside the exact [Phase
 | Original v5 manifest & source-backed shards | Unverified locally | `node experimental/arcside-react/scripts/inspect_corpus.mjs --out experimental/arcside-react/evidence/local-corpus-audit.json` checks exact available real assets and writes machine-readable evidence; requires owner's untracked release |
 | Reference Flutter renderers, screenshot exports | Not run | Capture real Chromium, WebKit/Safari and Firefox on owner's Mac/OS |
 | Identical Stats/Advanced metrics & 50/4 | Partial unit coverage | Need every displayed advanced field, null/error, 2P/rim/mid tiers, playoff split, 2TM/3TM, source provenance and exact golden review |
-| 1k/10k/50k table and 300/5k/25k chart | Instrumentation present; not measured | Run `npm run benchmark`, preserve raw JSON/CSV and browser metadata; Flutter same-hardware baseline required |
+| 1k/10k/50k table and 300/5k/25k chart | Automated synthetic smoke submitted; matched comparison NOT measured | CI executes 1 fresh-context and 2 reused-context samples per size as a smoke, and uploads raw JSON/CSV when successful. Owner must run protocol's 5 cold / 10 warm repeats on same hardware for both implementations |
 | Deep links and browser navigation | Browser tests authored; not run in connector | Run Playwright with real browser |
 | Zoom vs pan and persisted chart state | Implemented, real-browser QA pending | Verify tooltip, hit-testing and exact saved settings |
 | Python/Sheets functionality and bridge | Bridge added; integration QA pending | Test Monaco focus, Cmd/Ctrl+K ownership, import/export, IndexedDB, role/credential isolation, narrow layout |
 | Trade salary/rules exactness | Exporter present; no cross-stack parity | Run original Dart exporter; independently generate candidate and human-review severity/messages/figures |
 | Accessibility WCAG 2.2 AA | Not certified | Audit axe + keyboard + real Safari/VoiceOver + NVDA/Chrome, semantic grids and chart equivalents |
-| Cross-browser, screenshots, persistence | Not certified | Run Chrome, Firefox, Safari; capture light/dark and narrow/wide |
+| Cross-browser, screenshots, persistence | Playwright Chromium/Firefox/WebKit automated coverage submitted; not certified | CI exercises browser engines with synthetic fixtures. WebKit-on-Linux is NOT native macOS Safari; manual Safari/VoiceOver and Firefox/Gecko real-data paths remain required |
 | Decision and migration authorization | **NOT APPROVED** | Owner signs GO React / GO Flutter-hybrid / GO keep Flutter / NO GO after all gates |
 
 ## Engineering trade-offs already visible
