@@ -95,11 +95,11 @@ describe('independent original Dart vs React statistical semantics',()=>{
      if(!equal(v,actualValue))add(label,expected.id,'value.'+k,v,actualValue);
     }
     for(const [k,v] of Object.entries(expected.percentiles)){
-     comparisons++;const actualValue=(row.percentiles as Record<string,number>)[k]??null;
+     comparisons++;byCase[activeCase].comparisons++;const actualValue=(row.percentiles as Record<string,number>)[k]??null;
      if(!equal(v,actualValue))add(label,expected.id,'percentile.'+k,v,actualValue);
     }
     for(const [k,v] of Object.entries(expected.formatted)){
-     comparisons++;const actualValue=formatMetric(k as Parameters<typeof formatMetric>[0],
+     comparisons++;byCase[activeCase].comparisons++;const actualValue=formatMetric(k as Parameters<typeof formatMetric>[0],
       (row.values as unknown as Record<string,number|null>)[k]??null);
      if(v!==actualValue)add(label,expected.id,'display.'+k,v,actualValue);
     }
