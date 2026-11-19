@@ -731,7 +731,9 @@ class NbaStatsWorkstationEngine {
       const ['personal_fouls', 'pf'],
       const ['personal_fouls_per_game', 'pf_per_game'],
     );
-    final plusMinus = _total(
+    // A missing historical +/- is unknown, not a measured zero.
+    // Preserve explicit zero and source-provided per-game fallback.
+    final plusMinus = _optionalTotal(
       raw,
       games,
       const ['plus_minus'],
@@ -869,7 +871,7 @@ class NbaStatsWorkstationEngine {
             : (assists > 0 ? assists : null),
         'three_rate': _ratio(threePa, fga),
         'ft_rate': _ratio(fta, fga),
-        'plus_minus': scaled(plusMinus),
+        'plus_minus': plusMinus == null ? null : scaled(plusMinus),
         'bpm': bpm,
         'game_score_proxy': scaled(
           points +
@@ -942,6 +944,19 @@ Object? _first(Map<String, dynamic> row, List<String> keys) {
     if (value != null && value.toString().trim().isNotEmpty) return value;
   }
   return null;
+}
+
+/// Missing source +/- remains unavailable instead of fabricating 0.
+double? _optionalTotal(
+  Map<String, dynamic> row,
+  double games,
+  List<String> totalKeys,
+  List<String> perGameKeys,
+) {
+  final direct = _number(_first(row, totalKeys));
+  if (direct != null) return direct;
+  final perGame = _number(_first(row, perGameKeys));
+  return perGame == null ? null : perGame * games;
 }
 
 double _total(
