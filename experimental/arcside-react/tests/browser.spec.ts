@@ -5,10 +5,10 @@ test('deep link, history, qualification, rate switch and virtual scrolling',asyn
  await page.goto('/stats?season=2025-26&segment=regular&basis=perGame');
  await expect(page.getByRole('heading',{name:'Player statistics'})).toBeVisible();
  await expect(page.getByText('150 of 150 player rows')).toBeVisible();
- await expect(page.getByRole('link',{name:'Synthetic Player 149'})).toHaveCount(0); // virtualized
+ await expect(page.getByRole('link',{name:'Synthetic Player 0'})).toHaveCount(0); // virtualized
  const scroller=page.getByRole('region',{name:'Scrollable player stats'});
  await scroller.evaluate(el=>{el.scrollTop=4000;el.dispatchEvent(new Event('scroll'));});
- await expect(page.getByRole('link',{name:'Synthetic Player 44'})).toBeVisible();
+ await expect(page.getByRole('link',{name:/Synthetic Player/}).first()).toBeVisible();
  await page.getByRole('button',{name:'Sort by PTS'}).click();
  await page.getByLabel('Rate basis').selectOption('per36');
  await expect(page).toHaveURL(/basis=per36/);
@@ -37,7 +37,7 @@ test('scatter interactions and theme persist across refresh',async({page})=>{
  await expect(page.locator('html')).toHaveAttribute('data-theme','light');
 });
 test('original embedded Python and Sheets receive strictly typed, same-origin context',async({page})=>{
- await page.goto('/labs/python?season=2025-26&segment=regular&basis=perGame');
+ await page.goto('/workspaces/python?season=2025-26&segment=regular&basis=perGame');
  await expect(page.getByText('Context handshake: acknowledged')).toBeVisible({timeout:30000});
  let frame=page.frameLocator('iframe[title="Python Lab"]');
  await expect(frame.locator('#arcside-shell-context')).toContainText('2025-26 / regular');

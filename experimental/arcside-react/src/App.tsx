@@ -20,10 +20,10 @@ function urlFor(v:ViewState):string {
 }
 const qualify=(r:Row,segment:SeasonType)=> (r.values.gp??0)>=(segment==='regular'?50:4);
 const metricLabel=(m:MetricKey)=>metrics.find(x=>x.key===m)?.label??m;
-const allowedRoutes=['/stats','/advanced','/visualizations','/labs/python','/labs/sheets'];
+const allowedRoutes=['/stats','/advanced','/visualizations','/workspaces/python','/workspaces/sheets'];
 function labelFor(route:string):string {
  return ({'/stats':'Stats','/advanced':'Advanced Stats','/visualizations':'Visualizations',
- '/labs/python':'Python Lab','/labs/sheets':'Excel Workspace'} as Record<string,string>)[route]??'Player detail';
+ '/workspaces/python':'Python Lab','/workspaces/sheets':'Excel Workspace'} as Record<string,string>)[route]??'Player detail';
 }
 export function App(){
  const [view,setView]=useState(fromUrl);
@@ -107,7 +107,7 @@ export function App(){
  const end=Math.min(visible.length,start+Math.ceil(VIEW_HEIGHT/ROW_HEIGHT)+18);
  const items=visible.slice(start,end);
  const keys=view.path==='/advanced'?advancedKeys:overviewKeys;
- const isLab=view.path.startsWith('/labs/');
+ const isLab=view.path.startsWith('/workspaces/');
  useEffect(()=>{
   const onMessage=(evt:MessageEvent)=>{
    if(evt.origin!==location.origin||evt.source!==labRef.current?.contentWindow)return;
@@ -215,13 +215,13 @@ export function App(){
      <div className="panel-title"><div><p className="eyebrow">BROWSER-NATIVE WORKSPACE / ORIGINAL MODULE</p>
        <h2>{labelFor(view.path)}</h2>
        <p className="subtle">Runs the existing HTML/JS module under /web/labs; no replacement engine or data synchronization.</p></div>
-       <a className="button-link" href={view.path==='/labs/python'?'/labs/python/index.html':'/labs/sheets/index.html'}
+       <a className="button-link" href={view.path==='/workspaces/python'?'/labs/python/index.html':'/labs/sheets/index.html'}
         target="_blank" rel="noopener noreferrer">Open standalone</a>
      </div>
      <p className="bridge-status" role="status">Context handshake: {labAck?'acknowledged':'pending / standalone Lab may ignore context'}.
       No credentials, workbooks, or code are sent.</p>
      <iframe ref={labRef} title={labelFor(view.path)} className="lab-frame"
-      src={view.path==='/labs/python'?'/labs/python/index.html':'/labs/sheets/index.html'}
+      src={view.path==='/workspaces/python'?'/labs/python/index.html':'/labs/sheets/index.html'}
       onLoad={sendLabContext}/>
     </section>}
     {view.path.startsWith('/player/')&&<section className="panel">

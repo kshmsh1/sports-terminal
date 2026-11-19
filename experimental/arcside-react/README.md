@@ -27,7 +27,7 @@ npm run dev
 
 - `/stats` and `/advanced`: real v5 season shards, typed adapter, qualification (50+ regular / 4+ playoffs), sorts, rate bases, a virtualized fixed-height row window, source-recorded multi-team stints, nulls distinct from zeros.
 - `/visualizations`: one ECharts scatter (same source rows), axis metrics, selected-player persistence, wheel zoom versus drag pan, reset and optional linear fit.
-- `/labs/python` and `/labs/sheets`: embed ORIGINAL Labs HTML/JS via iframe; standalone links use the same original applications. Their only modification is importing `arcside_context_bridge.mjs`, an origin-checked typed message handler for benign season/segment context. The original Python runtime, Monaco, formulas, IndexedDB and collaboration functions are otherwise unchanged.
+- `/workspaces/python` and `/workspaces/sheets`: embed ORIGINAL Labs HTML/JS via iframe; standalone links use the same original applications. Their only modification is importing `arcside_context_bridge.mjs`, an origin-checked typed message handler for benign season/segment context. The original Python runtime, Monaco, formulas, IndexedDB and collaboration functions are otherwise unchanged.
 - `/player/:id`: read-only original dossier lookup **only** when canonical player-index IDs match. This is not an implementation of PR #81 or a full player page.
 
 The POC deliberately does NOT replace Trade Machine, full player profiles, authenticated sessions, live NBA data, production deployment, or the Excel/Python runtime.
