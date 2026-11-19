@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'test/phase3_stats_parity_export_test.dart'
+      - 'test/nba_stats_workstation_engine_test.dart'
       - 'lib/services/nba_stats_workstation_engine.dart'
       - 'experimental/arcside-react/**'
       - '.github/workflows/arcside_phase3_parity.yml'
@@ -21,6 +22,8 @@ jobs:
           cache: true
       - name: Prepare original Flutter reference
         run: flutter pub get
+      - name: Run Flutter statistics regression tests (ties and absent plus-minus)
+        run: flutter test test/nba_stats_workstation_engine_test.dart --reporter expanded
       - name: Export original Dart output from shared explicit synthetic contract fixture
         run: flutter test test/phase3_stats_parity_export_test.dart --reporter expanded
       - uses: actions/setup-node@v4
