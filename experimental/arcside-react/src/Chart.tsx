@@ -49,7 +49,7 @@ export function Chart({rows,basis}:{rows:Row[];basis:RateBasis}) {
    if(data?.id)setHover(data.name??'');
   });
   instance.on('mouseout',()=>setHover(''));
-  return ()=>{resize.disconnect();chart.current=null;instance.dispose();};
+  return ()=>{resize.disconnect();chart.current=null;viewport.current=null;instance.dispose();};
  },[]);
  useEffect(()=>{
   const points=dataset.map(r=>({
@@ -75,7 +75,7 @@ export function Chart({rows,basis}:{rows:Row[];basis:RateBasis}) {
   const previous=viewport.current;
   const preserve=previous?.rows===rows&&previous.basis===basis&&previous.x===settings.x&&
     previous.y===settings.y&&previous.reset===reset;
-  const prior=preserve ? chart.current?.getOption().dataZoom as
+  const prior=preserve ? chart.current?.getOption()?.dataZoom as
     {start?:number;end?:number}[]|undefined : undefined;
   const option={
    backgroundColor:'transparent',
