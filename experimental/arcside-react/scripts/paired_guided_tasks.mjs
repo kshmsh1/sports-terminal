@@ -39,7 +39,10 @@ const tasks=[
    instructions:'Start on Visualization Studio / 2025-26 / Regular. Wheel zoom, drag pan, reset, then change X and Y metrics. Verify plot and tooltips.'}
 ];
 const rl=createInterface({input,output});
-const browser=await chromium.launch({headless:false});
+const browser=await chromium.launch({
+ headless:false,
+ ...(process.env.ARCSIDE_BROWSER_CHANNEL?{channel:process.env.ARCSIDE_BROWSER_CHANNEL}:{})
+});
 const results=[],errors=[];
 const warmContexts={};
 const ctrlStyle='position:fixed;right:10px;bottom:12px;z-index:2147483647;max-width:240px;padding:10px;background:#151b2b;color:#fff;border:2px solid #ffdc81;border-radius:8px;font:12px system-ui;box-shadow:0 2px 16px #0008;';
