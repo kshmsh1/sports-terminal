@@ -20,7 +20,7 @@ test('starter workbook renders evaluated cells and recalculates after edit', asy
 
 test('formula bar edits selected cell and displays arithmetic results', async ({page}) => {
   await page.locator('.grid-cell[title="=B2-C2"]').click();
-  await expect(page.locator('#nameBox')).toHaveText('D2');
+  await expect(page.locator('#nameBox')).toHaveValue('D2');
   await page.locator('#formulaInput').fill('=ROUND(SUM(B2:B5)/4,2)');
   await page.locator('#formulaInput').press('Enter');
   await expect(page.locator('.grid-cell').filter({hasText:'113875'}).first()).toBeVisible();

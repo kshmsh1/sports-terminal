@@ -91,3 +91,50 @@ html,body{height:100%;overflow:hidden}.sheets{height:100%;display:flex;flex-dire
 .workbook-library-row strong{font-size:13px;color:#e0f0ff}
 .workbook-library-row span{font-size:11px;color:#9caec5}
 .workbook-library-row button{font-size:11px}
+
+
+/* UX v2: group controls by task and give spreadsheet navigation real inputs. */
+.sheets{--header-height:28px;--grid-font-size:12px}
+.sheets .titlebar{flex-wrap:wrap;min-height:55px;height:auto;padding:8px 13px;gap:9px}
+.sheets #workbookName{border-bottom:1px dashed #42617d!important;padding:4px 3px;min-width:125px}
+.sheets #workbookName:hover{border-color:#759aba!important}
+.sheets .titlebar #shareWorkbook{padding:7px 12px}
+.sheets .menubar{display:flex;align-items:center;gap:0;min-height:46px;padding:3px 8px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;background:#111c2a}
+.sheets .tool-group{display:flex;align-items:center;gap:3px;padding:0 10px;border-right:1px solid #324a63;flex:none;min-height:32px}
+.sheets .tool-group:last-child{border-right:0}
+.sheets .tool-group-name{font-size:10px;color:#8da6be;font-weight:800;letter-spacing:.08em;white-space:nowrap;padding-right:3px}
+.sheets .tool-group button{padding:6px 9px;border-radius:5px;font-size:12px;color:#c9d9ec}
+.sheets .tool-group button:hover{background:#263e58;color:#f4faff}
+.sheets .ribbon{min-height:43px;gap:10px;background:#172438}
+.sheets .ribbon .sectionlabel{font-weight:800}
+.sheets .ribbon button{min-height:27px}
+.sheets .formula-row{min-height:38px;padding:6px 12px;gap:10px}
+.sheets .namebox{width:88px;min-width:88px;flex:none;background:#162940;color:#e7f4ff;border:1px solid #38526f;border-radius:5px;padding:5px 7px;font:12px ui-monospace,monospace;text-align:center}
+.sheets .namebox:focus{border-color:#77b2ef;background:#203954}
+.sheets #formulaInput{font-size:13px;min-height:25px}
+.sheets .sheet-area{--header-height:28px}
+.sheets #columnHeaders{height:var(--header-height)}
+.sheets #rowHeaders{top:var(--header-height)}
+.sheets #gridScroll{top:var(--header-height)}
+.sheets .grid-cell,.sheets .column-head,.sheets .row-head{font-size:var(--grid-font-size)}
+.sheets .grid-cell{font-feature-settings:"tnum";font-variant-numeric:tabular-nums}
+.sheets .bottom{min-height:43px;padding:5px 10px}
+.sheets .sheet-tab{font-size:12px;padding:8px 14px;border-radius:6px 6px 0 0}
+.sheets .sheet-tab.active{box-shadow:inset 0 -2px 0 #7bceb1}
+.zoom-control{display:flex;align-items:center;gap:6px;color:#a4b8cf;font-size:11px}
+.zoom-control select{padding:4px 6px;min-width:70px}
+.sheets .modal-card{border-radius:13px;box-shadow:0 25px 95px #000b}
+.sheets .modal-card:focus-within{border-color:#567a9d}
+@media(max-width:1100px){
+ .sheets .titlebar .collab-state,.sheets .titlebar .collab-people{display:none}
+ .sheets .titlebar #workbookName{width:150px}
+ .sheets .menubar{gap:0}
+ .sheets .tool-group-name{display:none}
+}
+@media(max-width:740px){
+ .sheets .titlebar .arcside-command-trigger kbd{display:none}
+ .sheets .titlebar #workbookName{width:120px}
+ .sheets .tool-group{padding:0 5px}
+ .sheets .ribbon{gap:6px;padding:5px 8px}
+ .sheets .ribbon label{font-size:11px}
+}

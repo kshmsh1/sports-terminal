@@ -4,17 +4,19 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 umask 077
-MODE=auto; OPEN_BROWSER=1; SKIP_INSTALL=0; SCIENCE=0
+MODE=auto; OPEN_BROWSER=1; SKIP_INSTALL=0; SCIENCE=0; FAST=0
 for arg in "$@"; do
   case "$arg" in
     --platform) MODE=platform ;;
     --labs) MODE=labs ;;
     --no-browser) OPEN_BROWSER=0 ;;
     --skip-install) SKIP_INSTALL=1 ;;
+    --fast) FAST=1; SKIP_INSTALL=1 ;;
     --science) SCIENCE=1 ;;
     -h|--help)
-      echo "Usage: bash scripts/launch_arcside.sh [--platform|--labs] [--no-browser] [--skip-install] [--science]"
+      echo "Usage: bash scripts/launch_arcside.sh [--platform|--labs] [--no-browser] [--skip-install] [--science] [--fast]"
       echo "Default: full Flutter platform if NBA history is present, otherwise standalone Labs preview."
+      echo "--fast reuses installed Python dependencies and prebuilt NBA static files; starts full Flutter directly."
       echo "ARCSIDE_PYTHON_WORKSPACE can override the directory trusted by the local Python companion."
       exit 0 ;;
     *) echo "Unknown argument: $arg" >&2;exit 2 ;;
@@ -119,5 +121,14 @@ else
     echo "Flutter missing from PATH. Use --labs to preview workspaces." >&2;exit 1
   fi
   echo "Launching Arcside Flutter at http://127.0.0.1:8765 ..."
-  bash "$ROOT/scripts/open_terminal.sh" --web-port 8765
+  if [[ "$FAST" == 1 ]]; then
+    if [[ ! -s "$ROOT/web/data/nba_static/manifest.json" ]]; then
+      echo "Prebuilt NBA data not found; run normal --platform once before using --fast." >&2
+      exit 1
+    fi
+    echo "Fast mode: reusing existing NBA static data, Python environment and Flutter dependencies."
+    flutter run -d chrome --web-port 8765 --web-hostname 127.0.0.1
+  else
+    bash "$ROOT/scripts/open_terminal.sh" --web-port 8765
+  fi
 fi

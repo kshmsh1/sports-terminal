@@ -423,6 +423,7 @@ export function sampleWorkbook() {
   rows.forEach((row,r)=>row.forEach((v,c)=>wb.set('Analysis',columnName(c+1)+(r+1),v)));
   for(let c=1;c<=5;c++) wb.setStyle('Analysis',columnName(c)+'1',{bold:true,fill:'#1d384e',color:'#ffffff'});
   for(let c=1;c<=5;c++) wb.setStyle('Analysis',columnName(c)+'6',{bold:true,fill:'#1a342b',color:'#a7f3d0'});
+  for(let row=2;row<=6;row++)wb.setStyle('Analysis','E'+row,{numberFormat:'percent'});
   wb.sheets.get('Analysis').widths.A=160;
   return wb;
 }

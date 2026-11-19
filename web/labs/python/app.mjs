@@ -1,4 +1,5 @@
 import {setupPowerPanel} from './power_panel.mjs';
+import {createCommandPalette,setupPythonLayout} from '../workbench.mjs';
 const $=id=>document.getElementById(id);
 const KEY='arcside.pythonlab.v1';
 const defaults={
@@ -454,5 +455,41 @@ power=setupPowerPanel({
    if(editor&&models[active])models[active].setValue(source);
    else {project.files[active]=source;$('fallback').value=source;dirty(active);}
  },
+});
+const chromeLayout=setupPythonLayout();
+const pythonCommands=[
+ {section:'Run & debug',label:'Run current file',shortcut:'⌘ Enter',id:'run',keywords:'execute python',order:1},
+ {section:'Run & debug',label:'Debug current file',shortcut:'F5',id:'debug',keywords:'breakpoint trace step',order:2},
+ {section:'Run & debug',label:'Run project tests',id:'runTests',keywords:'unittest pytest',order:3},
+ {section:'Run & debug',label:'Run selected code',id:'runSelection',order:4},
+ {section:'Run & debug',label:'Stop execution',shortcut:'Shift F5',id:'stop',order:5},
+ {section:'Project & files',label:'Create new file',id:'newFile',order:10},
+ {section:'Project & files',label:'Rename active file',id:'renameFile',order:11},
+ {section:'Project & files',label:'Delete active file',id:'deleteFile',order:12},
+ {section:'Project & files',label:'Import project or files',id:'importFile',order:13},
+ {section:'Project & files',label:'Download active file',id:'exportFile',order:14},
+ {section:'Project & files',label:'Export complete project',id:'exportProject',order:15},
+ {section:'Project & files',label:'Save project locally',shortcut:'⌘ S',run:()=>{sync();save();},order:16},
+ ...[['output','Output'],['problems','Problems and diagnostics'],
+ ['debugger','Debugger and trace'],['plots','Plots and charts'],
+ ['variables','Variable inspector'],['console','Python console'],
+ ['terminal','Terminal'],['notebook','Jupyter notebooks'],
+ ['tools','Developer tools']].map(([panel,label],index)=>({
+  section:'Panels',label:'Open '+label,keywords:panel,order:30+index,
+  run:()=>setPanel(panel),
+ })),
+ {section:'Panels',label:'Toggle file explorer',shortcut:'Explorer',run:()=>chromeLayout?.toggleExplorer(),order:40},
+ {section:'Panels',label:'Toggle right inspector',run:()=>chromeLayout?.toggleInspector(),order:41},
+ {section:'Python environment',label:'Connect trusted local Python',id:'connectLocal',order:50},
+ {section:'Python environment',label:'Open local workspace files',id:'localOpenProject',order:51,
+    run:()=>{setPanel('tools');$('localOpenProject').click();}},
+ {section:'Python environment',label:'Python environment management',run:()=>setPanel('tools'),order:52},
+ {section:'Python environment',label:'Notebook code cells',run:()=>setPanel('notebook'),order:53},
+];
+createCommandPalette({
+ trigger:'#commandPaletteButton',placeholder:'Run a command, open a panel, or manage files…',
+ getCommands:()=>pythonCommands.map(cmd=>({
+  ...cmd,run:cmd.run??(()=>document.getElementById(cmd.id)?.click()),
+ })),
 });
 setTimeout(initEditor,120);
