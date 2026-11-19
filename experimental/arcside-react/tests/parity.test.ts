@@ -48,26 +48,50 @@ describe('independent original Dart vs React statistical semantics',()=>{
   let comparisons=0,rowCount=0;
   const counts:Record<string,number>={};
   const mismatches:Array<Record<string,unknown>>=[];
+  const representativeByCase:Record<string,Array<Record<string,unknown>>>={};
+  const representativeByField:Record<string,Array<Record<string,unknown>>>={};
+  const byCase:Record<string,{comparisons:number;mismatches:number;byField:Record<string,number>}>={};
+  const byCategory:Record<string,number>={};
+  const byDifference:Record<string,number>={};
   const missingIds:Array<Record<string,unknown>>=[];
+  let activeCase='';
   const add=(caseKey:string,id:string,field:string,expected:unknown,actual:unknown)=>{
    counts[field]=(counts[field]??0)+1;
-   if(mismatches.length<150) mismatches.push({case:caseKey,id,field,dart:expected,react:actual});
+   const item={case:caseKey,id,field,dart:expected,react:actual};
+   if(mismatches.length<150)mismatches.push(item);
+   (representativeByCase[caseKey]??=[]);
+   if(representativeByCase[caseKey].length<12)representativeByCase[caseKey].push(item);
+   (representativeByField[field]??=[]);
+   if(representativeByField[field].length<3)representativeByField[field].push(item);
+   const entry=(byCase[caseKey]??={comparisons:0,mismatches:0,byField:{}});
+   entry.mismatches++;
+   entry.byField[field]=(entry.byField[field]??0)+1;
+   const category=field.startsWith('percentile.')?'percentile':
+     field.startsWith('display.')?'display':field.startsWith('value.')?'value':
+     field.startsWith('stints.')?'team_stint':'identity_or_presence';
+   byCategory[category]=(byCategory[category]??0)+1;
+   const difference=expected===null&&actual!==null?'dart_missing_react_present':
+     expected!==null&&actual===null?'dart_present_react_missing':
+     typeof expected==='number'&&typeof actual==='number'?'numeric_delta':'other';
+   byDifference[difference]=(byDifference[difference]??0)+1;
   };
   for(const sample of baseline.referenceCases){
    const candidate=buildRows(snapshot(baseline,sample),sample.basis);
    const actual=new Map(candidate.map(r=>[r.id,r]));
    const refIds=new Set<string>();
    const label=sample.season+'/'+sample.segment+'/'+sample.basis;
+   activeCase=label;
+   byCase[label]={comparisons:0,mismatches:0,byField:{}};
    rowCount+=sample.rows.length;
    for(const expected of sample.rows){
     refIds.add(expected.id);
     const row=actual.get(expected.id);
     if(!row){add(label,expected.id,'missing_react_player',true,false);missingIds.push({case:label,id:expected.id});continue;}
     for(const key of ['player','team','position','estimated'] as const){
-     comparisons++;if(!equal(expected[key],row[key]))add(label,expected.id,key,expected[key],row[key]);
+     comparisons++;byCase[activeCase].comparisons++;if(!equal(expected[key],row[key]))add(label,expected.id,key,expected[key],row[key]);
     }
     for(const [k,v] of Object.entries(expected.values)){
-     comparisons++;const actualValue=(row.values as unknown as Record<string,number|null>)[k]??null;
+     comparisons++;byCase[activeCase].comparisons++;const actualValue=(row.values as unknown as Record<string,number|null>)[k]??null;
      if(!equal(v,actualValue))add(label,expected.id,'value.'+k,v,actualValue);
     }
     for(const [k,v] of Object.entries(expected.percentiles)){
@@ -80,14 +104,14 @@ describe('independent original Dart vs React statistical semantics',()=>{
      if(v!==actualValue)add(label,expected.id,'display.'+k,v,actualValue);
     }
     const actualStints=stintRows(row,sample.basis);
-    comparisons++;if(expected.stints.length!==actualStints.length)
+    comparisons++;byCase[activeCase].comparisons++;if(expected.stints.length!==actualStints.length)
      add(label,expected.id,'stints.length',expected.stints.length,actualStints.length);
     for(let n=0;n<Math.min(expected.stints.length,actualStints.length);n++){
      const referenceStint=expected.stints[n], candidateStint=actualStints[n];
      if(referenceStint.team!==candidateStint.team)
       add(label,expected.id,'stints.'+n+'.team',referenceStint.team,candidateStint.team);
      for(const [k,v] of Object.entries(referenceStint.values)){
-      comparisons++;const actualValue=(candidateStint.values as unknown as Record<string,number|null>)[k]??null;
+      comparisons++;byCase[activeCase].comparisons++;const actualValue=(candidateStint.values as unknown as Record<string,number|null>)[k]??null;
       if(!equal(v,actualValue))add(label,expected.id,'stints.'+n+'.'+k,v,actualValue);
      }
     }
@@ -95,9 +119,16 @@ describe('independent original Dart vs React statistical semantics',()=>{
    for(const r of candidate)if(!refIds.has(r.id)){add(label,r.id,'missing_dart_player',false,true);missingIds.push({case:label,id:r.id});}
   }
   const failures=Object.values(counts).reduce((s,n)=>s+n,0);
+  // Per-case comparisons are tracked over the same distinct checks used in
+  // the overall count; missing/extra player rows remain mismatch diagnostics.
+  // Correct per-case totals independently instead of assuming equal case sizes.
+  const caseComparisons=Object.values(byCase).reduce((sum,entry)=>sum+entry.comparisons,0);
+  if(caseComparisons!==comparisons)throw Error('Per-case comparison accounting mismatch');
   const report={kind:'ARCSIDE_CROSS_ENGINE_PARITY_REPORT',referenceEngine:baseline.kind,
    source:baseline.dataSource,caseCount:baseline.referenceCases.length,referenceRows:rowCount,
-   comparisons,mismatchCount:failures,byField:counts,first150Mismatches:mismatches,
+   comparisons,mismatchCount:failures,byField:counts,
+   byCase,byCategory,byDifference,representativeByCase,representativeByField,
+   first150Mismatches:mismatches, // Retained for existing readers
    missingIds,relativeNumericTolerance:1e-8,passed:failures===0,
    caveat:'Same mapped fields only. Not Trade Machine, full Stats/Advanced profile/catalog or UI/UX parity.',
    createdAt:new Date().toISOString()};
