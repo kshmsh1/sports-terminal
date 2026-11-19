@@ -153,8 +153,20 @@ export function attachPercentiles(rows:Row[]):Row[]{
  for(const metric of metrics){
   const candidates=rows.filter(r=>r.values[metric.key]!==null)
    .sort((a,b)=>(a.values[metric.key]??0)-(b.values[metric.key]??0));
-  candidates.forEach((r,i)=>{const pct=candidates.length===1?100:100*i/(candidates.length-1);
-   const rank=ranks.get(r.id);if(rank)rank[metric.key]=metric.higher===false?100-pct:pct;});
+  // Midrank tied values rather than giving identical values arbitrary ranks.
+  for(let start=0;start<candidates.length;){
+   let end=start+1;
+   while(end<candidates.length &&
+     candidates[end].values[metric.key]===candidates[start].values[metric.key])end++;
+   const midpoint=(start+end-1)/2;
+   const pct=candidates.length===1?100:100*midpoint/(candidates.length-1);
+   const rankValue=metric.higher===false?100-pct:pct;
+   for(let j=start;j<end;j++){
+    const rank=ranks.get(candidates[j].id);
+    if(rank)rank[metric.key]=rankValue;
+   }
+   start=end;
+  }
  }
  return rows.map(r=>({...r,percentiles:ranks.get(r.id)??{}}));
 }
