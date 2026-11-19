@@ -55,6 +55,8 @@ For a real Phase 3 evaluation, follow the [pre-registered protocol](../../docs/a
 
 **Reproducibility is complete:** the npm 11-generated lockfile from passing audited CI is checked in. Run `npm ci` to reproduce it, not `npm audit fix --force`.
 
+**Recommended one-command actual-corpus retest after any code update:** From the repository root, run `bash scripts/phase3_parity_rerun.sh`. This regenerates the Dart reference (never uses stale goldens), runs React in report-only mode, and prints the full per-case mismatch summary. It does not report a pass unless the mismatch count is zero. The script doesn't install or download any browsers.
+
 **Original Dart ⇄ React statistical comparison:**
 From the REPOSITORY ROOT, run:
 
