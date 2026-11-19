@@ -173,5 +173,6 @@ export function formatMetric(key:MetricKey, v:number|null):string{
  if(format==='int')return String(Math.round(v));
  if(format==='percent')return (v*100).toFixed(1)+'%';
  if(format==='signed')return (v>=0?'+':'')+v.toFixed(1);
- return v.toFixed(1);
+ // Exact source Dart engine display contract uses two decimals for ratios.
+ return v.toFixed(key==='points_per_shot'||key==='ast_tov'?2:1);
 }
