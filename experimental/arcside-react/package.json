@@ -1,0 +1,31 @@
+{
+  "name": "arcside-react-phase3",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "benchmark": "node scripts/benchmark.mjs"
+  },
+  "dependencies": {
+    "echarts": "5.6.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "22.15.30",
+    "@types/react": "19.2.4",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.1",
+    "sirv": "3.0.2",
+    "@types/sirv": "2.0.4",
+    "typescript": "5.9.3",
+    "vite": "7.2.2",
+    "vitest": "4.0.9"
+  }
+}
