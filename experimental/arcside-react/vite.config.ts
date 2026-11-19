@@ -17,5 +17,6 @@ export default defineConfig({
   server: { host: '127.0.0.1', port: 5173, strictPort: true },
   preview: { host: '127.0.0.1', port: 4173, strictPort: true },
   build: { outDir: 'dist', emptyOutDir: true },
-  test: { environment: 'node', include: ['tests/**/*.test.ts'] }
+  test: { environment: 'node', include: process.env.ARCSIDE_RUN_PARITY === '1' ? ['tests/parity.test.ts'] : ['tests/**/*.test.ts'],
+    exclude: process.env.ARCSIDE_RUN_PARITY === '1' ? [] : ['tests/parity.test.ts'] }
 });
