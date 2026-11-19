@@ -11,7 +11,9 @@
     "test:browser": "playwright test",
     "benchmark": "node scripts/benchmark.mjs",
     "inspect:corpus": "node scripts/inspect_corpus.mjs",
-    "test:parity": "vitest run tests/parity.test.ts"
+    "test:parity": "ARCSIDE_RUN_PARITY=1 vitest run tests/parity.test.ts",
+    "test:real": "node scripts/real_corpus_journeys.mjs",
+    "compare:guided": "node scripts/paired_guided_tasks.mjs"
   },
   "dependencies": {
     "echarts": "6.1.0",
