@@ -81,11 +81,9 @@ export function App(){
  },[view.path]);
  useEffect(()=>{setExpanded(new Set());setScrollTop(0);if(tableRef.current)tableRef.current.scrollTop=0},[view.season,view.segment,view.basis,search,team,position,qualified,sort,descending]);
  function change(patch:Partial<ViewState>,push=false){
-  setView(v=>{const next={...v,...patch};
-   const u=urlFor(next);
-   if(push)history.pushState({},'',u);else history.replaceState({},'',u);
-   return next;
-  });
+  const next={...view,...patch},u=urlFor(next);
+  if(push)history.pushState({},'',u);else history.replaceState({},'',u);
+  setView(next);
  }
  function navigate(path:string){change({path},true);window.scrollTo({top:0})}
  const rows=useMemo(()=>snapshot?buildRows(snapshot,view.basis):[],[snapshot,view.basis]);

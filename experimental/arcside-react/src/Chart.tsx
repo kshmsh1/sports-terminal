@@ -117,9 +117,8 @@ export function Chart({rows,basis}:{rows:Row[];basis:RateBasis}) {
     onChange={e=>update({regression:e.target.checked})}/> Linear reference</label>
    <span className="hint">Click a point to persist the selected player. Scroll to zoom or drag to pan.</span>
   </div>
-  {dataset.length?<div ref={host} className="chart" role="img" aria-label={'Scatter plot of '+metricLabel(settings.x)+' against '+metricLabel(settings.y)+', '+dataset.length+' players'}/>:
-   <div className="empty chart-empty">No players have both selected source-backed metrics for these filters.</div>}
-  {dataset.length===0&&<div ref={host} className="chart-offscreen" aria-hidden="true"/>}
+  <div ref={host} className="chart" role="img" aria-label={'Scatter plot of '+metricLabel(settings.x)+' against '+metricLabel(settings.y)+', '+dataset.length+' players'}/>
+  {!dataset.length&&<div className="empty chart-empty">No players have both selected source-backed metrics for these filters.</div>}
   <div className="chart-footer">
    <span role="status">{chosen?'Selected: '+chosen.player+' · '+chosen.team: hover?'Hover: '+hover:'No selected player'}</span>
    <span>Selection and settings persist in this browser only.</span>

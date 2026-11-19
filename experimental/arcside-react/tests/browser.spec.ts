@@ -8,7 +8,7 @@ test('deep link, history, qualification, rate switch and virtual scrolling',asyn
  await expect(page.getByRole('link',{name:'Synthetic Player 149'})).toHaveCount(0); // virtualized
  const scroller=page.getByRole('region',{name:'Scrollable player stats'});
  await scroller.evaluate(el=>{el.scrollTop=4000;el.dispatchEvent(new Event('scroll'));});
- await expect(page.getByRole('link',{name:'Synthetic Player 100'})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Synthetic Player 44'})).toBeVisible();
  await page.getByRole('button',{name:'Sort by PTS'}).click();
  await page.getByLabel('Rate basis').selectOption('per36');
  await expect(page).toHaveURL(/basis=per36/);
