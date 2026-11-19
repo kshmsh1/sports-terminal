@@ -1,0 +1,44 @@
+name: Arcside Phase 3 cross-engine statistics parity
+on:
+  pull_request:
+    paths:
+      - 'test/phase3_stats_parity_export_test.dart'
+      - 'lib/services/nba_stats_workstation_engine.dart'
+      - 'experimental/arcside-react/**'
+      - '.github/workflows/arcside_phase3_parity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  stats-parity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Prepare original Flutter reference
+        run: flutter pub get
+      - name: Export original Dart output from shared explicit synthetic contract fixture
+        run: flutter test test/phase3_stats_parity_export_test.dart --reporter expanded
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Use lockfile-compatible npm version
+        run: npm install -g npm@11
+      - name: Reproduce pinned React dependency tree
+        working-directory: experimental/arcside-react
+        run: npm ci --no-audit --no-fund
+      - name: Compare every exported Dart statistic and both traded-player splits to React
+        working-directory: experimental/arcside-react
+        run: npm run test:parity
+      - name: Publish raw parity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arcside-phase3-original-dart-vs-react-parity
+          path: experimental/arcside-react/evidence/parity/
+          if-no-files-found: warn
+          retention-days: 21
