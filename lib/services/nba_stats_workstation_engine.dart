@@ -907,13 +907,26 @@ class NbaStatsWorkstationEngine {
       }
       entries.sort((a, b) => a.value.compareTo(b.value));
       if (entries.isEmpty) continue;
-      for (var index = 0; index < entries.length; index++) {
+      // Every identical source value must receive the same percentile.
+      // The previous index-based rank depended on sort stability for ties:
+      // Dart and JavaScript order tied players differently, creating
+      // reproducibility failures even when their raw statistics agreed.
+      var start = 0;
+      while (start < entries.length) {
+        var end = start + 1;
+        while (end < entries.length &&
+            entries[end].value == entries[start].value) {
+          end++;
+        }
+        final midpoint = (start + end - 1) / 2.0;
         final base = entries.length == 1
             ? 100.0
-            : index / (entries.length - 1) * 100;
-        byPlayer[entries[index].key]![metric.key] = metric.higherIsBetter
-            ? base
-            : 100 - base;
+            : midpoint / (entries.length - 1) * 100;
+        final percentile = metric.higherIsBetter ? base : 100 - base;
+        for (var index = start; index < end; index++) {
+          byPlayer[entries[index].key]![metric.key] = percentile;
+        }
+        start = end;
       }
     }
     return [
