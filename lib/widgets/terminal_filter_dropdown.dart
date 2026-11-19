@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'terminal_primitives.dart';
-
 class TerminalFilterDropdown extends StatelessWidget {
   const TerminalFilterDropdown({
     super.key,
@@ -22,34 +20,36 @@ class TerminalFilterDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = values.toList(growable: false);
+    final items = values.toSet().toList(growable: false);
+    final colors = Theme.of(context).colorScheme;
     if (items.isEmpty) return const SizedBox.shrink();
 
     final selectedValue = items.contains(value) ? value : items.first;
 
     return SizedBox(
+      key: ValueKey('terminal-filter-$label'),
       width: width,
       child: DropdownButtonFormField<String>(
-        key: ValueKey('terminal-filter-$label'),
-        value: selectedValue,
+        key: ValueKey('terminal-filter-selected-$label-$selectedValue'),
+        initialValue: selectedValue,
         isExpanded: true,
         menuMaxHeight: 420,
         borderRadius: BorderRadius.circular(14),
-        dropdownColor: terminalPanelDark,
-        style: const TextStyle(color: Colors.white),
+        dropdownColor: colors.surface,
+        style: TextStyle(color: colors.onSurface),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: terminalTextMuted),
+          labelStyle: TextStyle(color: colors.onSurfaceVariant),
           filled: true,
-          fillColor: terminalPanelDark,
+          fillColor: colors.surface,
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: terminalBorder),
+            borderSide: BorderSide(color: colors.outline),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: terminalAccent),
+            borderSide: BorderSide(color: colors.primary),
           ),
         ),
         selectedItemBuilder: (context) => [

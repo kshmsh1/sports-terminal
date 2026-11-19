@@ -91,7 +91,7 @@ void main() {
       contains("id: 'excel-workspace',\n          label: 'Excel Workspace'"),
     );
     expect(source, contains('enabled: false'));
-    expect(source, contains('Display only — not connected'));
+    expect(source, contains('Not yet available'));
   });
 
   test('normal header has canonical static player and team search', () {
