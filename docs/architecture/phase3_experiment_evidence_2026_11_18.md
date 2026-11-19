@@ -26,17 +26,17 @@ This ledger is deliberately not a GO decision. Review alongside the exact [Phase
 
 | Gate | Status | Evidence / outstanding action |
 | --- | --- | --- |
-| React implementation and isolated branch | Implemented, compile pending | POC source, dedicated Vite config, new branch; Flutter `main` not touched |
-| Original v5 manifest & source-backed shards | Unverified locally | `node experimental/arcside-react/scripts/inspect_corpus.mjs --out experimental/arcside-react/evidence/local-corpus-audit.json` checks exact available real assets and writes machine-readable evidence; requires owner's untracked release |
+| React implementation and isolated branch | **CI passed** | Pinned `npm ci`, TypeScript build, unit suite, three-browser synthetic regression suite. Flutter `main` unchanged |
+| Original v5 manifest & source-backed shards | **Owner-probed, remote comparison pending** | `node experimental/arcside-react/scripts/inspect_corpus.mjs --out experimental/arcside-react/evidence/local-corpus-audit.json` checks exact available real assets and writes machine-readable evidence; requires owner's untracked release |
 | Reference Flutter renderers, screenshot exports | Not run | Capture real Chromium, WebKit/Safari and Firefox on owner's Mac/OS |
-| Identical Stats/Advanced metrics & 50/4 | Partial unit coverage | Need every displayed advanced field, null/error, 2P/rim/mid tiers, playoff split, 2TM/3TM, source provenance and exact golden review |
+| Identical Stats/Advanced metrics & 50/4 | **Strict synthetic Dart ↔ React parity passed; actual release not compared yet** | Need every displayed advanced field, null/error, 2P/rim/mid tiers, playoff split, 2TM/3TM, source provenance and exact golden review |
 | 1k/10k/50k table and 300/5k/25k chart | Automated synthetic smoke submitted; matched comparison NOT measured | CI executes 1 fresh-context and 2 reused-context samples per size as a smoke, and uploads raw JSON/CSV when successful. Owner must run protocol's 5 cold / 10 warm repeats on same hardware for both implementations |
-| Deep links and browser navigation | Browser tests authored; not run in connector | Run Playwright with real browser |
-| Zoom vs pan and persisted chart state | Implemented, real-browser QA pending | Verify tooltip, hit-testing and exact saved settings |
-| Python/Sheets functionality and bridge | Bridge added; integration QA pending | Test Monaco focus, Cmd/Ctrl+K ownership, import/export, IndexedDB, role/credential isolation, narrow layout |
+| Deep links and browser navigation | **Synthetic Chromium/Firefox/WebKit pass** | Run Playwright with real browser |
+| Zoom vs pan and persisted chart state | **Synthetic browser QA pass; actual operator QA pending** | Verify tooltip, hit-testing and exact saved settings |
+| Python/Sheets functionality and bridge | **Synthetic frame/bridge journeys pass; native services and data integrity unverified** | Test Monaco focus, Cmd/Ctrl+K ownership, import/export, IndexedDB, role/credential isolation, narrow layout |
 | Trade salary/rules exactness | Exporter present; no cross-stack parity | Run original Dart exporter; independently generate candidate and human-review severity/messages/figures |
 | Accessibility WCAG 2.2 AA | Not certified | Audit axe + keyboard + real Safari/VoiceOver + NVDA/Chrome, semantic grids and chart equivalents |
-| Cross-browser, screenshots, persistence | Playwright Chromium/Firefox/WebKit automated coverage submitted; not certified | CI exercises browser engines with synthetic fixtures. WebKit-on-Linux is NOT native macOS Safari; manual Safari/VoiceOver and Firefox/Gecko real-data paths remain required |
+| Cross-browser, screenshots, persistence | **12/12 Playwright tests passed on Linux browser engines; not certified** | CI exercises browser engines with synthetic fixtures. WebKit-on-Linux is NOT native macOS Safari; manual Safari/VoiceOver and Firefox/Gecko real-data paths remain required |
 | Decision and migration authorization | **NOT APPROVED** | Owner signs GO React / GO Flutter-hybrid / GO keep Flutter / NO GO after all gates |
 
 ## Engineering trade-offs already visible
@@ -56,3 +56,29 @@ Upgraded the isolated experiment's direct npm dependencies to `echarts@6.1.0`, `
 ### Screenshot-based UX observations (not Phase 3 acceptance evidence)
 
 Owner-provided browser screenshots demonstrate five reachable pages: Stats, Advanced Stats, one ECharts scatter explorer, and embedded original Python Lab and Excel Workspace. The visuals show coherent shell styling, but the Stats/Advanced metric surfaces remain narrower than Flutter's full platform, the Visualization Studio is an intentionally reduced exploratory scatter page, and the Labs retain distinct toolbars/interactions inside iframes. Preserve these as explicit feature-parity and design-integration gaps; screenshot review does not establish quantitative usability or rendering performance.
+
+
+## Executed Phase 3 engineering evidence (2026-11-18, GitHub experiment)
+
+**Reproducible dependency install:** The exact audited `experimental/arcside-react/package-lock.json` from a passing GitHub Actions run was committed (SHA-256 content available in Git history) and the React CI installer changed to `npm ci`. npm 11 install and `npm audit --audit-level=moderate` previously returned **zero advisories**. The single-use write-permitted GitHub workflow used to import the lockfile was removed immediately afterward.
+
+**Original Dart versus React goldens:** The CI parity workflow runs the **original** `lib/services/nba_stats_workstation_engine.dart` via `flutter test`, exports it as JSON, and independently compares against TypeScript. On the explicit 3-player **synthetic** fixture (including a two-team traded player), across 6 rate bases, it compared **2,526 scalar, format, percentile, identity and stint assertions** with **zero mismatches** after correcting React's age formatting (the Dart reference displays `25.0`, not `25`). This does NOT imply historical NBA corpus or the whole Flutter stats catalog is parity-tested. Exact source-backed null/missing behavior remains under review; Dart currently defaults missing counting totals to zero while React represents them as null.
+
+**Owner's genuine local corpus inspection:** The owner ran the read-only v5 inspector locally and reported manifest SHA-256 `b284d14cc6e39bb3dff89d7ffeef0cb8a714110d307fc73a8943867e8b39f33e`, **80** seasons, and six shard samples without structural issues. The release covered 2025–26 regular **582** and playoffs **230** players; 1986–87 regular **340** and playoffs **184**; 1946–47 regular **161** and playoffs **0**. These are **owner terminal outputs**, not an independent full-corpus comparison executed by GitHub. Missing fields in older data and 2025–26 playoffs remain real-source coverage constraints.
+
+**React-only CI synthetic UI measurements:** The original successful 1-cold/2-warm smoke reported these *warm medians* on Linux Chromium 141 / AMD EPYC 9V74:
+
+| Synthetic workload | Median first-visible (ms) | Median interaction (ms) | Comparison to Flutter |
+| --- | ---: | ---: | --- |
+| 1,000-row table | 321 | 410 | Not measured |
+| 10,000-row table | 644 | 407 | Not measured |
+| 50,000-row table | 2,738 | 447 | Not measured |
+| 300-point chart | 324 | 203 | Not measured |
+| 5,000-point chart | 537 | 248 | Not measured |
+| 25,000-point chart | 1,330 | 351 | Not measured |
+
+**These figures must not be used for the 10% acceptance rule.** Two warm measurements do not establish reliable p95, rendering throughput across platforms, or a matched Flutter baseline. The benchmark includes scripted waits in interaction timings.
+
+**New runnable real-data gates:** `npm run test:real` checks byte-for-byte canonical manifest identity on Flutter/React local servers before probing React's historical Stats/Advanced/chart flows and embedded Lab handshakes. `ARCSIDE_GUIDED_COLD_RUNS=5 ARCSIDE_GUIDED_WARM_RUNS=10 npm run compare:guided` collects alternating, operator-verified matched critical-task timings, including actual failures, without assuming Flutter widget UI is DOM-addressable. `flutter test test/phase3_stats_parity_export_test.dart --dart-define=ARCSIDE_PARITY_CORPUS=web/data/nba_static`, followed by `ARCSIDE_PARITY_REPORT_ONLY=1 npm run test:parity`, generates every observed real historical-stat mismatch. **These local real-data tests have been implemented but not executed from the remote GitHub environment.**
+
+**Decision after expanded checks:** The codebase and tests are substantially more ready for a genuine architecture decision; the evidence still does **not** satisfy the mandatory full-data golden checks, matched UI p95 threshold, native Safari/accessibility, full Labs roundtrip, or the full application feature-scope gates. Decision remains **PENDING**, no Flutter retirement or migration merge.
