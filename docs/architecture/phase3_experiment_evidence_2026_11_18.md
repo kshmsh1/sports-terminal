@@ -48,3 +48,11 @@ The sample fixture assertions validate a limited set of well-defined calculation
 ## Decision
 
 **PENDING (no go/no-go claim).** Retain Flutter as reference and Flutter-plus-web Labs as fallback. Do not merge this stacked experiment into `main` or deprecate Flutter until parity, task, browser, accessibility and matched benchmarks satisfy the pre-registered mandatory gates and owner signs off.
+
+## Dependency-security hardening (November 18, 2026)
+
+Upgraded the isolated experiment's direct npm dependencies to `echarts@6.1.0`, `vite@7.3.8`, and `vitest@4.1.12`. In CI the lockfile must be generated from the exact declared versions, reviewed, committed, then installs must switch to `npm ci`. The npm audit gate fails on any *moderate or higher* advisory, including transitive packages. ECharts v6 compatibility must pass the existing interactive chart browser tests. **Do not report zero advisories until the actual CI audit passes.** This change does not modify the Flutter application or Labs runtimes.
+
+### Screenshot-based UX observations (not Phase 3 acceptance evidence)
+
+Owner-provided browser screenshots demonstrate five reachable pages: Stats, Advanced Stats, one ECharts scatter explorer, and embedded original Python Lab and Excel Workspace. The visuals show coherent shell styling, but the Stats/Advanced metric surfaces remain narrower than Flutter's full platform, the Visualization Studio is an intentionally reduced exploratory scatter page, and the Labs retain distinct toolbars/interactions inside iframes. Preserve these as explicit feature-parity and design-integration gaps; screenshot review does not establish quantitative usability or rendering performance.
