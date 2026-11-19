@@ -14,7 +14,7 @@ Then:
 
 ```bash
 cd experimental/arcside-react
-npm install
+npm ci  # exact checked-in package-lock.json; use npm 11
 npm run dev
 # http://127.0.0.1:5173/stats
 ```
@@ -49,6 +49,59 @@ ARCSIDE_COLD_RUNS=5 ARCSIDE_WARM_RUNS=10 npm run benchmark
 The CBA golden exporter calls the original Dart engine and does not pretend to validate an absent React/CBA implementation. Save and human-review its output before treating it as a baseline. Benchmark command runs synthetic UI loads of 1k/10k/50k stats rows and 300/5k/25k chart points, writes raw samples/summary to ignored local `evidence/benchmarks`, and **cannot** establish Flutter-vs-React superiority by itself.
 
 For a real Phase 3 evaluation, follow the [pre-registered protocol](../../docs/architecture/phase3_frontend_proof_protocol.md) and the [implementation and evidence ledger](../../docs/architecture/phase3_experiment_evidence_2026_11_18.md). Record Flutter build/renderer/browser versions, identical live manifest fingerprint, source-backed real-data task outcomes, all three browsers and manual Safari/NVDA/VoiceOver findings. Do NOT make a migration recommendation until those gates pass.
+
+
+## Phase 3 evidence on the owner's real data (no invented baselines)
+
+**Reproducibility is complete:** the npm 11-generated lockfile from passing audited CI is checked in. Run `npm ci` to reproduce it, not `npm audit fix --force`.
+
+**Original Dart ⇄ React statistical comparison:**
+From the REPOSITORY ROOT, run:
+
+```bash
+flutter pub get
+flutter test test/phase3_stats_parity_export_test.dart --reporter expanded \
+  --dart-define=ARCSIDE_PARITY_CORPUS=web/data/nba_static \
+  --dart-define=ARCSIDE_PARITY_SEASONS=2025-26,1986-87,1946-47
+cd experimental/arcside-react
+ARCSIDE_PARITY_REPORT_ONLY=1 npm run test:parity
+```
+
+The original Flutter implementation writes `evidence/parity/dart-reference.json`; the independent TypeScript comparison writes `evidence/parity/parity-comparison.json`. The command compares all source-exposed metric values, display formatting, age/position, 6 rate bases, recorded team stints and percentiles. It **reports all mismatches**, including Dart's historical missing-field zero fallback versus React's explicit null behavior. `REPORT_ONLY=1` is not a passing strict gate; omit it to demand zero mismatches. Keep outputs local and review any intentional changes in source semantics rather than simply declaring them equal.
+
+**Real-source browser interactions:**
+Start both apps on separate local addresses. From repository root, launch Flutter in one terminal:
+
+```bash
+flutter run -d web-server --web-port 8765 --web-hostname 127.0.0.1
+```
+
+From another terminal launch the React pilot:
+
+```bash
+cd experimental/arcside-react
+npm ci
+npm run dev
+```
+
+From a third terminal in `experimental/arcside-react`:
+
+```bash
+npx playwright install chromium firefox webkit
+ARCSIDE_REAL_BROWSERS=chromium,firefox,webkit npm run test:real
+```
+
+The checker **fails** if either server serves an absent or byte-different `manifest.json` than the owner's actual local source. It traverses historical regular and playoff Stats/Advanced/Visualization and Labs context handshakes, producing `evidence/real/real-source-journeys.json` plus comparison screenshots. It captures a Flutter reference screenshot but does **not** compare Flutter widget interactions automatically; Flutter widget trees are not equivalent to React DOM selectors.
+
+**Matched same-machine Flutter/React workflow measurements** (interactive and operator-verified):
+
+```bash
+ARCSIDE_GUIDED_COLD_RUNS=5 ARCSIDE_GUIDED_WARM_RUNS=10 npm run compare:guided
+```
+
+Use both apps with the same static data and Chromium version. Follow the prompts for three pre-registered critical tasks: regular/playoffs switching; rate basis + sorting; and visualization zoom/pan/axes. Each application gets **5 cold and 10 warm trials**, alternating order. The same small stopwatch controller appears in both windows. Click **Start** immediately before the task and **Finish** only after verifying the correct result; use **Fail** for incorrect or broken tasks. The report at `evidence/guided/guided-matched-task-timings.json` contains raw timings, p50/p95, hardware, source fingerprint and whether the proposed 10% p95 regression rule was satisfied. Trials depend on careful manual setup of Flutter's equivalent screen; timing is human-controlled and not an automated dropped-frame benchmark.
+
+**Still required for a migration decision:** real Safari on macOS and screen-reader keyboard journeys, repeatable dropped-frame and memory measurements, workbook import/export integrity, complete metric/display/sort parity, signed-off trade rules golden cases, and feature equivalence beyond the deliberately narrow Stats/Visualization pilot. No milestone may be marked as passed solely because a test tool exists.
 
 ## Lab security
 
