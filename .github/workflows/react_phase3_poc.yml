@@ -1,0 +1,44 @@
+name: React Phase 3 prototype quality
+on:
+  pull_request:
+    paths:
+      - 'experimental/arcside-react/**'
+      - 'web/labs/arcside_context_bridge.mjs'
+      - 'web/labs/python/index.html'
+      - 'web/labs/sheets/index.html'
+      - '.github/workflows/react_phase3_poc.yml'
+  workflow_dispatch:
+
+jobs:
+  react-poc:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: experimental/arcside-react
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned top-level packages
+        run: npm install --no-audit --no-fund
+      - name: Typecheck and build experimental shell
+        run: npm run build
+      - name: Contract unit tests
+        run: npm test
+      - name: Install Chromium for isolated synthetic UI journey tests
+        run: npx playwright install --with-deps chromium
+      - name: Browser journeys (synthetic fixtures, not performance acceptance)
+        run: npm run test:browser
+      - name: Retain traces and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arcside-react-phase3-browser-evidence
+          path: |
+            experimental/arcside-react/test-results
+            experimental/arcside-react/playwright-report
+          if-no-files-found: ignore
+          retention-days: 14
