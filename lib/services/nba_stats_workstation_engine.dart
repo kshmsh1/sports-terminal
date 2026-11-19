@@ -670,166 +670,168 @@ class NbaStatsWorkstationEngine {
     Map<String, dynamic> profile,
     NbaStatsBasis basis,
   ) {
-    final games = _number(_first(raw, const ['games', 'gp', 'g'])) ?? 0;
-    final minutesTotal = _total(
-      raw,
-      games,
+    // Published NBA history has genuinely missing fields in early seasons.
+    // Null is unavailable, whereas source-provided 0 is an actual measured zero.
+    // Do not impute zero totals for unknown data, including team stints.
+    final games = _number(_first(raw, const ['games', 'gp', 'g']));
+    double? sourced(List<String> totals, List<String> perGame) =>
+        _optionalTotal(raw, games, totals, perGame);
+    final minutesTotal = sourced(
       const ['minutes', 'mp'],
       const ['minutes_per_game', 'mpg'],
     );
-    final points = _total(
-      raw,
-      games,
+    final points = sourced(
       const ['points', 'pts'],
       const ['points_per_game', 'ppg'],
     );
-    final rebounds = _total(
-      raw,
-      games,
+    final rebounds = sourced(
       const ['rebounds', 'trb', 'reb'],
       const ['rebounds_per_game', 'rpg'],
     );
-    final offensiveRebounds = _total(
-      raw,
-      games,
+    final offensiveRebounds = sourced(
       const ['offensive_rebounds', 'orb', 'oreb'],
       const ['offensive_rebounds_per_game', 'oreb_per_game'],
     );
-    final defensiveRebounds = _total(
-      raw,
-      games,
+    final defensiveRebounds = sourced(
       const ['defensive_rebounds', 'drb', 'dreb'],
       const ['defensive_rebounds_per_game', 'dreb_per_game'],
     );
-    final assists = _total(
-      raw,
-      games,
+    final assists = sourced(
       const ['assists', 'ast'],
       const ['assists_per_game', 'apg'],
     );
-    final steals = _total(
-      raw,
-      games,
+    final steals = sourced(
       const ['steals', 'stl'],
       const ['steals_per_game', 'spg'],
     );
-    final blocks = _total(
-      raw,
-      games,
+    final blocks = sourced(
       const ['blocks', 'blk'],
       const ['blocks_per_game', 'bpg'],
     );
-    final turnovers = _total(
-      raw,
-      games,
+    final turnovers = sourced(
       const ['turnovers', 'tov'],
       const ['turnovers_per_game', 'tov_per_game'],
     );
-    final fouls = _total(
-      raw,
-      games,
+    final fouls = sourced(
       const ['personal_fouls', 'pf'],
       const ['personal_fouls_per_game', 'pf_per_game'],
     );
-    // A missing historical +/- is unknown, not a measured zero.
-    // Preserve explicit zero and source-provided per-game fallback.
-    final plusMinus = _optionalTotal(
-      raw,
-      games,
+    final plusMinus = sourced(
       const ['plus_minus'],
       const ['plus_minus_per_game'],
     );
-    final fgm = _total(
-      raw,
-      games,
+    final fgm = sourced(
       const ['field_goals_made', 'fg', 'fgm'],
       const ['field_goals_made_per_game', 'fgm_per_game'],
     );
-    final fga = _total(
-      raw,
-      games,
+    final fga = sourced(
       const ['field_goal_attempts', 'fga'],
       const ['field_goal_attempts_per_game', 'fga_per_game'],
     );
-    final threePm = _total(
-      raw,
-      games,
+    final threePm = sourced(
       const ['three_pointers_made', 'fg3', 'three_pm'],
       const ['three_pointers_made_per_game', 'three_pm_per_game'],
     );
-    final threePa = _total(
-      raw,
-      games,
+    final threePa = sourced(
       const ['three_point_attempts', 'fg3a', 'three_pa'],
       const ['three_point_attempts_per_game', 'three_pa_per_game'],
     );
-    final ftm = _total(
-      raw,
-      games,
+    final ftm = sourced(
       const ['free_throws_made', 'ft', 'ftm'],
       const ['free_throws_made_per_game', 'ftm_per_game'],
     );
-    final fta = _total(
-      raw,
-      games,
+    final fta = sourced(
       const ['free_throw_attempts', 'fta'],
       const ['free_throw_attempts_per_game', 'fta_per_game'],
     );
     final directPossessions = _number(
       _first(raw, const ['possessions', 'poss', 'estimated_possessions']),
     );
-    var possessions =
-        directPossessions ??
-        math
-            .max(0.0, fga + .44 * fta - offensiveRebounds + turnovers)
-            .toDouble();
+    var possessions = directPossessions;
     var possessionsEstimated = directPossessions == null;
-    if (possessions <= 0 && minutesTotal > 0) {
+    if (possessions == null &&
+        fga != null &&
+        fta != null &&
+        offensiveRebounds != null &&
+        turnovers != null) {
+      possessions = math.max(
+        0.0,
+        fga + .44 * fta - offensiveRebounds + turnovers,
+      ).toDouble();
+    }
+    if ((possessions == null || possessions <= 0) &&
+        minutesTotal != null && minutesTotal > 0) {
       possessions = minutesTotal * 2.05;
       possessionsEstimated = true;
     }
 
-    final scale = switch (basis) {
+    final double? scale = switch (basis) {
       NbaStatsBasis.totals => 1.0,
-      NbaStatsBasis.perGame => games > 0 ? 1 / games : 0.0,
-      NbaStatsBasis.per36 => minutesTotal > 0 ? 36 / minutesTotal : 0.0,
-      NbaStatsBasis.per48 => minutesTotal > 0 ? 48 / minutesTotal : 0.0,
-      NbaStatsBasis.per75 => possessions > 0 ? 75 / possessions : 0.0,
-      NbaStatsBasis.per100 => possessions > 0 ? 100 / possessions : 0.0,
+      NbaStatsBasis.perGame =>
+        games != null && games > 0 ? 1 / games : null,
+      NbaStatsBasis.per36 =>
+        minutesTotal != null && minutesTotal > 0 ? 36 / minutesTotal : null,
+      NbaStatsBasis.per48 =>
+        minutesTotal != null && minutesTotal > 0 ? 48 / minutesTotal : null,
+      NbaStatsBasis.per75 =>
+        possessions != null && possessions > 0 ? 75 / possessions : null,
+      NbaStatsBasis.per100 =>
+        possessions != null && possessions > 0 ? 100 / possessions : null,
     };
-    final minuteScale = basis == NbaStatsBasis.totals ? 1.0 : scale;
-    final twoPm = math.max(0.0, fgm - threePm).toDouble();
-    final twoPa = math.max(0.0, fga - threePa).toDouble();
-    final shootingPossessions = fga + .44 * fta;
-    final fgPct = _ratioOrSource(raw, fgm, fga, const [
+    double? scaled(double? n) => n == null || scale == null ? null : n * scale;
+    final twoPm = fgm == null || threePm == null
+        ? null
+        : math.max(0.0, fgm - threePm).toDouble();
+    final twoPa = fga == null || threePa == null
+        ? null
+        : math.max(0.0, fga - threePa).toDouble();
+    final shooting = fga == null || fta == null ? null : fga + .44 * fta;
+    final fgPct = _ratioOrSourceNullable(raw, fgm, fga, const [
       'fg_pct',
       'field_goal_percentage',
       'field_goal_pct',
       'avg_fg_pct',
     ]);
-    final threePct = _ratioOrSource(raw, threePm, threePa, const [
+    final threePct = _ratioOrSourceNullable(raw, threePm, threePa, const [
       'three_point_percentage',
       'three_point_pct',
       'fg3_pct',
       'avg_fg3_pct',
     ]);
-    final ftPct = _ratioOrSource(raw, ftm, fta, const [
+    final ftPct = _ratioOrSourceNullable(raw, ftm, fta, const [
       'free_throw_percentage',
       'free_throw_pct',
       'ft_pct',
       'avg_ft_pct',
     ]);
-    final tsPct = _ratioOrSource(raw, points, 2 * shootingPossessions, const [
-      'true_shooting_percentage', 'ts_pct', 'avg_ts_pct',
-    ]);
-    final efgPct = _ratioOrSource(raw, fgm + .5 * threePm, fga, const [
-      'effective_field_goal_percentage', 'efg_pct',
-    ]);
-    final bpm = _number(
-      _first(raw, const ['avg_bpm', 'bpm', 'box_plus_minus']),
+    final tsPct = _ratioOrSourceNullable(
+      raw, points, shooting == null ? null : shooting * 2,
+      const ['true_shooting_percentage', 'ts_pct', 'avg_ts_pct'],
     );
-
-    double scaled(double value) => value * scale;
+    final efgPct = _ratioOrSourceNullable(
+      raw,
+      fgm == null || threePm == null ? null : fgm + .5 * threePm,
+      fga,
+      const ['effective_field_goal_percentage', 'efg_pct'],
+    );
+    final bpm = _number(_first(raw, const ['avg_bpm', 'bpm', 'box_plus_minus']));
+    final production = points == null ||
+            rebounds == null ||
+            assists == null ||
+            steals == null ||
+            blocks == null ||
+            turnovers == null
+        ? null
+        : points + .7 * rebounds + .7 * assists + steals + blocks -
+            .7 * turnovers;
+    final stocks = steals == null || blocks == null
+        ? null : steals + blocks;
+    final defensiveEvents = stocks == null || defensiveRebounds == null
+        ? null : stocks + .35 * defensiveRebounds;
+    final astTov = assists == null || turnovers == null
+        ? null
+        : turnovers > 0 ? assists / turnovers
+        : (assists > 0 && turnovers == 0 ? assists : null);
 
     return NbaStatsRow(
       playerId: _display(_first(raw, const ['player_id', 'id', 'slug'])),
@@ -838,9 +840,8 @@ class NbaStatsWorkstationEngine {
       position: _position(raw, profile),
       values: {
         'gp': games,
-        'min': minutesTotal * minuteScale,
-        'age':
-            _number(_first(raw, const ['age'])) ??
+        'min': scaled(minutesTotal),
+        'age': _number(_first(raw, const ['age'])) ??
             _number(_first(profile, const ['age'])),
         'pts': scaled(points),
         'ast': scaled(assists),
@@ -856,7 +857,7 @@ class NbaStatsWorkstationEngine {
         'fg_pct': fgPct,
         'two_pm': scaled(twoPm),
         'two_pa': scaled(twoPa),
-        'two_pct': _ratio(twoPm, twoPa),
+        'two_pct': _ratioNullable(twoPm, twoPa),
         'three_pm': scaled(threePm),
         'three_pa': scaled(threePa),
         'three_pct': threePct,
@@ -865,28 +866,17 @@ class NbaStatsWorkstationEngine {
         'ft_pct': ftPct,
         'ts_pct': tsPct,
         'efg_pct': efgPct,
-        'points_per_shot': _ratio(points, shootingPossessions),
-        'ast_tov': turnovers > 0
-            ? assists / turnovers
-            : (assists > 0 ? assists : null),
-        'three_rate': _ratio(threePa, fga),
-        'ft_rate': _ratio(fta, fga),
-        'plus_minus': plusMinus == null ? null : scaled(plusMinus),
+        'points_per_shot': _ratioNullable(points, shooting),
+        'ast_tov': astTov,
+        'three_rate': _ratioNullable(threePa, fga),
+        'ft_rate': _ratioNullable(fta, fga),
+        'plus_minus': scaled(plusMinus),
         'bpm': bpm,
-        'game_score_proxy': scaled(
-          points +
-              .7 * rebounds +
-              .7 * assists +
-              steals +
-              blocks -
-              .7 * turnovers,
-        ),
-        'stocks': scaled(steals + blocks),
-        'defense_events': scaled(steals + blocks + .35 * defensiveRebounds),
-        'possessions_proxy': basis == NbaStatsBasis.totals
-            ? possessions
-            : possessions * scale,
-        'scoring_load': _ratio(shootingPossessions, possessions),
+        'game_score_proxy': scaled(production),
+        'stocks': scaled(stocks),
+        'defense_events': scaled(defensiveEvents),
+        'possessions_proxy': scaled(possessions),
+        'scoring_load': _ratioNullable(shooting, possessions),
       },
       percentiles: const {},
       raw: raw,
@@ -949,14 +939,14 @@ Object? _first(Map<String, dynamic> row, List<String> keys) {
 /// Missing source +/- remains unavailable instead of fabricating 0.
 double? _optionalTotal(
   Map<String, dynamic> row,
-  double games,
+  double? games,
   List<String> totalKeys,
   List<String> perGameKeys,
 ) {
   final direct = _number(_first(row, totalKeys));
   if (direct != null) return direct;
   final perGame = _number(_first(row, perGameKeys));
-  return perGame == null ? null : perGame * games;
+  return perGame == null || games == null ? null : perGame * games;
 }
 
 double _total(
@@ -970,6 +960,22 @@ double _total(
   final perGame = _number(_first(row, perGameKeys));
   if (perGame != null) return perGame * games;
   return 0;
+}
+
+double? _ratioNullable(double? numerator, double? denominator) {
+  if (numerator == null || denominator == null || denominator <= 0) return null;
+  return numerator / denominator;
+}
+
+double? _ratioOrSourceNullable(
+  Map<String, dynamic> row,
+  double? numerator,
+  double? denominator,
+  List<String> sourceKeys,
+) {
+  final source = _number(_first(row, sourceKeys));
+  if (source != null) return source > 1 ? source / 100 : source;
+  return _ratioNullable(numerator, denominator);
 }
 
 double? _ratioOrSource(
