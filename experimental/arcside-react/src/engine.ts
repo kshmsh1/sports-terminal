@@ -8,7 +8,7 @@ export interface Row { id: string; player: string; team: string; position: strin
   values: Record<MetricKey, number | null>; percentiles: Partial<Record<MetricKey, number>>; }
 export interface Metric { key: MetricKey; label: string; format?: 'int'|'percent'|'signed'; higher?: boolean }
 export const metrics: Metric[] = [
-  ['gp','GP','int'],['min','MIN'],['age','AGE','int'],['pts','PTS'],['ast','AST'],['reb','REB'],
+  ['gp','GP','int'],['min','MIN'],['age','AGE'],['pts','PTS'],['ast','AST'],['reb','REB'],
   ['oreb','OREB'],['dreb','DREB'],['stl','STL'],['blk','BLK'],['tov','TOV'],['pf','PF'],
   ['fgm','FGM'],['fga','FGA'],['fg_pct','FG%','percent'],['two_pm','2PM'],['two_pa','2PA'],
   ['two_pct','2P%','percent'],['three_pm','3PM'],['three_pa','3PA'],['three_pct','3P%','percent'],
