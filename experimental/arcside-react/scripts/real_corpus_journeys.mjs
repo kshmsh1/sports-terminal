@@ -30,7 +30,8 @@ const reports=[];
 for(const name of browsers){
  const type={chromium,firefox,webkit}[name];
  if(!type)throw Error('Unsupported browser '+name);
- const browser=await type.launch({headless:process.env.ARCSIDE_HEADFUL!=='1'});
+ const browser=await type.launch({headless:process.env.ARCSIDE_HEADFUL!=='1',
+  ...(name==='chromium'&&process.env.ARCSIDE_BROWSER_CHANNEL?{channel:process.env.ARCSIDE_BROWSER_CHANNEL}:{})});
  const result={browser:name,version:browser.version(),references:[],journeys:[],errors:[]};
  reports.push(result);
  try{
