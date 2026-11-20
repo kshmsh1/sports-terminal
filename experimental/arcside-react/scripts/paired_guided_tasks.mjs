@@ -30,13 +30,13 @@ if(manifest.contract!=='sports-terminal-static-nba-website-v5'||manifest.static_
 const tasks=[
  {id:'season',label:'Switch Regular season → Playoffs → Regular season; verify counts',
    reactPath:'/stats?season=2025-26&segment=regular&basis=perGame',
-   instructions:'Start on Stats for 2025-26 Regular. Switch to Playoffs and back. Verify both table counts and qualification.'},
- {id:'basis',label:'Change Per Game → Per 36 → Per 100, then reverse PTS sort',
-   reactPath:'/stats?season=2025-26&segment=regular&basis=perGame',
-   instructions:'Start on Stats / 2025-26 / Per Game. Switch to Per 36, then Per 100, and sort PTS ascending. Verify values.'},
+   instructions:'BOTH APPS: open regular Stats for 2025-26 Regular. Switch to Playoffs and back. Verify counts and qualification. Do not change rate basis during this task.'},
+ {id:'basis',label:'Advanced Stats: switch Per Game → Per 36 → Per 100 and reverse a shared metric sort',
+   reactPath:'/advanced?season=2025-26&segment=regular&basis=perGame',
+   instructions:'BOTH APPS: open Advanced Stats (NOT regular Stats), select 2025-26 Regular and Per Game. Switch Per Game → Per 36 → Per 100, then reverse-sort the same metric available in both tables. Verify the numbers and sort order. If a control or metric is missing in either app, mark FAIL; do not substitute a different task.'},
  {id:'chart',label:'Zoom, pan, reset and change both axes in Visualization Studio',
    reactPath:'/visualizations?season=2025-26&segment=regular&basis=perGame',
-   instructions:'Start on Visualization Studio / 2025-26 / Regular. Wheel zoom, drag pan, reset, then change X and Y metrics. Verify plot and tooltips.'}
+   instructions:'BOTH APPS: open the available player scatter visualization for 2025-26 Regular. Wheel zoom, drag pan, reset, then change X and Y metrics. Verify plot and tooltips. If the control sets are not equivalent, mark FAIL and report the difference; do not silently change task.'}
 ];
 const rl=createInterface({input,output});
 const browser=await chromium.launch({
@@ -96,6 +96,7 @@ try {
  console.log('Both servers use the same original v5 manifest SHA256:',hash(data));
  console.log('Stopwatch buttons appear in BOTH apps. Keyboard: Ctrl+Shift+8 START, Ctrl+Shift+9 FINISH, Ctrl+Shift+0 FAIL.');
  console.log('All timings require operator verification and reflect human task completion, not code-only frame timing.');
+ console.log('IMPORTANT: rate-basis task is on ADVANCED STATS in both apps, not regular Stats.');
  for(const task of tasks){
   console.log('\nTASK '+task.id+': '+task.label+'\n'+task.instructions);
   for(let trial=0;trial<cold+warm;trial++){
