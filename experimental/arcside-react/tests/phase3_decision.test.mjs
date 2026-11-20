@@ -18,10 +18,13 @@ const real={source:'ACTUAL_LOCAL_V5_CORPUS',manifestSha256:hash,
  seasons:['1946-47','1986-87','2025-26'],
  browsers:[{browser:'chromium',version:'157',references:[
   {app:'React',manifestSha256:hash},{app:'Flutter',manifestSha256:hash}],
-  errors:[],consoleErrors:[],
-  sourceShards:Array.from({length:12},(_,i)=>({app:i%2?'React':'Flutter',sha256:hash})),
+  errors:[],consoleErrors:[],flutterBootstrap:{status:'PASS',root:{tagName:'FLUTTER-VIEW',width:1440,height:900,visible:true},screenshotSha256:hash},
+  sourceShards:['1946-47','1986-87','2025-26'].flatMap(season=>
+   ['regular','playoffs'].flatMap(segment=>['React','Flutter'].map(app=>({
+    app,shard:'seasons/'+season+'/'+segment+'.json',sha256:hash})))),
   journeys:Array.from({length:6},(_,i)=>({kind:'React verified real NBA Stats route',
    season:['1946-47','1986-87','2025-26'][Math.floor(i/2)],
+   segment:i%2?'playoffs':'regular',
    failures:[],checks:Array.from({length:8},(_,j)=>'check-'+j)}))}]};
 const advancedSource={kind:'ARCSIDE_ADVANCED_STATS_REAL_DART_REACT_ACCEPTANCE_V1',
  source:'ACTUAL_LOCAL_V5_CORPUS',manifestSha256:hash,status:'PASS',mismatches:0,
@@ -30,6 +33,13 @@ const advancedSource={kind:'ARCSIDE_ADVANCED_STATS_REAL_DART_REACT_ACCEPTANCE_V1
 const advancedGuided={kind:'ARCSIDE_ADVANCED_MATCHED_TASKS_V2',protocol:'ADVANCED_STATS_V2_AFTER_CATALOG_REPAIR',
  source:'ACTUAL_LOCAL_V5_CORPUS',manifestSha256:hash,operatorConfirmed:true,
  qualified:true,p95ReactOverFlutter:1.0,within10Pct:true,
+ raw:['Flutter','React'].flatMap(app=>Array.from({length:15},(_,i)=>({
+  app,trial:i+1,cold:i<5,ms:100,passed:true,operatorVerified:true})))
+};
+const visualizationGuided={kind:'ARCSIDE_VISUALIZATION_MATCHED_TASKS_V1',
+ protocol:'VISUALIZATION_CHART_V1_MATCHED',source:'ACTUAL_LOCAL_V5_CORPUS',
+ manifestSha256:hash,operatorConfirmed:true,qualified:true,
+ p95ReactOverFlutter:1,within10Pct:true,
  raw:['Flutter','React'].flatMap(app=>Array.from({length:15},(_,i)=>({
   app,trial:i+1,cold:i<5,ms:100,passed:true,operatorVerified:true})))
 };
@@ -57,7 +67,7 @@ test('old synthetic equality is not accepted as original canonical source proof'
  assert.equal(a.fullMigrationApproved,false);
 });
 test('complete original narrow pilot can pass without signing off full migration',()=>{
- const a=assess({parity,real,guided:makeGuide(),manifestBytes,advancedSource,advancedGuided});
+ const a=assess({parity,real,guided:makeGuide(),manifestBytes,advancedSource,advancedGuided,visualizationGuided});
  assert.equal(a.pilot,'MATCHED_PILOT_GATES_PASSED_WITH_FULL_SCOPE_PENDING');
  assert.equal(a.fullMigrationApproved,false);
  assert.ok(a.blockers.includes('real_safari_voiceover_nvda_accessibility'));
@@ -114,4 +124,49 @@ test('Advanced Stats p95 ratio is an independent decision criterion',()=>{
   advancedSource,advancedGuided:slower});
  assert.equal(result.gates.find(x=>x.name==='advanced_stats_ui_feature_parity').status,'PASS');
  assert.equal(result.gates.find(x=>x.name==='advanced_stats_matched_task_p95').status,'FAIL');
+});
+
+test('Flutter root probe is REQUIRED; screenshots alone do not certify visible startup',()=>{
+ const broken={...real,browsers:real.browsers.map(b=>({...b,flutterBootstrap:null}))};
+ const a=assess({parity,real:broken,guided:makeGuide(),manifestBytes,
+  advancedSource,advancedGuided,visualizationGuided});
+ const g=a.gates.find(x=>x.name==='real_source_react_workflow_and_flutter_bootstrap');
+ assert.equal(g.status,'FAIL');
+ assert.equal(g.detail.browsers[0].flutterBootstrap,'NOT_RUN');
+});
+test('authentic source browser journeys require every exact selected season and segment',()=>{
+ const broken={...real,browsers:real.browsers.map(b=>({...b,
+  journeys:b.journeys.filter(x=>!(x.season==='1946-47'&&x.segment==='playoffs'))}))};
+ const a=assess({parity,real:broken,guided:makeGuide(),manifestBytes,
+  advancedSource,advancedGuided,visualizationGuided});
+ assert.equal(a.gates.find(x=>x.name==='real_source_react_workflow_and_flutter_bootstrap').status,'FAIL');
+});
+test('corrected performance gate excludes original failed basis and chart trials',()=>{
+ const old=makeGuide(100,true);
+ const a=assess({parity,real,guided:old,manifestBytes,
+  advancedSource,advancedGuided,visualizationGuided});
+ const g=a.gates.find(x=>x.name==='matched_flutter_react_operator_tasks_p95');
+ assert.equal(g.status,'PASS');
+ assert.equal(g.detail.legacyBasisAndChartExcluded,true);
+ assert.equal(g.detail.season.preservedHistoricalSamples,30);
+});
+test('no Visualization protocol means combined performance gate remains blocked',()=>{
+ const a=assess({parity,real,guided:makeGuide(),manifestBytes,advancedSource,advancedGuided});
+ assert.equal(a.gates.find(x=>x.name==='matched_flutter_react_operator_tasks_p95').status,'FAIL');
+});
+test('unattested or duplicate visualization trials cannot certify matched performance',()=>{
+ const tampered={...visualizationGuided,
+  raw:[...visualizationGuided.raw.slice(1),visualizationGuided.raw[1]]};
+ const a=assess({parity,real,guided:makeGuide(),manifestBytes,
+  advancedSource,advancedGuided,visualizationGuided:tampered});
+ assert.equal(a.gates.find(x=>x.name==='matched_flutter_react_operator_tasks_p95').status,'FAIL');
+ const b=assess({parity,real,guided:makeGuide(),manifestBytes,
+  advancedSource,advancedGuided,visualizationGuided:{...visualizationGuided,operatorConfirmed:false}});
+ assert.equal(b.gates.find(x=>x.name==='matched_flutter_react_operator_tasks_p95').status,'FAIL');
+});
+test('react chart p95 over 10 percent slower fails composite gate',()=>{
+ const slow={...visualizationGuided,p95ReactOverFlutter:1.11,within10Pct:false};
+ const a=assess({parity,real,guided:makeGuide(),manifestBytes,
+  advancedSource,advancedGuided,visualizationGuided:slow});
+ assert.equal(a.gates.find(x=>x.name==='matched_flutter_react_operator_tasks_p95').status,'FAIL');
 });
