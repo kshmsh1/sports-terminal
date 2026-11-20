@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import type {RateBasis,SeasonType} from './data';
 import type {Row,MetricKey} from './engine';
-import {formatMetric,sortRows,stintRows} from './engine';
+import {formatMetric,stintRows} from './engine';
 import {advancedGroups,advancedMetricCatalog,rateSensitiveKeys} from './advancedCatalog';
 import type {AdvancedMetric} from './advancedCatalog';
 
@@ -24,18 +24,33 @@ const rawNumber=(v:unknown):number|null=>{
 export function metricValue(row:Row,metricKey:string):number|null{
  const metric=advancedMetricCatalog[metricKey];
  if(!metric)return null;
- if(metric.engine && nativeEngineKeys.has(metric.engine as MetricKey)){
-  const value=row.values[metric.engine as MetricKey];
-  return value??null;
- }
- // Only source-native fields actually present in the canonical shard count.
- // Do not manufacture provider tracking or proprietary player metrics.
- for(const k of [metric.key,...metric.raw]){
-  const v=rawNumber(row.raw[k]);
-  if(v!==null){
-   if(metric.format==='percent')return v>1?v/100:v;
-   return v;
+ // Flutter reference resolver checks source-native aliases BEFORE computed engine values.
+ // Normalize punctuation/casing in source keys as the Dart catalog resolver does.
+ const norm=(s:string)=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
+ const rawKeys=Object.keys(row.raw);
+ for(const alias of metric.raw){
+  let v=rawNumber(row.raw[alias]);
+  if(v===null){
+   const match=rawKeys.find(k=>norm(k)===norm(alias));
+   if(match)v=rawNumber(row.raw[match]);
   }
+  if(v!==null)return metric.format==='percent'&&Math.abs(v)>1?v/100:v;
+ }
+ if(metric.engine && nativeEngineKeys.has(metric.engine as MetricKey))
+  return row.values[metric.engine as MetricKey]??null;
+ // Explicit Flutter catalog fallbacks; missing inputs remain missing.
+ if(metricKey==='pps'){
+  const p=row.values.pts,a=row.values.fga;
+  return p!==null&&a!==null&&a>0?p/a:null;
+ }
+ if(metricKey==='net_rating'){
+  const offense=metricValue(row,'ortg'),defense=metricValue(row,'drtg');
+  return offense!==null&&defense!==null?offense-defense:null;
+ }
+ if(metricKey==='contested_rpg'||metricKey==='uncontested_rpg'){
+  const prefix=metricKey==='contested_rpg'?'contested':'uncontested';
+  const offense=metricValue(row,prefix+'_orb_pg'),defense=metricValue(row,prefix+'_dreb_pg');
+  return offense===null&&defense===null?null:(offense??0)+(defense??0);
  }
  return null;
 }
