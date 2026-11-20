@@ -85,6 +85,43 @@ ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --automate
 
 For the synthetic cross-browser tests, run `(cd experimental/arcside-react && npm run test:browser)` with browser dependencies installed. Do not restart the 90-trial guided comparison or use `--all` until a new equivalence check and test protocol are approved.
 
+## Targeted Advanced Stats acceptance, post-repair
+
+**New protocol only. Never reuse the 34 original operator trials for post-repair Advanced Stats measurements.** Source parity and human verification are distinct. The original issue remains in `evidence/guided/advanced-stats-parity-blocker.json` as immutable evidence.
+
+The controlled acceptance is implemented in `test/phase3_advanced_acceptance_export_test.dart`, `scripts/advanced_acceptance_compare.mjs`, and `scripts/guided_advanced_acceptance.mjs` (under the React experiment). The Dart exporter **executes the original** `NbaStatsWorkstationEngine` and `NbaTerminalMetricResolver` over exact canonical season shards for 2025–26, 1986–87, and 1946–47, regular and postseason, across all six rate bases. React independently computes its values from those same local shards, checks the Dart-exported metric catalog and group definitions, samples players across each full season, and records per-column numerical/null agreement, default filters, ascending/descending PPG ordering, and source availability. Unpopulated provider metrics are reported explicitly; empty 1946–47 playoff samples are never counted as affirmative evidence.
+
+First, run the **automated** reference-and-browser acceptance (do not restart old 90-trial study):
+
+~~~bash
+cd ~/sports_terminal
+git pull --ff-only
+(cd experimental/arcside-react && npm run build && npm test)
+ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --advanced-acceptance
+~~~
+
+This creates `evidence/advanced/dart-reference.json` and `evidence/advanced/advanced-source-parity.json`. The automated stage fails on mismatched original NBA data, catalog semantics, metric values, filter/sort behavior, or browser runtime errors. The source report includes a capped sample of precise mismatches to debug, not an unconditional PASS. Review `evidence/decision/phase3-decision.md` after the run. If source parity fails, fix the actual difference and rerun; **never** skip the check or reuse old goldens.
+
+Only after source parity passes, run the **new isolated matched UI/task performance protocol**:
+
+~~~bash
+ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --advanced-guided
+~~~
+
+The operator first visually checks the *actual Flutter Advanced Stats and React Advanced Stats* side-by-side. Flutter cannot be certified via React DOM selectors. The preflight requires explicitly typing `MATCHED`; otherwise it records a blocker and does not time anything. On acceptance, the guided task is identical in each app: 2025–26 Regular / Overview / Per Game / PTS descending; start stopwatch, select Per 36 then Per 100, reverse-sort PTS/100, verify the values and sort, finish or fail. Runs are 5 cold + 10 warm per app, alternating app order (30 total). Recordings include machine and browser version, original manifest hash, cold/warm counts, raw measurements, and 50th/95th percentile. The existing 10% p95 regression gate applies; 30 correct completions and a verified preflight are required. **Any failed functional attempt stops the trial set.**
+
+Trials are checkpointed to `evidence/advanced/guided-checkpoint-v2.json` and reported at `evidence/advanced/advanced-guided-timings-v2.json`. If interrupted after a successful preflight, resume the corrected protocol with:
+
+~~~bash
+ARCSIDE_ADVANCED_RESUME=1 ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --advanced-guided
+~~~
+
+The decision report has independent `advanced_stats_source_semantic_parity`, `advanced_stats_ui_feature_parity`, and `advanced_stats_matched_task_p95` gates. It may supersede the *historical UI blocker* only after the new real-source evidence plus operator-attested full matched trials; it never deletes old failed trials. Even an Advanced Stats PASS **does not approve a full framework migration**.
+
+### Remaining Phase 3 work by scope
+
+For the **narrow React technical proof**, real-data cross-engine engine parity and the production-build/browser shell exist; the new Advanced Stats evaluation, visualization equivalence/performance, and final evidence review remain. For an actual **whole-platform replacement decision**, additional gates are independent: complete Flutter feature and CBA/trade/profile parity, native macOS Safari and VoiceOver/Windows NVDA accessibility, original Labs workbook round-trip and native-service security, matched peak-memory and render/GPU measurements, and explicit user review/signoff. The React POC deliberately omits large product screens, so those are substantive implementation projects, not merely tests that can be marked complete. Avoid quoting a percentage of full migration readiness from the narrow numeric parity results.
+
 ## Recommended architecture decision as of November 20
 
 **Retain Flutter as the authoritative product, keep the React pilot isolated and continue the controlled evidence collection.** React browser-native routes, semantics and seamless JS Labs integration are promising, and the sampled 100% statistical match materially reduces porting risk. But neither React speed superiority nor complete product parity has been measured or established. The proposed 10% p95 performance threshold is a decision criterion, not an observed advantage. A failed critical task, a significant React slowdown, or a lost feature rejects full replacement even if the mathematical comparison is perfect.
