@@ -233,7 +233,12 @@ for(const name of browsers){
     assert.equal(await p.getByLabel('Y metric').inputValue(),'pts');
     const displayedRows=await p.locator('.studio .chart-accessible tbody tr').count();
     assert.ok(displayedRows<=40,'default scatter must never plot above Flutter top-40');
-    // The title also contains a `.subtle` color-group label (span). Only the\n    // population summary paragraph is the source-backed plotted-row readout.\n    // Require a unique match so future markup drift fails explicitly.\n    const plottedSummary=p.locator('.studio-chart-title p.subtle');\n    assert.equal(await plottedSummary.count(),1,\n     'Expected exactly one plotted-population summary in the Studio chart title');\n    const plottedLabel=await plottedSummary.innerText();
+    // The title also contains a subtle color-group label (span).
+    // Select only the source-backed plotted-population summary paragraph.
+    const plottedSummary=p.locator('.studio-chart-title p.subtle');
+    assert.equal(await plottedSummary.count(),1,
+     'Expected exactly one plotted-population summary in the Studio chart title');
+    const plottedLabel=await plottedSummary.innerText();
     const matched=plottedLabel.match(/^([0-9][0-9,]*) plotted from ([0-9][0-9,]*) eligible/);
     assert.ok(matched,'Studio must report original-source plotted and eligible row counts');
     const plottedNumber=Number(matched[1].replaceAll(',',''));
