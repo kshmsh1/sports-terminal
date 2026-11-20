@@ -44,7 +44,7 @@ function grouped(guided){
  }
  return rows;
 }
-export function assess({parity,real,guided,manifestBytes}){
+export function assess({parity,real,guided,manifestBytes,featureBlocker=null}){
  const g=[];
  const corpusHash=manifestBytes?sha256(manifestBytes):null;
  const realCases=parity?.byCase??{};
@@ -82,6 +82,10 @@ export function assess({parity,real,guided,manifestBytes}){
   {browsers:real?.browsers?.map(b=>({name:b.browser,version:b.version,
    journeys:b.journeys?.length??0,errors:b.errors?.length??0,
    consoleErrors:b.consoleErrors?.length??0,verifiedShards:b.sourceShards?.length??0}))??[]}));
+ g.push(gate('advanced_stats_ui_feature_parity',featureBlocker?.status==='BLOCKED'?false:null,
+  featureBlocker?.status==='BLOCKED'?['Owner-observed Flutter grouped Advanced Stats columns and sorting are not available in narrow React pilot; matched task is blocked']:
+  ['Requires a verified equivalent Advanced Stats table and shared metric sort in both variants'],
+  {blocker:featureBlocker?.scope??null,affectedTrials:featureBlocker?.affectedTrials?.length??0}));
  const timed=guided?grouped(guided):[];
  const provenance=guided&&corpusHash&&guided.manifestSha256===corpusHash&&
   guided.method?.includes('same machine')&&guided.raw?.length>=90;
@@ -120,10 +124,11 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
  const parity=await maybeJson(path.join(home,'evidence/parity/parity-comparison.json'));
  const real=await maybeJson(path.join(home,'evidence/real/real-source-journeys.json'));
  const guided=await maybeJson(path.join(home,'evidence/guided/guided-matched-task-timings.json'));
+ const featureBlocker=await maybeJson(path.join(home,'evidence/guided/advanced-stats-parity-blocker.json'));
  let manifestBytes=null;try{manifestBytes=await readFile(path.join(repo,'web/data/nba_static/manifest.json'))}catch(e){
   if(e.code!=='ENOENT')throw e;
  }
- const result=assess({parity,real,guided,manifestBytes});
+ const result=assess({parity,real,guided,manifestBytes,featureBlocker});
  const dest=path.join(home,'evidence/decision');
  await mkdir(dest,{recursive:true});
  await writeFile(path.join(dest,'phase3-decision.json'),JSON.stringify(result,null,2)+'\n');
