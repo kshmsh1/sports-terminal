@@ -95,7 +95,11 @@ for(const name of browsers){
     const real=JSON.parse((await readFile(path.join(source,'seasons',season,segment+'.json'))).toString());
     const recordCount=real.player_season_totals?.length;
     if(typeof recordCount!=='number')throw Error('Invalid real season shard');
-    const p=await context.newPage();
+    // Each season/segment is an independent default-settings test. Chart settings
+    // intentionally persist in localStorage, so isolate browser storage between
+    // journeys while retaining persistence within a journey's reload check.
+    const journeyContext=await browser.newContext({viewport:{width:1440,height:900},deviceScaleFactor:1,colorScheme:'dark'});
+    const p=await journeyContext.newPage();
     let task=null;
     p.on('pageerror',error=>result.errors.push({app:'React',route:season+'/'+segment,message:error.message}));
     p.on('console',msg=>{
@@ -298,7 +302,7 @@ for(const name of browsers){
       task.failures.push(message);
       result.journeys.push(task);
      }
-    }finally{await p.close();}
+    }finally{await journeyContext.close();}
 
    }
   }
