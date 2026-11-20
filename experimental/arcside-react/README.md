@@ -108,6 +108,23 @@ Use both apps with the same static data and Chromium version. Follow the prompts
 
 **Still required for a migration decision:** real Safari on macOS and screen-reader keyboard journeys, repeatable dropped-frame and memory measurements, workbook import/export integrity, complete metric/display/sort parity, signed-off trade rules golden cases, and feature equivalence beyond the deliberately narrow Stats/Visualization pilot. No milestone may be marked as passed solely because a test tool exists.
 
+## Phase 3 — real-data UI/UX and matched release comparison
+
+The owner's genuine local 2025-26, 1986-87 and 1946-47 corpus passed **1,016,826 mapped Dart/React comparisons with zero mismatches**. Six 1946-47 playoff cases were empty and do not count as positive playoff evidence. This does not make the React POC a complete replacement for Flutter.
+
+For the meaningful frontend comparison, do **not** time a Flutter debug server against Vite dev. From the repository root, run:
+
+~~~bash
+git pull --ff-only
+bash scripts/phase3_release_compare.sh --automated
+# Or do the full paired task study, including 90 manually verified runs:
+bash scripts/phase3_release_compare.sh --all
+~~~
+
+The launcher compiles Flutter web **release** and React **production**, serves both on new loopback ports (Flutter 8768; React 4173), hashes the exact original manifest and selected season shards on both servers, runs real-data browser journeys with installed Chrome, and emits a PASS / FAIL / NOT_RUN decision report. The --all mode collects 5 cold + 10 warm same-machine repetitions for each app across season switching, rate/sort switching and chart zoom/pan tasks, alternating variant order. You mark completion or failure; the script cannot infer a user's successful Flutter interaction from a DOM selector. Each finished trial is checkpointed.
+
+Outputs are kept in ignored local evidence directories: evidence/real, evidence/guided and evidence/decision. Review the artifacts and the design tradeoffs in docs/architecture/phase3_ui_ux_comparative_evaluation_2026_11_20.md. Run node scripts/phase3_decision.mjs in this directory to re-evaluate without rebuilding. Missing evidence is NOT_RUN; a synthetic React-only benchmark never proves Flutter-vs-React speedup. Any 10% p95 claim requires complete operator-verified same-hardware samples. Full product migration and owner sign-off remain separate mandatory gates.
+
 ## Lab security
 
 Python companion and Sheets collaboration are local-only, separately authenticated services. The pilot does not alter or forward credentials. The bridge accepts an object with exactly `{type:'arcside:context',version:1,season,segment}` from the same-origin parent window and sends only a same-origin acknowledgement; it accepts no code, workbook, token, URL or arbitrary object fields. Never host this as an internet-facing Python executor.
