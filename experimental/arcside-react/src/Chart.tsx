@@ -205,7 +205,7 @@ export function Chart({rows,basis,segment='regular'}:{
    ...(settings.regression&&line.length?(option.series as unknown[]).slice(1):[])
   ]};
   if(settings.kind==='bar'){
-   const data=plotted.toReversed();
+   const data=[...plotted].reverse();
    option={...common,grid:{left:170,right:35,top:20,bottom:40},
     xAxis:{type:'value',name:metricY,...axisStyle},
     yAxis:{type:'category',data:data.map(r=>r.player),axisLabel:{color:'#9fb2c9',width:155,overflow:'truncate'}},
