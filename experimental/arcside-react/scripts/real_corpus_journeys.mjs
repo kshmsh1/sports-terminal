@@ -33,7 +33,7 @@ for(const name of browsers){
  if(!type)throw Error('Unsupported browser '+name);
  const browser=await type.launch({headless:process.env.ARCSIDE_HEADFUL!=='1',
   ...(name==='chromium'&&process.env.ARCSIDE_BROWSER_CHANNEL?{channel:process.env.ARCSIDE_BROWSER_CHANNEL}:{})});
- const result={browser:name,version:browser.version(),references:[],journeys:[],errors:[]};
+ const result={browser:name,version:browser.version(),references:[],journeys:[],errors:[],consoleErrors:[],flutterBootstrap:null};
  reports.push(result);
  try{
   const context=await browser.newContext({viewport:{width:1440,height:900},deviceScaleFactor:1,colorScheme:'dark'});
@@ -68,11 +68,24 @@ for(const name of browsers){
   fp.on('pageerror',error=>result.errors.push({app:'Flutter',message:error.message}));
   const flutterStart=performance.now();
   await fp.goto(flutter+'/',{waitUntil:'domcontentloaded',timeout:60000});
-  try{await fp.locator('flutter-view,flt-glass-pane').first().waitFor({timeout:45000})}
-  catch{result.errors.push({app:'Flutter',message:'No confirmed Flutter root selector; inspect screenshot manually'});}
+  let root=null;
+  try{
+   const surface=fp.locator('flutter-view,flt-glass-pane').first();
+   await surface.waitFor({state:'visible',timeout:45000});
+   root=await surface.evaluate(el=>{
+    const b=el.getBoundingClientRect();
+    return {tagName:el.tagName,width:b.width,height:b.height,visible:b.width>0&&b.height>0};
+   });
+  }catch(error){result.errors.push({app:'Flutter',message:'Flutter render surface not visible: '+String(error.message??error)});}
   await fp.waitForTimeout(1500);
   result.flutterBootstrapToSelectorMs=performance.now()-flutterStart;
-  await fp.screenshot({path:path.join(dir,name+'-flutter-reference.png'),fullPage:true});
+  const screenshot=await fp.screenshot({path:path.join(dir,name+'-flutter-reference.png'),fullPage:true});
+  result.flutterBootstrap={
+   status:root?.visible?'PASS':'FAIL',root,elapsedMs:result.flutterBootstrapToSelectorMs,
+   screenshotSha256:sha(screenshot),screenshotBytes:screenshot.length,
+   verifiedBy:'Playwright: visible Flutter rendering surface + captured actual browser pixels',
+   limitation:'Does NOT assert Flutter widget content, metric values or equivalent interactions'
+  };
   result.flutterTaskComparison='NOT AUTOMATED: Flutter stats/trade UI routes and selectors differ; cannot claim task-performance ratios';
   await fp.close();
   const snapshot=JSON.parse((await readFile(path.join(source,'seasons',seasons[0],'regular.json'))).toString());
@@ -229,6 +242,7 @@ for(const name of browsers){
      await p.screenshot({path:path.join(dir,name+'-react-stats-narrow-'+season+'.png'),fullPage:true});
      task.checks.push('dark/light and narrow/wide screenshots captured (manual visual audit required)');
     }
+    task.verifiedChecks=task.checks.filter(x=>!x.startsWith('SKIPPED')).length;
     task.browserPerf.resourceEntries=await p.evaluate(()=>({
      count:performance.getEntriesByType('resource').length,
      measuredTransferBytes:performance.getEntriesByType('resource').reduce((s,r)=>s+(r.transferSize??0),0),
@@ -268,5 +282,8 @@ await writeFile(name,JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify({output:name,manifestSha256:report.manifestSha256,
  reactJourneys:reports.reduce((n,x)=>n+x.journeys.length,0),
  verifiedShards:reports.reduce((n,x)=>n+(x.sourceShards?.length??0),0),
- flutterMatchedTasks:'NOT MEASURED',browserErrors:reports.flatMap(x=>x.errors)},null,2));
-if(reports.some(x=>x.errors.length))process.exitCode=1;
+ flutterMatchedTasks:'NOT MEASURED',
+ qualifiedReactJourneys:reports.reduce((n,b)=>n+b.journeys.filter(j=>j.kind==='React verified real NBA Stats route'&&j.failures?.length===0&&j.checks?.length>=7).length,0),
+ flutterBootstraps:reports.map(b=>b.flutterBootstrap?.status??'NOT_RUN'),
+ browserErrors:reports.flatMap(x=>x.errors),consoleErrors:reports.flatMap(x=>x.consoleErrors)},null,2));
+if(reports.some(x=>x.errors.length||x.consoleErrors.length||x.flutterBootstrap?.status!=='PASS'))process.exitCode=1;
