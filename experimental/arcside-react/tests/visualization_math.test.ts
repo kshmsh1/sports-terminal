@@ -5,7 +5,7 @@ import type {Row,MetricKey} from '../src/engine';
 function row(id:string,pts:number,ast:number,gp=55,team='BOS'):Row{
  const keys=['gp','min','pts','ast','reb','stl','blk','ts_pct'] as MetricKey[];
  const values=Object.fromEntries(keys.map(k=>[k,k==='gp'?gp:k==='pts'?pts:k==='ast'?ast:1])) as Row['values'];
- return {id,player:id,team,position:'PG',raw:{},estimated:false,values,percentiles:{}};
+ return {id,player:id,team,position:'PG',raw:{points:pts,assists:ast,rebounds:3,minutes:2000},estimated:false,values,percentiles:{}};
 }
 describe('Flutter-matched visualization population and statistical projections',()=>{
  it('selects top 40 by actual Y metric after qualification with stable name/id ties',()=>{
