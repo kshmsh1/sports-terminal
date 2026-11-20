@@ -21,9 +21,11 @@ const defaults:Settings={
  filter:'',labels:true,means:false,grid:true,zero:false,density:'More',bins:12,radarCompare:''
 };
 const palette=['#6db6ff','#d2a8ff','#6fd3b2','#f4b77d','#fc8aa8','#9cbbf8','#e4d16b','#7ad4dc'];
+const teamColors:Record<string,string>={ATL:'#E03A3E',BOS:'#007A33',BKN:'#8C8C8C',BRK:'#8C8C8C',CHA:'#1D8E9F',CHI:'#CE1141',CLE:'#860038',DAL:'#2D7DC1',DEN:'#F0B323',DET:'#C8102E',GSW:'#1D70B7',HOU:'#CE1141',IND:'#FDBB30',LAC:'#C8102E',LAL:'#8A63D2',MEM:'#6C8EBF',MIA:'#B6264F',MIL:'#2F8B57',MIN:'#5D87B5',NOP:'#C79A4A',NYK:'#F58426',OKC:'#4AA3DF',ORL:'#5AA7D9',PHI:'#3D78C5',PHO:'#E56020',POR:'#E03A3E',SAC:'#7B61A8',SAS:'#A6A6A6',TOR:'#D43B5E',UTA:'#6B63B5',WAS:'#56789A'};
+const positionColors:Record<string,string>={PG:'#5C8FDB',SG:'#4FB6A8',SF:'#7DBA57',PF:'#E1A74F',C:'#9B73D2',G:'#4FA2C6',F:'#D17C5E'};
 function teamColor(value:string){
  let hash=0;for(let i=0;i<value.length;i++)hash=(hash*31+value.charCodeAt(i))|0;
- return palette[Math.abs(hash)%palette.length];
+ return teamColors[value]??positionColors[value]??palette[Math.abs(hash)%palette.length];
 }
 function validSettings(candidate:unknown):Settings {
  if(!candidate||typeof candidate!=='object')return {...defaults};
@@ -90,7 +92,7 @@ export function Chart({rows,basis,segment='regular'}:{
  const selected=useMemo(()=>selectVisualizationRows(rows,{
   x:settings.x,y:settings.y,size:settings.size,kind:settings.kind,
   minGames:settings.minGames,filter:settings.filter,
-  population:settings.population,rankingSize:settings.rankingSize
+  population:settings.population,rankingSize:settings.rankingSize,basis
  }),[rows,settings.x,settings.y,settings.size,settings.kind,settings.minGames,
      settings.filter,settings.population,settings.rankingSize]);
  const {plotted,eligible,matching,ranked}=selected;
