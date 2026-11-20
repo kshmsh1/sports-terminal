@@ -224,6 +224,20 @@ for(const name of browsers){
     task.checks.push('browser back restores Stats route');
     await p.getByRole('link',{name:'Visualizations'}).click();
     await p.getByRole('heading',{name:'Player scatter explorer'}).waitFor();
+    // The Flutter Visualization Studio's DEFAULT source-backed workflow plots
+    // top 40 (not the entire season population), minimum 50/4 GP, AST vs PTS.
+    assert.equal(await p.getByLabel('Chart type').inputValue(),'scatter');
+    assert.equal(await p.getByLabel('Population size').inputValue(),'40');
+    assert.equal(await p.getByLabel('Minimum games').inputValue(),segment==='regular'?'50':'4');
+    assert.equal(await p.getByLabel('X metric').inputValue(),'ast');
+    assert.equal(await p.getByLabel('Y metric').inputValue(),'pts');
+    const displayedRows=await p.locator('.studio .chart-accessible tbody tr').count();
+    assert.ok(displayedRows<=40,'default scatter must never plot above Flutter top-40');
+    if(recordCount>0&&qualifiedTarget>=40)assert.equal(displayedRows,40,
+     'original NBA source with 40+ qualifying players should show all default top 40');
+    const plottedLabel=await p.locator('.studio-chart-title .subtle').innerText();
+    assert.match(plottedLabel,new RegExp('^'+displayedRows+' plotted from'));
+    task.checks.push('Flutter default top-40 by PTS, GP 50/4, AST/PTS axes and source-backed readout');
     const chartStart=performance.now();
     await p.getByRole('img',{name:/Scatter plot of/}).waitFor();
     await p.getByRole('button',{name:'Drag pan'}).click();
@@ -235,8 +249,11 @@ for(const name of browsers){
     await p.getByLabel('Y metric').selectOption('ast');
     await p.getByRole('button',{name:'Reset view'}).click();
     await p.getByRole('checkbox',{name:'Best-fit line'}).check();
+    await p.getByLabel('Color by').selectOption('Position');
+    await p.getByLabel('Player labels').uncheck();
+    await p.getByLabel('Player labels').check();
     task.browserPerf.chartControlSequenceMs=performance.now()-chartStart;
-    task.checks.push('chart re-axis, pan/zoom, reset, regression; response observed');
+    task.checks.push('chart re-axis, pan/zoom, reset, original best-fit line, label and group toggles; response observed');
     if(segment==='regular'&&season===seasons[0]){
      await p.reload({waitUntil:'domcontentloaded'});
      await p.getByRole('heading',{name:'Player scatter explorer'}).waitFor();
