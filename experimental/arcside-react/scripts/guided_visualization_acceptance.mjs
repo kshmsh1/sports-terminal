@@ -107,6 +107,9 @@ try{
   for(let i=1;i<=15&&!stopped;i++){
    for(const app of i%2?['Flutter','React']:['React','Flutter']){
     if(raw.some(r=>r.app===app&&r.trial===i))continue;
+    let interrupted=true;
+    while(interrupted){
+    interrupted=false;
     const cold=i<=5;
     const ctx=cold?await browser.newContext({viewport:{width:1440,height:900}}):
      (warmContexts[app]??=await browser.newContext({viewport:{width:1440,height:900}}));
@@ -140,11 +143,19 @@ try{
     await page.bringToFront();
     console.log('Start Ctrl+Shift+8, Finish Ctrl+Shift+9, Fail Ctrl+Shift+0.');
     await complete;
+    if(done.reason){
+     errors.push({stage:'technical_interruption',app,trial:i,reason:done.reason,elapsedMs:done.ms});
+     await write();await page.close();if(cold)await ctx.close();
+     console.log('Document reload interrupted the stopwatch. This attempt is NOT counted; restage the SAME trial.');
+     interrupted=true;continue;
+    }
     raw.push({app,trial:i,cold,ms:done.ms,passed:done.passed,operatorVerified:done.passed,
-     frameProbe:done.frame??null,reason:done.reason??null});
+     frameProbe:done.frame??null,reason:null});
     await write();
     await page.close();if(cold)await ctx.close();
     if(!done.passed){console.log('FAIL: matched UI task mismatch. Stopping immediately.');stopped=true;break}
+    }
+    if(stopped)break;
    }
   }
  }
