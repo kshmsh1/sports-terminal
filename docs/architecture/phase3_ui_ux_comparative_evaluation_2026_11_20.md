@@ -140,7 +140,7 @@ The real-corpus Advanced Stats acceptance and 30 manual trials have **already pa
 
 `scripts/real_corpus_journeys.mjs` now records concrete Flutter surface bounds and visible status, bootstrap latency and screenshot SHA-256, preserving the screenshot for human visual inspection. It verifies identical original manifest **and source-shard bytes** on both release servers; React routes exercise season/segment qualification, Stats, Advanced taxonomy/basis/sorting, chart controls and Labs acknowledgement. The decision report includes a per-browser diagnostic breakdown for missing exact season/segment journeys, shard coverage, Flutter renderer bootstrap, JS errors and console errors.
 
-This gate **does not** assert Flutter row-level UI matching or automated Flutter chart controls. It is a release bootstrap and original-source React journey gate only, and cannot pass without a fresh local browser run that supplies the new bootstrap evidence. Because GitHub Actions does not contain the owner's private canonical source shards, CI can check syntax and synthetic scenarios, not fabricate live original-source runtime evidence.
+This gate **does not** assert Flutter row-level UI matching or automated Flutter chart controls. The owner has already demonstrated a PASS on the canonical manifest with 8 browser journeys, 12 verified shards, Flutter bootstrap PASS, and zero browser/console errors before this Visualization rebuild. New exact Visualizations source parity must still run locally; CI only checks synthetic fixtures. Because GitHub Actions does not contain the owner's private canonical source shards, CI can check syntax and synthetic scenarios, not fabricate live original-source runtime evidence.
 
 ~~~bash
 cd ~/sports_terminal
@@ -153,17 +153,28 @@ If the printed decision still reports the bootstrap gate blocked, inspect `exper
 
 ### 2. Repaired matched tasks and new Visualization protocol
 
-The combined `matched_flutter_react_operator_tasks_p95` gate now requires **three independent real-source, user-verified protocols**. It reuses only the original 30 successfully completed *season* trials (5 cold + 10 warm per app), incorporates the accepted *corrected Advanced Stats* 30 trials, and separately requires **30 fresh Visualization trials**. Each group must have 0 failed interactions and React warm p95 <= 110% of Flutter warm p95. All three groups must use the same original-source manifest. This replaces, rather than retrospectively edits, the old 90-trial schema.
+The combined `matched_flutter_react_operator_tasks_p95` gate now requires **three independent real-source, user-verified protocols**. It reuses only the original 30 successfully completed *season* trials (5 cold + 10 warm per app), incorporates the accepted *corrected Advanced Stats* 30 trials, and separately requires **24 fresh Visualization V2 trials** (2 cold + 10 warm per app, retaining the original 10 warm p95 observations). Each group must have 0 failed interactions and React warm p95 <= 110% of Flutter warm p95. All three groups must use the same original-source manifest. This replaces, rather than retrospectively edits, the old 90-trial schema.
 
-To run the last new 30-trial group:
+After the original-source Visualization acceptance passes, run the final 24-trial group:
 
 ~~~bash
 ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --visualization-guided
 ~~~
 
+The **original Flutter Visualizations widget reference screenshots were NOT equivalent to the initial React scatter-only pilot**. The owner explicitly entered FAIL, a correct historical rejection. React's isolated experiment now exposes the Flutter-matched top 40 by selected Y metric (stable tie-break), minimum GP 50/4, player/team filters, population sizes, 7 chart modes, regression statistics and label/display toggles, source-specified team/position colors, and local presets. The proof is not inferred from controls existing: the new Dart exporter `test/phase3_visualization_reference_export_test.dart` computes original Flutter engine rows, default and alternate axes, GP filters, top-40/all population, player identities and OLS regressions across source shards and rate bases. `scripts/visualization_acceptance_compare.mjs` checks ordered React projections against those original goldens, with nonempty case coverage, error samples, exact manifest fingerprint and zero-mismatch requirement. The combined decision gate **requires this source parity to PASS before any human chart timing can pass**.
+
+First build only the changed React client, retaining the existing unchanged Flutter release build, then run the automated source validation:
+
+~~~bash
+cd ~/sports_terminal
+git pull --ff-only
+(cd experimental/arcside-react && npm run build && npm test)
+ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --visualization-acceptance
+~~~
+
 On the initial headed-browser preflight, the operator must confirm both live chart experiences really support **wheel zoom, drag pan, reset, X=REB and Y=AST**, with actual point/tooltips agreement. This is deliberately a narrow common chart task, not a claim of parity for the entire Flutter Visualization Studio. If the React chart differs too much from Flutter, type `FAIL`; the protocol records a blocker without claiming a benchmark. Do not time an approximate or swapped task.
 
-The new chart evidence is stored at `experimental/arcside-react/evidence/visualization/visualization-guided-timings-v1.json`, and checkpoints at `visualization-guided-checkpoint-v1.json`. Recover interrupted sessions via:
+The new chart V2 timing evidence is stored at `experimental/arcside-react/evidence/visualization/visualization-guided-timings-v2.json`, with checkpoints at `visualization-guided-checkpoint-v2.json`. The owner-selected original V1 FAIL result and any V1 records remain untouched. Source evidence is saved to `visualization-source-parity.json` and original Flutter goldens to `dart-reference.json`. Recover interrupted sessions via:
 
 **Resume a visualization benchmark from its own verified chart checkpoint:**
 
@@ -180,4 +191,4 @@ Do not use `--all`: it now refuses to rerun the obsolete original 90-trial proto
 
 ### 4. Non-pilot release blockers
 
-Even if the narrow chart task passes and both technical gates clear, React still lacks much of the Flutter application. Full parity for the Trade Machine/CBA, player profiles, Visualizations, other modules and Labs; real assistive-technology acceptance; secure native-service/workbook round-trips; matched real frame/GPU/memory evidence; and owner visual/migration signoff are separate outstanding gates. Passing the three technical human-task suites never authorizes migration or a PR merge.
+Even if the narrow chart task passes and both technical gates clear, React still lacks much of the Flutter application. Full parity for the Trade Machine/CBA, player profiles, non-scatter Visualization Studio UX and other modules and Labs; real assistive-technology acceptance; secure native-service/workbook round-trips; matched real frame/GPU/memory evidence; and owner visual/migration signoff are separate outstanding gates. Passing the three technical human-task suites never authorizes migration or a PR merge.
