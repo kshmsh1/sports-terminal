@@ -25,6 +25,11 @@ test('deep link, history, qualification, rate switch and virtual scrolling',asyn
 test('scatter interactions and theme persist across refresh',async({page})=>{
  await page.goto('/visualizations?season=2025-26&segment=regular&basis=perGame');
  await expect(page.getByText('40 plotted from 150 eligible', {exact:false})).toBeVisible();
+ // Real-corpus acceptance must target the plotted-count paragraph, not the
+ // neighboring `.subtle` color-group label in the same chart header.
+ const plottedSummary=page.locator('.studio-chart-title p.subtle');
+ await expect(plottedSummary).toHaveCount(1);
+ await expect(plottedSummary).toContainText(/^40 plotted from 150 eligible/);
  await page.getByRole('button',{name:'Drag pan'}).click();
  await expect(page.getByRole('button',{name:'Drag pan'})).toHaveAttribute('aria-pressed','true');
  await page.getByLabel('X metric').selectOption('reb');
