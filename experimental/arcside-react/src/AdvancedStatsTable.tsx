@@ -1,0 +1,169 @@
+import {useEffect,useMemo,useState} from 'react';
+import type {RateBasis,SeasonType} from './data';
+import type {Row,MetricKey} from './engine';
+import {formatMetric,sortRows,stintRows} from './engine';
+import {advancedGroups,advancedMetricCatalog,rateSensitiveKeys} from './advancedCatalog';
+import type {AdvancedMetric} from './advancedCatalog';
+
+const nativeEngineKeys=new Set<MetricKey>([
+ 'gp','min','age','pts','ast','reb','oreb','dreb','stl','blk','tov','pf','fgm','fga',
+ 'fg_pct','two_pm','two_pa','two_pct','three_pm','three_pa','three_pct','ftm','fta','ft_pct',
+ 'ts_pct','efg_pct','points_per_shot','ast_tov','three_rate','ft_rate','plus_minus','bpm',
+ 'game_score_proxy','stocks','defense_events','possessions_proxy','scoring_load'
+]);
+const rateStem:Record<string,string>={mpg:'MIN',ppg:'PTS',rpg:'REB',apg:'AST',spg:'STL',bpg:'BLK',
+ tpg:'TOV',fgm:'FGM',three_pm:'3PM',ftm:'FTM',oreb:'OREB',dreb:'DREB',
+ fga:'FGA',three_pa:'3PA',three_pm_alt:'3PM',fta:'FTA'};
+const labels:Record<RateBasis,string>={perGame:'Per-game values.',per36:'Per 36 minutes.',
+ per48:'Per 48 minutes.',per75:'Per 75 possessions.',per100:'Per 100 possessions.',totals:'Season totals.'};
+const rawNumber=(v:unknown):number|null=>{
+ if(v===null||v===undefined||v==='')return null;
+ const n=typeof v==='number'?v:typeof v==='string'?Number(v.replace(/[, %]/g,'')):NaN;
+ return Number.isFinite(n)?n:null;
+};
+export function metricValue(row:Row,metricKey:string):number|null{
+ const metric=advancedMetricCatalog[metricKey];
+ if(!metric)return null;
+ if(metric.engine && nativeEngineKeys.has(metric.engine as MetricKey)){
+  const value=row.values[metric.engine as MetricKey];
+  return value??null;
+ }
+ // Only source-native fields actually present in the canonical shard count.
+ // Do not manufacture provider tracking or proprietary player metrics.
+ for(const k of [metric.key,...metric.raw]){
+  const v=rawNumber(row.raw[k]);
+  if(v!==null){
+   if(metric.format==='percent')return v>1?v/100:v;
+   return v;
+  }
+ }
+ return null;
+}
+export function advancedLabel(key:string,basis:RateBasis):string{
+ const m=advancedMetricCatalog[key];
+ if(!m)return key.toUpperCase();
+ const stem=rateStem[key]??m.label.replace(/\s*PG$/,'');
+ if(!m.engine||!rateSensitiveKeys.has(m.engine))return m.label;
+ if(basis==='perGame')return m.label;
+ if(basis==='totals')return stem;
+ return stem+'/'+({per36:'36',per48:'48',per75:'75',per100:'100'} as Record<string,string>)[basis];
+}
+export function advancedText(row:Row,key:string):string{
+ const metric=advancedMetricCatalog[key];
+ const v=metricValue(row,key);
+ if(v===null)return '—';
+ if(metric?.engine && nativeEngineKeys.has(metric.engine as MetricKey))return formatMetric(metric.engine as MetricKey,v);
+ if(metric?.format==='percent')return (v*100).toFixed(metric.decimals)+'%';
+ if(metric?.format==='integer')return String(Math.round(v));
+ if(metric?.format==='signed')return (v>=0?'+':'')+v.toFixed(metric?.decimals??1);
+ return v.toFixed(metric?.decimals??1);
+}
+const availableMetric=(k:string)=>advancedMetricCatalog[k]!==undefined;
+const seasonMinutesPerGame=(r:Row)=>r.values.gp&&r.values.gp>0?Number(r.raw.minutes??r.raw.mp??0)/r.values.gp:0;
+type Props={rows:Row[];baseRows:Row[];basis:RateBasis;segment:SeasonType;season:string;onPlayer:(id:string)=>void};
+export function AdvancedStatsTable({rows,baseRows,basis,segment,season,onPlayer}:Props){
+ const [group,setGroup]=useState('Overview');
+ const [search,setSearch]=useState('');
+ const [team,setTeam]=useState('All');
+ const [position,setPosition]=useState('All');
+ const [minGp,setMinGp]=useState(segment==='regular'?50:0);
+ const [minMpg,setMinMpg]=useState(20);
+ const [sort,setSort]=useState('ppg');
+ const [descending,setDescending]=useState(true);
+ const [expandedMetrics,setExpandedMetrics]=useState<Set<string>>(()=>new Set());
+ const [expandedPlayers,setExpandedPlayers]=useState<Set<string>>(()=>new Set());
+ const [page,setPage]=useState(1);
+ const [pageSize,setPageSize]=useState(20);
+ useEffect(()=>{setMinGp(segment==='regular'?50:0);setMinMpg(20);setPage(1);setTeam('All');setExpandedPlayers(new Set())},[segment]);
+ useEffect(()=>{setPage(1)},[basis,season,group,search,team,position,minGp,minMpg,sort,descending,pageSize]);
+ const current=advancedGroups.find(x=>x.name===group)??advancedGroups[0];
+ const keys=useMemo(()=>{
+  const out:string[]=[];
+  for(const k of current.keys){
+   if(!availableMetric(k))continue;
+   out.push(k);
+   if(expandedMetrics.has(k))for(const c of advancedMetricCatalog[k].children)if(availableMetric(c))out.push(c);
+  }
+  return out;
+ },[current,expandedMetrics]);
+ const teams=useMemo(()=>['All',...new Set(rows.flatMap(r=>r.team.split(/[,/ ]+/).filter(t=>/^[A-Z0-9]{2,4}$/.test(t))))].sort(),[rows]);
+ const originalMinutes=new Map(baseRows.map(r=>[r.id, r.values.min??seasonMinutesPerGame(r)]));
+ const filtered=useMemo(()=>rows.filter(r=>{
+  const q=search.trim().toLowerCase();
+  const match=!q||(r.player+' '+r.team+' '+r.position).toLowerCase().includes(q);
+  const perGameMin=originalMinutes.get(r.id)??0;
+  return match&&(team==='All'||r.team.split(/[,/ ]+/).includes(team))&&
+   (position==='All'||r.position===position)&&
+   (r.values.gp??0)>=minGp&&perGameMin>=minMpg;
+ }).sort((a,b)=>{
+  const va=metricValue(a,sort),vb=metricValue(b,sort);
+  if(va===null&&vb===null)return a.player.localeCompare(b.player);
+  if(va===null)return 1;
+  if(vb===null)return -1;
+  return (descending?vb-va:va-vb)||a.player.localeCompare(b.player);
+ }),[rows,originalMinutes,search,team,position,minGp,minMpg,sort,descending]);
+ const pages=Math.max(1,Math.ceil(filtered.length/pageSize));
+ const currentPage=Math.min(page,pages);
+ const paged=filtered.slice((currentPage-1)*pageSize,currentPage*pageSize);
+ const csv=()=>{
+  const escape=(v:string)=>'"'+v.replaceAll('"','""')+'"';
+  const cols=['Player','Team','Position',...keys.map(k=>advancedLabel(k,basis))];
+  const data=[cols,...filtered.map(r=>[r.player,r.team,r.position,...keys.map(k=>advancedText(r,k))])];
+  const text=data.map(line=>line.map(escape).join(',')).join('\n');
+  if(navigator.clipboard?.writeText)void navigator.clipboard.writeText(text).catch(()=>{});
+  else {
+   const blob=new Blob([text],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob);
+   const anchor=document.createElement('a');anchor.href=url;anchor.download='arcside-advanced-'+season+'.csv';anchor.click();URL.revokeObjectURL(url);
+  }
+ };
+ const pager=<div className="advanced-pager">
+  <span>{filtered.length?((currentPage-1)*pageSize+1)+'–'+Math.min(currentPage*pageSize,filtered.length):'0'} of {filtered.length}</span>
+  <span className="advanced-pager-options">Rows {([10,20,50,100] as const).map(n=><button type="button" key={n} className={pageSize===n?'active-control':''} onClick={()=>setPageSize(n)}>{n}</button>)}</span>
+  <button disabled={currentPage===1} onClick={()=>setPage(p=>Math.max(1,p-1))} aria-label="Previous page">‹</button>
+  <span>Page {currentPage} / {pages}</span>
+  <button disabled={currentPage>=pages} onClick={()=>setPage(p=>Math.min(pages,p+1))} aria-label="Next page">›</button>
+ </div>;
+ return <section className="panel advanced-panel" aria-label="Statistical table">
+  <div className="panel-title"><div><p className="eyebrow">NBA / FLUTTER-CATALOG STAT GROUPS</p>
+   <h2>Advanced player statistics</h2><p className="subtle">{filtered.length} of {rows.length} player rows · {segment==='regular'?'Regular season':'Playoffs'} · {season}</p></div></div>
+  <div className="toolbar advanced-toolbar">
+   <label>Stat group<select aria-label="Stat group" value={group} onChange={e=>{setGroup(e.target.value);setSort((advancedGroups.find(g=>g.name===e.target.value)?.keys[0])??'gp');setDescending(true);setExpandedMetrics(new Set())}}>
+    {advancedGroups.map(g=><option key={g.name} value={g.name}>{g.name}</option>)}</select></label>
+   <label>Find player<input aria-label="Find player" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search players"/></label>
+   <label>Team<select value={team} onChange={e=>setTeam(e.target.value)}>{teams.map(t=><option key={t}>{t}</option>)}</select></label>
+   <label>Position<select value={position} onChange={e=>setPosition(e.target.value)}>{['All','PG','SG','SF','PF','C'].map(p=><option key={p}>{p}</option>)}</select></label>
+   <label>GP<select aria-label="Minimum GP" value={minGp} onChange={e=>setMinGp(Number(e.target.value))}>{[50,65,60,40,30,20,10,0].map(n=><option key={n} value={n}>{n===0?'All':n+'+'}</option>)}</select></label>
+   <label>MPG<select aria-label="Minimum MPG" value={minMpg} onChange={e=>setMinMpg(Number(e.target.value))}>{[0,30,25,20,15,10].map(n=><option key={n} value={n}>{n===0?'All':n+'+'}</option>)}</select></label>
+   <button onClick={()=>{setSearch('');setTeam('All');setPosition('All');setMinGp(segment==='regular'?50:0);setMinMpg(20)}}>Reset filters</button>
+   <button onClick={csv}>Copy CSV</button>
+  </div>
+  <div className="advanced-groups" role="group" aria-label="Advanced stat groups">
+   {advancedGroups.map(g=><button key={g.name} className={g.name===group?'active-control':''} aria-pressed={g.name===group}
+     onClick={()=>{setGroup(g.name);setSort(g.keys[0]);setDescending(true);setExpandedMetrics(new Set())}}>{g.name}</button>)}
+  </div>
+  <div className="advanced-description"><p>{current.description}</p><p>{labels[basis]} Fields unavailable from the selected original dataset display as —.</p></div>
+  {pager}
+  <div className="table-scroll advanced-table-scroll" tabIndex={0} role="region" aria-label="Scrollable advanced player stats">
+   <table className="stats-table advanced-stats-table"><thead><tr><th scope="col">Player</th><th scope="col">Team</th><th scope="col">Position</th>
+    {keys.map(k=>{const m:AdvancedMetric=advancedMetricCatalog[k];return <th key={k} scope="col" aria-sort={sort===k?(descending?'descending':'ascending'):undefined}>
+     <span className="advanced-column-heading">{m.children.length>0&&<button aria-label={'Expand '+m.label} aria-expanded={expandedMetrics.has(k)}
+      onClick={()=>setExpandedMetrics(p=>{const n=new Set(p);if(n.has(k))n.delete(k);else n.add(k);return n})}>{expandedMetrics.has(k)?'▾':'▸'}</button>}
+      <button className="sort-button" aria-label={'Sort by '+advancedLabel(k,basis)} title={m.description}
+       onClick={()=>{setDescending(prev=>sort===k?!prev:true);setSort(k)}}>{advancedLabel(k,basis)} {sort===k?(descending?'↓':'↑'):''}</button></span></th>})}
+   </tr></thead><tbody>
+    {paged.flatMap(r=>{
+     const children=expandedPlayers.has(r.id)?stintRows(r,basis):[];
+     const all=[r,...children];
+     return all.map((rr,i)=><tr key={r.id+':'+i} className={i?'stint-row':''}>
+      <td className="player-cell">{i?'↳ ':''}{i===0&&stintRows(r,basis).length>0&&<button aria-label={'Expand stints for '+r.player} onClick={()=>setExpandedPlayers(p=>{const n=new Set(p);if(n.has(r.id))n.delete(r.id);else n.add(r.id);return n})}>{expandedPlayers.has(r.id)?'−':'+'}</button>}
+      <button className="text-button" onClick={()=>onPlayer(rr.id)}>{rr.player}</button></td>
+      <td>{rr.team}</td><td>{rr.position}</td>
+      {keys.map(k=><td key={k} className="numeric" title={advancedMetricCatalog[k].description}>{advancedText(rr,k)}</td>)}
+     </tr>);
+    })}
+   </tbody></table>
+  </div>
+  {pager}
+  <p className="table-note">Source-backed values · null remains unavailable · original Flutter metric catalog. This experimental React implementation is not yet certified for complete interface parity.</p>
+ </section>
+}
