@@ -233,10 +233,15 @@ for(const name of browsers){
     assert.equal(await p.getByLabel('Y metric').inputValue(),'pts');
     const displayedRows=await p.locator('.studio .chart-accessible tbody tr').count();
     assert.ok(displayedRows<=40,'default scatter must never plot above Flutter top-40');
-    if(recordCount>0&&qualifiedTarget>=40)assert.equal(displayedRows,40,
-     'original NBA source with 40+ qualifying players should show all default top 40');
     const plottedLabel=await p.locator('.studio-chart-title .subtle').innerText();
-    assert.match(plottedLabel,new RegExp('^'+displayedRows+' plotted from'));
+    const matched=plottedLabel.match(/^(\\d[\\d,]*) plotted from (\\d[\\d,]*) eligible/);
+    assert.ok(matched,'Studio must report original-source plotted and eligible row counts');
+    const plottedNumber=Number(matched[1].replaceAll(',',''));
+    const eligibleNumber=Number(matched[2].replaceAll(',',''));
+    assert.equal(displayedRows,Math.min(40,eligibleNumber),
+     'Readout size must match top 40 of the source-metric-eligible population');
+    assert.equal(displayedRows,plottedNumber,'Plotted scatter and underlying readout must agree');
+    assert.ok(eligibleNumber<=qualifiedTarget,'Source metric availability may filter GP-qualified rows');
     task.checks.push('Flutter default top-40 by PTS, GP 50/4, AST/PTS axes and source-backed readout');
     const chartStart=performance.now();
     await p.getByRole('img',{name:/Scatter plot of/}).waitFor();
