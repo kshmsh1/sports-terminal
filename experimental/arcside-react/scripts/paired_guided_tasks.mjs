@@ -46,6 +46,9 @@ const browser=await chromium.launch({
 const results=[],errors=[];
 const checkpointPath=path.join(dir,'guided-checkpoint.json');
 const resume=process.env.ARCSIDE_GUIDED_RESUME==='1';
+// Explicitly stop after the valid season block when the operator discovers
+// React/Flutter Advanced Stats feature mismatch. This is NOT a passed task.
+const parityBlock=process.env.ARCSIDE_GUIDED_PARITY_BLOCK==='1';
 const warmContexts={};
 const ctrlStyle='position:fixed;right:10px;bottom:12px;z-index:2147483647;max-width:240px;padding:10px;background:#151b2b;color:#fff;border:2px solid #ffdc81;border-radius:8px;font:12px system-ui;box-shadow:0 2px 16px #0008;';
 function pctl(){
@@ -112,15 +115,32 @@ try {
    if(seen.has(k))throw Error('Cannot resume: duplicate trial '+k);
    seen.add(k);
   }
-  // Do not mix trials recorded under old, non-equivalent task instructions.
-  if(saved.raw.some(r=>r.task==='basis'||r.task==='chart'))
-   throw Error('Checkpoint contains basis/chart trials from a potentially different protocol. Back up and review before resuming.');
+  // A discovered UX mismatch invalidates basis/chart timings for matched-task
+  // performance, but never discard or rewrite the source observations.
+  const beyondSeason=saved.raw.filter(r=>r.task==='basis'||r.task==='chart');
+  if(beyondSeason.length&&!parityBlock)
+   throw Error('Checkpoint contains basis/chart trials from a different or non-equivalent protocol. Re-run with ARCSIDE_GUIDED_PARITY_BLOCK=1 to preserve all recorded observations and produce a feature-parity blocker report.');
   await copyFile(checkpointPath,path.join(dir,'guided-checkpoint-before-resume.json'));
   results.push(...saved.raw);
   if(Array.isArray(saved.errors))errors.push(...saved.errors);
   console.log('RESUMED '+results.length+' completed trials from checkpoint (backup preserved).');
-  if(results.length===30)console.log('Season switching complete; proceeding directly to corrected Advanced Stats.');
+  if(results.filter(r=>r.task==='season').length===30)console.log('Season switching complete.');
  }
+ if(parityBlock){
+  const blockers={kind:'ARCSIDE_PHASE3_FEATURE_PARITY_BLOCKER',createdAt:new Date().toISOString(),
+   manifestSha256:hash(data),status:'BLOCKED',
+   scope:'Advanced Stats rate-basis-and-sort matched operator task',
+   observation:'Flutter Advanced Stats provides grouped metric tables including Overview PPG and a Points Per 100 sort target; React Phase 3 /advanced exposes a smaller fixed metric list without a corresponding displayed PTS/PPG sort column.',
+   provenance:'Owner screenshots and manually observed live local release builds; React src/App.tsx and src/engine.ts inspected',
+   policy:'Preserve all checkpoint observations. Existing basis measurements do not establish matched-task performance. Stop repeating non-equivalent work and do not certify performance or full feature parity.',
+   seasonTrials:results.filter(r=>r.task==='season').length,
+   affectedTrials:results.filter(r=>r.task!=='season').map(r=>({task:r.task,app:r.app,trial:r.trial,passed:r.passed,ms:r.ms})),
+   next:'Port/agree on a genuinely common metric, and separately validate the many other Flutter Advanced Stats groups before a fresh matched measurement.'};
+  await writeFile(path.join(dir,'advanced-stats-parity-blocker.json'),JSON.stringify(blockers,null,2)+'\n');
+  console.log('FEATURE PARITY BLOCKED: logged Advanced Stats mismatch; operator trials preserved.');
+  console.log('Blocker evidence: '+path.join(dir,'advanced-stats-parity-blocker.json'));
+  console.log('No additional human trials requested; this is not a PASS.');
+ } else {
  console.log('Both servers use the same original v5 manifest SHA256:',hash(data));
  console.log('Stopwatch buttons appear in BOTH apps. Keyboard: Ctrl+Shift+8 START, Ctrl+Shift+9 FINISH, Ctrl+Shift+0 FAIL.');
  console.log('All timings require operator verification and reflect human task completion, not code-only frame timing.');
@@ -172,6 +192,7 @@ try {
     if(isCold)await context.close();
    }
   }
+ }
  }
 } finally {
  for(const context of Object.values(warmContexts))await context.close().catch(()=>{});
