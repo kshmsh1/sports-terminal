@@ -72,9 +72,19 @@ const customCount:Record<string,{per:string;total:string;stem:string}>={
 export function advancedLabel(key:string,basis:RateBasis,group='Overview'):string{
  const m=advancedMetricCatalog[key];
  if(!m)return key.toUpperCase();
- const custom=(group==='Overview'||group==='Rate Adjusted')?customCount[key]:
-  (group==='Shooting & Efficiency'&&['fgm','fga','three_pm','three_pa','ftm','fta'].includes(key)
-   ?{per:m.label,total:m.label,stem:m.label}:undefined);
+ const children:Record<string,{per:string;total:string;stem:string}>={
+  oreb:{per:'ORB',total:'Offensive Rebounds',stem:'OREB'},
+  dreb:{per:'DREB',total:'Defensive Rebounds',stem:'DREB'},
+  fgm:{per:'FGM',total:'Field Goals Made',stem:'FGM'},
+  fga:{per:'FGA',total:'Field Goal Attempts',stem:'FGA'},
+  three_pm:{per:'3PM',total:'Three-Pointers Made',stem:'3PM'},
+  three_pa:{per:'3PA',total:'Three-Point Attempts',stem:'3PA'},
+  ftm:{per:'FTM',total:'Free Throws Made',stem:'FTM'},
+  fta:{per:'FTA',total:'Free Throw Attempts',stem:'FTA'}
+ };
+ const custom=group==='Rate Adjusted'?customCount[key]:
+  group==='Overview'?(children[key]??customCount[key]):
+  group==='Shooting & Efficiency'?children[key]:undefined;
  // Flutter's Overview PF is a fixed label, although the underlying value
  // still reflects the chosen rate basis.
  if(group==='Overview'&&key==='pf')return 'PF';
