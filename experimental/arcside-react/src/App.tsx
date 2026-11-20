@@ -164,7 +164,7 @@ export function App(){
     {loading&&<p role="status" className="loading">Loading verified NBA static data…</p>}
     {!allowedRoutes.includes(view.path)&&!view.path.startsWith('/player/')&&
      <div className="panel"><h2>Route not found</h2><button onClick={()=>navigate('/stats')}>Return to Stats</button></div>}
-    {view.path==='/advanced'&&<AdvancedStatsTable rows={rows} baseRows={snapshot?buildRows(snapshot,'perGame'):[]}
+    {view.path==='/advanced'&&<AdvancedStatsTable rows={rows}
       basis={view.basis} segment={view.segment} season={view.season}
       onPlayer={id=>navigate('/player/'+encodeURIComponent(id))}/>}
     {view.path==='/stats'&&<section className="panel" aria-label="Statistical table">
