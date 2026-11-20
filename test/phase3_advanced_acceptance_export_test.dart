@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sports_terminal/services/nba_stats_workstation_engine.dart';
 import 'package:sports_terminal/services/nba_stats_metric_catalog.dart';
+import 'package:sports_terminal/services/nba_stat_display_format.dart';
 import 'package:sports_terminal/services/nba_terminal_seed_repository.dart';
 
 const corpus = String.fromEnvironment('ARCSIDE_ADVANCED_CORPUS');
@@ -19,6 +20,19 @@ const maxRows = int.fromEnvironment('ARCSIDE_ADVANCED_MAX_ROWS', defaultValue: 8
 
 Map<String,dynamic> readJson(String p) =>
     (jsonDecode(File(p).readAsStringSync()) as Map).cast<String,dynamic>();
+
+// Mirrors website_nba_advanced_stats_v4_screen.dart _metricValue/_formatMetric.
+// Do not replace with resolver.format(): the actual Flutter TABLE omits
+// seconds/inches/pounds unit suffixes except for height's feet/inches.
+String pageDisplay(NbaStatsRow row,NbaTerminalMetric m,NbaTerminalMetricResolver resolver) {
+ final value=resolver.value(row,m.key) ?? row.value(m.key);
+ if(value==null||!value.isFinite)return '—';
+ if(m.key=='height')return nbaFormatFeetInches(value);
+ if(m.format==NbaTerminalMetricFormat.percent)return '${(value*100).toStringAsFixed(m.decimals)}%';
+ if(m.format==NbaTerminalMetricFormat.integer)return value.round().toString();
+ if(m.format==NbaTerminalMetricFormat.signed)return '${value>=0?'+':''}${value.toStringAsFixed(m.decimals)}';
+ return value.toStringAsFixed(m.decimals);
+}
 
 void main() {
   test('export real Flutter Advanced Stats resolver reference', () {
@@ -79,7 +93,7 @@ void main() {
                 },
                 'formatted':{
                   for (final m in nbaTerminalMetrics)
-                    m.key:resolver.format(row,m.key)
+                    m.key:pageDisplay(row,m,resolver)
                 },
                 'college': row.raw['bio_college']?.toString(),
                 'country': row.raw['bio_country']?.toString(),
