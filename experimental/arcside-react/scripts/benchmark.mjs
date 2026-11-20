@@ -45,7 +45,7 @@ async function sample(context,kind,n,run,coldStart){
   // source-backed players when stress-testing 300/5k/25k scatter points.
   await page.getByRole('heading',{name:'Player scatter explorer'}).waitFor();
   await page.getByLabel('Population size').selectOption('0');
-  const expected=n.toLocaleString()+' plotted from '+n.toLocaleString()+' eligible';
+  const expected=n+' plotted from '+n+' eligible'; // Flutter-style source counter uses plain integers
   try {
    await page.getByText(expected,{exact:false}).waitFor({state:'visible',timeout:45000});
   }catch(error){
