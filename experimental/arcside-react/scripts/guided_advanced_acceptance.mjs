@@ -109,21 +109,25 @@ try{
     await page.exposeFunction('arcsideAdvancedMark',({event,frame})=>{
      const t=performance.now();
      if(event==='start'&&start===null){start=t;console.log('START '+app+'/'+i)}
-     else if(start!==null&&done===null&&(event==='finish'||event==='fail')){
-      done={ms:t-start,passed:event==='finish',frame};finish();
+     else if(start!==null&&done===null&&(event==='finish'||event==='fail'||event==='navigation')){
+      done={ms:t-start,passed:event==='finish',frame,
+       reason:event==='navigation'?'document_reloaded_during_active_trial':null};finish();
      }
     });
     page.on('pageerror',e=>errors.push({app,trial:i,message:e.message}));
-    page.on('framenavigated',frame=>{
-     if(frame===page.mainFrame()&&start!==null&&done===null){
-      done={ms:performance.now()-start,passed:false,reason:'navigation_during_active_trial'};finish();
-     }
-    });
     await page.addInitScript(installGuidedOverlay,{binding:'arcsideAdvancedMark',
      title:'Arcside Advanced Stats benchmark',
      instructions:'Per Game → Per 36 → Per 100; reverse PTS/100 sort. Finish only after checking the displayed values.'});
     await page.goto((app==='Flutter'?flutter+'/':react+'/advanced?season=2025-26&segment=regular&basis=perGame'),
      {waitUntil:'domcontentloaded',timeout:60000});
+    // Full document reload raises a new load event; SPA route changes do not.
+    await page.waitForLoadState('load');
+    page.on('load',()=>{
+     if(start!==null&&done===null){
+      done={ms:performance.now()-start,passed:false,reason:'document_reload_during_timed_trial'};
+      finish();
+     }
+    });
     console.log('\n'+app+' '+(cold?'COLD':'WARM')+' trial '+i+'/15');
     console.log('Stage 2025-26 / Regular / Per Game / Overview and PTS descending.');
     await rl.question('Press ENTER once starting state is ready in this browser: ');
