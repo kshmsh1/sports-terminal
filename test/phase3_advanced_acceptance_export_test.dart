@@ -77,6 +77,10 @@ void main() {
                   for (final m in nbaTerminalMetrics)
                     m.key:resolver.value(row,m.key) ?? row.value(m.key)
                 },
+                'formatted':{
+                  for (final m in nbaTerminalMetrics)
+                    m.key:resolver.format(row,m.key)
+                },
                 'college': row.raw['bio_college']?.toString(),
                 'country': row.raw['bio_country']?.toString(),
               }
