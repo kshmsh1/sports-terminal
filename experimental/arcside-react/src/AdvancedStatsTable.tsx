@@ -76,6 +76,10 @@ export function advancedText(row:Row,key:string):string{
  if(metric?.engine && nativeEngineKeys.has(metric.engine as MetricKey))return formatMetric(metric.engine as MetricKey,v);
  if(metric?.format==='percent')return (v*100).toFixed(metric.decimals)+'%';
  if(metric?.format==='integer')return String(Math.round(v));
+ if(metric?.format==='seconds')return v.toFixed(metric.decimals)+'s';
+ if(metric?.format==='inches')return v.toFixed(metric.decimals)+' in';
+ if(metric?.format==='pounds')return v.toFixed(metric.decimals)+' lb';
+ if(metric?.format==='feetInches')return v<0?'—':Math.floor(Math.round(v)/12)+"'"+(Math.round(v)%12)+'"';
  if(metric?.format==='signed')return (v>=0?'+':'')+v.toFixed(metric?.decimals??1);
  return v.toFixed(metric?.decimals??1);
 }
