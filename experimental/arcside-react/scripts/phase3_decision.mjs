@@ -69,15 +69,19 @@ export function assess({parity,real,guided,manifestBytes}){
   sameSource?['Both browser variants reference the byte-identical original local manifest']:
   ['Need both local servers and the original v5 manifest with matching SHA-256'],
   {manifestSha256:corpusHash,reportSha256:real?.manifestSha256??null}));
- const realChecks=!!real&&sameSource&&real.browsers.every(b=>
-  (b.errors??[]).length===0&&
-  b.journeys?.some(j=>j.kind==='React verified real NBA Stats route')&&
+ const realChecks=!!real&&sameSource&&Array.isArray(real.seasons)&&
+  real.seasons.length>=3&&real.browsers.every(b=>
+  (b.errors??[]).length===0&&(b.consoleErrors??[]).length===0&&
+  (b.sourceShards?.length??0)>=real.seasons.length*4&&
+  b.journeys?.filter(j=>j.kind==='React verified real NBA Stats route'&&
+    (j.failures??[]).length===0&&j.checks?.length>=7).length>=real.seasons.length*2&&
   b.references?.some(r=>r.app==='Flutter'));
  g.push(gate('real_source_react_workflow_and_flutter_bootstrap',!real?null:realChecks,
   realChecks?['Automated React journeys and Flutter startup probe recorded with no browser exceptions']:
   ['Run the real-source browser journeys on both local app servers; Flutter interactions are NOT automated'],
   {browsers:real?.browsers?.map(b=>({name:b.browser,version:b.version,
-   journeys:b.journeys?.length??0,errors:b.errors?.length??0}))??[]}));
+   journeys:b.journeys?.length??0,errors:b.errors?.length??0,
+   consoleErrors:b.consoleErrors?.length??0,verifiedShards:b.sourceShards?.length??0}))??[]}));
  const timed=guided?grouped(guided):[];
  const provenance=guided&&corpusHash&&guided.manifestSha256===corpusHash&&
   guided.method?.includes('same machine')&&guided.raw?.length>=90;
