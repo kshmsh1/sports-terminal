@@ -137,3 +137,8 @@ h2{font-size:21px;letter-spacing:-.4px;margin:0 0 7px}h3{font-size:15px}.subtle{
 @media(max-width:740px){.studio-grid{display:block}.studio-rail{border-right:0;border-bottom:1px solid var(--line)}
  .studio-heading{align-items:flex-start;flex-direction:column}.studio-workspace{padding:10px}
  .studio-chart{min-height:350px;height:410px}.studio-chart-title{flex-wrap:wrap}}
+
+.studio-readout-pages{display:flex;justify-content:center;align-items:center;gap:12px;
+ padding:12px 0;color:var(--sub);font-size:12px}
+.studio-readout-pages button{padding:6px 12px;font-size:12px}
+.studio-readout-pages button:disabled{opacity:.4;cursor:default}
