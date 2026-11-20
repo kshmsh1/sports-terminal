@@ -15,9 +15,14 @@ const compared=Object.values(byCase).reduce((s,x)=>s+x.comparisons,0);
 const parity={source:'ACTUAL_LOCAL_V5_CORPUS',passed:true,mismatchCount:0,
  comparisons:compared,byCase};
 const real={source:'ACTUAL_LOCAL_V5_CORPUS',manifestSha256:hash,
+ seasons:['1946-47','1986-87','2025-26'],
  browsers:[{browser:'chromium',version:'157',references:[
   {app:'React',manifestSha256:hash},{app:'Flutter',manifestSha256:hash}],
-  errors:[],journeys:[{kind:'React verified real NBA Stats route'}]}]};
+  errors:[],consoleErrors:[],
+  sourceShards:Array.from({length:12},(_,i)=>({app:i%2?'React':'Flutter',sha256:hash})),
+  journeys:Array.from({length:6},(_,i)=>({kind:'React verified real NBA Stats route',
+   season:['1946-47','1986-87','2025-26'][Math.floor(i/2)],
+   failures:[],checks:Array.from({length:8},(_,j)=>'check-'+j)}))}]};
 const makeGuide=(reactWarm=100,failed=false)=>{
  const raw=[];
  for(const task of ['season','basis','chart'])for(const app of ['Flutter','React'])
