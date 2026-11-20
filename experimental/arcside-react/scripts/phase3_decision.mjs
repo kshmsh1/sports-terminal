@@ -44,7 +44,8 @@ function grouped(guided){
  }
  return rows;
 }
-export function assess({parity,real,guided,manifestBytes,featureBlocker=null}){
+export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
+ advancedSource=null,advancedGuided=null}){
  const g=[];
  const corpusHash=manifestBytes?sha256(manifestBytes):null;
  const realCases=parity?.byCase??{};
@@ -82,10 +83,54 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null}){
   {browsers:real?.browsers?.map(b=>({name:b.browser,version:b.version,
    journeys:b.journeys?.length??0,errors:b.errors?.length??0,
    consoleErrors:b.consoleErrors?.length??0,verifiedShards:b.sourceShards?.length??0}))??[]}));
- g.push(gate('advanced_stats_ui_feature_parity',featureBlocker?.status==='BLOCKED'?false:null,
-  featureBlocker?.status==='BLOCKED'?['Owner-observed Flutter grouped Advanced Stats columns and sorting are not available in narrow React pilot; matched task is blocked']:
-  ['Requires a verified equivalent Advanced Stats table and shared metric sort in both variants'],
-  {blocker:featureBlocker?.scope??null,affectedTrials:featureBlocker?.affectedTrials?.length??0}));
+ // Old observed UI failures are immutable history. A NEW protocol with genuine
+ // Dart source parity, operator-confirmed live Flutter controls, and matched
+ // clean trials can supersede them; merely porting columns cannot.
+ const advSourceValid=!!advancedSource&&!!corpusHash&&
+  advancedSource.kind==='ARCSIDE_ADVANCED_STATS_REAL_DART_REACT_ACCEPTANCE_V1'&&
+  advancedSource.source==='ACTUAL_LOCAL_V5_CORPUS'&&
+  advancedSource.manifestSha256===corpusHash&&advancedSource.status==='PASS'&&
+  advancedSource.mismatches===0&&advancedSource.comparisons>1000&&
+  advancedSource.nonEmptyCases>=12&&
+  (advancedSource.nonEmptySeasons?.length??0)>=2&&
+  Array.isArray(advancedSource.cases)&&advancedSource.cases.length>=36;
+ g.push(gate('advanced_stats_source_semantic_parity',!advancedSource?null:advSourceValid,
+  advSourceValid?['Dart resolver and React catalog/metric/filter/sort projections agree across sampled real NBA source shards']:
+  ['Requires independently re-exported Dart Advanced Stats reference, exact manifest, 36 cases and zero mismatches'],
+  {cases:advancedSource?.cases?.length??0,comparisons:advancedSource?.comparisons??0,
+   mismatches:advancedSource?.mismatches??null,nonEmptyCases:advancedSource?.nonEmptyCases??0}));
+ const observed=advancedGuided?.raw??[];
+ const uniqueTrials=new Set(observed.map(x=>x.app+'/'+x.trial));
+ const advGuideValid=!!advancedGuided&&!!corpusHash&&
+  advancedGuided.kind==='ARCSIDE_ADVANCED_MATCHED_TASKS_V2'&&
+  advancedGuided.protocol==='ADVANCED_STATS_V2_AFTER_CATALOG_REPAIR'&&
+  advancedGuided.manifestSha256===corpusHash&&
+  advancedGuided.source==='ACTUAL_LOCAL_V5_CORPUS'&&
+  advancedGuided.operatorConfirmed===true&&
+  observed.length===30&&uniqueTrials.size===30&&
+  ['Flutter','React'].every(app=>{
+   const a=observed.filter(x=>x.app===app);
+   return a.length===15&&a.filter(x=>x.cold).length===5&&
+    a.filter(x=>!x.cold).length===10&&
+    a.every(x=>x.passed===true&&x.operatorVerified===true&&
+     Number.isFinite(x.ms)&&x.ms>0&&Number.isInteger(x.trial)&&
+     x.trial>=1&&x.trial<=15&&x.cold===(x.trial<=5));
+  })&&advancedGuided.qualified===true;
+ const advFeaturePass=advSourceValid&&advGuideValid;
+ g.push(gate('advanced_stats_ui_feature_parity',advFeaturePass?true:
+  featureBlocker?.status==='BLOCKED'||!!advancedSource||!!advancedGuided?false:null,
+  advFeaturePass?['New verified Flutter/React Advanced Stats source and 30 operator-matched UI observations supersede earlier narrow-React mismatch']:
+   ['Earlier observed Advanced Stats feature gap remains historical; current matched live Flutter/React controls are not yet independently attested and completed'],
+  {oldBlockerPreserved:featureBlocker?.status==='BLOCKED',
+   newSourceValid:advSourceValid,operatorConfirmed:advancedGuided?.operatorConfirmed??false,
+   newTrials:observed.length}));
+ const advRatio=advancedGuided?.p95ReactOverFlutter;
+ const advTimingOk=advGuideValid&&Number.isFinite(advRatio)&&advRatio>0&&advRatio<=1.1&&
+  advancedGuided.within10Pct===true;
+ g.push(gate('advanced_stats_matched_task_p95',!advancedGuided?null:advTimingOk,
+  advTimingOk?['5 cold + 10 warm verified post-repair Advanced Stats trials per variant; React p95 within 110% of Flutter']:
+   ['Run the NEW 30-trial protocol with a live UI preflight; do not reuse the 2026-11 historical failed rate/sort attempts'],
+  {ratio:advRatio??null,samples:observed.length,operatorConfirmed:advancedGuided?.operatorConfirmed??false}));
  const timed=guided?grouped(guided):[];
  const provenance=guided&&corpusHash&&guided.manifestSha256===corpusHash&&
   guided.method?.includes('same machine')&&guided.raw?.length>=90;
@@ -105,7 +150,7 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null}){
  return {kind:'ARCSIDE_PHASE3_DECISION_EVIDENCE_V1',createdAt:new Date().toISOString(),
   recommendation:'RETAIN_FLUTTER_REFERENCE_CONTINUE_CONTROLLED_REACT_PILOT',
   fullMigrationApproved:false,
-  pilot:historical&&sameSource&&realChecks&&p95ok?'MATCHED_PILOT_GATES_PASSED_WITH_FULL_SCOPE_PENDING':
+  pilot:historical&&sameSource&&realChecks&&advFeaturePass&&advTimingOk&&p95ok?'MATCHED_PILOT_GATES_PASSED_WITH_FULL_SCOPE_PENDING':
    'INCOMPLETE_OR_BLOCKED',
   blockers,gates:g,
   caveat:'No direct React-vs-Flutter speedup is inferred without manual same-hardware trials; browser-route bootstrap is not an equivalent table-interaction measurement. Full migration always requires owner signoff and unimplemented full-feature gates.'};
@@ -125,10 +170,12 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
  const real=await maybeJson(path.join(home,'evidence/real/real-source-journeys.json'));
  const guided=await maybeJson(path.join(home,'evidence/guided/guided-matched-task-timings.json'));
  const featureBlocker=await maybeJson(path.join(home,'evidence/guided/advanced-stats-parity-blocker.json'));
+ const advancedSource=await maybeJson(path.join(home,'evidence/advanced/advanced-source-parity.json'));
+ const advancedGuided=await maybeJson(path.join(home,'evidence/advanced/advanced-guided-timings-v2.json'));
  let manifestBytes=null;try{manifestBytes=await readFile(path.join(repo,'web/data/nba_static/manifest.json'))}catch(e){
   if(e.code!=='ENOENT')throw e;
  }
- const result=assess({parity,real,guided,manifestBytes,featureBlocker});
+ const result=assess({parity,real,guided,manifestBytes,featureBlocker,advancedSource,advancedGuided});
  const dest=path.join(home,'evidence/decision');
  await mkdir(dest,{recursive:true});
  await writeFile(path.join(dest,'phase3-decision.json'),JSON.stringify(result,null,2)+'\n');
