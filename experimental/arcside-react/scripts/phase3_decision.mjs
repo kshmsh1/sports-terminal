@@ -45,7 +45,7 @@ function grouped(guided){
  return rows;
 }
 export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
- advancedSource=null,advancedGuided=null}){
+ advancedSource=null,advancedGuided=null,visualizationGuided=null}){
  const g=[];
  const corpusHash=manifestBytes?sha256(manifestBytes):null;
  const realCases=parity?.byCase??{};
@@ -70,22 +70,34 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
   sameSource?['Both browser variants reference the byte-identical original local manifest']:
   ['Need both local servers and the original v5 manifest with matching SHA-256'],
   {manifestSha256:corpusHash,reportSha256:real?.manifestSha256??null}));
- const realChecks=!!real&&sameSource&&Array.isArray(real.seasons)&&
-  real.seasons.length>=3&&real.browsers.every(b=>
-  (b.errors??[]).length===0&&(b.consoleErrors??[]).length===0&&
-  (b.sourceShards?.length??0)>=real.seasons.length*4&&
-  b.journeys?.filter(j=>j.kind==='React verified real NBA Stats route'&&
-    (j.failures??[]).length===0&&j.checks?.length>=7).length>=real.seasons.length*2&&
-  b.references?.some(r=>r.app==='Flutter'));
+ // Identify complete source-matched React journeys AND prove that Flutter's
+ // visible renderer mounted. A root element is only bootstrap evidence, never
+ // a claim that Flutter rows or charts were interacted with automatically.
+ const browserDiagnostics=real?.browsers?.map(b=>{
+  const requested=(real?.seasons??[]).flatMap(season=>['regular','playoffs'].map(segment=>season+'/'+segment));
+  const qualified=(b.journeys??[]).filter(j=>j.kind==='React verified real NBA Stats route'&&
+   (j.failures??[]).length===0&&(j.checks??[]).length>=7);
+  const present=new Set(qualified.map(j=>j.season+'/'+j.segment));
+  const shards=(b.sourceShards??[]),shardIds=new Set(shards.map(x=>x.app+'/'+x.shard));
+  const completeShards=requested.every(key=>['React','Flutter'].every(app=>
+   shardIds.has(app+'/seasons/'+key.replace('/','/')+'.json')));
+  return {name:b.browser,version:b.version,
+   journeys:b.journeys?.length??0,verifiedQualifiedStatsJourneys:qualified.length,
+   missingRoutes:requested.filter(k=>!present.has(k)),completeShards,
+   flutterBootstrap:b.flutterBootstrap?.status??'NOT_RUN',
+   flutterRoot:b.flutterBootstrap?.root??null,
+   errors:b.errors?.length??0,errorExamples:(b.errors??[]).slice(0,3),
+   consoleErrors:b.consoleErrors?.length??0,consoleErrorExamples:(b.consoleErrors??[]).slice(0,3),
+   verifiedShards:shards.length};
+ })??[];
+ const realChecks=!!real&&sameSource&&Array.isArray(real.seasons)&&real.seasons.length>=3&&
+  browserDiagnostics.length>0&&browserDiagnostics.every(b=>
+   b.errors===0&&b.consoleErrors===0&&b.flutterBootstrap==='PASS'&&
+   b.completeShards&&b.missingRoutes.length===0&&b.verifiedShards>=real.seasons.length*4);
  g.push(gate('real_source_react_workflow_and_flutter_bootstrap',!real?null:realChecks,
   realChecks?['Automated React journeys and Flutter startup probe recorded with no browser exceptions']:
   ['Run the real-source browser journeys on both local app servers; Flutter interactions are NOT automated'],
-  {browsers:real?.browsers?.map(b=>({name:b.browser,version:b.version,
-   journeys:b.journeys?.length??0,verifiedQualifiedStatsJourneys:b.journeys?.filter(j=>
-    j.kind==='React verified real NBA Stats route'&&(j.failures??[]).length===0&&j.checks?.length>=7).length??0,
-   errors:b.errors?.length??0,errorExamples:(b.errors??[]).slice(0,3),
-   consoleErrors:b.consoleErrors?.length??0,consoleErrorExamples:(b.consoleErrors??[]).slice(0,3),
-   verifiedShards:b.sourceShards?.length??0}))??[]}));
+  {browsers:browserDiagnostics}));
  // Old observed UI failures are immutable history. A NEW protocol with genuine
  // Dart source parity, operator-confirmed live Flutter controls, and matched
  // clean trials can supersede them; merely porting columns cannot.
@@ -134,14 +146,55 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
   advTimingOk?['5 cold + 10 warm verified post-repair Advanced Stats trials per variant; React p95 within 110% of Flutter']:
    ['Run the NEW 30-trial protocol with a live UI preflight; do not reuse the 2026-11 historical failed rate/sort attempts'],
   {ratio:advRatio??null,samples:observed.length,operatorConfirmed:advancedGuided?.operatorConfirmed??false}));
- const timed=guided?grouped(guided):[];
- const provenance=guided&&corpusHash&&guided.manifestSha256===corpusHash&&
-  guided.method?.includes('same machine')&&guided.raw?.length>=90;
- const p95ok=!!provenance&&timed.every(t=>t.valid);
- g.push(gate('matched_flutter_react_operator_tasks_p95',!guided?null:p95ok,
-  p95ok?['5 cold and 10 warm verified trials per app/task; p95 regressions <= 10%']:
-  ['Need genuinely verified matched task trials for both apps: >=5 cold and >=10 warm each, no failures, React p95 <=110% of Flutter'],
-  {sameManifest:!!provenance,measurements:timed}));
+ // Legacy 90-trial guide contains the original pre-repair Advanced Stats
+ // failure. Preserve it as historical evidence, but combine ONLY its verified
+ // season-switching trials with NEW independent Advanced + Visualization protocols.
+ const seasonEvidence=guided?.raw??[];
+ const seasonSamples=seasonEvidence.filter(r=>r.task==='season');
+ const seasonValid=!!guided&&guided.manifestSha256===corpusHash&&
+  guided.method?.includes('same machine')&&
+  seasonSamples.length===30&&new Set(seasonSamples.map(r=>r.app+'/'+r.trial)).size===30&&
+  ['Flutter','React'].every(app=>{
+   const entries=seasonSamples.filter(r=>r.app===app);
+   return entries.length===15&&entries.filter(r=>r.cold).length===5&&
+    entries.filter(r=>!r.cold).length===10&&
+    entries.every(r=>r.passed===true&&r.operatorVerified===true&&
+     Number.isFinite(r.ms)&&r.ms>0&&Number.isInteger(r.trial)&&
+     r.trial>=1&&r.trial<=15&&r.cold===(r.trial<=5));
+  });
+ const seasonWarm=app=>seasonSamples.filter(r=>r.app===app&&!r.cold&&r.passed)
+  .map(r=>r.ms).sort((a,b)=>a-b);
+ const p95=values=>values.length===10?values[Math.ceil(values.length*.95)-1]:null;
+ const seasonFlutterP95=p95(seasonWarm('Flutter')),seasonReactP95=p95(seasonWarm('React'));
+ const seasonRatio=seasonFlutterP95&&seasonReactP95?seasonReactP95/seasonFlutterP95:null;
+ const vizObserved=visualizationGuided?.raw??[];
+ const vizValid=!!visualizationGuided&&visualizationGuided.kind==='ARCSIDE_VISUALIZATION_MATCHED_TASKS_V1'&&
+  visualizationGuided.protocol==='VISUALIZATION_CHART_V1_MATCHED'&&
+  visualizationGuided.source==='ACTUAL_LOCAL_V5_CORPUS'&&
+  visualizationGuided.manifestSha256===corpusHash&&
+  visualizationGuided.operatorConfirmed===true&&visualizationGuided.qualified===true&&
+  vizObserved.length===30&&new Set(vizObserved.map(r=>r.app+'/'+r.trial)).size===30&&
+  ['Flutter','React'].every(app=>{
+   const rows=vizObserved.filter(r=>r.app===app);
+   return rows.length===15&&rows.filter(r=>r.cold).length===5&&
+    rows.filter(r=>!r.cold).length===10&&rows.every(r=>
+     Number.isInteger(r.trial)&&r.trial>=1&&r.trial<=15&&
+     r.cold===(r.trial<=5)&&r.operatorVerified===true&&r.passed===true&&
+     Number.isFinite(r.ms)&&r.ms>0);
+  });
+ const vizRatio=visualizationGuided?.p95ReactOverFlutter??null;
+ const seasonOk=seasonValid&&seasonRatio!==null&&seasonRatio>0&&seasonRatio<=1.10;
+ const vizOk=vizValid&&Number.isFinite(vizRatio)&&vizRatio>0&&vizRatio<=1.10&&
+  visualizationGuided.within10Pct===true;
+ const p95ok=seasonOk&&advFeaturePass&&advTimingOk&&vizOk;
+ g.push(gate('matched_flutter_react_operator_tasks_p95',!guided&&!visualizationGuided?null:p95ok,
+  p95ok?['Separate verified season, corrected Advanced Stats and Visualization protocols: each 5 cold + 10 warm per app, zero failures, React p95 <=110% of Flutter']:
+  ['Requires original valid season trials, corrected Advanced Stats trials and NEW live-equivalent Visualization trials; never reuse failed pre-repair basis/chart timings'],
+  {season:{valid:seasonValid,p95ReactOverFlutter:seasonRatio,flutterWarmP95Ms:seasonFlutterP95,reactWarmP95Ms:seasonReactP95,
+    preservedHistoricalSamples:seasonSamples.length},
+   advanced:{valid:advGuideValid&&advFeaturePass,p95ReactOverFlutter:advRatio??null,samples:observed.length},
+   visualization:{valid:vizValid,p95ReactOverFlutter:vizRatio,samples:vizObserved.length},
+   legacyBasisAndChartExcluded:true}));
  // Presence of synthetic or Playwright evidence cannot satisfy these human/runtime gates.
  for(const name of ['functional_full_scope_feature_parity','full_cba_trade_rules_and_player_profiles',
   'real_safari_voiceover_nvda_accessibility','labs_import_export_and_native_service_security',
@@ -156,7 +209,7 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
   pilot:historical&&sameSource&&realChecks&&advFeaturePass&&advTimingOk&&p95ok?'MATCHED_PILOT_GATES_PASSED_WITH_FULL_SCOPE_PENDING':
    'INCOMPLETE_OR_BLOCKED',
   blockers,gates:g,
-  caveat:'No direct React-vs-Flutter speedup is inferred without manual same-hardware trials; browser-route bootstrap is not an equivalent table-interaction measurement. Full migration always requires owner signoff and unimplemented full-feature gates.'};
+  caveat:'The three matched task groups are human task-completion times, NOT GPU or frame benchmarks. Flutter bootstrap is not verified table interaction. Full migration requires independent full-feature, access, security, performance and owner acceptance.'};
 }
 function markdown(result){
  return ['# Phase 3 — decision evidence','',
@@ -165,7 +218,7 @@ function markdown(result){
   '| Gate | State | Notes |','| --- | --- | --- |',
   ...result.gates.map(x=>'| '+x.name+' | '+x.status+' | '+x.reasons.join('; ').replaceAll('|','/')+' |'),
   '','Remaining blockers: '+result.blockers.join(', '),'',
-  'No improvement percentage may be asserted before operator-verified matched hardware data is recorded.',
+  'Performance ratios, when reported, reflect matched human task completion only. Missing chart trials are not a pass.',
   'This is an engineering decision report, not a signed framework migration authorization.',''].join('\n');
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
@@ -175,10 +228,11 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
  const featureBlocker=await maybeJson(path.join(home,'evidence/guided/advanced-stats-parity-blocker.json'));
  const advancedSource=await maybeJson(path.join(home,'evidence/advanced/advanced-source-parity.json'));
  const advancedGuided=await maybeJson(path.join(home,'evidence/advanced/advanced-guided-timings-v2.json'));
+ const visualizationGuided=await maybeJson(path.join(home,'evidence/visualization/visualization-guided-timings-v1.json'));
  let manifestBytes=null;try{manifestBytes=await readFile(path.join(repo,'web/data/nba_static/manifest.json'))}catch(e){
   if(e.code!=='ENOENT')throw e;
  }
- const result=assess({parity,real,guided,manifestBytes,featureBlocker,advancedSource,advancedGuided});
+ const result=assess({parity,real,guided,manifestBytes,featureBlocker,advancedSource,advancedGuided,visualizationGuided});
  const dest=path.join(home,'evidence/decision');
  await mkdir(dest,{recursive:true});
  await writeFile(path.join(dest,'phase3-decision.json'),JSON.stringify(result,null,2)+'\n');
