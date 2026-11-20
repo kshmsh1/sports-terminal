@@ -28,7 +28,7 @@ if(real.source!=='ACTUAL_LOCAL_V5_CORPUS'||real.manifestSha256!==sourceHash||
  throw Error('First run fresh --automated authentic-source React chart and Flutter bootstrap acceptance');
 const react=(process.env.ARCSIDE_REACT_URL??'http://127.0.0.1:4173').replace(/\/$/,'');
 const flutter=(process.env.ARCSIDE_FLUTTER_URL??'http://127.0.0.1:8768').replace(/\/$/,'');
-const resume=process.env.ARCSIDE_ADVANCED_RESUME==='1',protocol='VISUALIZATION_CHART_V1_MATCHED';
+const resume=process.env.ARCSIDE_VISUALIZATION_RESUME==='1',protocol='VISUALIZATION_CHART_V1_MATCHED';
 const checkpoint=path.join(dir,'visualization-guided-checkpoint-v1.json'),target=path.join(dir,'visualization-guided-timings-v1.json');
 const raw=[],errors=[];
 const rl=createInterface({input:stdin,output:stdout});
