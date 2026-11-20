@@ -178,6 +178,18 @@ for(const name of browsers){
     }else task.checks.push('SKIPPED source-backed multi-team expansion: no eligible recorded stints');
     const advanced=await p.getByRole('button',{name:'Open Advanced Stats'});
     await advanced.click();await p.getByRole('heading',{name:'Advanced player statistics'}).waitFor();
+    const groups=p.getByRole('group',{name:'Advanced stat groups'}).getByRole('button');
+    assert.equal(await groups.count(),18,'Flutter advanced group taxonomy must have 18 groups');
+    await p.getByLabel('Rate basis').selectOption('per36');
+    await p.getByRole('button',{name:'Sort by PTS/36'}).waitFor();
+    await p.getByLabel('Rate basis').selectOption('per100');
+    const score=p.getByRole('button',{name:'Sort by PTS/100'});
+    await score.waitFor();
+    await score.click();
+    assert.equal(await p.getByRole('columnheader',{name:/PTS/}).getAttribute('aria-sort'),'ascending');
+    await p.getByRole('button',{name:'Shooting & Efficiency'}).click();
+    await p.getByRole('button',{name:'Sort by FG%'}).waitFor();
+    task.checks.push('Flutter Advanced Stats group taxonomy, PTS/36 and PTS/100 header, sort direction, shooting group');
     task.checks.push('advanced route from same source');
     await p.goBack({waitUntil:'domcontentloaded'});
     await p.getByRole('heading',{name:'Player statistics'}).waitFor();
