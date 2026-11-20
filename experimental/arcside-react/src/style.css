@@ -88,3 +88,52 @@ h2{font-size:21px;letter-spacing:-.4px;margin:0 0 7px}h3{font-size:15px}.subtle{
 .advanced-stats-table .player-cell .text-button{font-size:12px}
 .advanced-stats-table .stint-row td:first-child{background:var(--panel-light)}
 @media(max-width:690px){.advanced-groups{padding:12px}.advanced-pager{padding:10px 12px}.advanced-description{padding:4px 12px}}
+
+/* Source-grounded Visualization Studio -- structured configuration / chart workspace. */
+.studio-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;
+ padding:18px 22px;border-bottom:1px solid var(--line)}
+.studio-heading h2{margin:0 0 6px}
+.studio-grid{display:grid;grid-template-columns:minmax(250px,282px) minmax(0,1fr);min-height:590px}
+.studio-rail{padding:15px 15px 20px;border-right:1px solid var(--line);background:var(--panel-light);
+ display:flex;flex-direction:column;gap:12px}
+.studio-rail h3{font-size:10px;letter-spacing:1px;color:var(--sub);margin:8px 0 0;
+ border-top:1px solid var(--line);padding-top:15px}
+.studio-rail h3:first-child{border:0;margin:0;padding:0}
+.studio-rail select,.studio-rail input:not([type=checkbox]):not([type=range]){width:100%;min-width:0}
+.studio-rail label{gap:5px}
+.studio-rail button{padding:7px 9px}
+.studio-filter-choices{display:grid;gap:4px;max-height:180px;overflow-y:auto}
+.studio-filter-choices button{text-align:left;font-size:11px}
+.studio-clear{background:var(--accent-bg);color:var(--accent);word-break:break-word}
+.studio-slider-label strong{color:var(--accent);font-size:14px;align-self:end}
+.studio-slider-label input{width:100%;padding:0;min-height:14px;accent-color:var(--accent)}
+.studio-switch{display:flex;flex-direction:row;align-items:center;justify-content:space-between;
+ gap:14px;font-size:12px;min-height:31px}
+.studio-switch input{width:17px;height:17px;min-width:17px;min-height:17px;accent-color:var(--accent)}
+.studio-workspace{min-width:0;padding:14px 14px 22px}
+.studio-chart-title{display:flex;align-items:center;justify-content:space-between;gap:10px;
+ padding:14px 14px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px}
+.studio-chart-title h3{margin:0 0 4px;font-size:16px}
+.studio-analytics{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+.studio-analytics>div{border:1px solid var(--line);border-radius:9px;padding:10px 12px;
+ background:var(--panel-light);min-width:118px;display:grid;gap:3px;flex:1}
+.studio-analytics>div.studio-fit{flex:2;min-width:205px}
+.studio-analytics small{font-size:10px;font-weight:750;color:var(--sub)}
+.studio-analytics strong{font-size:16px;color:var(--text);font-variant-numeric:tabular-nums}
+.studio-analytics .studio-fit strong{font-size:13px}
+.studio-analytics span{font-size:10px;color:var(--soft)}
+.studio-chart-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;
+ padding:8px 0}
+.studio-chart-actions button{padding:7px 10px;font-size:12px}
+.studio-chart{height:min(57vh,580px);min-height:420px;border:1px solid var(--line);
+ border-radius:9px;background:var(--panel)}
+.studio-underlying-title{display:flex;align-items:center;justify-content:space-between}
+.studio-underlying-title h3{font-size:12px;letter-spacing:.5px}
+.studio-underlying-title span{font-size:11px;color:var(--sub)}
+.studio .chart-accessible{padding:12px 8px 10px}
+.studio .chart-accessible table{font-variant-numeric:tabular-nums}
+.studio .chart-footer{padding:10px 8px}
+@media(max-width:1000px){.studio-grid{grid-template-columns:minmax(210px,240px) minmax(0,1fr)}}
+@media(max-width:740px){.studio-grid{display:block}.studio-rail{border-right:0;border-bottom:1px solid var(--line)}
+ .studio-heading{align-items:flex-start;flex-direction:column}.studio-workspace{padding:10px}
+ .studio-chart{min-height:350px;height:410px}.studio-chart-title{flex-wrap:wrap}}
