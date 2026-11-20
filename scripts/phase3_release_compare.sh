@@ -27,9 +27,16 @@ for PORT in "$FLUTTER_PORT" "$REACT_PORT";do
   echo "TCP port $PORT is already in use; choose another comparison port." >&2;exit 1
  fi
 done
-echo 'Compiling production/release versions of BOTH shells (not Flutter debug vs Vite dev)...'
-flutter build web --release
-(cd experimental/arcside-react && npm run build)
+if [[ "${ARCSIDE_COMPARE_REUSE_BUILDS:-0}" == "1" ]]; then
+ if [[ ! -f "$ROOT/build/web/index.html" || ! -f "$ROOT/experimental/arcside-react/dist/index.html" ]];then
+  echo 'Cannot reuse release builds: Flutter build/web or React dist missing.' >&2;exit 1
+ fi
+ echo 'Reusing existing release builds; only use after confirming source code has not changed.'
+else
+ echo 'Compiling production/release versions of BOTH shells (not Flutter debug vs Vite dev)...'
+ flutter build web --release
+ (cd experimental/arcside-react && npm run build)
+fi
 OUT="$ROOT/experimental/arcside-react/evidence/release"
 mkdir -p "$OUT"
 FLUTTER_PID=''; REACT_PID=''
@@ -41,20 +48,26 @@ cleanup(){
 trap cleanup EXIT INT TERM
 python3 -m http.server "$FLUTTER_PORT" --bind 127.0.0.1 --directory "$ROOT/build/web" >"$OUT/flutter-release-server.log" 2>&1 &
 FLUTTER_PID=$!
-node "$ROOT/experimental/arcside-react/node_modules/vite/bin/vite.js" preview \
- --host 127.0.0.1 --port "$REACT_PORT" --strictPort \
- >"$OUT/react-release-server.log" 2>&1 &
+(
+ cd "$ROOT/experimental/arcside-react"
+ exec node node_modules/vite/bin/vite.js preview \
+  --host 127.0.0.1 --port "$REACT_PORT" --strictPort
+) >"$OUT/react-release-server.log" 2>&1 &
 REACT_PID=$!
 FLUTTER_URL="http://127.0.0.1:$FLUTTER_PORT"
 REACT_URL="http://127.0.0.1:$REACT_PORT"
 for URL in "$FLUTTER_URL" "$REACT_URL";do
  READY=0
  for i in $(seq 1 60);do
-  if curl -fsS "$URL/data/nba_static/manifest.json" >/dev/null;then READY=1;break;fi
+  if curl -fsS --silent "$URL/data/nba_static/manifest.json" >/dev/null 2>&1;then READY=1;break;fi
   sleep 1
  done
  if [[ "$READY" -ne 1 ]];then
   echo "Release server could not serve authentic manifest: $URL" >&2
+  echo '--- Flutter release server log ---' >&2
+  tail -n 40 "$OUT/flutter-release-server.log" >&2 || true
+  echo '--- React release server log ---' >&2
+  tail -n 80 "$OUT/react-release-server.log" >&2 || true
   exit 1
  fi
 done
