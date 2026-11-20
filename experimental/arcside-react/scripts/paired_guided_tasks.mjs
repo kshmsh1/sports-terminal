@@ -215,6 +215,7 @@ for(const task of tasks){
   preRegistered10PctGate:ratio===null?'UNMEASURED':ratio<=1.1?'WITHIN_THRESHOLD':'EXCEEDS_THRESHOLD'});
 }
 const report={kind:'ARCSIDE_PHASE3_OPERATOR_VERIFIED_MATCHED_TASK_TIMINGS',
+ protocolBlocked:parityBlock,
  createdAt:new Date().toISOString(),manifestSha256:hash(data),fingerprint:manifest.database_fingerprint,
  hardware:{platform:platform(),release:release(),arch:arch(),cpu:cpus()[0]?.model,cores:cpus().length,ram:totalmem()},
  browser:(process.env.ARCSIDE_BROWSER_CHANNEL??'bundled Chromium')+' '+browser.version(),
