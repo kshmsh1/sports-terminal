@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# Phase 3: matched release-build Flutter/React comparison on the owner's Mac.
+# Never rebuilds/scrapes the historic NBA warehouse; reads existing v5 output.
+# --automated: actual-corpus browser journeys + evidence report
+# --all: above plus the interactive matched 5-cold/10-warm operator tasks.
+set -euo pipefail
+MODE="${1:---automated}"
+if [[ "$MODE" != "--automated" && "$MODE" != "--all" ]]; then
+ echo 'Usage: bash scripts/phase3_release_compare.sh [--automated|--all]' >&2;exit 2
+fi
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+CORPUS="$ROOT/web/data/nba_static"
+if [[ ! -f "$CORPUS/manifest.json" || ! -f "$CORPUS/seasons.json" ]]; then
+ echo 'Missing actual published NBA static v5 release. Do not substitute fixture data.' >&2;exit 1
+fi
+for tool in flutter node python3 curl lsof;do
+ if ! command -v "$tool" >/dev/null 2>&1;then echo "Missing required command: $tool" >&2;exit 1;fi
+done
+if [[ ! -x experimental/arcside-react/node_modules/.bin/vite ]];then
+ echo 'Install the pinned React dependencies with npm ci first.' >&2;exit 1
+fi
+FLUTTER_PORT="${ARCSIDE_COMPARE_FLUTTER_PORT:-8768}"
+REACT_PORT="${ARCSIDE_COMPARE_REACT_PORT:-4173}"
+for PORT in "$FLUTTER_PORT" "$REACT_PORT";do
+ if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN -t | grep -q .;then
+  echo "TCP port $PORT is already in use; choose another comparison port." >&2;exit 1
+ fi
+done
+echo 'Compiling production/release versions of BOTH shells (not Flutter debug vs Vite dev)...'
+flutter build web --release
+(cd experimental/arcside-react && npm run build)
+OUT="$ROOT/experimental/arcside-react/evidence/release"
+mkdir -p "$OUT"
+FLUTTER_PID=''; REACT_PID=''
+cleanup(){
+ for PID in "$FLUTTER_PID" "$REACT_PID";do
+  if [[ -n "$PID" ]];then kill "$PID" 2>/dev/null || true;wait "$PID" 2>/dev/null || true;fi
+ done
+}
+trap cleanup EXIT INT TERM
+python3 -m http.server "$FLUTTER_PORT" --bind 127.0.0.1 --directory "$ROOT/build/web" >"$OUT/flutter-release-server.log" 2>&1 &
+FLUTTER_PID=$!
+node "$ROOT/experimental/arcside-react/node_modules/vite/bin/vite.js" preview \
+ --host 127.0.0.1 --port "$REACT_PORT" --strictPort \
+ >"$OUT/react-release-server.log" 2>&1 &
+REACT_PID=$!
+FLUTTER_URL="http://127.0.0.1:$FLUTTER_PORT"
+REACT_URL="http://127.0.0.1:$REACT_PORT"
+for URL in "$FLUTTER_URL" "$REACT_URL";do
+ READY=0
+ for i in $(seq 1 60);do
+  if curl -fsS "$URL/data/nba_static/manifest.json" >/dev/null;then READY=1;break;fi
+  sleep 1
+ done
+ if [[ "$READY" -ne 1 ]];then
+  echo "Release server could not serve authentic manifest: $URL" >&2
+  exit 1
+ fi
+done
+printf 'Flutter release: %s\nReact release: %s\n' "$FLUTTER_URL" "$REACT_URL"
+STATUS=0
+(
+ cd "$ROOT/experimental/arcside-react"
+ ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \
+ ARCSIDE_REAL_BROWSERS="${ARCSIDE_REAL_BROWSERS:-chromium}" \
+ ARCSIDE_FLUTTER_URL="$FLUTTER_URL" ARCSIDE_REACT_URL="$REACT_URL" \
+ npm run test:real
+) || STATUS=1
+if [[ "$MODE" == "--all" ]];then
+ echo 'Starting operator-verified SAME MACHINE task comparison. Both apps remain running.'
+ (
+  cd "$ROOT/experimental/arcside-react"
+  ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \
+  ARCSIDE_FLUTTER_URL="$FLUTTER_URL" ARCSIDE_REACT_URL="$REACT_URL" \
+  ARCSIDE_GUIDED_COLD_RUNS=5 ARCSIDE_GUIDED_WARM_RUNS=10 \
+  npm run compare:guided
+ ) || STATUS=1
+fi
+(cd "$ROOT/experimental/arcside-react" && node scripts/phase3_decision.mjs) || STATUS=1
+echo 'Phase 3 evidence: experimental/arcside-react/evidence/{real,guided,decision}/'
+if [[ "$STATUS" -ne 0 ]];then
+ echo 'At least one evaluation step failed. Inspect evidence; NEVER call this a pass.' >&2
+fi
+exit "$STATUS"
