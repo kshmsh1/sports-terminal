@@ -1,6 +1,8 @@
 # Arcside Phase 3 — pilot implementation and evidence ledger
 
 **Status (2026-11-18): Implementation staged on separate experimental branch; end-to-end decision gates NOT MET.**
+
+**November 20 addendum:** Owner's actual local source-backed Dart ↔ React comparison has now PASSED **1,016,826 / 1,016,826 mapped comparisons with 0 mismatches** across 36 season/segment/basis cases; 1946-47 playoffs have no rows and contribute zero comparisons. The original historical-data blocker for sampled fields is cleared. The new [comparative UI/UX evaluation](phase3_ui_ux_comparative_evaluation_2026_11_20.md) documents production-vs-production matched browser testing, real 50/4 and source-stint checks, screenshots, 90 manually verified trials and strict no-fabricated-data gates. **The matched real-machine user-task measurements, native accessibility and whole-product feature parity remain unverified; full framework migration is not approved.**
 This ledger is deliberately not a GO decision. Review alongside the exact [Phase 3 protocol](phase3_frontend_proof_protocol.md), [Phase 2 scorecard](phase2_frontend_scorecard_2026_11_18.json) and [Phase 1 audit](phase1_arcside_architecture_audit_2026_11_18.md).
 
 ## Pinned source and branch dependencies
