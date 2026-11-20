@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import type {RateBasis,SeasonType} from './data';
 import type {Row,MetricKey} from './engine';
-import {formatMetric,stintRows} from './engine';
+import {stintRows} from './engine';
 import {advancedGroups,advancedMetricCatalog,advancedChildren,rateSensitiveKeys} from './advancedCatalog';
 import type {AdvancedMetric} from './advancedCatalog';
 
@@ -102,7 +102,7 @@ export function advancedText(row:Row,key:string):string{
  if(metric?.format==='text')return String(row.raw[key]??'').trim()||'—';
  const v=metricValue(row,key);
  if(v===null)return '—';
- if(metric?.engine && nativeEngineKeys.has(metric.engine as MetricKey))return formatMetric(metric.engine as MetricKey,v);
+ // Use Flutter catalog display formats, not the smaller Stats engine formatter.
  if(metric?.format==='percent')return (v*100).toFixed(metric.decimals)+'%';
  if(metric?.format==='integer')return String(Math.round(v));
  if(metric?.format==='seconds')return v.toFixed(metric.decimals)+'s';
