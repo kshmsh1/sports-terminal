@@ -28,7 +28,7 @@ test('scatter interactions and theme persist across refresh',async({page})=>{
  await page.getByRole('button',{name:'Drag pan'}).click();
  await expect(page.getByRole('button',{name:'Drag pan'})).toHaveAttribute('aria-pressed','true');
  await page.getByLabel('X metric').selectOption('reb');
- await page.getByRole('checkbox',{name:'Linear reference'}).check();
+ await page.getByRole('checkbox',{name:'Best-fit line'}).check();
  await page.getByRole('button',{name:'Reset view'}).click();
  await page.getByRole('button',{name:'Switch to light theme'}).click();
  await expect(page.locator('html')).toHaveAttribute('data-theme','light');
