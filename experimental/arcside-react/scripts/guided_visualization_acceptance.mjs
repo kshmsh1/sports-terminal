@@ -19,6 +19,11 @@ const source=JSON.parse(manifestBytes.toString());
 if(source.contract!=='sports-terminal-static-nba-website-v5'||source.static_schema_version!==5)
  throw Error('Canonical source missing');
 const real=JSON.parse(await readFile(path.resolve(here,'../evidence/real/real-source-journeys.json'),'utf8'));
+const sourceParity=JSON.parse(await readFile(path.join(dir,'visualization-source-parity.json'),'utf8'));
+if(sourceParity.kind!=='ARCSIDE_VISUALIZATION_REAL_DART_REACT_ACCEPTANCE_V1'||
+ sourceParity.status!=='PASS'||sourceParity.manifestSha256!==sourceHash||
+ sourceParity.mismatches!==0||sourceParity.comparisons<500||sourceParity.nonemptyCases<12)
+ throw Error('Visualization original Dart/React population and regression source parity must PASS before timing');
 if(real.source!=='ACTUAL_LOCAL_V5_CORPUS'||real.manifestSha256!==sourceHash||
  !real.browsers?.length||!real.browsers.every(b=>
   b.flutterBootstrap?.status==='PASS'&&!b.errors?.length&&!b.consoleErrors?.length&&
