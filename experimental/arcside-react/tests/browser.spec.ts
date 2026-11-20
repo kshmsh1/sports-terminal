@@ -60,3 +60,34 @@ test('semantic sort announcement and keyboard reachability',async({page})=>{
  await page.getByRole('button',{name:'Open Advanced Stats'}).click();
  await expect(page).toHaveURL(/advanced/);
 });
+
+
+test('advanced stats matches Flutter Overview production, rate-specific labels and sorting',async({page})=>{
+ await page.goto('/advanced?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByRole('heading',{name:'Advanced player statistics'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Overview',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByRole('button',{name:'Sort by PPG'})).toBeVisible();
+ await page.getByLabel('Rate basis').selectOption('per36');
+ await expect(page.getByRole('button',{name:'Sort by PTS/36'})).toBeVisible();
+ await page.getByLabel('Rate basis').selectOption('per100');
+ const points=page.getByRole('button',{name:'Sort by PTS/100'});
+ await expect(points).toBeVisible();
+ await points.click();
+ await expect(page.getByRole('columnheader',{name:/PTS\\/100/})).toHaveAttribute('aria-sort','ascending');
+});
+test('advanced stats exposes all Flutter metric families, filters, pagination and source-null values',async({page})=>{
+ await page.goto('/advanced?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByRole('group',{name:'Advanced stat groups'}).getByRole('button')).toHaveCount(18);
+ await page.getByRole('button',{name:'Hustle Breakdown'}).click();
+ await expect(page.getByRole('button',{name:'Sort by HUSTLE GP'})).toBeVisible();
+ await expect(page.getByRole('cell',{name:'—'}).first()).toBeVisible();
+ await page.getByLabel('Minimum GP').selectOption('0');
+ await page.getByLabel('Minimum MPG').selectOption('0');
+ await expect(page.getByText('150 of 150 player rows')).toBeVisible();
+ await page.getByRole('button',{name:'Next page'}).click();
+ await expect(page.getByText('Page 2 / 8')).toBeVisible();
+ await page.getByRole('button',{name:'Overview',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Expand RPG'})).toBeVisible();
+ await page.getByRole('button',{name:'Expand RPG'}).click();
+ await expect(page.getByRole('button',{name:'Sort by ORB'})).toBeVisible();
+});
