@@ -31,6 +31,8 @@ jobs:
         run: flutter pub get
       - name: Static-check the new original Flutter Advanced Stats acceptance exporter
         run: dart analyze test/phase3_advanced_acceptance_export_test.dart
+      - name: Analyze original Flutter Visualization Studio source exporter
+        run: dart analyze test/phase3_visualization_reference_export_test.dart
       - name: Run Flutter statistics regression tests (ties and absent plus-minus)
         run: flutter test test/nba_stats_workstation_engine_test.dart --reporter expanded
       - name: Export original Dart output from shared explicit synthetic contract fixture
