@@ -1,4 +1,4 @@
-// New post-repair visualization comparison, 30 operator-attested trials.
+// New post-repair visualization comparison, 24 operator-attested trials.
 // Chart task parity must be observed live in both variants; a React-only
 // browser journey is never substituted for original Flutter interactions.
 import {chromium} from '@playwright/test';
@@ -28,16 +28,16 @@ if(real.source!=='ACTUAL_LOCAL_V5_CORPUS'||real.manifestSha256!==sourceHash||
  throw Error('First run fresh --automated authentic-source React chart and Flutter bootstrap acceptance');
 const react=(process.env.ARCSIDE_REACT_URL??'http://127.0.0.1:4173').replace(/\/$/,'');
 const flutter=(process.env.ARCSIDE_FLUTTER_URL??'http://127.0.0.1:8768').replace(/\/$/,'');
-const resume=process.env.ARCSIDE_VISUALIZATION_RESUME==='1',protocol='VISUALIZATION_CHART_V1_MATCHED';
-const checkpoint=path.join(dir,'visualization-guided-checkpoint-v1.json'),target=path.join(dir,'visualization-guided-timings-v1.json');
+const resume=process.env.ARCSIDE_VISUALIZATION_RESUME==='1',protocol='VISUALIZATION_CHART_V2_MATCHED_2_COLD_10_WARM';
+const checkpoint=path.join(dir,'visualization-guided-checkpoint-v2.json'),target=path.join(dir,'visualization-guided-timings-v2.json');
 const raw=[],errors=[];
 const rl=createInterface({input:stdin,output:stdout});
 const browser=await chromium.launch({headless:false,...(process.env.ARCSIDE_BROWSER_CHANNEL?{channel:process.env.ARCSIDE_BROWSER_CHANNEL}:{})});
-const warmContexts={},meta={kind:'ARCSIDE_VISUALIZATION_MATCHED_TASKS_V1',protocol,source:'ACTUAL_LOCAL_V5_CORPUS',
- manifestSha256:sourceHash,cold:5,warm:10,operatorConfirmed:false,
+const warmContexts={},meta={kind:'ARCSIDE_VISUALIZATION_MATCHED_TASKS_V2',protocol,source:'ACTUAL_LOCAL_V5_CORPUS',
+ manifestSha256:sourceHash,cold:2,warm:10,operatorConfirmed:false,
  hardware:{platform:platform(),arch:arch(),release:release(),cpu:cpus()[0]?.model,cores:cpus().length,ram:totalmem()},
- browser:browser.version(),task:'2025-26 regular player scatter: zoom, pan, reset, set X=REB and Y=AST, verify points and tooltips',
- method:'same machine release servers, 5 cold and 10 warm per app, alternate order, human verification, browser stopwatch; NOT GPU render times'};
+ browser:browser.version(),task:'2025-26 regular matched Top 40 PTS scatter, GP 50+: zoom, pan, reset, set X=REB/Y=AST, verify points and tooltips',
+ method:'same machine release servers, 2 cold and 10 warm per app, alternate order, human verification, browser stopwatch; NOT GPU render times'};
 async function write(){await writeFile(checkpoint,JSON.stringify({...meta,raw,errors,inProgress:true},null,2)+'\n')}
 const summary=()=>{
  const by={};for(const app of ['Flutter','React']){
@@ -49,8 +49,8 @@ const summary=()=>{
    medianMs:percentile(.5),p95Ms:percentile(.95)};
  }
  const ratio=by.Flutter.p95Ms&&by.React.p95Ms?by.React.p95Ms/by.Flutter.p95Ms:null;
- const qualified=meta.operatorConfirmed&&by.Flutter.completed===15&&by.React.completed===15&&
-  by.Flutter.cold===5&&by.React.cold===5&&
+ const qualified=meta.operatorConfirmed&&by.Flutter.completed===12&&by.React.completed===12&&
+  by.Flutter.cold===2&&by.React.cold===2&&
   by.Flutter.warm===10&&by.React.warm===10&&
   !by.Flutter.failures&&!by.React.failures;
  return {by,p95ReactOverFlutter:ratio,qualified,within10Pct:qualified&&ratio!==null&&ratio<=1.10};
@@ -71,14 +71,14 @@ try{
   const seen=new Set();
   for(const r of saved.raw){
    const k=r.app+'/'+r.trial;
-   if(seen.has(k)||!['Flutter','React'].includes(r.app)||r.trial<1||r.trial>15||
-      r.cold!==(r.trial<=5)||!Number.isFinite(r.ms)||r.ms<0)
+   if(seen.has(k)||!['Flutter','React'].includes(r.app)||r.trial<1||r.trial>12||
+      r.cold!==(r.trial<=2)||!Number.isFinite(r.ms)||r.ms<0)
     throw Error('Corrupt or duplicated checkpoint '+k);
    seen.add(k);
   }
-  await copyFile(checkpoint,path.join(dir,'visualization-guided-checkpoint-v1-backup.json'));
+  await copyFile(checkpoint,path.join(dir,'visualization-guided-checkpoint-v2-backup.json'));
   raw.push(...saved.raw);errors.push(...(saved.errors??[]));meta.operatorConfirmed=true;
-  console.log('RESUMED '+raw.length+'/30 visualization matched-task trials; original failed basis trials are NOT reused.');
+  console.log('RESUMED '+raw.length+'/24 visualization matched-task trials; original failed basis trials are NOT reused.');
  }else{
   const paired=await browser.newContext({viewport:{width:1440,height:900}});
   const fp=await paired.newPage(),rp=await paired.newPage();
@@ -88,8 +88,9 @@ try{
   await rp.getByRole('img',{name:/Scatter plot of/}).waitFor({timeout:60000});
   await fp.bringToFront();
   console.log('\nPREFLIGHT - BOTH LIVE CHART INTERFACES');
-  console.log('Flutter: navigate to Visualization Studio; select a 2025-26 Regular player scatter.');
-  console.log('React: its original-source player scatter loads in Visualization.');
+  console.log('Flutter: navigate to Visualization Studio; select a 2025-26 Regular scatter, top 40 by PTS, GP 50+.');
+  console.log('React: set identical X=AST / Y=PTS, top 40 by PTS, GP 50+, labels and best-fit enabled.');
+  console.log('Compare the same 40 player names, values and regression summary before timing.');
   console.log('Compare a genuinely common workflow: wheel zoom, drag pan, reset view,');
   console.log('change X to REB and Y to AST, inspect point position and player tooltips.');
   console.log('If either interface lacks equivalent controls or the plotted values differ,');
@@ -104,13 +105,13 @@ try{
  }
  if(meta.operatorConfirmed){
   let stopped=false;
-  for(let i=1;i<=15&&!stopped;i++){
+  for(let i=1;i<=12&&!stopped;i++){
    for(const app of i%2?['Flutter','React']:['React','Flutter']){
     if(raw.some(r=>r.app===app&&r.trial===i))continue;
     let interrupted=true;
     while(interrupted){
     interrupted=false;
-    const cold=i<=5;
+    const cold=i<=2;
     const ctx=cold?await browser.newContext({viewport:{width:1440,height:900}}):
      (warmContexts[app]??=await browser.newContext({viewport:{width:1440,height:900}}));
     const page=await ctx.newPage();let start=null,done=null,finish;
@@ -126,7 +127,7 @@ try{
     page.on('pageerror',e=>errors.push({app,trial:i,message:e.message}));
     await page.addInitScript(installGuidedOverlay,{binding:'arcsideAdvancedMark',
      title:'Arcside Visualization benchmark',
-     instructions:'Zoom → pan → reset; X=REB, Y=AST; verify plot and tooltip. Finish only after checking.'});
+     instructions:'Identical top-40 PTS (GP 50+) initial chart. Zoom → pan → reset; X=REB, Y=AST. Finish after verifying player values.'});
     await page.goto((app==='Flutter'?flutter+'/':react+'/visualizations?season=2025-26&segment=regular&basis=perGame'),
      {waitUntil:'domcontentloaded',timeout:60000});
     // Full document reload raises a new load event; SPA route changes do not.
@@ -137,8 +138,8 @@ try{
       finish();
      }
     });
-    console.log('\n'+app+' '+(cold?'COLD':'WARM')+' trial '+i+'/15');
-    console.log('Stage 2025-26 / Regular / player scatter with default axes and view.');
+    console.log('\n'+app+' '+(cold?'COLD':'WARM')+' trial '+i+'/12');
+    console.log('Stage 2025-26 / Regular / AST vs PTS / top 40 by PTS / GP 50+ / default zoom and pan.');
     await rl.question('Press ENTER once starting state is ready in this browser: ');
     await page.bringToFront();
     console.log('Start Ctrl+Shift+8, Finish Ctrl+Shift+9, Fail Ctrl+Shift+0.');
@@ -170,4 +171,4 @@ try{
   completed:raw.length,summary:result.by,ratio:result.p95ReactOverFlutter,
   within10Pct:result.within10Pct,output:target},null,2));
 }
-if(raw.length!==30||!meta.operatorConfirmed||!summary().within10Pct)process.exitCode=1;
+if(raw.length!==24||!meta.operatorConfirmed||!summary().within10Pct)process.exitCode=1;
