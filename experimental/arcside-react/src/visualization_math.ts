@@ -81,7 +81,7 @@ export function selectVisualizationRows(rows:Row[],opts:{
  });
  const ranked=[...eligible].sort((a,b)=>{
   const v=(b.values[opts.y]??-Infinity)-(a.values[opts.y]??-Infinity);
-  return v||a.player.localeCompare(b.player,'en')||a.id.localeCompare(b.id,'en');
+  return v||(a.player<b.player?-1:a.player>b.player?1:0)||(a.id<b.id?-1:a.id>b.id?1:0);
  });
  const fullPopulation=['histogram','box','cumulative'].includes(opts.kind);
  const cap=opts.kind==='bar'?(opts.rankingSize??20):opts.population;
@@ -105,8 +105,9 @@ export function linearStats(rows:Row[],x:MetricKey,y:MetricKey):LinearStats|null
   const dx=a-mx,dy=b-my;xx+=dx*dx;yy+=dy*dy;xy+=dx*dy;
   minX=Math.min(a,minX);maxX=Math.max(a,maxX);
  }
- if(xx<=1e-14||yy<=1e-14)return null;
- const slope=xy/xx,intercept=my-slope*mx,r=xy/Math.sqrt(xx*yy);
+ const slope=xx===0?0:xy/xx,intercept=my-slope*mx;
+ const denominator=Math.sqrt(xx*yy);
+ const r=denominator===0?0:Math.max(-1,Math.min(1,xy/denominator));
  return {count:n,r,rSquared:r*r,slope,intercept,meanX:mx,meanY:my,minX,maxX};
 }
 export const correlationLabel=(r:number)=>{
