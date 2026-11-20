@@ -85,7 +85,7 @@ test('advanced stats exposes all Flutter metric families, filters, pagination an
  await page.getByLabel('Minimum MPG').selectOption('0');
  await expect(page.getByText('150 of 150 player rows')).toBeVisible();
  await page.getByRole('button',{name:'Next page'}).first().click();
- await expect(page.getByText('Page 2 / 8')).toBeVisible();
+ await expect(page.getByText('Page 2 / 8').first()).toBeVisible();
  await page.getByRole('button',{name:'Overview',exact:true}).click();
  await expect(page.getByRole('button',{name:'Expand RPG'})).toBeVisible();
  await page.getByRole('button',{name:'Expand RPG'}).click();
