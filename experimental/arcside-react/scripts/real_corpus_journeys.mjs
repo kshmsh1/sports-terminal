@@ -6,6 +6,7 @@
 import {chromium,firefox,webkit} from '@playwright/test';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
 import {cpus,totalmem,platform,release,arch} from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -46,6 +47,21 @@ for(const name of browsers){
    result.references.push({app,base,manifestSha256:hash,contract:valid.contract,
     fingerprint:valid.database_fingerprint,seasonCount:valid.season_count});
   }
+  // Confirm exact input bytes, not just manifest metadata: an outdated shard
+  // can otherwise make a fast frontend silently compare different basketball.
+  result.sourceShards=[];
+  for(const season of seasons)for(const segment of ['regular','playoffs']){
+   const shard='seasons/'+season+'/'+segment+'.json';
+   const bytes=await readFile(path.join(source,shard));
+   const expectedHash=sha(bytes);
+   for(const [app,base] of [['React',react],['Flutter',flutter]]){
+    const fetched=await req.get(base+'/data/nba_static/'+shard,{timeout:60000});
+    if(!fetched.ok())throw Error(app+' missing real '+shard);
+    const servedHash=sha(await fetched.body());
+    if(servedHash!==expectedHash)throw Error(app+' '+shard+' hash mismatches canonical local source');
+    result.sourceShards.push({app,shard,sha256:servedHash,bytes:bytes.length});
+   }
+  }
   // Actual Flutter UI is a separate widget-tree implementation and lacks stable DOM
   // route/metric selectors. Only confirm its genuine bootstrap and capture a screenshot.
   const fp=await context.newPage();
@@ -77,19 +93,108 @@ for(const name of browsers){
     await summary.waitFor({timeout:60000});
     const loadMs=performance.now()-begin;
     const rowSummary=await summary.innerText();
+    const qualifiedTarget=real.player_season_totals.filter(r=>{
+     const gp=Number(r.games??r.gp??r.g??0);
+     return Number.isFinite(gp)&&gp>=(segment==='regular'?50:4);
+    }).length;
+    const displayed=await p.locator('.panel-title .subtle').first().innerText();
+    if(!displayed.includes(qualifiedTarget.toLocaleString()+' of '+recordCount.toLocaleString()+' player rows')){
+      result.errors.push({app:'React',route:season+'/'+segment,
+       message:'Qualification 50/4 source-coverage disagreement: '+displayed+' vs '+qualifiedTarget+'/'+recordCount});
+    }
     const task={kind:'React verified real NBA Stats route',season,segment,sourceRecords:recordCount,
-      firstStatsReadoutMs:loadMs,summary:rowSummary,checks:[]};
+      firstStatsReadoutMs:loadMs,summary:rowSummary,qualifiedExpected:qualifiedTarget,
+      checks:[],failures:[],browserPerf:{}};
+    // Action-to-updated-UI, not simply click dispatch: ensure the URL and
+    // accessible column header agree after each rate and sorting action.
+    const rstart=performance.now();
     await p.getByLabel('Rate basis').selectOption('per36');
     await p.waitForURL(/basis=per36/);
     task.checks.push('basis selector updates URL');
+    task.browserPerf.basisPer36ToUrlMs=performance.now()-rstart;
+    await p.getByLabel('Rate basis').selectOption('per100');
+    await p.waitForURL(/basis=per100/);
+    task.checks.push('basis per100 updates URL');
+    await p.getByLabel('Rate basis').selectOption('totals');
+    await p.waitForURL(/basis=totals/);
+    task.checks.push('basis totals updates URL');
+    const h=p.getByRole('columnheader',{name:/PTS/});
+    const before=await h.getAttribute('aria-sort');
+    await p.getByRole('button',{name:'Sort by PTS'}).click();
+    const after=await h.getAttribute('aria-sort');
+    if(!before||!after||before===after)result.errors.push({
+     app:'React',route:season+'/'+segment,message:'Reverse PTS sort did not update accessible direction'
+    });
+    else task.checks.push('reverse PTS sorting and semantic direction');
+
+    // Exercise the actual virtualized table and record observable rAF gaps.
+    const frameProbe=await p.getByRole('region',{name:'Scrollable player stats'}).evaluate(async el=>{
+     const intervals=[];let previous=0;
+     for(let i=0;i<20;i++){
+      el.scrollTop=Math.max(0,(el.scrollHeight-el.clientHeight)*i/19);
+      el.dispatchEvent(new Event('scroll'));
+      await new Promise(resolve=>requestAnimationFrame(t=>{
+       if(previous)intervals.push(t-previous);previous=t;resolve();
+      }));
+     }
+     const sorted=intervals.sort((a,b)=>a-b);
+     return {observations:sorted.length,p95GapMs:sorted[Math.ceil(sorted.length*.95)-1]??null,
+      gapsOver50Ms:sorted.filter(x=>x>50).length,
+      note:'rAF gaps observed during scripted scrolling, NOT confirmed GPU dropped frames'};
+    });
+    task.browserPerf.scrollFrameProbe=frameProbe;
+    task.checks.push('virtualized table 20-step scroll / requestAnimationFrame observation');
+    const firstEligible=real.player_season_totals.find(r=>
+      Number(r.games??r.gp??r.g??0)>=(segment==='regular'?50:4)&&
+      typeof r.player_label==='string'&&r.player_label.trim());
+    if(firstEligible){
+     await p.getByLabel('Find player').fill(firstEligible.player_label);
+     await p.getByRole('link',{name:firstEligible.player_label,exact:true}).first().waitFor();
+     task.checks.push('source-backed player-name search');
+     await p.getByLabel('Find player').fill('');
+    }else task.checks.push('SKIPPED source-backed player search: no qualifying named row');
     const advanced=await p.getByRole('button',{name:'Open Advanced Stats'});
     await advanced.click();await p.getByRole('heading',{name:'Advanced player statistics'}).waitFor();
     task.checks.push('advanced route from same source');
     await p.getByRole('link',{name:'Visualizations'}).click();
     await p.getByRole('heading',{name:'Player scatter explorer'}).waitFor();
+    const chartStart=performance.now();
+    await p.getByRole('img',{name:/Scatter plot of/}).waitFor();
+    await p.getByRole('button',{name:'Drag pan'}).click();
+    assert.equal(await p.getByRole('button',{name:'Drag pan'}).getAttribute('aria-pressed'),'true');
+    await p.getByRole('button',{name:'Wheel zoom'}).click();
+    assert.equal(await p.getByRole('button',{name:'Wheel zoom'}).getAttribute('aria-pressed'),'true');
     await p.getByRole('button',{name:'Drag pan'}).click();
     await p.getByLabel('X metric').selectOption('reb');
-    task.checks.push('chart re-axis and pan mode with same input');
+    await p.getByLabel('Y metric').selectOption('ast');
+    await p.getByRole('button',{name:'Reset view'}).click();
+    await p.getByRole('checkbox',{name:'Linear reference'}).check();
+    task.browserPerf.chartControlSequenceMs=performance.now()-chartStart;
+    task.checks.push('chart re-axis, pan/zoom, reset, regression; response observed');
+    if(segment==='regular'&&season===seasons[0]){
+     await p.reload({waitUntil:'domcontentloaded'});
+     await p.getByRole('heading',{name:'Player scatter explorer'}).waitFor();
+     assert.equal(await p.getByLabel('X metric').inputValue(),'reb');
+     assert.equal(await p.getByLabel('Y metric').inputValue(),'ast');
+     assert.equal(await p.getByRole('button',{name:'Drag pan'}).getAttribute('aria-pressed'),'true');
+     task.checks.push('visualization axis and pan settings persist after reload');
+     await p.getByRole('link',{name:'Stats',exact:true}).click();
+     await p.getByRole('heading',{name:'Player statistics'}).waitFor();
+     await p.getByRole('link',{name:'Skip to content'}).focus();
+     assert.equal(await p.getByRole('link',{name:'Skip to content'}).evaluate(n=>document.activeElement===n),true);
+     task.checks.push('keyboard focusable skip-to-main and route navigation');
+     await p.screenshot({path:path.join(dir,name+'-react-stats-wide-'+season+'.png'),fullPage:true});
+     await p.getByRole('button',{name:'Switch to light theme'}).click();
+     await p.screenshot({path:path.join(dir,name+'-react-stats-light-'+season+'.png'),fullPage:true});
+     await p.setViewportSize({width:390,height:844});
+     await p.screenshot({path:path.join(dir,name+'-react-stats-narrow-'+season+'.png'),fullPage:true});
+     task.checks.push('dark/light and narrow/wide screenshots captured (manual visual audit required)');
+    }
+    task.browserPerf.resourceEntries=await p.evaluate(()=>({
+     count:performance.getEntriesByType('resource').length,
+     measuredTransferBytes:performance.getEntriesByType('resource').reduce((s,r)=>s+(r.transferSize??0),0),
+     caveat:'Browser resourceTiming transferSize may omit cached/cross-origin or service-worker bytes'
+    }));
     if(segment==='regular'&&season===seasons[0]){
      await p.screenshot({path:path.join(dir,name+'-react-visualizations-'+season+'.png'),fullPage:true});
     }
@@ -110,6 +215,7 @@ for(const name of browsers){
  }finally{await browser.close()}
 }
 const report={kind:'ARCSIDE_PHASE3_REAL_SOURCE_BROWSER_JOURNEY',createdAt:new Date().toISOString(),
+ evaluationScope:'Source-exact React Stats/Advanced/chart tasks plus Flutter bootstrap screenshot; NOT matched Flutter widget interaction timings',
  source:'ACTUAL_LOCAL_V5_CORPUS',manifestSha256:sha(expected),sourceRoot:source,
  hardware:{platform:platform(),release:release(),arch:arch(),cpu:cpus()[0]?.model,cores:cpus().length,ram:totalmem()},
  seasons,browsers:reports,warning:'Real-source React journey checks and Flutter startup screenshot, not matched Flutter task-performance or accessibility acceptance'};
@@ -117,5 +223,6 @@ const name=path.join(dir,'real-source-journeys.json');
 await writeFile(name,JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify({output:name,manifestSha256:report.manifestSha256,
  reactJourneys:reports.reduce((n,x)=>n+x.journeys.length,0),
+ verifiedShards:reports.reduce((n,x)=>n+(x.sourceShards?.length??0),0),
  flutterMatchedTasks:'NOT MEASURED',browserErrors:reports.flatMap(x=>x.errors)},null,2));
 if(reports.some(x=>x.errors.length))process.exitCode=1;
