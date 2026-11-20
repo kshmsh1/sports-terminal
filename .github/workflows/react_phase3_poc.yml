@@ -53,6 +53,8 @@ jobs:
           node --check scripts/phase3_decision.mjs
           node --check scripts/advanced_acceptance_compare.mjs
           node --check scripts/guided_advanced_acceptance.mjs
+          node --check scripts/guided_overlay.mjs
+          node --check scripts/guided_visualization_acceptance.mjs
           bash -n ../../scripts/phase3_release_compare.sh
           node scripts/phase3_decision.mjs
       - name: Retain decision-evidence gate report (missing local sources are NOT_RUN)
