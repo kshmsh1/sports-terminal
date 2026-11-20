@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {buildRows} from '../src/engine';
 import {advancedGroups,advancedMetricCatalog} from '../src/advancedCatalog';
-import {advancedLabel,advancedText,metricValue} from '../src/AdvancedStatsTable';
+import {advancedLabel,advancedText,metricValue,advancedFilteredSortedRows} from '../src/AdvancedStatsTable';
 import type {SeasonSnapshot} from '../src/data';
 const snapshot:SeasonSnapshot={season_id:'2025-26',season_type:'regular',players:[],
  player_season_totals:[{player_id:'one',player_label:'Test Player',team_ids:'BOS',games:50,
@@ -39,4 +39,21 @@ describe('Flutter catalog-backed React Advanced Stats pilot',()=>{
   const pg=buildRows(snapshot,'perGame')[0],p100=buildRows(snapshot,'per100')[0];
   expect(metricValue(pg,'fg_pct')).toBeCloseTo(metricValue(p100,'fg_pct')!);
  });
+ it('preserves Flutter group-specific rate labels rather than using one global header',()=>{
+  expect(advancedLabel('rpg','per100','Overview')).toBe('REB/100');
+  expect(advancedLabel('rpg','per100','Rebounding')).toBe('RPG/100');
+  expect(advancedLabel('spg','per100','Defensive / Hustle')).toBe('SPG/100');
+  expect(advancedLabel('spg','per100','Rate Adjusted')).toBe('STL/100');
+  expect(advancedLabel('ppg','totals','Overview')).toBe('Points');
+  expect(advancedLabel('oreb','per100','Overview')).toBe('OREB/100');
+  expect(advancedLabel('fgm','perGame','Overview')).toBe('FGM');
+  expect(advancedLabel('fgm','perGame','Rate Adjusted')).toBe('FGM PG');
+  expect(advancedLabel('pf','per100','Overview')).toBe('PF');
+ });
+ it('uses Flutter rate-specific minutes, not per-game MPG, when filtering',()=>{
+  const options={search:'',team:'All',position:'All',minGp:50,minMpg:40,sort:'ppg',descending:true};
+  expect(advancedFilteredSortedRows(buildRows(snapshot,'perGame'),options)).toHaveLength(0);
+  expect(advancedFilteredSortedRows(buildRows(snapshot,'per100'),options)).toHaveLength(1);
+ });
+
 });
