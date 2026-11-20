@@ -38,11 +38,9 @@ export function metricValue(row:Row,metricKey:string):number|null{
  }
  if(metric.engine && nativeEngineKeys.has(metric.engine as MetricKey))
   return row.values[metric.engine as MetricKey]??null;
- // Flutter's Advanced Stats screen falls back to row.value(key) when the
- // catalog resolver has no matching alias or engine key. Only use a real raw
- // source value here; absence must still mean unavailable.
- const direct=rawNumber(row.raw[metricKey]);
- if(direct!==null)return metric.format==='percent'&&Math.abs(direct)>1?direct/100:direct;
+ // Flutter only falls back to engine row.value(key), not arbitrary raw[key].
+ // Source-native fields must have declared catalog aliases; avoid falsely
+ // populating fields that Flutter genuinely considers unavailable.
  // Explicit Flutter catalog fallbacks; missing inputs remain missing.
  if(metricKey==='pps'){
   const p=row.values.pts,a=row.values.fga;
