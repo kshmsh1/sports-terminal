@@ -54,6 +54,11 @@ export function installGuidedOverlay(options) {
   notice.textContent='Ctrl+Shift+8 Start · 9 Finish · 0 Fail. Reload before Start is safe.';
   panel.append(notice);document.body.append(panel);
  };
+ // Only full-document unload invalidates an active stopwatch. SPA history
+ // changes (which are part of the user task) must not be mistaken for reloads.
+ window.addEventListener('pagehide',()=>{
+  if(active){active=false;cancelAnimationFrame(raf);callback('navigation');}
+ });
  window.addEventListener('keydown',event=>{
   const action=event.ctrlKey&&event.shiftKey?
    {Digit8:'start',Digit9:'finish',Digit0:'fail'}[event.code]:null;
