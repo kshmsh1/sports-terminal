@@ -159,9 +159,29 @@ for(const name of browsers){
      task.checks.push('source-backed player-name search');
      await p.getByLabel('Find player').fill('');
     }else task.checks.push('SKIPPED source-backed player search: no qualifying named row');
+    const traded=real.player_season_totals.find(r=>
+      Array.isArray(r.team_stints)&&r.team_stints.length>=2&&
+      typeof r.player_label==='string'&&r.player_label.trim()&&
+      Number(r.games??r.gp??r.g??0)>=(segment==='regular'?50:4));
+    if(traded){
+     await p.getByLabel('Find player').fill(traded.player_label);
+     const expand=p.getByRole('button',{name:'Expand stints for '+traded.player_label});
+     if(await expand.count()){
+      await expand.click();
+      const count=await p.locator('.stint-row').count();
+      if(count<2)result.errors.push({app:'React',route:season+'/'+segment,
+       message:'Recorded traded-player source has 2+ team stints but UI expanded '+count});
+      else task.checks.push('recorded 2TM/3TM source stints expand (stints='+count+')');
+     }else result.errors.push({app:'React',route:season+'/'+segment,
+      message:'Recorded qualifying multi-team player not expandable: '+traded.player_label});
+     await p.getByLabel('Find player').fill('');
+    }else task.checks.push('SKIPPED source-backed multi-team expansion: no eligible recorded stints');
     const advanced=await p.getByRole('button',{name:'Open Advanced Stats'});
     await advanced.click();await p.getByRole('heading',{name:'Advanced player statistics'}).waitFor();
     task.checks.push('advanced route from same source');
+    await p.goBack({waitUntil:'domcontentloaded'});
+    await p.getByRole('heading',{name:'Player statistics'}).waitFor();
+    task.checks.push('browser back restores Stats route');
     await p.getByRole('link',{name:'Visualizations'}).click();
     await p.getByRole('heading',{name:'Player scatter explorer'}).waitFor();
     const chartStart=performance.now();
