@@ -165,11 +165,11 @@ On the initial headed-browser preflight, the operator must confirm both live cha
 
 The new chart evidence is stored at `experimental/arcside-react/evidence/visualization/visualization-guided-timings-v1.json`, and checkpoints at `visualization-guided-checkpoint-v1.json`. Recover interrupted sessions via:
 
-**Current chart-runner resume environment variable** (shared implementation with the corrected Advanced protocol):
+**Resume a visualization benchmark from its own verified chart checkpoint:**
 
 
 ~~~bash
-ARCSIDE_ADVANCED_RESUME=1 ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --visualization-guided
+ARCSIDE_VISUALIZATION_RESUME=1 ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --visualization-guided
 ~~~
 
 Do not use `--all`: it now refuses to rerun the obsolete original 90-trial protocol.
