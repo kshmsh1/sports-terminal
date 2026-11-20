@@ -61,3 +61,30 @@ h2{font-size:21px;letter-spacing:-.4px;margin:0 0 7px}h3{font-size:15px}.subtle{
 .sidebar nav{display:flex;overflow-x:auto;white-space:nowrap}.nav-link{padding:10px}.topbar{height:auto}.top-title{font-size:18px}
 .manifest-pill{display:none}.main-content{padding:12px}.toolbar{padding:12px}.panel-title{align-items:start;flex-direction:column}
 .chart{height:430px}.lab-frame{height:65vh}}
+
+/* Phase 3 advanced stats — column density and metric taxonomy from Flutter. */
+.advanced-groups{display:flex;flex-wrap:wrap;gap:7px;padding:14px 24px 6px}
+.advanced-groups button{padding:7px 10px;font-size:12px}
+.advanced-description{padding:2px 24px 8px;font-size:12px;color:var(--sub)}
+.advanced-description p{margin:6px 0}
+.advanced-toolbar{align-items:end}
+.advanced-toolbar select{min-width:98px}
+.advanced-pager{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:9px 24px;color:var(--sub);font-size:12px}
+.advanced-pager button{padding:5px 9px}
+.advanced-pager button:disabled{cursor:default;opacity:.4}
+.advanced-pager-options{display:flex;align-items:center;gap:5px;margin-right:12px}
+.advanced-table-scroll{height:auto;max-height:590px;overflow:auto}
+.advanced-stats-table{width:max-content;min-width:100%;table-layout:auto}
+.advanced-stats-table th,.advanced-stats-table td{padding:0 10px;height:40px;min-width:70px}
+.advanced-stats-table th:first-child,.advanced-stats-table td:first-child{position:sticky;left:0;text-align:left;min-width:184px;width:184px;background:var(--panel);z-index:2}
+.advanced-stats-table thead th:first-child{background:var(--panel-light);z-index:5}
+.advanced-stats-table th:nth-child(2),.advanced-stats-table td:nth-child(2){position:static;text-align:left;width:65px;min-width:65px}
+.advanced-stats-table th:nth-child(3),.advanced-stats-table td:nth-child(3){width:78px;min-width:78px}
+.advanced-stats-table th:nth-child(4),.advanced-stats-table td:nth-child(4){text-align:right;min-width:75px;width:auto}
+.advanced-column-heading{display:inline-flex;align-items:center;gap:3px}
+.advanced-column-heading>button:first-child:not(.sort-button){padding:2px 3px;border:0;background:none;color:var(--accent)}
+.advanced-stats-table .player-cell{white-space:nowrap}
+.advanced-stats-table .player-cell>button:first-child:not(.text-button){padding:1px 5px;margin-right:6px}
+.advanced-stats-table .player-cell .text-button{font-size:12px}
+.advanced-stats-table .stint-row td:first-child{background:var(--panel-light)}
+@media(max-width:690px){.advanced-groups{padding:12px}.advanced-pager{padding:10px 12px}.advanced-description{padding:4px 12px}}
