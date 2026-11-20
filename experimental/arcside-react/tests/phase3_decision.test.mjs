@@ -142,7 +142,10 @@ test('authentic source browser journeys require every exact selected season and 
  assert.equal(a.gates.find(x=>x.name==='real_source_react_workflow_and_flutter_bootstrap').status,'FAIL');
 });
 test('corrected performance gate excludes original failed basis and chart trials',()=>{
- const old=makeGuide(100,true);
+ const old=makeGuide();
+ // Only pre-repair basis/chart trials are invalidated, not season observations.
+ const obsolete=old.raw.find(r=>r.task==='basis'&&r.app==='React');
+ obsolete.passed=false;obsolete.operatorVerified=false;
  const a=assess({parity,real,guided:old,manifestBytes,
   advancedSource,advancedGuided,visualizationGuided});
  const g=a.gates.find(x=>x.name==='matched_flutter_react_operator_tasks_p95');
