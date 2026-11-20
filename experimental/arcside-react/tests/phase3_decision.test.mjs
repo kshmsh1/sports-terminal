@@ -36,12 +36,12 @@ const advancedGuided={kind:'ARCSIDE_ADVANCED_MATCHED_TASKS_V2',protocol:'ADVANCE
  raw:['Flutter','React'].flatMap(app=>Array.from({length:15},(_,i)=>({
   app,trial:i+1,cold:i<5,ms:100,passed:true,operatorVerified:true})))
 };
-const visualizationGuided={kind:'ARCSIDE_VISUALIZATION_MATCHED_TASKS_V1',
- protocol:'VISUALIZATION_CHART_V1_MATCHED',source:'ACTUAL_LOCAL_V5_CORPUS',
+const visualizationGuided={kind:'ARCSIDE_VISUALIZATION_MATCHED_TASKS_V2',
+ protocol:'VISUALIZATION_CHART_V2_MATCHED_2_COLD_10_WARM',source:'ACTUAL_LOCAL_V5_CORPUS',
  manifestSha256:hash,operatorConfirmed:true,qualified:true,
  p95ReactOverFlutter:1,within10Pct:true,
- raw:['Flutter','React'].flatMap(app=>Array.from({length:15},(_,i)=>({
-  app,trial:i+1,cold:i<5,ms:100,passed:true,operatorVerified:true})))
+ raw:['Flutter','React'].flatMap(app=>Array.from({length:12},(_,i)=>({
+  app,trial:i+1,cold:i<2,ms:100,passed:true,operatorVerified:true})))
 };
 const makeGuide=(reactWarm=100,failed=false)=>{
  const raw=[];
