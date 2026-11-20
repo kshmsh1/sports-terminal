@@ -24,7 +24,7 @@ test('deep link, history, qualification, rate switch and virtual scrolling',asyn
 });
 test('scatter interactions and theme persist across refresh',async({page})=>{
  await page.goto('/visualizations?season=2025-26&segment=regular&basis=perGame');
- await expect(page.getByText('150 plotted')).toBeVisible();
+ await expect(page.getByText('40 plotted from 150 eligible', {exact:false})).toBeVisible();
  await page.getByRole('button',{name:'Drag pan'}).click();
  await expect(page.getByRole('button',{name:'Drag pan'})).toHaveAttribute('aria-pressed','true');
  await page.getByLabel('X metric').selectOption('reb');
@@ -90,4 +90,56 @@ test('advanced stats exposes all Flutter metric families, filters, pagination an
  await expect(page.getByRole('button',{name:'Expand RPG'})).toBeVisible();
  await page.getByRole('button',{name:'Expand RPG'}).click();
  await expect(page.getByRole('button',{name:'Sort by ORB'})).toBeVisible();
+});
+
+test('Flutter-style scatter defaults to top 40 by PTS and supports filtered exact populations',async({page})=>{
+ await page.goto('/visualizations?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByLabel('Population size')).toHaveValue('40');
+ await expect(page.getByText('40 plotted from 150 eligible',{exact:false})).toBeVisible();
+ await expect(page.getByLabel('Linear regression statistics')).toContainText('40');
+ await expect(page.getByText('Showing 40')).toBeVisible();
+ const table=page.locator('.studio-underlying-title').locator('..').locator('table');
+ await expect(table.getByRole('row')).toHaveCount(41);
+ await expect(table.getByRole('row').nth(1)).toContainText('Synthetic Player 149');
+ await page.getByLabel('Population size').selectOption('10');
+ await expect(page.getByText('10 plotted from 150 eligible',{exact:false})).toBeVisible();
+ await expect(table.getByRole('row')).toHaveCount(11);
+ await page.getByLabel('Minimum games').fill('82');
+ await expect(page.getByText('0 plotted from 0 eligible',{exact:false})).toBeVisible();
+ await page.getByLabel('Minimum games').fill('50');
+ await page.getByLabel('Population size').selectOption('0');
+ await expect(page.getByText('150 plotted from 150 eligible',{exact:false})).toBeVisible();
+ await page.getByLabel('Filter by team or player').fill('BOS');
+ await page.getByRole('button',{name:'Team: BOS'}).click();
+ await expect(page.getByText('75 plotted from 75 eligible',{exact:false})).toBeVisible();
+ await page.getByRole('button',{name:/Clear filter: Team BOS/}).click();
+ await expect(page.getByText('150 plotted from 150 eligible',{exact:false})).toBeVisible();
+});
+test('studio uses source-backed chart settings, multiple visualizations and local presets',async({page})=>{
+ await page.goto('/visualizations?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByLabel('Best-fit line')).toBeChecked();
+ await page.getByLabel('X metric').selectOption('reb');
+ await page.getByLabel('Y metric').selectOption('ast');
+ await page.getByLabel('Player labels').uncheck();
+ await page.getByLabel('Mean reference lines').check();
+ await page.getByLabel('Color by').selectOption('Position');
+ await page.getByLabel('Preset name').fill('Custom test view');
+ await page.getByRole('button',{name:'Save as'}).click();
+ await page.getByLabel('Chart type').selectOption('bar');
+ await expect(page.getByText('20 plotted from 150 eligible',{exact:false})).toBeVisible();
+ await page.getByLabel('Chart type').selectOption('histogram');
+ await page.getByLabel('Histogram bins').selectOption('16');
+ await page.getByLabel('Chart type').selectOption('cumulative');
+ await page.getByLabel('Chart type').selectOption('box');
+ await page.getByLabel('Chart type').selectOption('radar');
+ await page.getByLabel('Chart type').selectOption('bubble');
+ await page.getByLabel('Saved presets').selectOption('Custom test view');
+ await expect(page.getByLabel('Chart type')).toHaveValue('scatter');
+ await expect(page.getByLabel('X metric')).toHaveValue('reb');
+ await expect(page.getByLabel('Y metric')).toHaveValue('ast');
+ await expect(page.getByLabel('Player labels')).not.toBeChecked();
+ await page.reload();
+ await expect(page.getByLabel('Population size')).toHaveValue('40');
+ await expect(page.getByLabel('X metric')).toHaveValue('reb');
+ await expect(page.getByLabel('Saved presets')).toContainText('Custom test view');
 });
