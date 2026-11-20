@@ -100,8 +100,23 @@ for(const name of browsers){
     p.on('pageerror',error=>result.errors.push({app:'React',route:season+'/'+segment,message:error.message}));
     p.on('console',msg=>{
      if(msg.type()==='error')(result.consoleErrors??=[]).push({
-      app:'React',route:season+'/'+segment,message:msg.text()});
+      app:'React',route:season+'/'+segment,message:msg.text(),
+      location:msg.location(),argsCount:msg.args().length});
     });
+    // Browser console text alone does not identify the missing resource.
+    // Preserve HTTP URL, status and type; NEVER suppress 404s merely because
+    // they might be favicons or unrelated third-party requests.
+    p.on('response',response=>{
+     if(response.status()>=400)result.errors.push({
+      app:'React',route:season+'/'+segment,kind:'http_resource_failure',
+      status:response.status(),url:response.url(),
+      resourceType:response.request().resourceType(),
+      message:'HTTP '+response.status()+' '+response.url()});
+    });
+    p.on('requestfailed',request=>result.errors.push({
+     app:'React',route:season+'/'+segment,kind:'network_request_failure',
+     url:request.url(),resourceType:request.resourceType(),
+     message:request.failure()?.errorText??'Unknown network failure'}));
     try{
     const target=react+'/stats?season='+season+'&segment='+segment+'&basis=perGame';
     const begin=performance.now();
