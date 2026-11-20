@@ -3262,3 +3262,23 @@ export const advancedGroups:AdvancedGroup[] = [
  }
 ];
 export const rateSensitiveKeys = new Set(['min','pts','ast','reb','oreb','dreb','stl','blk','tov','pf','fgm','fga','two_pm','two_pa','three_pm','three_pa','ftm','fta','plus_minus','stocks','defense_events','possessions_proxy','game_score_proxy']);
+
+// Flutter reference Physical Profile also includes native text-only college/country.
+advancedMetricCatalog.bio_college={key:'bio_college',label:'College',description:'College attended, as reported by NBA.com.',engine:null,raw:['bio_college'],children:[],format:'text',decimals:0};
+advancedMetricCatalog.bio_country={key:'bio_country',label:'Country',description:'Country reported by NBA.com.',engine:null,raw:['bio_country'],children:[],format:'text',decimals:0};
+const physical=advancedGroups.find(g=>g.name==='Physical Profile');
+if(physical)physical.keys.push('bio_college','bio_country');
+// Expansion overrides used by the original Flutter family definitions.
+const overrides:Record<string,Record<string,string[]>>={
+ 'Defensive / Hustle':{dreb:['contested_dreb_pg','uncontested_dreb_pg']},
+ 'Hustle Breakdown':{
+  contested_shots_pg:['contested_twos_pg','contested_threes_pg'],
+  screen_apg:['screen_assist_points_pg'],
+  loose_balls_recovered_pg:['off_loose_balls_recovered_pg','def_loose_balls_recovered_pg','loose_ball_off_pct','loose_ball_def_pct'],
+  box_outs_pg:['off_box_outs_pg','def_box_outs_pg','box_out_team_rebounds_pg','box_out_player_rebounds_pg','off_box_out_pct','def_box_out_pct','box_out_team_reb_pct','box_out_pct']
+ },
+ 'Rebounding':{rpg:['contested_rpg','uncontested_rpg','trb_pct']}
+};
+export function advancedChildren(group:string,key:string):string[]{
+ return overrides[group]?.[key]??advancedMetricCatalog[key]?.children??[];
+}
