@@ -82,9 +82,8 @@ export function advancedText(row:Row,key:string):string{
  return v.toFixed(metric?.decimals??1);
 }
 const availableMetric=(k:string)=>advancedMetricCatalog[k]!==undefined;
-const seasonMinutesPerGame=(r:Row)=>r.values.gp&&r.values.gp>0?Number(r.raw.minutes??r.raw.mp??0)/r.values.gp:0;
-type Props={rows:Row[];baseRows:Row[];basis:RateBasis;segment:SeasonType;season:string;onPlayer:(id:string)=>void};
-export function AdvancedStatsTable({rows,baseRows,basis,segment,season,onPlayer}:Props){
+type Props={rows:Row[];basis:RateBasis;segment:SeasonType;season:string;onPlayer:(id:string)=>void};
+export function AdvancedStatsTable({rows,basis,segment,season,onPlayer}:Props){
  const [group,setGroup]=useState('Overview');
  const [search,setSearch]=useState('');
  const [team,setTeam]=useState('All');
@@ -110,14 +109,14 @@ export function AdvancedStatsTable({rows,baseRows,basis,segment,season,onPlayer}
   return out;
  },[current,expandedMetrics]);
  const teams=useMemo(()=>['All',...new Set(rows.flatMap(r=>r.team.split(/[,/ ]+/).filter(t=>/^[A-Z0-9]{2,4}$/.test(t))))].sort(),[rows]);
- const originalMinutes=new Map(baseRows.map(r=>[r.id, r.values.min??seasonMinutesPerGame(r)]));
  const filtered=useMemo(()=>rows.filter(r=>{
   const q=search.trim().toLowerCase();
   const match=!q||(r.player+' '+r.team+' '+r.position).toLowerCase().includes(q);
-  const perGameMin=originalMinutes.get(r.id)??0;
+  // Flutter compares row.value('min') in the selected rate basis.
+  const basisMinutes=r.values.min??0;
   return match&&(team==='All'||r.team.split(/[,/ ]+/).includes(team))&&
    (position==='All'||r.position===position)&&
-   (r.values.gp??0)>=minGp&&perGameMin>=minMpg;
+   (r.values.gp??0)>=minGp&&basisMinutes>=minMpg;
  }).sort((a,b)=>{
   if(advancedMetricCatalog[sort]?.format==='text'){
    const va=advancedText(a,sort),vb=advancedText(b,sort);
@@ -130,7 +129,7 @@ export function AdvancedStatsTable({rows,baseRows,basis,segment,season,onPlayer}
   if(va===null)return 1;
   if(vb===null)return -1;
   return (descending?vb-va:va-vb)||a.player.localeCompare(b.player);
- }),[rows,originalMinutes,search,team,position,minGp,minMpg,sort,descending]);
+ }),[rows,search,team,position,minGp,minMpg,sort,descending]);
  const pages=Math.max(1,Math.ceil(filtered.length/pageSize));
  const currentPage=Math.min(page,pages);
  const paged=filtered.slice((currentPage-1)*pageSize,currentPage*pageSize);
