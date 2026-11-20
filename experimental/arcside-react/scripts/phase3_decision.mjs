@@ -45,7 +45,7 @@ function grouped(guided){
  return rows;
 }
 export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
- advancedSource=null,advancedGuided=null,visualizationGuided=null}){
+ advancedSource=null,advancedGuided=null,visualizationSource=null,visualizationGuided=null}){
  const g=[];
  const corpusHash=manifestBytes?sha256(manifestBytes):null;
  const realCases=parity?.byCase??{};
@@ -146,6 +146,18 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
   advTimingOk?['5 cold + 10 warm verified post-repair Advanced Stats trials per variant; React p95 within 110% of Flutter']:
    ['Run the NEW 30-trial protocol with a live UI preflight; do not reuse the 2026-11 historical failed rate/sort attempts'],
   {ratio:advRatio??null,samples:observed.length,operatorConfirmed:advancedGuided?.operatorConfirmed??false}));
+ const vizSourceOk=!!visualizationSource&&!!corpusHash&&
+  visualizationSource.kind==='ARCSIDE_VISUALIZATION_REAL_DART_REACT_ACCEPTANCE_V1'&&
+  visualizationSource.source==='ACTUAL_LOCAL_V5_CORPUS'&&
+  visualizationSource.manifestSha256===corpusHash&&
+  visualizationSource.status==='PASS'&&visualizationSource.mismatches===0&&
+  visualizationSource.comparisons>=500&&(visualizationSource.cases?.length??0)>=30&&
+  visualizationSource.nonemptyCases>=12;
+ g.push(gate('visualization_source_semantic_parity',!visualizationSource?null:vizSourceOk,
+  vizSourceOk?['Original Flutter/Dart plotted rows, ordered identities, metric values and OLS regression match React on canonical historical shards']:
+  ['Run --visualization-acceptance: original Flutter top-N exporter and React source verifier must match exactly on current NBA v5 manifest'],
+  {comparisons:visualizationSource?.comparisons??0,mismatches:visualizationSource?.mismatches??null,
+   cases:visualizationSource?.cases?.length??0,nonemptyCases:visualizationSource?.nonemptyCases??0}));
  // Legacy 90-trial guide contains the original pre-repair Advanced Stats
  // failure. Preserve it as historical evidence, but combine ONLY its verified
  // season-switching trials with NEW independent Advanced + Visualization protocols.
@@ -184,7 +196,7 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
   });
  const vizRatio=visualizationGuided?.p95ReactOverFlutter??null;
  const seasonOk=seasonValid&&seasonRatio!==null&&seasonRatio>0&&seasonRatio<=1.10;
- const vizOk=vizValid&&Number.isFinite(vizRatio)&&vizRatio>0&&vizRatio<=1.10&&
+ const vizOk=vizSourceOk&&vizValid&&Number.isFinite(vizRatio)&&vizRatio>0&&vizRatio<=1.10&&
   visualizationGuided.within10Pct===true;
  const p95ok=seasonOk&&advFeaturePass&&advTimingOk&&vizOk;
  g.push(gate('matched_flutter_react_operator_tasks_p95',!guided&&!visualizationGuided?null:p95ok,
@@ -193,7 +205,7 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
   {season:{valid:seasonValid,p95ReactOverFlutter:seasonRatio,flutterWarmP95Ms:seasonFlutterP95,reactWarmP95Ms:seasonReactP95,
     preservedHistoricalSamples:seasonSamples.length},
    advanced:{valid:advGuideValid&&advFeaturePass,p95ReactOverFlutter:advRatio??null,samples:observed.length},
-   visualization:{valid:vizValid,p95ReactOverFlutter:vizRatio,samples:vizObserved.length},
+   visualization:{sourceValid:vizSourceOk,valid:vizValid,p95ReactOverFlutter:vizRatio,samples:vizObserved.length},
    legacyBasisAndChartExcluded:true}));
  // Presence of synthetic or Playwright evidence cannot satisfy these human/runtime gates.
  for(const name of ['functional_full_scope_feature_parity','full_cba_trade_rules_and_player_profiles',
@@ -228,11 +240,12 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
  const featureBlocker=await maybeJson(path.join(home,'evidence/guided/advanced-stats-parity-blocker.json'));
  const advancedSource=await maybeJson(path.join(home,'evidence/advanced/advanced-source-parity.json'));
  const advancedGuided=await maybeJson(path.join(home,'evidence/advanced/advanced-guided-timings-v2.json'));
+ const visualizationSource=await maybeJson(path.join(home,'evidence/visualization/visualization-source-parity.json'));
  const visualizationGuided=await maybeJson(path.join(home,'evidence/visualization/visualization-guided-timings-v2.json'));
  let manifestBytes=null;try{manifestBytes=await readFile(path.join(repo,'web/data/nba_static/manifest.json'))}catch(e){
   if(e.code!=='ENOENT')throw e;
  }
- const result=assess({parity,real,guided,manifestBytes,featureBlocker,advancedSource,advancedGuided,visualizationGuided});
+ const result=assess({parity,real,guided,manifestBytes,featureBlocker,advancedSource,advancedGuided,visualizationSource,visualizationGuided});
  const dest=path.join(home,'evidence/decision');
  await mkdir(dest,{recursive:true});
  await writeFile(path.join(dest,'phase3-decision.json'),JSON.stringify(result,null,2)+'\n');
