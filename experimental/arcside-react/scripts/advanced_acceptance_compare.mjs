@@ -19,7 +19,7 @@ const report={kind:'ARCSIDE_ADVANCED_STATS_REAL_DART_REACT_ACCEPTANCE_V1',create
  status:'FAIL',source:'ACTUAL_LOCAL_V5_CORPUS',manifestSha256:null,
  reference:refPath,cases:[],comparisons:0,mismatches:0,missingCoverage:0,
  numericMismatches:0,catalogMismatches:0,filterMismatches:0,sortMismatches:0,
- samples:[],errors:[],caveat:'Compares Dart catalog resolver and React source-backed computations; does not observe Flutter runtime widgets, keyboard/visual UX, or human task performance'};
+ samples:[],errors:[],metricPresence:{},sampledCatalogMetricCoverage:null,caveat:'Compares Dart catalog resolver and React source-backed computations; does not observe Flutter runtime widgets, keyboard/visual UX, or human task performance'};
 const mismatch=(type,detail)=>{
  report.mismatches++;report[type]=(report[type]??0)+1;
  if(report.samples.length<100)report.samples.push(detail);
@@ -124,6 +124,9 @@ try{
      mismatch('numericMismatches',{reason:'player identity',season,segment,basis,id:gold.id,expected:[gold.player,gold.team,gold.position],actual:[react.player,react.team,react.position]});
     for(const [key,v] of Object.entries(gold.metrics)){
      const actual=metricValue(react,key);
+     if(!report.metricPresence[key])report.metricPresence[key]={sourceNonNull:0,reactNonNull:0};
+     if(v!==null)report.metricPresence[key].sourceNonNull++;
+     if(actual!==null)report.metricPresence[key].reactNonNull++;
      info.metricsCompared++;report.comparisons++;
      if(!numericEqual(v,actual))
       mismatch('numericMismatches',{season,segment,basis,id:gold.id,key,expected:v,actual});
@@ -159,6 +162,12 @@ try{
  }
  if(nonEmptyCases<12||nonEmptySeasons.size<2)
   throw Error('Insufficient non-empty real-data reference coverage (need 12+ basis cases and 2+ distinct seasons).');
+ report.sampledCatalogMetricCoverage={
+  total:dart.metrics.length,
+  observedSourceNonNull:Object.values(report.metricPresence).filter(x=>x.sourceNonNull>0).length,
+  unavailableInSample:dart.metrics.filter(x=>(report.metricPresence[x.key]?.sourceNonNull??0)===0).map(x=>x.key),
+  note:'Unavailable fields are not treated as fabricated zero; a PASS does not mean every catalog field is populated in these three seasons.'
+ };
  report.status=report.mismatches===0?'PASS':'FAIL';
  report.nonEmptyCases=nonEmptyCases;report.nonEmptySeasons=[...nonEmptySeasons];
 }catch(error){
