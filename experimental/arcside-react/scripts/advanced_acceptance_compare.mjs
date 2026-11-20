@@ -18,7 +18,7 @@ await mkdir(outDir,{recursive:true});
 const report={kind:'ARCSIDE_ADVANCED_STATS_REAL_DART_REACT_ACCEPTANCE_V1',createdAt:new Date().toISOString(),
  status:'FAIL',source:'ACTUAL_LOCAL_V5_CORPUS',manifestSha256:null,
  reference:refPath,cases:[],comparisons:0,mismatches:0,missingCoverage:0,
- numericMismatches:0,catalogMismatches:0,filterMismatches:0,sortMismatches:0,
+ numericMismatches:0,displayMismatches:0,catalogMismatches:0,filterMismatches:0,sortMismatches:0,
  samples:[],errors:[],metricPresence:{},sampledCatalogMetricCoverage:null,caveat:'Compares Dart catalog resolver and React source-backed computations; does not observe Flutter runtime widgets, keyboard/visual UX, or human task performance'};
 const mismatch=(type,detail)=>{
  report.mismatches++;report[type]=(report[type]??0)+1;
@@ -130,6 +130,11 @@ try{
      info.metricsCompared++;report.comparisons++;
      if(!numericEqual(v,actual))
       mismatch('numericMismatches',{season,segment,basis,id:gold.id,key,expected:v,actual});
+     const dartText=gold.formatted?.[key];
+     const reactText=advancedText(react,key);
+     report.comparisons++;info.metricsCompared++;
+     if(typeof dartText!=='string'||dartText!==reactText)
+      mismatch('displayMismatches',{season,segment,basis,id:gold.id,key,expected:dartText,actual:reactText});
     }
    }
    // Matching 50/20 filters and PTS/100 sort order (source-tied IDs).
@@ -180,7 +185,7 @@ try{
  await writeFile(path.join(outDir,'advanced-source-parity.json'),JSON.stringify(report,null,2)+'\n');
  console.log(JSON.stringify({status:report.status,manifestSha256:report.manifestSha256,
   comparisons:report.comparisons,mismatches:report.mismatches,
-  numericMismatches:report.numericMismatches,catalogMismatches:report.catalogMismatches,
+  numericMismatches:report.numericMismatches,displayMismatches:report.displayMismatches,catalogMismatches:report.catalogMismatches,
   filterMismatches:report.filterMismatches,sortMismatches:report.sortMismatches,
   nonEmptyCases:report.nonEmptyCases,errors:report.errors.slice(0,2),
   mismatchExamples:report.samples.slice(0,12),
