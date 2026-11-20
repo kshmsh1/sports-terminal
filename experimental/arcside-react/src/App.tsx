@@ -215,7 +215,7 @@ export function App(){
      <p className="table-note">Virtualized row window · stable player-ID joins · “—” means unavailable, not zero.
       Source-verified team stints only. Scroll inside the table to inspect additional rows.</p>
     </section>}
-    {view.path==='/visualizations'&&<Chart rows={filtered} basis={view.basis}/>}
+    {view.path==='/visualizations'&&<Chart rows={rows} basis={view.basis} segment={view.segment}/>}
     {isLab&&<section className="panel lab-panel">
      <div className="panel-title"><div><p className="eyebrow">BROWSER-NATIVE WORKSPACE / ORIGINAL MODULE</p>
        <h2>{labelFor(view.path)}</h2>
