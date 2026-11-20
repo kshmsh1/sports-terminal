@@ -2,7 +2,7 @@ import {useEffect,useMemo,useState} from 'react';
 import type {RateBasis,SeasonType} from './data';
 import type {Row,MetricKey} from './engine';
 import {formatMetric,stintRows} from './engine';
-import {advancedGroups,advancedMetricCatalog,rateSensitiveKeys} from './advancedCatalog';
+import {advancedGroups,advancedMetricCatalog,advancedChildren,rateSensitiveKeys} from './advancedCatalog';
 import type {AdvancedMetric} from './advancedCatalog';
 
 const nativeEngineKeys=new Set<MetricKey>([
@@ -65,6 +65,7 @@ export function advancedLabel(key:string,basis:RateBasis):string{
 }
 export function advancedText(row:Row,key:string):string{
  const metric=advancedMetricCatalog[key];
+ if(metric?.format==='text')return String(row.raw[key]??'').trim()||'—';
  const v=metricValue(row,key);
  if(v===null)return '—';
  if(metric?.engine && nativeEngineKeys.has(metric.engine as MetricKey))return formatMetric(metric.engine as MetricKey,v);
@@ -97,7 +98,7 @@ export function AdvancedStatsTable({rows,baseRows,basis,segment,season,onPlayer}
   for(const k of current.keys){
    if(!availableMetric(k))continue;
    out.push(k);
-   if(expandedMetrics.has(k))for(const c of advancedMetricCatalog[k].children)if(availableMetric(c))out.push(c);
+   if(expandedMetrics.has(k))for(const c of advancedChildren(current.name,k))if(availableMetric(c))out.push(c);
   }
   return out;
  },[current,expandedMetrics]);
@@ -111,6 +112,12 @@ export function AdvancedStatsTable({rows,baseRows,basis,segment,season,onPlayer}
    (position==='All'||r.position===position)&&
    (r.values.gp??0)>=minGp&&perGameMin>=minMpg;
  }).sort((a,b)=>{
+  if(advancedMetricCatalog[sort]?.format==='text'){
+   const va=advancedText(a,sort),vb=advancedText(b,sort);
+   if(va==='—')return vb==='—'?0:1;
+   if(vb==='—')return -1;
+   return descending?-va.localeCompare(vb):va.localeCompare(vb);
+  }
   const va=metricValue(a,sort),vb=metricValue(b,sort);
   if(va===null&&vb===null)return a.player.localeCompare(b.player);
   if(va===null)return 1;
@@ -161,7 +168,7 @@ export function AdvancedStatsTable({rows,baseRows,basis,segment,season,onPlayer}
   <div className="table-scroll advanced-table-scroll" tabIndex={0} role="region" aria-label="Scrollable advanced player stats">
    <table className="stats-table advanced-stats-table"><thead><tr><th scope="col">Player</th><th scope="col">Team</th><th scope="col">Position</th>
     {keys.map(k=>{const m:AdvancedMetric=advancedMetricCatalog[k];return <th key={k} scope="col" aria-sort={sort===k?(descending?'descending':'ascending'):undefined}>
-     <span className="advanced-column-heading">{m.children.length>0&&<button aria-label={'Expand '+m.label} aria-expanded={expandedMetrics.has(k)}
+     <span className="advanced-column-heading">{advancedChildren(group,k).length>0&&<button aria-label={'Expand '+m.label} aria-expanded={expandedMetrics.has(k)}
       onClick={()=>setExpandedMetrics(p=>{const n=new Set(p);if(n.has(k))n.delete(k);else n.add(k);return n})}>{expandedMetrics.has(k)?'▾':'▸'}</button>}
       <button className="sort-button" aria-label={'Sort by '+advancedLabel(k,basis)} title={m.description}
        onClick={()=>{setDescending(prev=>sort===k?!prev:true);setSort(k)}}>{advancedLabel(k,basis)} {sort===k?(descending?'↓':'↑'):''}</button></span></th>})}
