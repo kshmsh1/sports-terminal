@@ -3,6 +3,7 @@
 // Original Flutter canvas is NOT scripted with guessed DOM selectors.
 // The operator must check actual functionality before certifying any trial.
 import {chromium} from '@playwright/test';
+import {installGuidedOverlay} from './guided_overlay.mjs';
 import {readFile,writeFile,mkdir,copyFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {performance} from 'node:perf_hooks';
@@ -34,20 +35,6 @@ const warmContexts={},meta={kind:'ARCSIDE_ADVANCED_MATCHED_TASKS_V2',protocol,so
  browser:browser.version(),task:'2025-26 Advanced Stats: Per Game -> Per 36 -> Per 100; reverse PTS/100 sort, verify rows and numbers',
  method:'same machine release servers, 5 cold and 10 warm per app, alternate order, human verification, browser stopwatch; NOT GPU render times'};
 async function write(){await writeFile(checkpoint,JSON.stringify({...meta,raw,errors,inProgress:true},null,2)+'\n')}
-function controls(){
- if(document.querySelector('#arcside-advanced-control'))return;
- const n=document.createElement('div');n.id='arcside-advanced-control';
- n.style.cssText='position:fixed;bottom:12px;right:12px;z-index:2147483647;padding:12px;background:#172036;color:white;border:2px solid #ffda82;border-radius:9px;font:12px system-ui;max-width:285px';
- n.innerHTML='<b>Phase 3: Advanced Stats parity benchmark</b><p>Per Game → Per 36 → Per 100; reverse PTS/100 sort. Only FINISH after verifying real values.</p><button id="adv-start">Start</button> <button id="adv-finish">Finish ✓</button> <button id="adv-fail">Fail ✕</button>';
- document.body.append(n);
- n.querySelector('#adv-start').onclick=()=>window.arcsideAdvancedMark('start');
- n.querySelector('#adv-finish').onclick=()=>window.arcsideAdvancedMark('finish');
- n.querySelector('#adv-fail').onclick=()=>window.arcsideAdvancedMark('fail');
- window.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&['Digit8','Digit9','Digit0'].includes(e.code)){
-   e.preventDefault();e.stopImmediatePropagation();
-   window.arcsideAdvancedMark({Digit8:'start',Digit9:'finish',Digit0:'fail'}[e.code]);
- }},true);
-}
 const summary=()=>{
  const by={};for(const app of ['Flutter','React']){
   const all=raw.filter(r=>r.app===app),warm=all.filter(r=>!r.cold&&r.passed);
@@ -119,24 +106,32 @@ try{
      (warmContexts[app]??=await browser.newContext({viewport:{width:1440,height:900}}));
     const page=await ctx.newPage();let start=null,done=null,finish;
     const complete=new Promise(resolve=>finish=resolve);
-    await page.exposeFunction('arcsideAdvancedMark',event=>{
+    await page.exposeFunction('arcsideAdvancedMark',({event,frame})=>{
      const t=performance.now();
      if(event==='start'&&start===null){start=t;console.log('START '+app+'/'+i)}
      else if(start!==null&&done===null&&(event==='finish'||event==='fail')){
-      done={ms:t-start,passed:event==='finish'};finish();
+      done={ms:t-start,passed:event==='finish',frame};finish();
      }
     });
     page.on('pageerror',e=>errors.push({app,trial:i,message:e.message}));
+    page.on('framenavigated',frame=>{
+     if(frame===page.mainFrame()&&start!==null&&done===null){
+      done={ms:performance.now()-start,passed:false,reason:'navigation_during_active_trial'};finish();
+     }
+    });
+    await page.addInitScript(installGuidedOverlay,{binding:'arcsideAdvancedMark',
+     title:'Arcside Advanced Stats benchmark',
+     instructions:'Per Game → Per 36 → Per 100; reverse PTS/100 sort. Finish only after checking the displayed values.'});
     await page.goto((app==='Flutter'?flutter+'/':react+'/advanced?season=2025-26&segment=regular&basis=perGame'),
      {waitUntil:'domcontentloaded',timeout:60000});
-    await page.evaluate(controls);
     console.log('\n'+app+' '+(cold?'COLD':'WARM')+' trial '+i+'/15');
     console.log('Stage 2025-26 / Regular / Per Game / Overview and PTS descending.');
     await rl.question('Press ENTER once starting state is ready in this browser: ');
     await page.bringToFront();
     console.log('Start Ctrl+Shift+8, Finish Ctrl+Shift+9, Fail Ctrl+Shift+0.');
     await complete;
-    raw.push({app,trial:i,cold,ms:done.ms,passed:done.passed,operatorVerified:done.passed});
+    raw.push({app,trial:i,cold,ms:done.ms,passed:done.passed,operatorVerified:done.passed,
+     frameProbe:done.frame??null,reason:done.reason??null});
     await write();
     await page.close();if(cold)await ctx.close();
     if(!done.passed){console.log('FAIL: matched UI task mismatch. Stopping immediately.');stopped=true;break}
