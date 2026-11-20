@@ -11,9 +11,6 @@ const nativeEngineKeys=new Set<MetricKey>([
  'ts_pct','efg_pct','points_per_shot','ast_tov','three_rate','ft_rate','plus_minus','bpm',
  'game_score_proxy','stocks','defense_events','possessions_proxy','scoring_load'
 ]);
-const rateStem:Record<string,string>={mpg:'MIN',ppg:'PTS',rpg:'REB',apg:'AST',spg:'STL',bpg:'BLK',
- tpg:'TOV',fgm:'FGM',three_pm:'3PM',ftm:'FTM',oreb:'OREB',dreb:'DREB',
- fga:'FGA',three_pa:'3PA',three_pm_alt:'3PM',fta:'FTA'};
 const labels:Record<RateBasis,string>={perGame:'Per-game values.',per36:'Per 36 minutes.',
  per48:'Per 48 minutes.',per75:'Per 75 possessions.',per100:'Per 100 possessions.',totals:'Season totals.'};
 const rawNumber=(v:unknown):number|null=>{
@@ -57,14 +54,38 @@ export function metricValue(row:Row,metricKey:string):number|null{
  }
  return null;
 }
-export function advancedLabel(key:string,basis:RateBasis):string{
+// Flutter's Overview and Rate Adjusted groups explicitly override the shared
+// catalog abbreviations. Catalog-driven families retain native short labels,
+// e.g. RPG/100 in Rebounding rather than the Overview label REB/100.
+const customCount:Record<string,{per:string;total:string;stem:string}>={
+ mpg:{per:'MPG',total:'Minutes',stem:'MIN'},
+ ppg:{per:'PPG',total:'Points',stem:'PTS'},
+ rpg:{per:'RPG',total:'Rebounds',stem:'REB'},
+ apg:{per:'APG',total:'Assists',stem:'AST'},
+ spg:{per:'SPG',total:'Steals',stem:'STL'},
+ bpg:{per:'BPG',total:'Blocks',stem:'BLK'},
+ tpg:{per:'TPG',total:'Turnovers',stem:'TOV'},
+ fgm:{per:'FGM PG',total:'Field Goals Made',stem:'FGM'},
+ three_pm:{per:'3PM PG',total:'Three-Pointers Made',stem:'3PM'},
+ ftm:{per:'FTM PG',total:'Free Throws Made',stem:'FTM'},
+};
+export function advancedLabel(key:string,basis:RateBasis,group='Overview'):string{
  const m=advancedMetricCatalog[key];
  if(!m)return key.toUpperCase();
- const stem=rateStem[key]??m.label.replace(/\s*PG$/,'');
+ const custom=(group==='Overview'||group==='Rate Adjusted')?customCount[key]:
+  (group==='Shooting & Efficiency'&&['fgm','fga','three_pm','three_pa','ftm','fta'].includes(key)
+   ?{per:m.label,total:m.label,stem:m.label}:undefined);
+ // Flutter's Overview PF is a fixed label, although the underlying value
+ // still reflects the chosen rate basis.
+ if(group==='Overview'&&key==='pf')return 'PF';
+ if(custom&&m.engine&&rateSensitiveKeys.has(m.engine)){
+  if(basis==='perGame')return custom.per;
+  if(basis==='totals')return custom.total;
+  return custom.stem+'/'+({per36:'36',per48:'48',per75:'75',per100:'100'} as Record<string,string>)[basis];
+ }
  if(!m.engine||!rateSensitiveKeys.has(m.engine))return m.label;
- if(basis==='perGame')return m.label;
- if(basis==='totals')return stem;
- return stem+'/'+({per36:'36',per48:'48',per75:'75',per100:'100'} as Record<string,string>)[basis];
+ if(basis==='perGame'||basis==='totals')return m.label;
+ return m.label+'/'+({per36:'36',per48:'48',per75:'75',per100:'100'} as Record<string,string>)[basis];
 }
 export function advancedText(row:Row,key:string):string{
  const metric=advancedMetricCatalog[key];
@@ -135,7 +156,7 @@ export function AdvancedStatsTable({rows,basis,segment,season,onPlayer}:Props){
  const paged=filtered.slice((currentPage-1)*pageSize,currentPage*pageSize);
  const csv=()=>{
   const escape=(v:string)=>'"'+v.replaceAll('"','""')+'"';
-  const cols=['Player','Team','Position',...keys.map(k=>advancedLabel(k,basis))];
+  const cols=['Player','Team','Position',...keys.map(k=>advancedLabel(k,basis,group))];
   const data=[cols,...filtered.map(r=>[r.player,r.team,r.position,...keys.map(k=>advancedText(r,k))])];
   const text=data.map(line=>line.map(escape).join(',')).join('\n');
   if(navigator.clipboard?.writeText)void navigator.clipboard.writeText(text).catch(()=>{});
@@ -176,7 +197,7 @@ export function AdvancedStatsTable({rows,basis,segment,season,onPlayer}:Props){
     {keys.map(k=>{const m:AdvancedMetric=advancedMetricCatalog[k];return <th key={k} scope="col" aria-sort={sort===k?(descending?'descending':'ascending'):undefined}>
      <span className="advanced-column-heading">{advancedChildren(group,k).length>0&&<button aria-label={'Expand '+m.label} aria-expanded={expandedMetrics.has(k)}
       onClick={()=>setExpandedMetrics(p=>{const n=new Set(p);if(n.has(k))n.delete(k);else n.add(k);return n})}>{expandedMetrics.has(k)?'▾':'▸'}</button>}
-      <button className="sort-button" aria-label={'Sort by '+advancedLabel(k,basis)} title={m.description}
+      <button className="sort-button" aria-label={'Sort by '+advancedLabel(k,basis,group)} title={m.description}
        onClick={()=>{setDescending(prev=>sort===k?!prev:true);setSort(k)}}>{advancedLabel(k,basis)} {sort===k?(descending?'↓':'↑'):''}</button></span></th>})}
    </tr></thead><tbody>
     {paged.flatMap(r=>{
