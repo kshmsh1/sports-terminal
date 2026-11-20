@@ -155,6 +155,9 @@ export function Chart({rows,basis,segment='regular'}:{
   const line=analytics?[[analytics.minX,analytics.slope*analytics.minX+analytics.intercept],
    [analytics.maxX,analytics.slope*analytics.maxX+analytics.intercept]]:[];
   const labelLimit=settings.density==='Selective'?8:settings.density==='More'?20:Infinity;
+  // ECharts large mode preserves the 5k/25k synthetic workload without
+  // rendering a DOM-sized label/mark overlay per point. Real top40 uses full fidelity.
+  const largeScatter=xy.length>2000;
   const points=xy.map((r,i)=>({
    id:r.id,name:r.player,team:r.team,
    value:[r.values[settings.x],r.values[settings.y],r.values[settings.size]??0],
@@ -162,7 +165,7 @@ export function Chart({rows,basis,segment='regular'}:{
     10+18*Math.sqrt(Math.max(0,r.values[settings.size]??0)/
       Math.max(1,...xy.map(p=>p.values[settings.size]??0))):
     r.id===settings.selected?17:10,
-   label:{show:settings.labels&&i<labelLimit,
+   label:{show:!largeScatter&&settings.labels&&i<labelLimit,
     formatter:r.player.length>14?r.player.split(' ').map(v=>v.slice(0,1)+'.').join(' '):r.player,
     position:'right' as const,color:'#c4d4e6',fontSize:10,
     backgroundColor:'#0a111dd9',padding:[2,3],borderRadius:2},
@@ -192,7 +195,8 @@ export function Chart({rows,basis,segment='regular'}:{
     {type:'inside',yAxisIndex:0,zoomOnMouseWheel:!settings.pan,
      moveOnMouseMove:settings.pan,moveOnMouseWheel:false,
      start:prior?.[1]?.start??0,end:prior?.[1]?.end??100}],
-   series:[{name:'Players',type:'scatter',data:points,emphasis:{focus:'self'},
+   series:[{name:'Players',type:'scatter',data:points,large:largeScatter,largeThreshold:2000,
+    progressive:2000,progressiveThreshold:3000,emphasis:{focus:'self'},
     markLine:{silent:true,symbol:'none',label:{show:false},
      lineStyle:{color:'#9aa6c4',type:'dashed',width:1},
      data:[...(settings.means&&analytics?[{xAxis:analytics.meanX},{yAxis:analytics.meanY}]:[]),
