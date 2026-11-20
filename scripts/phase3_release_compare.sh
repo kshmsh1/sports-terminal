@@ -3,13 +3,14 @@
 # Never rebuilds/scrapes the historic NBA warehouse; reads existing v5 output.
 # --automated: actual-corpus browser journeys + evidence report
 # --all: retired legacy protocol; never mix its pre-repair mismatches with valid trials
-# --visualization-guided: source browser check then NEW chart preflight and matched trials
+# --visualization-acceptance: real original Flutter top-N/OLS export and React parity
+# --visualization-guided: acceptance plus human 24-trial chart UX benchmark
 # --advanced-acceptance: actual Dart catalog reference + React comparison + browser journeys
 # --advanced-guided: above plus isolated 30-trial post-repair operator confirmation
 set -euo pipefail
 MODE="${1:---automated}"
-if [[ "$MODE" != "--automated" && "$MODE" != "--advanced-acceptance" && "$MODE" != "--advanced-guided" && "$MODE" != "--visualization-guided" && "$MODE" != "--all" ]]; then
- echo 'Usage: bash scripts/phase3_release_compare.sh [--automated|--advanced-acceptance|--advanced-guided|--visualization-guided]' >&2;exit 2
+if [[ "$MODE" != "--automated" && "$MODE" != "--advanced-acceptance" && "$MODE" != "--advanced-guided" && "$MODE" != "--visualization-guided" && "$MODE" != "--visualization-acceptance" && "$MODE" != "--all" ]]; then
+ echo 'Usage: bash scripts/phase3_release_compare.sh [--automated|--advanced-acceptance|--advanced-guided|--visualization-acceptance|--visualization-guided]' >&2;exit 2
 fi
 if [[ "$MODE" == "--all" ]];then
  echo 'The pre-repair 90-trial --all protocol is retired. Valid season trials are preserved; use --visualization-guided for the new chart measurements.' >&2;exit 2
@@ -48,6 +49,12 @@ if [[ "$MODE" == "--advanced-acceptance" || "$MODE" == "--advanced-guided" ]];th
  flutter test test/phase3_advanced_acceptance_export_test.dart --reporter expanded \
   --dart-define=ARCSIDE_ADVANCED_CORPUS=web/data/nba_static \
   --dart-define=ARCSIDE_ADVANCED_SEASONS=2025-26,1986-87,1946-47
+fi
+if [[ "$MODE" == "--visualization-acceptance" || "$MODE" == "--visualization-guided" ]];then
+ echo "Exporting original Flutter Visualization Studio source-backed population and regression reference..."
+ flutter test test/phase3_visualization_reference_export_test.dart --reporter expanded \
+  --dart-define=ARCSIDE_VIS_CORPUS=web/data/nba_static \
+  --dart-define=ARCSIDE_VIS_SEASONS=2025-26,1986-87,1946-47
 fi
 OUT="$ROOT/experimental/arcside-react/evidence/release"
 mkdir -p "$OUT"
@@ -96,6 +103,10 @@ if [[ "$MODE" == "--advanced-acceptance" || "$MODE" == "--advanced-guided" ]];th
  echo "Evaluating Flutter catalog resolver against React on original NBA corpus..."
  (cd "$ROOT/experimental/arcside-react" && node scripts/advanced_acceptance_compare.mjs) || STATUS=1
 fi
+if [[ "$MODE" == "--visualization-acceptance" || "$MODE" == "--visualization-guided" ]];then
+ echo "Comparing exact original Flutter chart population, player data and regression against React..."
+ (cd "$ROOT/experimental/arcside-react" && node scripts/visualization_acceptance_compare.mjs) || STATUS=1
+fi
 if [[ "$MODE" == "--advanced-guided" ]];then
  if [[ "$STATUS" -ne 0 ]];then
   echo "Advanced source/browser acceptance failed; skipping invalid manual timings." >&2
@@ -113,7 +124,7 @@ if [[ "$MODE" == "--visualization-guided" ]];then
  if [[ "$STATUS" -ne 0 ]];then
   echo "Flutter bootstrap / original-source React chart journeys failed; refusing invalid chart timings." >&2
  else
-  echo 'Starting NEW 30-trial Visualization protocol; prior valid season and Advanced Stats evidence remain unchanged.'
+  echo 'Starting NEW 24-trial Visualization V2 protocol; prior valid season and Advanced Stats evidence remain unchanged.'
   (
    cd "$ROOT/experimental/arcside-react"
    ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \
