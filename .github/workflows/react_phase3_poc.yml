@@ -32,6 +32,8 @@ jobs:
         run: npm run build
       - name: Contract unit tests
         run: npm test
+      - name: Guard Phase 3 evaluation against unsupported migration claims
+        run: node --test tests/phase3_decision.test.mjs
       - name: Install three Playwright browser engines for synthetic journeys
         run: npx playwright install --with-deps chromium firefox webkit
       - name: Browser journeys (synthetic fixtures, not real Safari/assistive technology)
@@ -46,6 +48,17 @@ jobs:
           node --check scripts/inspect_corpus.mjs
           node --check scripts/real_corpus_journeys.mjs
           node --check scripts/paired_guided_tasks.mjs
+          node --check scripts/phase3_decision.mjs
+          bash -n ../../scripts/phase3_release_compare.sh
+          node scripts/phase3_decision.mjs
+      - name: Retain decision-evidence gate report (missing local sources are NOT_RUN)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arcside-phase3-gate-report
+          path: experimental/arcside-react/evidence/decision/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Retain synthetic benchmark samples
         if: always()
         uses: actions/upload-artifact@v4
