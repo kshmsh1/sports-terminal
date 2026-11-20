@@ -73,7 +73,7 @@ test('advanced stats matches Flutter Overview production, rate-specific labels a
  const points=page.getByRole('button',{name:'Sort by PTS/100'});
  await expect(points).toBeVisible();
  await points.click();
- await expect(page.getByRole('columnheader',{name:/PTS\\/100/})).toHaveAttribute('aria-sort','ascending');
+ await expect(page.getByRole('columnheader',{name:/PTS/})).toHaveAttribute('aria-sort','ascending');
 });
 test('advanced stats exposes all Flutter metric families, filters, pagination and source-null values',async({page})=>{
  await page.goto('/advanced?season=2025-26&segment=regular&basis=perGame');
