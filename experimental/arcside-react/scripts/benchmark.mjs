@@ -40,7 +40,13 @@ async function sample(context,kind,n,run,coldStart){
  const start=performance.now();
  await page.goto(url+'/'+target+'?season=2025-26&segment=regular&basis=perGame');
  if(kind==='table')await page.getByText(n.toLocaleString()+' of '+n.toLocaleString()+' player rows').waitFor({state:'visible'});
- else await page.getByText(n.toLocaleString()+' plotted').waitFor({state:'visible'});
+ else {
+  // New Flutter-matched Studio defaults to top 40. Explicitly select all
+  // source-backed players when stress-testing 300/5k/25k scatter points.
+  await page.getByRole('heading',{name:'Player scatter explorer'}).waitFor();
+  await page.getByLabel('Population size').selectOption('0');
+  await page.getByText(n.toLocaleString()+' plotted from '+n.toLocaleString()+' eligible',{exact:false}).waitFor({state:'visible'});
+ }
  const firstVisibleMs=performance.now()-start;
  let interactionMs=null;
  if(kind==='table'){
