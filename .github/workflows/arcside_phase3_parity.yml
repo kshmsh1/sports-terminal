@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/phase3_parity_rerun.sh'
+      - 'scripts/phase3_release_compare.sh'
       - 'test/phase3_stats_parity_export_test.dart'
       - 'test/nba_stats_workstation_engine_test.dart'
       - 'lib/services/nba_stats_workstation_engine.dart'
@@ -22,13 +23,17 @@ jobs:
           channel: stable
           cache: true
       - name: Check single-command real-corpus runner syntax
-        run: bash -n scripts/phase3_parity_rerun.sh
+        run: |
+          bash -n scripts/phase3_parity_rerun.sh
+          bash -n scripts/phase3_release_compare.sh
       - name: Prepare original Flutter reference
         run: flutter pub get
       - name: Run Flutter statistics regression tests (ties and absent plus-minus)
         run: flutter test test/nba_stats_workstation_engine_test.dart --reporter expanded
       - name: Export original Dart output from shared explicit synthetic contract fixture
         run: flutter test test/phase3_stats_parity_export_test.dart --reporter expanded
+      - name: Verify Flutter reference can compile as a production web release
+        run: flutter build web --release
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
