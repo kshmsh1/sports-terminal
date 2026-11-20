@@ -176,7 +176,7 @@ Do not use `--all`: it now refuses to rerun the obsolete original 90-trial proto
 
 ### 3. Reliable measurement controls
 
-`scripts/guided_overlay.mjs` installs the stopwatch with Playwright `addInitScript` so it survives page reloads; a DOM mutation observer replaces the panel after an SPA remount. The shared panel records operator Start/Finish/Fail and optional browser rAF gaps as **scheduling proxies only**, not GPU frames. If a reload occurs after Start, the benchmark terminates that trial as failed rather than treating a navigation-spanning stopwatch as clean evidence. Partial trial checkpoints remain preserved. Cross-browser regression checks exercise actual reload and injected panel removal.
+`scripts/guided_overlay.mjs` installs the stopwatch with Playwright `addInitScript` so it survives page reloads; a DOM mutation observer replaces the panel after an SPA remount. The shared panel records operator Start/Finish/Fail and optional browser rAF gaps as **scheduling proxies only**, not GPU frames. If a full-document reload occurs after Start, the interrupted attempt is **not** counted as a completed timing: it is logged separately and the same trial is restaged and retried. Normal SPA URL changes do not invalidate trials. A user-marked FAIL still stops the evaluation. Partial trial checkpoints remain preserved. Cross-browser regression checks exercise actual reload and injected panel removal.
 
 ### 4. Non-pilot release blockers
 
