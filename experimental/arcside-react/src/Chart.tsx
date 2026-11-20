@@ -158,12 +158,13 @@ export function Chart({rows,basis,segment='regular'}:{
   // ECharts large mode preserves the 5k/25k synthetic workload without
   // rendering a DOM-sized label/mark overlay per point. Real top40 uses full fidelity.
   const largeScatter=xy.length>2000;
+  const maxBubbleSize=Math.max(1,...xy.map(r=>r.values[settings.size]??0));
   const points=xy.map((r,i)=>({
    id:r.id,name:r.player,team:r.team,
    value:[r.values[settings.x],r.values[settings.y],r.values[settings.size]??0],
    symbolSize:settings.kind==='bubble'?
     10+18*Math.sqrt(Math.max(0,r.values[settings.size]??0)/
-      Math.max(1,...xy.map(p=>p.values[settings.size]??0))):
+      maxBubbleSize):
     r.id===settings.selected?17:10,
    label:{show:!largeScatter&&settings.labels&&i<labelLimit,
     formatter:r.player.length>14?r.player.split(' ').map(v=>v.slice(0,1)+'.').join(' '):r.player,
@@ -265,6 +266,13 @@ export function Chart({rows,basis,segment='regular'}:{
  const xyChart=settings.kind==='scatter'||settings.kind==='bubble';
  const fullPopulation=['histogram','box','cumulative'].includes(settings.kind);
  const displayRows=fullPopulation?ranked:plotted;
+ const [readoutPage,setReadoutPage]=useState(0);
+ const readoutPageSize=100,readoutPages=Math.max(1,Math.ceil(displayRows.length/readoutPageSize));
+ const safeReadoutPage=Math.min(readoutPage,readoutPages-1);
+ const readoutRows=displayRows.slice(safeReadoutPage*readoutPageSize,
+  (safeReadoutPage+1)*readoutPageSize);
+ useEffect(()=>setReadoutPage(0),[settings.kind,settings.x,settings.y,settings.population,
+  settings.rankingSize,settings.filter,settings.minGames,basis,segment]);
  return <section className="panel studio" aria-labelledby="visual-title">
   <div className="studio-heading">
    <div><p className="eyebrow">VISUALIZATION STUDIO / EXPERIMENT</p>
@@ -383,15 +391,21 @@ export function Chart({rows,basis,segment='regular'}:{
      <span>Settings persist in this browser.</span>
     </div>
     <div className="chart-accessible">
-     <div className="studio-underlying-title"><h3>UNDERLYING DATA</h3><span>Showing {displayRows.length}</span></div>
+     <div className="studio-underlying-title"><h3>UNDERLYING DATA</h3><span>Showing {displayRows.length<=100?displayRows.length:readoutRows.length+' of '+displayRows.length}</span></div>
      <table><thead><tr><th>Player</th><th>Team</th>
       <th>{metricLabel(settings.x)}</th><th>{metricLabel(settings.y)}</th></tr></thead>
-      <tbody>{displayRows.map(r=><tr key={r.id}>
+      <tbody>{readoutRows.map(r=><tr key={r.id}>
        <td><button className="text-button" onClick={()=>update({selected:r.id})}>{r.player}</button></td>
        <td>{r.team}</td>
        <td>{formatMetric(settings.x,r.values[settings.x])}</td>
        <td>{formatMetric(settings.y,r.values[settings.y])}</td>
       </tr>)}</tbody></table>
+     {readoutPages>1&&<div className="studio-readout-pages" role="group" aria-label="Underlying data pages">
+      <button disabled={safeReadoutPage===0} onClick={()=>setReadoutPage(n=>Math.max(0,n-1))}>Previous rows</button>
+      <span>Page {safeReadoutPage+1} of {readoutPages}</span>
+      <button disabled={safeReadoutPage+1>=readoutPages}
+       onClick={()=>setReadoutPage(n=>Math.min(readoutPages-1,n+1))}>Next rows</button>
+     </div>}
      <p className="subtle">Original-source player rows, deterministic population selection. This readout does not replace full assistive technology acceptance.</p>
     </div>
    </div>
