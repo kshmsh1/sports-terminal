@@ -1,6 +1,7 @@
 // Phase 3 Visualization Studio -- source-based deterministic selection and OLS.
 // These functions never create fallback NBA values for missing metrics.
 import type {MetricKey,Row} from './engine';
+import type {RateBasis} from './data';
 
 export type ChartKind='scatter'|'bubble'|'bar'|'histogram'|'box'|'cumulative'|'radar';
 export type ColorBy='Team'|'Position'|'None';
@@ -12,6 +13,44 @@ export const visualizationKinds:{value:ChartKind;label:string}[]=[
  {value:'box',label:'Position box plot'},{value:'cumulative',label:'Cumulative percentile'},
  {value:'radar',label:'Player profile'}];
 export const valueFor=(row:Row,key:MetricKey)=>row.values[key];
+// Mirror Flutter Visualization Studio's _studioHasMetric. A computed rate
+// without a source-supported numerator is not a valid plotted observation.
+const sourceFields:Partial<Record<MetricKey,string[]>>={
+ min:['minutes','mp','minutes_per_game','mpg'],
+ pts:['points','pts','points_per_game','ppg'],
+ reb:['rebounds','trb','reb','rebounds_per_game','rpg'],
+ ast:['assists','ast','assists_per_game','apg'],
+ stl:['steals','stl','steals_per_game','spg'],
+ blk:['blocks','blk','blocks_per_game','bpg'],
+ tov:['turnovers','tov','turnovers_per_game'],
+ fg_pct:['field_goals_made','fg','fgm','fg_pct','field_goal_percentage'],
+ three_pm:['three_pointers_made','fg3','three_pm'],
+ three_pa:['three_point_attempts','fg3a','three_pa'],
+ three_pct:['three_pointers_made','three_point_percentage','fg3_pct'],
+ ft_pct:['free_throws_made','free_throw_percentage','ft_pct'],
+ plus_minus:['plus_minus'],bpm:['bpm','avg_bpm','box_plus_minus']
+};
+export function sourceHasMetric(row:Row,key:MetricKey,basis:RateBasis='perGame'):boolean{
+ const v=row.values[key];
+ if(v===null||!Number.isFinite(v))return false;
+ if(key==='gp')return true;
+ const raw=row.raw;
+ const minute=raw.minutes??raw.mp??raw.minutes_per_game??raw.mpg;
+ const n=minute===null||minute===undefined?null:Number(minute);
+ if((basis==='per36'||basis==='per48')&&(n===null||!Number.isFinite(n)||n<=0))return false;
+ if((basis==='per75'||basis==='per100')&&!(n!==null&&Number.isFinite(n)&&n>0)&&
+  raw.field_goal_attempts==null&&raw.fga==null)return false;
+ const aliases=sourceFields[key];
+ if(aliases&&!aliases.some(a=>raw[a]!==undefined&&raw[a]!==null))return false;
+ if(key==='ts_pct'||key==='efg_pct'){
+  if(!((raw.points!=null&&raw.field_goal_attempts!=null)||
+   raw.true_shooting_percentage!=null||raw.effective_field_goal_percentage!=null))return false;
+ }
+ if(key==='game_score_proxy'&&
+  (raw.points==null||raw.rebounds==null||raw.assists==null))return false;
+ return true;
+}
+
 export function rowTeams(row:Row):string[]{
  const direct=row.team.split(/[,/\s]+/).filter(v=>/^[A-Z]{2,4}$/.test(v));
  const fromStints=Array.isArray(row.raw.team_stints)?
@@ -24,7 +63,7 @@ export function rowTeams(row:Row):string[]{
 }
 export function selectVisualizationRows(rows:Row[],opts:{
  x:MetricKey;y:MetricKey;minGames:number;population:number;filter:string;
- kind:ChartKind;size?:MetricKey;rankingSize?:number;
+ kind:ChartKind;size?:MetricKey;rankingSize?:number;basis?:RateBasis;
 }){
  const matching=rows.filter(row=>{
   if((row.values.gp??0)<opts.minGames)return false;
@@ -34,10 +73,10 @@ export function selectVisualizationRows(rows:Row[],opts:{
  });
  const eligible=matching.filter(row=>{
   if(opts.kind==='radar')return (['pts','reb','ast','stl','blk','ts_pct'] as MetricKey[])
-   .some(key=>valueFor(row,key)!==null);
-  if(valueFor(row,opts.y)===null)return false;
-  if(['scatter','bubble'].includes(opts.kind)&&valueFor(row,opts.x)===null)return false;
-  if(opts.kind==='bubble'&&valueFor(row,opts.size??'reb')===null)return false;
+   .some(key=>sourceHasMetric(row,key,opts.basis));
+  if(!sourceHasMetric(row,opts.y,opts.basis))return false;
+  if(['scatter','bubble'].includes(opts.kind)&&!sourceHasMetric(row,opts.x,opts.basis))return false;
+  if(opts.kind==='bubble'&&!sourceHasMetric(row,opts.size??'reb',opts.basis))return false;
   return true;
  });
  const ranked=[...eligible].sort((a,b)=>{
