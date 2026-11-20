@@ -57,6 +57,34 @@ node scripts/phase3_decision.mjs
 
 It records PASS, FAIL or NOT_RUN separately for real mathematical parity, source identity, real browser workflows and matched operator p95; it rejects synthetic-only and incomplete evidence. Full-feature CBA/profile parity, native Safari/VoiceOver/NVDA, workbook roundtrips, memory/GPU acceptance and explicit owner sign-off remain mandatory independent gates. An operator's photographs or browser screenshots must be visually reviewed; their existence does not prove a UX improvement.
 
+
+## Advanced Stats parity repair after real same-machine operator review
+
+The owner's **2025–26 regular season** Flutter/React season-switching workflow completed **15 trials per app**, with no marked failures. Warm manually timed medians were **3,075 ms Flutter / 2,729 ms React**, p95 **6,891 ms Flutter / 4,059 ms React**. These are human task-completion measurements and do not isolate rendering or establish a general React speedup.
+
+The owner then discovered a **real Advanced Stats functional mismatch** while performing the shared basis/sort workflow: Flutter exposes Overview PPG → PTS/100 and many metric categories, whereas the initial React proof of concept had only a short fixed advanced metric list. Two React basis trials were correctly marked failed, and the 34 recorded trials were preserved. The local checkpoint and generated feature-parity blocker remain a historical record; don't mutate past observations or claim a passing measurement.
+
+**Remediation implemented on the experimental React branch:**
+- Port the **18 Flutter Advanced Stats stat groups** and 233 catalog metric definitions into the pilot. Add Flutter Physical Profile's source-native text fields (College / Country), group-specific child-column expansion overrides, and a source-derived unavailable field marker rather than fabricated metrics.
+- Use the same named rate-sensitive Overview/Rate Adjusted scoring columns: **PPG (per game)**, **PTS/36**, **PTS/100**, and season totals. Reverse-sort the actual displayed PTS/100 column; visible headers announce ascending/descending.
+- Implement selectable metric-group chips, group dropdown, GP and MPG minimums, player/team/position filters, reset, page sizes (10/20/50/100), prior/next pagination, source-recorded team stint expansion, and CSV copying. Dense horizontal table scrolling preserves player identity.
+- Resolve catalog-native raw source aliases before engine-backed fields, normalize field-key casing/punctuation, and implement explicit source-grounded catalog fallbacks for PPS, net rating, and contested/uncontested rebounds. Missing source fields remain unavailable. No synthetic fixtures are substituted in runtime code.
+- Add catalog/rate and rendering/browser tests plus actual-corpus React browser steps in `real_corpus_journeys.mjs`. These verify the previously missing PTS/100 header and sort within the original source-data environment.
+
+**Remaining limits:** The catalog is now exposed, but complete provider-native column population in every season and every group has NOT yet been audited against Flutter's snapshot path. Exact visual equivalence, 100% source metric coverage, full product feature parity, and same-machine matched Advanced Stats timing must remain unapproved until separately measured. The previous feature-parity blocker is historical evidence, not automatically cleared by writing a new React implementation. Original Flutter remains untouched and authoritative.
+
+Local verification after pulling (React source changed, so **rebuild the React bundle**):
+
+~~~bash
+cd ~/sports_terminal
+git pull --ff-only
+(cd experimental/arcside-react && npm run build && npm run test)
+# Flutter's previous release build may be reused; React dist was just rebuilt.
+ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --automated
+~~~
+
+For the synthetic cross-browser tests, run `(cd experimental/arcside-react && npm run test:browser)` with browser dependencies installed. Do not restart the 90-trial guided comparison or use `--all` until a new equivalence check and test protocol are approved.
+
 ## Recommended architecture decision as of November 20
 
 **Retain Flutter as the authoritative product, keep the React pilot isolated and continue the controlled evidence collection.** React browser-native routes, semantics and seamless JS Labs integration are promising, and the sampled 100% statistical match materially reduces porting risk. But neither React speed superiority nor complete product parity has been measured or established. The proposed 10% p95 performance threshold is a decision criterion, not an observed advantage. A failed critical task, a significant React slowdown, or a lost feature rejects full replacement even if the mathematical comparison is perfect.
