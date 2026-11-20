@@ -2,13 +2,17 @@
 # Phase 3: matched release-build Flutter/React comparison on the owner's Mac.
 # Never rebuilds/scrapes the historic NBA warehouse; reads existing v5 output.
 # --automated: actual-corpus browser journeys + evidence report
-# --all: legacy 90-trial guided task run (do not resume obsolete Advanced Stats tasks)
+# --all: retired legacy protocol; never mix its pre-repair mismatches with valid trials
+# --visualization-guided: source browser check then NEW chart preflight and matched trials
 # --advanced-acceptance: actual Dart catalog reference + React comparison + browser journeys
 # --advanced-guided: above plus isolated 30-trial post-repair operator confirmation
 set -euo pipefail
 MODE="${1:---automated}"
-if [[ "$MODE" != "--automated" && "$MODE" != "--all" && "$MODE" != "--advanced-acceptance" && "$MODE" != "--advanced-guided" ]]; then
- echo 'Usage: bash scripts/phase3_release_compare.sh [--automated|--all|--advanced-acceptance|--advanced-guided]' >&2;exit 2
+if [[ "$MODE" != "--automated" && "$MODE" != "--advanced-acceptance" && "$MODE" != "--advanced-guided" && "$MODE" != "--visualization-guided" && "$MODE" != "--all" ]]; then
+ echo 'Usage: bash scripts/phase3_release_compare.sh [--automated|--advanced-acceptance|--advanced-guided|--visualization-guided]' >&2;exit 2
+fi
+if [[ "$MODE" == "--all" ]];then
+ echo 'The pre-repair 90-trial --all protocol is retired. Valid season trials are preserved; use --visualization-guided for the new chart measurements.' >&2;exit 2
 fi
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -105,18 +109,21 @@ if [[ "$MODE" == "--advanced-guided" ]];then
   ) || STATUS=1
  fi
 fi
-if [[ "$MODE" == "--all" ]];then
- echo 'Starting operator-verified SAME MACHINE task comparison. Both apps remain running.'
- (
-  cd "$ROOT/experimental/arcside-react"
-  ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \
-  ARCSIDE_FLUTTER_URL="$FLUTTER_URL" ARCSIDE_REACT_URL="$REACT_URL" \
-  ARCSIDE_GUIDED_COLD_RUNS=5 ARCSIDE_GUIDED_WARM_RUNS=10 \
-  npm run compare:guided
- ) || STATUS=1
+if [[ "$MODE" == "--visualization-guided" ]];then
+ if [[ "$STATUS" -ne 0 ]];then
+  echo "Flutter bootstrap / original-source React chart journeys failed; refusing invalid chart timings." >&2
+ else
+  echo 'Starting NEW 30-trial Visualization protocol; prior valid season and Advanced Stats evidence remain unchanged.'
+  (
+   cd "$ROOT/experimental/arcside-react"
+   ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \
+   ARCSIDE_FLUTTER_URL="$FLUTTER_URL" ARCSIDE_REACT_URL="$REACT_URL" \
+   node scripts/guided_visualization_acceptance.mjs
+  ) || STATUS=1
+ fi
 fi
 (cd "$ROOT/experimental/arcside-react" && node scripts/phase3_decision.mjs) || STATUS=1
-echo 'Phase 3 evidence: experimental/arcside-react/evidence/{real,guided,decision}/'
+echo 'Phase 3 evidence: experimental/arcside-react/evidence/{real,guided,advanced,visualization,decision}/'
 if [[ "$STATUS" -ne 0 ]];then
  echo 'At least one evaluation step failed. Inspect evidence; NEVER call this a pass.' >&2
 fi
