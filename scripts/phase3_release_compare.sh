@@ -41,8 +41,8 @@ else
 fi
 if [[ "$MODE" == "--advanced-acceptance" || "$MODE" == "--advanced-guided" ]];then
  echo "Exporting actual Flutter Advanced Stats resolver on canonical NBA shards..."
- flutter test test/phase3_advanced_acceptance_export_test.dart --reporter expanded \\
-  --dart-define=ARCSIDE_ADVANCED_CORPUS=web/data/nba_static \\
+ flutter test test/phase3_advanced_acceptance_export_test.dart --reporter expanded \
+  --dart-define=ARCSIDE_ADVANCED_CORPUS=web/data/nba_static \
   --dart-define=ARCSIDE_ADVANCED_SEASONS=2025-26,1986-87,1946-47
 fi
 OUT="$ROOT/experimental/arcside-react/evidence/release"
@@ -99,8 +99,8 @@ if [[ "$MODE" == "--advanced-guided" ]];then
   echo "Starting NEW corrected 30-trial Advanced Stats UX/performance protocol."
   (
    cd "$ROOT/experimental/arcside-react"
-   ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \\
-   ARCSIDE_FLUTTER_URL="$FLUTTER_URL" ARCSIDE_REACT_URL="$REACT_URL" \\
+   ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \
+   ARCSIDE_FLUTTER_URL="$FLUTTER_URL" ARCSIDE_REACT_URL="$REACT_URL" \
    node scripts/guided_advanced_acceptance.mjs
   ) || STATUS=1
  fi
