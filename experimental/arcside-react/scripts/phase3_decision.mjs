@@ -81,8 +81,11 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
   realChecks?['Automated React journeys and Flutter startup probe recorded with no browser exceptions']:
   ['Run the real-source browser journeys on both local app servers; Flutter interactions are NOT automated'],
   {browsers:real?.browsers?.map(b=>({name:b.browser,version:b.version,
-   journeys:b.journeys?.length??0,errors:b.errors?.length??0,
-   consoleErrors:b.consoleErrors?.length??0,verifiedShards:b.sourceShards?.length??0}))??[]}));
+   journeys:b.journeys?.length??0,verifiedQualifiedStatsJourneys:b.journeys?.filter(j=>
+    j.kind==='React verified real NBA Stats route'&&(j.failures??[]).length===0&&j.checks?.length>=7).length??0,
+   errors:b.errors?.length??0,errorExamples:(b.errors??[]).slice(0,3),
+   consoleErrors:b.consoleErrors?.length??0,consoleErrorExamples:(b.consoleErrors??[]).slice(0,3),
+   verifiedShards:b.sourceShards?.length??0}))??[]}));
  // Old observed UI failures are immutable history. A NEW protocol with genuine
  // Dart source parity, operator-confirmed live Flutter controls, and matched
  // clean trials can supersede them; merely porting columns cannot.
