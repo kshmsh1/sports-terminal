@@ -55,7 +55,7 @@ try{
   const cand=advancedMetricCatalog[m.key];
   if(!cand){mismatch('catalogMismatches',{reason:'missing metric',key:m.key});continue}
   for(const [k,expected,actual] of [
-   ['engine',m.engine,cand.engine],['format',m.format,cand.format],
+   ['engine',m.engine,cand.engine],['label',m.shortLabel,cand.label],['format',m.format,cand.format],
    ['decimals',m.decimals,cand.decimals],
    ['raw',m.rawAliases,cand.raw],['children',m.children,cand.children]
   ]){
