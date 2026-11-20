@@ -234,7 +234,7 @@ for(const name of browsers){
     const displayedRows=await p.locator('.studio .chart-accessible tbody tr').count();
     assert.ok(displayedRows<=40,'default scatter must never plot above Flutter top-40');
     const plottedLabel=await p.locator('.studio-chart-title .subtle').innerText();
-    const matched=plottedLabel.match(/^(\\d[\\d,]*) plotted from (\\d[\\d,]*) eligible/);
+    const matched=plottedLabel.match(/^([0-9][0-9,]*) plotted from ([0-9][0-9,]*) eligible/);
     assert.ok(matched,'Studio must report original-source plotted and eligible row counts');
     const plottedNumber=Number(matched[1].replaceAll(',',''));
     const eligibleNumber=Number(matched[2].replaceAll(',',''));
