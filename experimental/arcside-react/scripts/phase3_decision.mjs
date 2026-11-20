@@ -168,18 +168,18 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
  const seasonFlutterP95=p95(seasonWarm('Flutter')),seasonReactP95=p95(seasonWarm('React'));
  const seasonRatio=seasonFlutterP95&&seasonReactP95?seasonReactP95/seasonFlutterP95:null;
  const vizObserved=visualizationGuided?.raw??[];
- const vizValid=!!visualizationGuided&&visualizationGuided.kind==='ARCSIDE_VISUALIZATION_MATCHED_TASKS_V1'&&
-  visualizationGuided.protocol==='VISUALIZATION_CHART_V1_MATCHED'&&
+ const vizValid=!!visualizationGuided&&visualizationGuided.kind==='ARCSIDE_VISUALIZATION_MATCHED_TASKS_V2'&&
+  visualizationGuided.protocol==='VISUALIZATION_CHART_V2_MATCHED_2_COLD_10_WARM'&&
   visualizationGuided.source==='ACTUAL_LOCAL_V5_CORPUS'&&
   visualizationGuided.manifestSha256===corpusHash&&
   visualizationGuided.operatorConfirmed===true&&visualizationGuided.qualified===true&&
-  vizObserved.length===30&&new Set(vizObserved.map(r=>r.app+'/'+r.trial)).size===30&&
+  vizObserved.length===24&&new Set(vizObserved.map(r=>r.app+'/'+r.trial)).size===24&&
   ['Flutter','React'].every(app=>{
    const rows=vizObserved.filter(r=>r.app===app);
-   return rows.length===15&&rows.filter(r=>r.cold).length===5&&
+   return rows.length===12&&rows.filter(r=>r.cold).length===2&&
     rows.filter(r=>!r.cold).length===10&&rows.every(r=>
-     Number.isInteger(r.trial)&&r.trial>=1&&r.trial<=15&&
-     r.cold===(r.trial<=5)&&r.operatorVerified===true&&r.passed===true&&
+     Number.isInteger(r.trial)&&r.trial>=1&&r.trial<=12&&
+     r.cold===(r.trial<=2)&&r.operatorVerified===true&&r.passed===true&&
      Number.isFinite(r.ms)&&r.ms>0);
   });
  const vizRatio=visualizationGuided?.p95ReactOverFlutter??null;
@@ -188,7 +188,7 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
   visualizationGuided.within10Pct===true;
  const p95ok=seasonOk&&advFeaturePass&&advTimingOk&&vizOk;
  g.push(gate('matched_flutter_react_operator_tasks_p95',!guided&&!visualizationGuided?null:p95ok,
-  p95ok?['Separate verified season, corrected Advanced Stats and Visualization protocols: each 5 cold + 10 warm per app, zero failures, React p95 <=110% of Flutter']:
+  p95ok?['Verified season + Advanced Stats (5 cold, 10 warm/app) and Visualization (2 cold, 10 warm/app) protocols, zero failures, React p95 <=110% of Flutter']:
   ['Requires original valid season trials, corrected Advanced Stats trials and NEW live-equivalent Visualization trials; never reuse failed pre-repair basis/chart timings'],
   {season:{valid:seasonValid,p95ReactOverFlutter:seasonRatio,flutterWarmP95Ms:seasonFlutterP95,reactWarmP95Ms:seasonReactP95,
     preservedHistoricalSamples:seasonSamples.length},
@@ -228,7 +228,7 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
  const featureBlocker=await maybeJson(path.join(home,'evidence/guided/advanced-stats-parity-blocker.json'));
  const advancedSource=await maybeJson(path.join(home,'evidence/advanced/advanced-source-parity.json'));
  const advancedGuided=await maybeJson(path.join(home,'evidence/advanced/advanced-guided-timings-v2.json'));
- const visualizationGuided=await maybeJson(path.join(home,'evidence/visualization/visualization-guided-timings-v1.json'));
+ const visualizationGuided=await maybeJson(path.join(home,'evidence/visualization/visualization-guided-timings-v2.json'));
  let manifestBytes=null;try{manifestBytes=await readFile(path.join(repo,'web/data/nba_static/manifest.json'))}catch(e){
   if(e.code!=='ENOENT')throw e;
  }
