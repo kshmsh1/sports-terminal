@@ -14,8 +14,12 @@ const nativeEngineKeys=new Set<MetricKey>([
 const labels:Record<RateBasis,string>={perGame:'Per-game values.',per36:'Per 36 minutes.',
  per48:'Per 48 minutes.',per75:'Per 75 possessions.',per100:'Per 100 possessions.',totals:'Season totals.'};
 const rawNumber=(v:unknown):number|null=>{
- if(v===null||v===undefined||v==='')return null;
- const n=typeof v==='number'?v:typeof v==='string'?Number(v.replace(/[, %]/g,'')):NaN;
+ if(v===null||v===undefined||typeof v==='boolean')return null;
+ // Match original Dart NbaTerminalMetricResolver._number normalization.
+ const cleaned=String(v).replaceAll(',','').replaceAll('%','')
+  .replaceAll('lb','').replaceAll('lbs','').replaceAll('in','').trim();
+ if(cleaned==='')return null;
+ const n=Number(cleaned);
  return Number.isFinite(n)?n:null;
 };
 export function metricValue(row:Row,metricKey:string):number|null{
