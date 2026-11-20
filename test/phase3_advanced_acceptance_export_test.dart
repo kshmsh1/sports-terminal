@@ -92,6 +92,7 @@ void main() {
       'kind':'ARCSIDE_FLUTTER_ADVANCED_STATS_REFERENCE',
       'source':'ACTUAL_LOCAL_V5_CORPUS',
       'sampleSeasons':seasonCsv,
+      'manifestFingerprint':manifest['database_fingerprint'],
       'manifestSha256':null, // computed from actual bytes in independent Node verifier
       'metrics':[for(final m in nbaTerminalMetrics){
         'key':m.key,'shortLabel':m.shortLabel,'engine':m.engineKey,
