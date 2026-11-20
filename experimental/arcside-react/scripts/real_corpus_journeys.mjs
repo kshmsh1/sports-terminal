@@ -234,7 +234,7 @@ for(const name of browsers){
     await p.getByLabel('X metric').selectOption('reb');
     await p.getByLabel('Y metric').selectOption('ast');
     await p.getByRole('button',{name:'Reset view'}).click();
-    await p.getByRole('checkbox',{name:'Linear reference'}).check();
+    await p.getByRole('checkbox',{name:'Best-fit line'}).check();
     task.browserPerf.chartControlSequenceMs=performance.now()-chartStart;
     task.checks.push('chart re-axis, pan/zoom, reset, regression; response observed');
     if(segment==='regular'&&season===seasons[0]){
