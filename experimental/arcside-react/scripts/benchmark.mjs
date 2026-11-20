@@ -45,7 +45,19 @@ async function sample(context,kind,n,run,coldStart){
   // source-backed players when stress-testing 300/5k/25k scatter points.
   await page.getByRole('heading',{name:'Player scatter explorer'}).waitFor();
   await page.getByLabel('Population size').selectOption('0');
-  await page.getByText(n.toLocaleString()+' plotted from '+n.toLocaleString()+' eligible',{exact:false}).waitFor({state:'visible'});
+  const expected=n.toLocaleString()+' plotted from '+n.toLocaleString()+' eligible';
+  try {
+   await page.getByText(expected,{exact:false}).waitFor({state:'visible',timeout:45000});
+  }catch(error){
+   const observed=await page.locator('.studio-chart-title .subtle').first().textContent().catch(()=>null);
+   const source=await page.locator('.studio-rail [role=status]').first().textContent().catch(()=>null);
+   const count=await page.getByLabel('Population size').inputValue().catch(()=>null);
+   const message=await page.locator('[role=alert]').allTextContents().catch(()=>[]);
+   console.error('Synthetic chart readiness failure',JSON.stringify({
+    requested:n,expected,observed,source,populationValue:count,alerts:message,
+    url:page.url(),error:String(error)},null,2));
+   throw error;
+  }
  }
  const firstVisibleMs=performance.now()-start;
  let interactionMs=null;
