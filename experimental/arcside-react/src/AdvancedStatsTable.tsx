@@ -113,6 +113,29 @@ export function advancedText(row:Row,key:string):string{
  return v.toFixed(metric?.decimals??1);
 }
 const availableMetric=(k:string)=>advancedMetricCatalog[k]!==undefined;
+export type AdvancedTableOptions={search:string;team:string;position:string;minGp:number;minMpg:number;sort:string;descending:boolean};
+export function advancedFilteredSortedRows(rows:Row[],o:AdvancedTableOptions):Row[]{
+ const q=o.search.trim().toLowerCase();
+ return rows.filter(r=>{
+  const match=!q||(r.player+' '+r.team+' '+r.position).toLowerCase().includes(q);
+  // Original Flutter reference filters row.value('min') in the selected basis.
+  return match&&(o.team==='All'||r.team.split(/[,/ ]+/).includes(o.team))&&
+   (o.position==='All'||r.position===o.position)&&
+   (r.values.gp??0)>=o.minGp&&(r.values.min??0)>=o.minMpg;
+ }).sort((a,b)=>{
+  if(advancedMetricCatalog[o.sort]?.format==='text'){
+   const va=advancedText(a,o.sort),vb=advancedText(b,o.sort);
+   if(va==='—')return vb==='—'?0:1;
+   if(vb==='—')return -1;
+   return o.descending?-va.localeCompare(vb):va.localeCompare(vb);
+  }
+  const va=metricValue(a,o.sort),vb=metricValue(b,o.sort);
+  if(va===null&&vb===null)return a.player.localeCompare(b.player);
+  if(va===null)return 1;
+  if(vb===null)return -1;
+  return (o.descending?vb-va:va-vb)||a.player.localeCompare(b.player);
+ });
+}
 type Props={rows:Row[];basis:RateBasis;segment:SeasonType;season:string;onPlayer:(id:string)=>void};
 export function AdvancedStatsTable({rows,basis,segment,season,onPlayer}:Props){
  const [group,setGroup]=useState('Overview');
@@ -140,27 +163,9 @@ export function AdvancedStatsTable({rows,basis,segment,season,onPlayer}:Props){
   return out;
  },[current,expandedMetrics]);
  const teams=useMemo(()=>['All',...new Set(rows.flatMap(r=>r.team.split(/[,/ ]+/).filter(t=>/^[A-Z0-9]{2,4}$/.test(t))))].sort(),[rows]);
- const filtered=useMemo(()=>rows.filter(r=>{
-  const q=search.trim().toLowerCase();
-  const match=!q||(r.player+' '+r.team+' '+r.position).toLowerCase().includes(q);
-  // Flutter compares row.value('min') in the selected rate basis.
-  const basisMinutes=r.values.min??0;
-  return match&&(team==='All'||r.team.split(/[,/ ]+/).includes(team))&&
-   (position==='All'||r.position===position)&&
-   (r.values.gp??0)>=minGp&&basisMinutes>=minMpg;
- }).sort((a,b)=>{
-  if(advancedMetricCatalog[sort]?.format==='text'){
-   const va=advancedText(a,sort),vb=advancedText(b,sort);
-   if(va==='—')return vb==='—'?0:1;
-   if(vb==='—')return -1;
-   return descending?-va.localeCompare(vb):va.localeCompare(vb);
-  }
-  const va=metricValue(a,sort),vb=metricValue(b,sort);
-  if(va===null&&vb===null)return a.player.localeCompare(b.player);
-  if(va===null)return 1;
-  if(vb===null)return -1;
-  return (descending?vb-va:va-vb)||a.player.localeCompare(b.player);
- }),[rows,search,team,position,minGp,minMpg,sort,descending]);
+ const filtered=useMemo(()=>advancedFilteredSortedRows(rows,
+  {search,team,position,minGp,minMpg,sort,descending}),
+  [rows,search,team,position,minGp,minMpg,sort,descending]);
  const pages=Math.max(1,Math.ceil(filtered.length/pageSize));
  const currentPage=Math.min(page,pages);
  const paged=filtered.slice((currentPage-1)*pageSize,currentPage*pageSize);
