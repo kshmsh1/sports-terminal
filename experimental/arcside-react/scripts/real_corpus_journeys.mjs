@@ -83,7 +83,13 @@ for(const name of browsers){
     const recordCount=real.player_season_totals?.length;
     if(typeof recordCount!=='number')throw Error('Invalid real season shard');
     const p=await context.newPage();
+    let task=null;
     p.on('pageerror',error=>result.errors.push({app:'React',route:season+'/'+segment,message:error.message}));
+    p.on('console',msg=>{
+     if(msg.type()==='error')(result.consoleErrors??=[]).push({
+      app:'React',route:season+'/'+segment,message:msg.text()});
+    });
+    try{
     const target=react+'/stats?season='+season+'&segment='+segment+'&basis=perGame';
     const begin=performance.now();
     await p.goto(target,{waitUntil:'domcontentloaded',timeout:60000});
@@ -102,7 +108,7 @@ for(const name of browsers){
       result.errors.push({app:'React',route:season+'/'+segment,
        message:'Qualification 50/4 source-coverage disagreement: '+displayed+' vs '+qualifiedTarget+'/'+recordCount});
     }
-    const task={kind:'React verified real NBA Stats route',season,segment,sourceRecords:recordCount,
+    task={kind:'React verified real NBA Stats route',season,segment,sourceRecords:recordCount,
       firstStatsReadoutMs:loadMs,summary:rowSummary,qualifiedExpected:qualifiedTarget,
       checks:[],failures:[],browserPerf:{}};
     // Action-to-updated-UI, not simply click dispatch: ensure the URL and
@@ -178,6 +184,7 @@ for(const name of browsers){
      assert.equal(await p.getByLabel('Y metric').inputValue(),'ast');
      assert.equal(await p.getByRole('button',{name:'Drag pan'}).getAttribute('aria-pressed'),'true');
      task.checks.push('visualization axis and pan settings persist after reload');
+     await p.screenshot({path:path.join(dir,name+'-react-visualizations-'+season+'.png'),fullPage:true});
      await p.getByRole('link',{name:'Stats',exact:true}).click();
      await p.getByRole('heading',{name:'Player statistics'}).waitFor();
      await p.getByRole('link',{name:'Skip to content'}).focus();
@@ -195,11 +202,16 @@ for(const name of browsers){
      measuredTransferBytes:performance.getEntriesByType('resource').reduce((s,r)=>s+(r.transferSize??0),0),
      caveat:'Browser resourceTiming transferSize may omit cached/cross-origin or service-worker bytes'
     }));
-    if(segment==='regular'&&season===seasons[0]){
-     await p.screenshot({path:path.join(dir,name+'-react-visualizations-'+season+'.png'),fullPage:true});
-    }
     result.journeys.push(task);
-    await p.close();
+    }catch(error){
+     const message=error instanceof Error?error.message:String(error);
+     result.errors.push({app:'React',route:season+'/'+segment,message});
+     if(task){
+      task.failures.push(message);
+      result.journeys.push(task);
+     }
+    }finally{await p.close();}
+
    }
   }
   // Existing Labs: inspect only the typed handshake; no code, tokens, workbooks transmitted.
