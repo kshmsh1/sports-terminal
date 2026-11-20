@@ -36,6 +36,10 @@ const advancedGuided={kind:'ARCSIDE_ADVANCED_MATCHED_TASKS_V2',protocol:'ADVANCE
  raw:['Flutter','React'].flatMap(app=>Array.from({length:15},(_,i)=>({
   app,trial:i+1,cold:i<5,ms:100,passed:true,operatorVerified:true})))
 };
+const visualizationSource={kind:'ARCSIDE_VISUALIZATION_REAL_DART_REACT_ACCEPTANCE_V1',
+ source:'ACTUAL_LOCAL_V5_CORPUS',manifestSha256:hash,status:'PASS',
+ mismatches:0,comparisons:20000,nonemptyCases:24,
+ cases:Array.from({length:72},(_,i)=>({case:i}))};
 const visualizationGuided={kind:'ARCSIDE_VISUALIZATION_MATCHED_TASKS_V2',
  protocol:'VISUALIZATION_CHART_V2_MATCHED_2_COLD_10_WARM',source:'ACTUAL_LOCAL_V5_CORPUS',
  manifestSha256:hash,operatorConfirmed:true,qualified:true,
@@ -67,7 +71,7 @@ test('old synthetic equality is not accepted as original canonical source proof'
  assert.equal(a.fullMigrationApproved,false);
 });
 test('complete original narrow pilot can pass without signing off full migration',()=>{
- const a=assess({parity,real,guided:makeGuide(),manifestBytes,advancedSource,advancedGuided,visualizationGuided});
+ const a=assess({parity,real,guided:makeGuide(),manifestBytes,advancedSource,advancedGuided,visualizationSource,visualizationGuided});
  assert.equal(a.pilot,'MATCHED_PILOT_GATES_PASSED_WITH_FULL_SCOPE_PENDING');
  assert.equal(a.fullMigrationApproved,false);
  assert.ok(a.blockers.includes('real_safari_voiceover_nvda_accessibility'));
@@ -129,7 +133,7 @@ test('Advanced Stats p95 ratio is an independent decision criterion',()=>{
 test('Flutter root probe is REQUIRED; screenshots alone do not certify visible startup',()=>{
  const broken={...real,browsers:real.browsers.map(b=>({...b,flutterBootstrap:null}))};
  const a=assess({parity,real:broken,guided:makeGuide(),manifestBytes,
-  advancedSource,advancedGuided,visualizationGuided});
+  advancedSource,advancedGuided,visualizationSource,visualizationGuided});
  const g=a.gates.find(x=>x.name==='real_source_react_workflow_and_flutter_bootstrap');
  assert.equal(g.status,'FAIL');
  assert.equal(g.detail.browsers[0].flutterBootstrap,'NOT_RUN');
@@ -138,7 +142,7 @@ test('authentic source browser journeys require every exact selected season and 
  const broken={...real,browsers:real.browsers.map(b=>({...b,
   journeys:b.journeys.filter(x=>!(x.season==='1946-47'&&x.segment==='playoffs'))}))};
  const a=assess({parity,real:broken,guided:makeGuide(),manifestBytes,
-  advancedSource,advancedGuided,visualizationGuided});
+  advancedSource,advancedGuided,visualizationSource,visualizationGuided});
  assert.equal(a.gates.find(x=>x.name==='real_source_react_workflow_and_flutter_bootstrap').status,'FAIL');
 });
 test('corrected performance gate excludes original failed basis and chart trials',()=>{
@@ -147,7 +151,7 @@ test('corrected performance gate excludes original failed basis and chart trials
  const obsolete=old.raw.find(r=>r.task==='basis'&&r.app==='React');
  obsolete.passed=false;obsolete.operatorVerified=false;
  const a=assess({parity,real,guided:old,manifestBytes,
-  advancedSource,advancedGuided,visualizationGuided});
+  advancedSource,advancedGuided,visualizationSource,visualizationGuided});
  const g=a.gates.find(x=>x.name==='matched_flutter_react_operator_tasks_p95');
  assert.equal(g.status,'PASS');
  assert.equal(g.detail.legacyBasisAndChartExcluded,true);
@@ -161,15 +165,26 @@ test('unattested or duplicate visualization trials cannot certify matched perfor
  const tampered={...visualizationGuided,
   raw:[...visualizationGuided.raw.slice(1),visualizationGuided.raw[1]]};
  const a=assess({parity,real,guided:makeGuide(),manifestBytes,
-  advancedSource,advancedGuided,visualizationGuided:tampered});
+  advancedSource,advancedGuided,visualizationSource,visualizationGuided:tampered});
  assert.equal(a.gates.find(x=>x.name==='matched_flutter_react_operator_tasks_p95').status,'FAIL');
  const b=assess({parity,real,guided:makeGuide(),manifestBytes,
-  advancedSource,advancedGuided,visualizationGuided:{...visualizationGuided,operatorConfirmed:false}});
+  advancedSource,advancedGuided,visualizationSource,visualizationGuided:{...visualizationGuided,operatorConfirmed:false}});
  assert.equal(b.gates.find(x=>x.name==='matched_flutter_react_operator_tasks_p95').status,'FAIL');
 });
 test('react chart p95 over 10 percent slower fails composite gate',()=>{
  const slow={...visualizationGuided,p95ReactOverFlutter:1.11,within10Pct:false};
  const a=assess({parity,real,guided:makeGuide(),manifestBytes,
-  advancedSource,advancedGuided,visualizationGuided:slow});
+  advancedSource,advancedGuided,visualizationSource,visualizationGuided:slow});
  assert.equal(a.gates.find(x=>x.name==='matched_flutter_react_operator_tasks_p95').status,'FAIL');
+});
+
+test('visualization original-Dart source parity gate cannot pass with missing or mismatched data',()=>{
+ const missing=assess({parity,real,guided:makeGuide(),manifestBytes,
+  advancedSource,advancedGuided,visualizationGuided});
+ assert.equal(missing.gates.find(g=>g.name==='visualization_source_semantic_parity').status,'NOT_RUN');
+ assert.equal(missing.gates.find(g=>g.name==='matched_flutter_react_operator_tasks_p95').status,'FAIL');
+ const mismatched=assess({parity,real,guided:makeGuide(),manifestBytes,
+  advancedSource,advancedGuided,visualizationSource:{...visualizationSource,mismatches:1},visualizationGuided});
+ assert.equal(mismatched.gates.find(g=>g.name==='visualization_source_semantic_parity').status,'FAIL');
+ assert.equal(mismatched.gates.find(g=>g.name==='matched_flutter_react_operator_tasks_p95').status,'FAIL');
 });
