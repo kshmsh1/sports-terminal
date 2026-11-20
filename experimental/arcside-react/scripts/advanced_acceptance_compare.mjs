@@ -43,7 +43,7 @@ try{
  vite=await createServer({root:app,server:{middlewareMode:true},appType:'custom',
   logLevel:'error',configFile:false});
  const [{advancedMetricCatalog,advancedGroups,advancedChildren},
-        {metricValue,advancedText,advancedLabel},{buildRows}]=await Promise.all([
+        {metricValue,advancedText,advancedLabel,advancedFilteredSortedRows},{buildRows}]=await Promise.all([
   vite.ssrLoadModule('/src/advancedCatalog.ts'),
   vite.ssrLoadModule('/src/AdvancedStatsTable.tsx'),
   vite.ssrLoadModule('/src/engine.ts')
@@ -138,16 +138,18 @@ try{
    for(const [gpMin,minMin] of [[0,0],[50,20],[20,15]]){
     const f=lookup.filter(({gold})=>(gold.gp??0)>=gpMin&&(gold.minutes??0)>=minMin)
       .map(x=>x.gold.id).sort();
-    const r=lookup.filter(({react})=>(react.values.gp??0)>=gpMin&&(react.values.min??0)>=minMin)
-      .map(x=>x.react.id).sort();
+    const r=advancedFilteredSortedRows(lookup.map(x=>x.react),{
+      search:'',team:'All',position:'All',minGp:gpMin,minMpg:minMin,
+      sort:'ppg',descending:true}).map(x=>x.id).sort();
     if(JSON.stringify(f)!==JSON.stringify(r))
      mismatch('filterMismatches',{season,segment,basis,gpMin,minMin,expected:f.slice(0,20),actual:r.slice(0,20)});
     report.comparisons++;
    }
    for(const descending of [true,false]){
     const expected=sortIds(lookup.map(x=>x.gold),'ppg',descending);
-    const actual=sortIds(lookup.map(({gold,react})=>({...gold,
-     metrics:{...gold.metrics,ppg:metricValue(react,'ppg')}})),'ppg',descending);
+    const actual=advancedFilteredSortedRows(lookup.map(x=>x.react),{
+     search:'',team:'All',position:'All',minGp:0,minMpg:0,
+     sort:'ppg',descending}).map(x=>x.id);
     if(JSON.stringify(expected)!==JSON.stringify(actual))
      mismatch('sortMismatches',{season,segment,basis,descending,expected:expected.slice(0,20),actual:actual.slice(0,20)});
     report.comparisons++;
