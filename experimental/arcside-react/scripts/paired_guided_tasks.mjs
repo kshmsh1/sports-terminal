@@ -7,7 +7,7 @@ import {chromium} from '@playwright/test';
 import {createInterface} from 'node:readline/promises';
 import {stdin as input,stdout as output} from 'node:process';
 import {performance} from 'node:perf_hooks';
-import {readFile,mkdir,writeFile} from 'node:fs/promises';
+import {readFile,mkdir,writeFile,copyFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {platform,release,arch,cpus,totalmem} from 'node:os';
 import path from 'node:path';
@@ -44,6 +44,8 @@ const browser=await chromium.launch({
  ...(process.env.ARCSIDE_BROWSER_CHANNEL?{channel:process.env.ARCSIDE_BROWSER_CHANNEL}:{})
 });
 const results=[],errors=[];
+const checkpointPath=path.join(dir,'guided-checkpoint.json');
+const resume=process.env.ARCSIDE_GUIDED_RESUME==='1';
 const warmContexts={};
 const ctrlStyle='position:fixed;right:10px;bottom:12px;z-index:2147483647;max-width:240px;padding:10px;background:#151b2b;color:#fff;border:2px solid #ffdc81;border-radius:8px;font:12px system-ui;box-shadow:0 2px 16px #0008;';
 function pctl(){
@@ -93,6 +95,32 @@ try {
  }
  await req.close();
  await mkdir(dir,{recursive:true});
+ if(resume){
+  let saved;
+  try{saved=JSON.parse(await readFile(checkpointPath,'utf8'));}
+  catch(e){throw Error('Cannot resume: missing or unreadable guided-checkpoint.json: '+e.message);}
+  if(saved.manifestSha256!==hash(data))throw Error('Cannot resume: original NBA manifest differs from checkpoint');
+  if(!Array.isArray(saved.raw))throw Error('Cannot resume: checkpoint raw trials missing');
+  if(saved.raw.some(r=>!tasks.some(t=>t.id===r.task)||!['Flutter','React'].includes(r.app)||
+    !Number.isInteger(r.trial)||r.trial<1||r.trial>cold+warm||
+    r.cold!==(r.trial<=cold)||!Number.isFinite(r.ms)||r.ms<0||
+    typeof r.passed!=='boolean'||typeof r.operatorVerified!=='boolean'))
+   throw Error('Cannot resume: invalid or incompatible checkpoint trial data');
+  const seen=new Set();
+  for(const r of saved.raw){
+   const k=r.task+'/'+r.app+'/'+r.trial;
+   if(seen.has(k))throw Error('Cannot resume: duplicate trial '+k);
+   seen.add(k);
+  }
+  // Do not mix trials recorded under old, non-equivalent task instructions.
+  if(saved.raw.some(r=>r.task==='basis'||r.task==='chart'))
+   throw Error('Checkpoint contains basis/chart trials from a potentially different protocol. Back up and review before resuming.');
+  await copyFile(checkpointPath,path.join(dir,'guided-checkpoint-before-resume.json'));
+  results.push(...saved.raw);
+  if(Array.isArray(saved.errors))errors.push(...saved.errors);
+  console.log('RESUMED '+results.length+' completed trials from checkpoint (backup preserved).');
+  if(results.length===30)console.log('Season switching complete; proceeding directly to corrected Advanced Stats.');
+ }
  console.log('Both servers use the same original v5 manifest SHA256:',hash(data));
  console.log('Stopwatch buttons appear in BOTH apps. Keyboard: Ctrl+Shift+8 START, Ctrl+Shift+9 FINISH, Ctrl+Shift+0 FAIL.');
  console.log('All timings require operator verification and reflect human task completion, not code-only frame timing.');
@@ -103,6 +131,7 @@ try {
    // Alternate app order to reduce thermal and practice-order bias.
    const order=trial%2===0?['Flutter','React']:['React','Flutter'];
    for(const app of order){
+    if(results.some(r=>r.task===task.id&&r.app===app&&r.trial===trial+1))continue;
     const isCold=trial<cold;
     const context=isCold?await browser.newContext({viewport:{width:1440,height:900}})
      :(warmContexts[app]??=await browser.newContext({viewport:{width:1440,height:900}}));
@@ -137,7 +166,7 @@ try {
     if(trial===cold&&marks.status==='finish')
      await page.screenshot({path:path.join(dir,task.id+'-'+app.toLowerCase()+'.png'),fullPage:true});
     // Preserve every completed trial even if the operator aborts a later task.
-    await writeFile(path.join(dir,'guided-checkpoint.json'),
+    await writeFile(checkpointPath,
      JSON.stringify({inProgress:true,manifestSha256:hash(data),raw:results,errors},null,2)+'\n');
     await page.close();
     if(isCold)await context.close();
