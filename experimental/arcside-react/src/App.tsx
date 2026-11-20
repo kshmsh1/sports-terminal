@@ -4,6 +4,7 @@ import {getManifest,getSeasons,getSeason,getPlayerDossier} from './data';
 import type {MetricKey,Row} from './engine';
 import {advancedKeys,bases,buildRows,formatMetric,metrics,overviewKeys,sortRows,stintRows} from './engine';
 import {Chart} from './Chart';
+import {AdvancedStatsTable} from './AdvancedStatsTable';
 
 type ViewState={path:string;season:string;segment:SeasonType;basis:RateBasis};
 function fromUrl():ViewState {
@@ -163,7 +164,10 @@ export function App(){
     {loading&&<p role="status" className="loading">Loading verified NBA static data…</p>}
     {!allowedRoutes.includes(view.path)&&!view.path.startsWith('/player/')&&
      <div className="panel"><h2>Route not found</h2><button onClick={()=>navigate('/stats')}>Return to Stats</button></div>}
-    {(view.path==='/stats'||view.path==='/advanced')&&<section className="panel" aria-label="Statistical table">
+    {view.path==='/advanced'&&<AdvancedStatsTable rows={rows} baseRows={snapshot?buildRows(snapshot,'perGame'):[]}
+      basis={view.basis} segment={view.segment} season={view.season}
+      onPlayer={id=>navigate('/player/'+encodeURIComponent(id))}/>}
+    {view.path==='/stats'&&<section className="panel" aria-label="Statistical table">
      <div className="panel-title"><div><p className="eyebrow">NBA / SOURCE-BACKED DATA</p>
       <h2>{view.path==='/stats'?'Player statistics':'Advanced player statistics'}</h2>
       <p className="subtle">{filtered.length.toLocaleString()} of {rows.length.toLocaleString()} player rows ·
