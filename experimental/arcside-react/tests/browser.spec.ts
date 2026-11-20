@@ -109,6 +109,12 @@ test('Flutter-style scatter defaults to top 40 by PTS and supports filtered exac
  await page.getByLabel('Minimum games').fill('50');
  await page.getByLabel('Population size').selectOption('0');
  await expect(page.getByText('150 plotted from 150 eligible',{exact:false})).toBeVisible();
+ await expect(page.locator('.studio .chart-accessible tbody tr')).toHaveCount(100);
+ await page.getByRole('button',{name:'Next rows'}).click();
+ await expect(page.locator('.studio .chart-accessible tbody tr')).toHaveCount(50);
+ await expect(page.getByText('Page 2 of 2')).toBeVisible();
+ await page.getByRole('button',{name:'Previous rows'}).click();
+ await expect(page.locator('.studio .chart-accessible tbody tr')).toHaveCount(100);
  await page.getByLabel('Filter by team or player').fill('BOS');
  await page.getByRole('button',{name:'Team: BOS'}).click();
  await expect(page.getByText('75 plotted from 75 eligible',{exact:false})).toBeVisible();
