@@ -53,7 +53,27 @@ function pctl(){
  n.innerHTML='<strong>Arcside Phase 3 task timer</strong><p style="margin:5px 0">Begin, then finish ONLY after verifying the task.</p>'+
   '<button id="arcside-start">Start</button> <button id="arcside-finish">Finish ✓</button> <button id="arcside-fail">Fail ✕</button>';
  document.body.appendChild(n);
- const notify=(event)=>window.arcsideGuidedMark({event});
+ // Frame gaps are sampled inside each app's browser context during the
+ // human-verified task. They are NOT a GPU trace or confirmed dropped frames.
+ let frames=[],last=0,raf=0;
+ const tick=t=>{
+  if(last&&frames.length<10000)frames.push(t-last);
+  last=t;raf=requestAnimationFrame(tick);
+ };
+ const notify=event=>{
+  let frame=null;
+  if(event==='start'){frames=[];last=0;cancelAnimationFrame(raf);raf=requestAnimationFrame(tick);}
+  else {
+   cancelAnimationFrame(raf);
+   const sorted=[...frames].sort((a,b)=>a-b);
+   frame={observations:sorted.length,
+    p95GapMs:sorted[Math.max(0,Math.ceil(sorted.length*.95)-1)]??null,
+    maxGapMs:sorted.at(-1)??null,
+    gapsOver50Ms:sorted.filter(x=>x>50).length,
+    samplesCapped:frames.length>=10000};
+  }
+  window.arcsideGuidedMark({event,frame});
+ };
  n.querySelector('#arcside-start').onclick=()=>notify('start');
  n.querySelector('#arcside-finish').onclick=()=>notify('finish');
  n.querySelector('#arcside-fail').onclick=()=>notify('fail');
@@ -88,15 +108,15 @@ try {
     const page=await context.newPage();
     const base=app==='React'?react:flutter;
     const uri=base+(app==='React'?task.reactPath:'/');
-    const marks={started:null,completed:null,status:null};
+    const marks={started:null,completed:null,status:null,frame:null};
     let resolveDone;
     const completed=new Promise(resolve=>{resolveDone=resolve});
-    await page.exposeFunction('arcsideGuidedMark',({event})=>{
+    await page.exposeFunction('arcsideGuidedMark',({event,frame})=>{
      const now=performance.now();
      if(event==='start'){marks.started=now;console.log('START '+task.id+' '+app)}
      else if(event==='finish'||event==='fail'){
       if(marks.started!==null&&!marks.completed){
-       marks.completed=now;marks.status=event;resolveDone();
+       marks.completed=now;marks.status=event;marks.frame=frame;resolveDone();
       }
      }
     });
@@ -111,9 +131,13 @@ try {
     await completed;
     const ms=marks.completed-marks.started;
     results.push({task:task.id,app,trial:trial+1,cold:isCold,ms,
-     passed:marks.status==='finish',operatorVerified:marks.status==='finish'});
+     passed:marks.status==='finish',operatorVerified:marks.status==='finish',
+     frameProbe:marks.frame});
     if(trial===cold&&marks.status==='finish')
      await page.screenshot({path:path.join(dir,task.id+'-'+app.toLowerCase()+'.png'),fullPage:true});
+    // Preserve every completed trial even if the operator aborts a later task.
+    await writeFile(path.join(dir,'guided-checkpoint.json'),
+     JSON.stringify({inProgress:true,manifestSha256:hash(data),raw:results,errors},null,2)+'\n');
     await page.close();
     if(isCold)await context.close();
    }
@@ -142,7 +166,9 @@ for(const task of tasks){
 const report={kind:'ARCSIDE_PHASE3_OPERATOR_VERIFIED_MATCHED_TASK_TIMINGS',
  createdAt:new Date().toISOString(),manifestSha256:hash(data),fingerprint:manifest.database_fingerprint,
  hardware:{platform:platform(),release:release(),arch:arch(),cpu:cpus()[0]?.model,cores:cpus().length,ram:totalmem()},
- browser:'Chromium '+browser.version(),method:'same machine and exact original manifest, headed browser, manual operator-verified start/stop, alternating variant order',
+ browser:(process.env.ARCSIDE_BROWSER_CHANNEL??'bundled Chromium')+' '+browser.version(),
+ method:'same machine and exact original manifest, headed browser, manual operator-verified start/stop, alternating variant order',
+ frameCaveat:'rAF gaps are approximations measured in the browser during operator tasks; they are NOT actual GPU dropped-frame counts or peak browser memory. Warm trials reuse context but open a new tab.',
  limitation:'Human start/stop and task verification; not automated frame time, not a substitute for accessibility or full functional parity',
  cold,warm,summary,raw:results,errors};
 await writeFile(path.join(dir,'guided-matched-task-timings.json'),JSON.stringify(report,null,2)+'\n');
