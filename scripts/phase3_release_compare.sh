@@ -2,11 +2,13 @@
 # Phase 3: matched release-build Flutter/React comparison on the owner's Mac.
 # Never rebuilds/scrapes the historic NBA warehouse; reads existing v5 output.
 # --automated: actual-corpus browser journeys + evidence report
-# --all: above plus the interactive matched 5-cold/10-warm operator tasks.
+# --all: legacy 90-trial guided task run (do not resume obsolete Advanced Stats tasks)
+# --advanced-acceptance: actual Dart catalog reference + React comparison + browser journeys
+# --advanced-guided: above plus isolated 30-trial post-repair operator confirmation
 set -euo pipefail
 MODE="${1:---automated}"
-if [[ "$MODE" != "--automated" && "$MODE" != "--all" ]]; then
- echo 'Usage: bash scripts/phase3_release_compare.sh [--automated|--all]' >&2;exit 2
+if [[ "$MODE" != "--automated" && "$MODE" != "--all" && "$MODE" != "--advanced-acceptance" && "$MODE" != "--advanced-guided" ]]; then
+ echo 'Usage: bash scripts/phase3_release_compare.sh [--automated|--all|--advanced-acceptance|--advanced-guided]' >&2;exit 2
 fi
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -36,6 +38,12 @@ else
  echo 'Compiling production/release versions of BOTH shells (not Flutter debug vs Vite dev)...'
  flutter build web --release
  (cd experimental/arcside-react && npm run build)
+fi
+if [[ "$MODE" == "--advanced-acceptance" || "$MODE" == "--advanced-guided" ]];then
+ echo "Exporting actual Flutter Advanced Stats resolver on canonical NBA shards..."
+ flutter test test/phase3_advanced_acceptance_export_test.dart --reporter expanded \\
+  --dart-define=ARCSIDE_ADVANCED_CORPUS=web/data/nba_static \\
+  --dart-define=ARCSIDE_ADVANCED_SEASONS=2025-26,1986-87,1946-47
 fi
 OUT="$ROOT/experimental/arcside-react/evidence/release"
 mkdir -p "$OUT"
@@ -80,6 +88,23 @@ STATUS=0
  ARCSIDE_FLUTTER_URL="$FLUTTER_URL" ARCSIDE_REACT_URL="$REACT_URL" \
  npm run test:real
 ) || STATUS=1
+if [[ "$MODE" == "--advanced-acceptance" || "$MODE" == "--advanced-guided" ]];then
+ echo "Evaluating Flutter catalog resolver against React on original NBA corpus..."
+ (cd "$ROOT/experimental/arcside-react" && node scripts/advanced_acceptance_compare.mjs) || STATUS=1
+fi
+if [[ "$MODE" == "--advanced-guided" ]];then
+ if [[ "$STATUS" -ne 0 ]];then
+  echo "Advanced source/browser acceptance failed; skipping invalid manual timings." >&2
+ else
+  echo "Starting NEW corrected 30-trial Advanced Stats UX/performance protocol."
+  (
+   cd "$ROOT/experimental/arcside-react"
+   ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \\
+   ARCSIDE_FLUTTER_URL="$FLUTTER_URL" ARCSIDE_REACT_URL="$REACT_URL" \\
+   node scripts/guided_advanced_acceptance.mjs
+  ) || STATUS=1
+ fi
+fi
 if [[ "$MODE" == "--all" ]];then
  echo 'Starting operator-verified SAME MACHINE task comparison. Both apps remain running.'
  (
