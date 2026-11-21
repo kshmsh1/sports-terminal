@@ -167,3 +167,14 @@ h2{font-size:21px;letter-spacing:-.4px;margin:0 0 7px}h3{font-size:15px}.subtle{
 .contract-entry{padding:12px 0;border-bottom:1px solid var(--line)}
 .contract-entry p{margin:8px 0;color:var(--sub)}
 @media(max-width:600px){.profile-summary{grid-template-columns:1fr}}
+
+.trade-pilot .trade-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.trade-pilot label{display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--sub)}
+.trade-pilot input,.trade-pilot select,.trade-pilot textarea{background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:8px;width:100%;min-width:0}
+.trade-assets{display:grid;gap:12px}
+.trade-asset{border:1px solid var(--line);border-radius:10px;padding:15px;min-width:0}
+.trade-asset legend{font-weight:700}
+.trade-asset>label{margin:12px 0}
+.trade-actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+.trade-results{border-top:1px solid var(--line);padding-top:15px}
+.trade-results .stats-table th,.trade-results .stats-table td{min-width:128px;padding:12px}
