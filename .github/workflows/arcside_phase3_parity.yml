@@ -55,6 +55,9 @@ jobs:
       - name: Compare every exported Dart statistic and both traded-player splits to React
         working-directory: experimental/arcside-react
         run: npm run test:parity
+      - name: Independently compare original Dart CBA reference with TypeScript engine
+        working-directory: experimental/arcside-react
+        run: npm run test:trade:goldens
       - name: Publish original Dart trade reports (candidate not yet ported)
         if: always()
         uses: actions/upload-artifact@v4
