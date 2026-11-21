@@ -11,6 +11,7 @@ const exists=async p=>{try{await access(path.join(root,p));return true}catch{ret
 const hash=s=>createHash('sha256').update(s).digest('hex');
 const app=await read('experimental/arcside-react/src/App.tsx');
 const chart=await read('experimental/arcside-react/src/Chart.tsx');
+const profile=await read('experimental/arcside-react/src/ProfileTable.tsx');
 const flutterTrade=await read('lib/services/trade_machine_engine.dart');
 const python=await read('web/labs/python/index.html');
 const sheets=await read('web/labs/sheets/index.html');
@@ -38,7 +39,7 @@ for(const item of reference){
  const route=item.candidate?.startsWith('/player/')?app.includes("view.path.startsWith('/player/')"):
   !!item.candidate&&routes.includes(item.candidate);
  const status=!tracked?'REFERENCE_PATH_MISSING':!route?'CANDIDATE_ROUTE_MISSING':
-  item.module==='Player profiles'?'PARTIAL_DOSSIER_FIELDS_ONLY':
+  item.module==='Player profiles'?'CAREER_AND_ADVANCED_TABLES_PRESENT_FULL_PROFILE_NOT_VALIDATED':
   ['Python Lab','Excel Workspace'].includes(item.module)?'ORIGINAL_MODULE_EMBEDDED_NOT_FULLY_VALIDATED':
   'PILOT_ROUTE_PRESENT_NOT_FULL_SCOPE_VALIDATED';
  modules.push({...item,referencePathExists:tracked,candidateRoutePresent:route,status});
@@ -46,8 +47,8 @@ for(const item of reference){
 const directFailures=[
  {check:'Full CBA trade rules',status:'NOT_IMPLEMENTED_IN_REACT_PILOT',
   detail:'Original Dart TradeMachineEngine exists; React candidate has no independent equivalent or transaction UI. Exporter alone cannot establish port parity.'},
- {check:'Player dossier complete Stats/Advanced tables',status:'NOT_IMPLEMENTED_IN_REACT_PILOT',
-  detail:'React /player/:key renders a minimal eight-field metadata list rather than the original source-backed full player stats/advanced profile tables.'},
+ {check:'Player dossier holistic profile parity',status:'PARTIAL_IN_REACT_PILOT',
+  detail:'React /player/:key now renders original published career and Advanced Stats tables, but source-level parity, complete awards, contracts, roster context and the full Flutter player-profile interactions are not validated.'},
  {check:'React chart keyboard alternative',status:chart.includes('className="chart-accessible"')?'PARTIAL_TABLE_ALTERNATIVE':'NOT_VERIFIED',
   detail:'Underlying data table may support screen readers, but plot navigation, focus and tooltip parity require real assistive-technology tests.'}
 ];
@@ -67,7 +68,7 @@ const checkFiles=[
 const sourceTests=[];for(const p of checkFiles)sourceTests.push({path:p,exists:await exists(p)});
 const report={kind:'ARCSIDE_PHASE3_FULL_SCOPE_AUDIT_V1',createdAt:new Date().toISOString(),
  branchPurpose:'narrow React proof of concept only',
- gitReference:{tradeEngineSha256:hash(flutterTrade),reactAppSha256:hash(app),reactChartSha256:hash(chart)},
+ gitReference:{tradeEngineSha256:hash(flutterTrade),reactAppSha256:hash(app),reactChartSha256:hash(chart),reactProfileTablesSha256:hash(profile)},
  candidateRoutes:routes,modules,directFailures,backendRisks,sourceTests,
  fullScopeFeatureParity:false,fullTradeAndProfileParity:false,securityCertified:false,accessibilityCertified:false,
  status:'GAPS_CONFIRMED',
