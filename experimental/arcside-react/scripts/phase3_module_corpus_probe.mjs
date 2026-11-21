@@ -26,7 +26,10 @@ try{
   {path:'/team-compare',heading:'Team Comparison',check:'Team comparison'},
   {path:'/box-scores',heading:'Box Scores',check:'Historical box scores'},
   {path:'/financials',heading:'Financials',check:'Dated original Flutter 2026–27 financials'},
-  {path:'/with-without',heading:'With / Without',check:'Published split or explicit no-source state'}
+  {path:'/with-without',heading:'With / Without',check:'Published split or explicit no-source state'},
+  {path:'/teams',heading:'Teams',check:'Original team index directory'},
+  {path:'/games',heading:'Games',check:'Original historical game index'},
+  {path:'/franchise-history',heading:'Franchise History',check:'Original Flutter historical identity plan'}
  ];
  for(const route of routes){
   const page=await ctx.newPage();
@@ -47,6 +50,15 @@ try{
      throw Error('Original financial source snapshot did not validate');
     await page.getByRole('button',{name:'ATL',exact:true}).waitFor({timeout:20000});
    }
+   if(route.path==='/teams'){
+    await page.getByRole('region',{name:'NBA teams directory'}).waitFor({timeout:20000});
+   }
+   if(route.path==='/games'&&boxes.length){
+    await page.getByRole('region',{name:'Published games'}).waitFor({timeout:20000});
+   }
+   if(route.path==='/franchise-history'){
+    await page.getByRole('region',{name:'Franchise history build plan'}).waitFor({timeout:20000});
+   }
    if(route.path==='/with-without')
     await page.getByRole('heading',{name:'With / Without'}).waitFor({timeout:20000});
    if(failures.length)throw Error('Runtime exceptions: '+failures.join('; '));
@@ -58,7 +70,7 @@ try{
  }
  await ctx.close();
 }finally{await browser.close()}
-const status=!errors.length&&rows.length===5?'SOURCE_ROUTE_SMOKE_PASS':'INCOMPLETE_OR_FAIL';
+const status=!errors.length&&rows.length===routes.length?'SOURCE_ROUTE_SMOKE_PASS':'INCOMPLETE_OR_FAIL';
 const report={kind:'ARCSIDE_PHASE3_NEW_MODULES_REAL_CORPUS_PROBE_V1',manifestSha256,
  status,rows,errors,sourceSeasons:sampleSeasons.length,originalGameIndexRows:boxes.length,
  sourceDataValuesMatchedToFlutter:false,fullSourceVisualParity:false,
