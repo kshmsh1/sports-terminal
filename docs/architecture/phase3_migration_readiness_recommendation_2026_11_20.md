@@ -59,3 +59,13 @@ Run `(cd experimental/arcside-react && npm test && npm run test:browser)` as the
 - React chart test verifies actual numeric viewport changes for wheel/drag/reset in Chromium, Firefox and WebKit CI. A previous synthetic benchmark still used a deleted `Drag pan` button and was repaired.
 - The original Labs continue unchanged. Their authenticated native companion browser integration still requires separate verification; passing the isolated export/import tests cannot certify local-service token security.
 - PR #89 remains draft. Do not merge; no full architecture migration approval is inferred from the new evidence.
+
+## Controlled Phase 3 continuation after the first objective run
+
+**New candidate implementation:** An isolated React Trade Machine scenario editor and independent TypeScript port of the full existing Dart `TradeMachineEngine.validate` finding families, with 15 independently generated Dart-versus-TypeScript golden cases passing on CI. This does not mean full original Flutter Trade Machine UI parity, complete authoritative team/player/cap/pick ingestion, or every CBA scenario is proven. The production feature gate remains FAIL.
+
+**Player-profile extension:** Historical career/advanced tables remain source-backed. The React pilot now ports the original confirmed-honors algorithm (season-ending years, elections vs winner ballots) and emits an as-of-2026-09-11 salary snapshot derived from the unchanged original Flutter seed at React build time. It optionally reads the original immutable front-office contract registry. It does not yet mirror Flutter's local browser overlay, all deep links, complete profile controls or exact field-by-field screenshot parity.
+
+**Independent evidence:** 15 CBA goldens, source-labeled salary browser tests and the actual-original-corpus profile smoke belong to the isolated Phase 3 branch. The owner-local objective runner compares the engines before browser acceptance; it never upgrades a 15-case PASS into unrestricted CBA authority.
+
+**Architecture decision remains unchanged:** Flutter is authoritative; **no merge into main or full framework migration** before broad route parity, matched input/GPU metrics on hardware, native screen-reader testing, Labs security validation and explicit owner signoff.
