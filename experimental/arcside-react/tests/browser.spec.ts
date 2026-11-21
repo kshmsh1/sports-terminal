@@ -49,6 +49,7 @@ test('wheel zoom, direct drag pan, and reset move the actual chart viewport with
  await page.goto('/visualizations?season=2025-26&segment=regular&basis=perGame');
  const plot=page.locator('.studio-chart');
  await expect(plot).toHaveAttribute('data-viewport-range','0.000:100.000|0.000:100.000');
+ await plot.scrollIntoViewIfNeeded();
  const bounds=await plot.boundingBox();
  expect(bounds).not.toBeNull();
  const box=bounds!;
