@@ -3,6 +3,7 @@
 import {chromium} from '@playwright/test';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {isDeepStrictEqual} from 'node:util';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 const here=path.dirname(fileURLToPath(import.meta.url)),repo=path.resolve(here,'../../..');
@@ -57,7 +58,7 @@ try{
   const [second]=await Promise.all([
    page.waitForEvent('download'),frame.locator('[data-action="exportWorkbook"]').click()]);
   const actual=JSON.parse(await readFile(await second.path(),'utf8'));
-  if(JSON.stringify(actual.workbook)!==JSON.stringify(parsed.workbook))
+  if(!isDeepStrictEqual(actual.workbook,parsed.workbook))
    throw Error('Original Sheets JSON workbook changed across export-import-export.');
   return {workbookSha256:createHash('sha256').update(JSON.stringify(parsed.workbook)).digest('hex'),
    isolatedBrowserContext:true};
