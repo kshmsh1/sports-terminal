@@ -47,7 +47,7 @@ function grouped(guided){
 }
 export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
  advancedSource=null,advancedGuided=null,visualizationSource=null,visualizationGuided=null,
- readiness=null,objective=null,accessibility=null,labs=null,profiles=null,tradeReference=null,tradeCandidate=null}){
+ readiness=null,objective=null,accessibility=null,labs=null,profiles=null,modules=null,tradeReference=null,tradeCandidate=null}){
  const g=[];
  const corpusHash=manifestBytes?sha256(manifestBytes):null;
  const realCases=parity?.byCase??{};
@@ -220,6 +220,7 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
   labs.manifestSha256===corpusHash;
  const verifiedProfiles=profiles?.kind==='ARCSIDE_REAL_PLAYER_PROFILE_CORPUS_PROBE_V1'&&
   profiles.manifestSha256===corpusHash;
+ const verifiedModules=modules?.kind==='ARCSIDE_PHASE3_NEW_MODULES_REAL_CORPUS_PROBE_V1'&&modules.manifestSha256===corpusHash;
  const originalCbaOnly=tradeReference?.kind==='ARCSIDE_ORIGINAL_DART_CBA_GOLDENS_V1'&&
   tradeReference.candidateEquivalentImplemented===false;
  const candidateCompared=originalCbaOnly&&
@@ -237,7 +238,7 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
   });
  const evidenceByGate={
   functional_full_scope_feature_parity:{status:verifiedAudit&&readiness.fullScopeFeatureParity===false?false:null,
-   detail:{auditStatus:readiness?.status??'NOT_RUN',missingRoutes:readiness?.modules?.filter(x=>x.status==='CANDIDATE_ROUTE_MISSING').map(x=>x.module)??[],playerDossierSourceProbe:verifiedProfiles?profiles.status:'NOT_RUN'}},
+   detail:{auditStatus:readiness?.status??'NOT_RUN',missingRoutes:readiness?.modules?.filter(x=>x.status==='CANDIDATE_ROUTE_MISSING').map(x=>x.module)??[],playerDossierSourceProbe:verifiedProfiles?profiles.status:'NOT_RUN',newModuleSourceProbe:verifiedModules?modules.status:'NOT_RUN',newModuleSourceRoutes:verifiedModules?modules.rows?.length:0}},
   full_cba_trade_rules_and_player_profiles:{status:verifiedAudit&&readiness.fullTradeAndProfileParity===false?false:null,
    detail:{auditStatus:readiness?.status??'NOT_RUN',directFailures:readiness?.directFailures?.map(x=>x.check)??[],originalDartRuleCases:originalCbaOnly?Object.keys(tradeReference.cases??{}).length:0,limitedCbaGoldenParity:!!candidateCompared,matchedIndependentCbaCases:candidateCompared?Object.keys(tradeReference.cases).length:0,fullIndependentCbaRuleCoverageVerified:false,independentReactCbaEngineVerified:false,playerDossierSourceProbe:verifiedProfiles?profiles.status:'NOT_RUN'}},
   real_safari_voiceover_nvda_accessibility:{status:null,
@@ -297,10 +298,11 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
  const profiles=await maybeJson(path.join(home,'evidence/profiles/profile-corpus-smoke.json'));
  const tradeReference=await maybeJson(path.join(home,'evidence/trade/dart-trade-reference.json'));
  const tradeCandidate=await maybeJson(path.join(home,'evidence/trade/react-trade-candidate.json'));
+ const modules=await maybeJson(path.join(home,'evidence/modules/module-corpus-smoke.json'));
  let manifestBytes=null;try{manifestBytes=await readFile(path.join(repo,'web/data/nba_static/manifest.json'))}catch(e){
   if(e.code!=='ENOENT')throw e;
  }
- const result=assess({parity,real,guided,manifestBytes,featureBlocker,advancedSource,advancedGuided,visualizationSource,visualizationGuided,readiness,objective,accessibility,labs,profiles,tradeReference,tradeCandidate});
+ const result=assess({parity,real,guided,manifestBytes,featureBlocker,advancedSource,advancedGuided,visualizationSource,visualizationGuided,readiness,objective,accessibility,labs,profiles,modules,tradeReference,tradeCandidate});
  const dest=path.join(home,'evidence/decision');
  await mkdir(dest,{recursive:true});
  await writeFile(path.join(dest,'phase3-decision.json'),JSON.stringify(result,null,2)+'\n');
