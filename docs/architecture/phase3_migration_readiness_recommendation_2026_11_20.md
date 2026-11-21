@@ -26,8 +26,8 @@ The live evidence is user-local under ignored `experimental/arcside-react/eviden
 | --- | --- | --- |
 | Stats + Advanced Stats | Narrow source parity and real browser journeys implemented | All displayed metric families, UX controls and player-profile replication, regular/playoff and multi-team behavior |
 | Visualization Studio | 38,086 historical comparisons / zero mismatches reported; zoom/pan implementation updated | Real drag viewport regression test, matched chart performance and owner visual signoff |
-| Player profiles | React minimal dossier only | Source-backed full Stats/Advanced tables and complete profile interactions matching Flutter |
-| Trade Machine + 2023 CBA | Original Dart validation exporter only; no independent React engine/UI | Same approved rules, salary/matching restrictions, severity, multi-team trade scenarios, picks and transaction feedback |
+| Player profiles | React source-backed original dossier career and Advanced family tables implemented; original corpus/browser proof pending | Complete approved profile column parity, contracts, honors, player inspection, deep links and Flutter profile interaction equivalence |
+| Trade Machine + 2023 CBA | Original Dart five-case rule golden exporter implemented and CI-tested; no independent React engine/UI | Same approved rules, salary/matching restrictions, severity, multi-team trade scenarios, picks and transaction feedback |
 | Player/Team Compare, With/Without, Financials, Box Scores | Not implemented in React pilot | Each production route, data semantics, interactions and visual behavior |
 | Native Safari / VoiceOver / NVDA | Not executed | Real macOS Safari + VoiceOver, Windows Chrome + NVDA, keyboard-only and WCAG 2.2 AA review |
 | Python + Sheets | Original modules embedded; basic typed-context bridge | Authoritative file import/export checks, persistent workbooks, Monaco and keyboard ownership, local companion / collaboration credentials |
@@ -50,4 +50,12 @@ git pull --ff-only
 bash scripts/phase3_release_compare.sh --objective
 ```
 
-Run `(cd experimental/arcside-react && npm test && npm run test:browser)` as the normal TypeScript/browser regression suite if not already covered by CI. Review JSON evidence under `evidence/objective`, `evidence/readiness`, `evidence/labs` and `evidence/accessibility` and the updated decision ledger. Production Flutter remains unchanged and PR #89 remains draft.
+Run `(cd experimental/arcside-react && npm test && npm run test:browser)` as the normal TypeScript/browser regression suite if not already covered by CI. Review JSON evidence under `evidence/objective`, `evidence/readiness`, `evidence/labs`, `evidence/profiles`, `evidence/trade` and `evidence/accessibility` and the updated decision ledger. Production Flutter remains unchanged and PR #89 remains draft.
+
+## November 20 continuation — additional shipped narrow evidence
+
+- Updated React's `/player/:key` route to render the original published regular/playoff career tables and Advanced Stats metric-family tables with expandable columns and explicit null behavior. Uses the original player dossier `regular_seasons` / `playoff_seasons` contract. Added deterministic synthetic browser/unit tests for source format, category selection, season toggling, and reload; added a genuine original-v5 player index/dossier browser probe for three source-backed player records. **No local corpus execution has been observed yet**, and complete player-profile contracts/awards and column-level exact Flutter equality remain unverified.
+- Original `TradeMachineEngine` now exports five 2026–27 deterministic scenario reports directly from Dart (salary exchange, BYC/poison pill, missing required matching values, dated restriction, sign-and-trade apron). GitHub parity workflow successfully ran the original Dart reference exporter. The comparator refuses a copied Dart reference as a candidate unless an independently declared candidate engine is provided. **No React CBA engine exists, and this does not establish trade-rule parity**.
+- React chart test verifies actual numeric viewport changes for wheel/drag/reset in Chromium, Firefox and WebKit CI. A previous synthetic benchmark still used a deleted `Drag pan` button and was repaired.
+- The original Labs continue unchanged. Their authenticated native companion browser integration still requires separate verification; passing the isolated export/import tests cannot certify local-service token security.
+- PR #89 remains draft. Do not merge; no full architecture migration approval is inferred from the new evidence.
