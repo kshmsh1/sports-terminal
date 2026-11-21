@@ -25,6 +25,13 @@ export function originalCbaFixtureScenarios():Record<string,TradeScenario>{
  const restrictedBonus=player('restricted-bonus','Restricted bonus','AAA',8000000,{
   no_trade:true,trade_restricted:true,cannot_aggregate:true,trade_bonus:500000});
  const secondPlayer=player('second-player','Second outgoing player','AAA',7000000);
+ const third=player('c','Player C','CCC',8000000);
+ const fourth=player('d','Player D','DDD',8000000);
+ const fifth=player('e','Player E','EEE',8000000);
+ const frozenPick:TradeAsset={id:'frozen',type:'draftPick',label:'Frozen first',originTeam:'AAA',salary:0,metadata:{frozen:true}};
+ const distantPick:TradeAsset={id:'distant',type:'draftPick',label:'2034 first',originTeam:'AAA',salary:0,metadata:{years_out:8}};
+ const swapPick:TradeAsset={id:'swap',type:'draftPick',label:'Swap first',originTeam:'AAA',salary:0,metadata:{swap_right:true}};
+ const zeroCash:TradeAsset={id:'zero-cash',type:'cash',label:'Cash not supplied',originTeam:'AAA',salary:0,metadata:{amount:0}};
  const assign=(asset:TradeAsset,destinationTeam:string):TradeAssignment=>({asset,destinationTeam});
  const scenario=(id:string,assignments:TradeAssignment[],aaaSalary=140000000,
   bbbSalary=140000000,asOfDateIso='2026-11-20T00:00:00Z'):TradeScenario=>
@@ -63,7 +70,39 @@ export function originalCbaFixtureScenarios():Record<string,TradeScenario>{
    ...scenario('hard_cap',[assign(b,'AAA')]),
    capContexts:{AAA:nba2026Cap('AAA',210000000,{hardCappedAt:209015000}),
     BBB:nba2026Cap('BBB',140000000)}
-  }
+  },
+  // Twelve additional independent scenarios exercise multi-team routing,
+  // scope, draft assets, date boundaries and missing economic inputs.
+  three_team_rotation:{
+   id:'three_team_rotation',name:'three_team_rotation',operatingSeason:'2026-27',
+   teams:['AAA','BBB','CCC'],assignments:[assign(a,'BBB'),assign(b,'CCC'),assign(third,'AAA')],
+   capContexts:{AAA:nba2026Cap('AAA',140000000),BBB:nba2026Cap('BBB',140000000),CCC:nba2026Cap('CCC',140000000)},
+   asOfDateIso:'2026-11-20T00:00:00Z'
+  },
+  five_team_rotation:{
+   id:'five_team_rotation',name:'five_team_rotation',operatingSeason:'2026-27',
+   teams:['AAA','BBB','CCC','DDD','EEE'],
+   assignments:[assign(a,'BBB'),assign(b,'CCC'),assign(third,'DDD'),assign(fourth,'EEE'),assign(fifth,'AAA')],
+   capContexts:Object.fromEntries(['AAA','BBB','CCC','DDD','EEE'].map(x=>[x,nba2026Cap(x,140000000)])),
+   asOfDateIso:'2026-11-20T00:00:00Z'
+  },
+  six_team_rejection:{
+   id:'six_team_rejection',name:'six_team_rejection',operatingSeason:'2026-27',
+   teams:['AAA','BBB','CCC','DDD','EEE','FFF'],assignments:[],
+   capContexts:Object.fromEntries(['AAA','BBB','CCC','DDD','EEE','FFF'].map(x=>[x,nba2026Cap(x,140000000)])),
+   asOfDateIso:'2026-11-20T00:00:00Z'
+  },
+  same_team_destination:scenario('same_team_destination',[assign(a,'AAA')]),
+  unknown_destination:scenario('unknown_destination',[assign(a,'ZZZ')]),
+  frozen_draft_pick:scenario('frozen_draft_pick',[assign(frozenPick,'BBB')]),
+  distant_draft_pick:scenario('distant_draft_pick',[assign(distantPick,'BBB')]),
+  swap_draft_pick:scenario('swap_draft_pick',[assign(swapPick,'BBB')]),
+  missing_asof_restriction:scenario('missing_asof_restriction',[assign(restricted,'BBB')],
+   140000000,140000000,''),
+  missing_cash_amount:scenario('missing_cash_amount',[assign(zeroCash,'BBB')]),
+  sign_trade_below_apron:scenario('sign_trade_below_apron',[assign(sat,'BBB')]),
+  future_trade_exception:scenario('future_trade_exception',[assign({
+   ...exception,metadata:{amount:5000000,expires_at:'2027-10-01T00:00:00Z'}},'BBB')])
  };
 }
 export function originalCbaFixtureCandidate(){

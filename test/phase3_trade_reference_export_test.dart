@@ -117,6 +117,20 @@ void main() {
       id:'second-player',type:TradeAssetType.player,label:'Second outgoing player',
       originTeam:'AAA',salary:7000000,
     );
+    const playerC = TradeAsset(id:'c',type:TradeAssetType.player,label:'Player C',
+      originTeam:'CCC',salary:8000000);
+    const playerD = TradeAsset(id:'d',type:TradeAssetType.player,label:'Player D',
+      originTeam:'DDD',salary:8000000);
+    const playerE = TradeAsset(id:'e',type:TradeAssetType.player,label:'Player E',
+      originTeam:'EEE',salary:8000000);
+    const frozenPick = TradeAsset(id:'frozen',type:TradeAssetType.draftPick,
+      label:'Frozen first',originTeam:'AAA',metadata:{'frozen':true});
+    const distantPick = TradeAsset(id:'distant',type:TradeAssetType.draftPick,
+      label:'2034 first',originTeam:'AAA',metadata:{'years_out':8});
+    const swapPick = TradeAsset(id:'swap',type:TradeAssetType.draftPick,
+      label:'Swap first',originTeam:'AAA',metadata:{'swap_right':true});
+    const zeroCash = TradeAsset(id:'zero-cash',type:TradeAssetType.cash,
+      label:'Cash not supplied',originTeam:'AAA',metadata:{'amount':0});
     final missingContext = scenario('missing_context', [
       const TradeAssignment(asset: playerA,destinationTeam:'BBB'),
     ]);
@@ -193,6 +207,69 @@ void main() {
           'BBB':team('BBB',140000000),
         },asOfDateIso:'2026-11-20T00:00:00Z',
       ),
+      'three_team_rotation': TradeScenario(
+        id:'three_team_rotation',name:'three_team_rotation',operatingSeason:'2026-27',
+        teams:const ['AAA','BBB','CCC'],
+        assignments: const [
+          TradeAssignment(asset:playerA,destinationTeam:'BBB'),
+          TradeAssignment(asset:playerB,destinationTeam:'CCC'),
+          TradeAssignment(asset:playerC,destinationTeam:'AAA'),
+        ],
+        capContexts:{'AAA':team('AAA',140000000),'BBB':team('BBB',140000000),
+          'CCC':team('CCC',140000000)},
+        asOfDateIso:'2026-11-20T00:00:00Z',
+      ),
+      'five_team_rotation': TradeScenario(
+        id:'five_team_rotation',name:'five_team_rotation',operatingSeason:'2026-27',
+        teams:const ['AAA','BBB','CCC','DDD','EEE'],
+        assignments:const [
+          TradeAssignment(asset:playerA,destinationTeam:'BBB'),
+          TradeAssignment(asset:playerB,destinationTeam:'CCC'),
+          TradeAssignment(asset:playerC,destinationTeam:'DDD'),
+          TradeAssignment(asset:playerD,destinationTeam:'EEE'),
+          TradeAssignment(asset:playerE,destinationTeam:'AAA'),
+        ],
+        capContexts:{for (final id in const ['AAA','BBB','CCC','DDD','EEE'])
+          id:team(id,140000000)},
+        asOfDateIso:'2026-11-20T00:00:00Z',
+      ),
+      'six_team_rejection': TradeScenario(
+        id:'six_team_rejection',name:'six_team_rejection',operatingSeason:'2026-27',
+        teams:const ['AAA','BBB','CCC','DDD','EEE','FFF'],assignments:const [],
+        capContexts:{for(final id in const ['AAA','BBB','CCC','DDD','EEE','FFF'])
+          id:team(id,140000000)},
+        asOfDateIso:'2026-11-20T00:00:00Z',
+      ),
+      'same_team_destination':scenario('same_team_destination',[
+        const TradeAssignment(asset:playerA,destinationTeam:'AAA'),
+      ]),
+      'unknown_destination':scenario('unknown_destination',[
+        const TradeAssignment(asset:playerA,destinationTeam:'ZZZ'),
+      ]),
+      'frozen_draft_pick':scenario('frozen_draft_pick',[
+        const TradeAssignment(asset:frozenPick,destinationTeam:'BBB'),
+      ]),
+      'distant_draft_pick':scenario('distant_draft_pick',[
+        const TradeAssignment(asset:distantPick,destinationTeam:'BBB'),
+      ]),
+      'swap_draft_pick':scenario('swap_draft_pick',[
+        const TradeAssignment(asset:swapPick,destinationTeam:'BBB'),
+      ]),
+      'missing_asof_restriction':scenario('missing_asof_restriction',[
+        const TradeAssignment(asset:restricted,destinationTeam:'BBB'),
+      ],asOfDateIso:''),
+      'missing_cash_amount':scenario('missing_cash_amount',[
+        const TradeAssignment(asset:zeroCash,destinationTeam:'BBB'),
+      ]),
+      'sign_trade_below_apron':scenario('sign_trade_below_apron',[
+        const TradeAssignment(asset:sat,destinationTeam:'BBB'),
+      ]),
+      'future_trade_exception':scenario('future_trade_exception',[
+        const TradeAssignment(asset:TradeAsset(id:'exception',
+          type:TradeAssetType.tradeException,label:'Expired TPE',originTeam:'AAA',
+          metadata:{'amount':5000000,'expires_at':'2027-10-01T00:00:00Z'}),
+          destinationTeam:'BBB'),
+      ]),
     };
     final result = <String, dynamic>{
       'kind': 'ARCSIDE_ORIGINAL_DART_CBA_GOLDENS_V1',
@@ -204,7 +281,7 @@ void main() {
           entry.key: reportJson(engine.validate(entry.value)),
       },
     };
-    expect((result['cases'] as Map).length, 15);
+    expect((result['cases'] as Map).length, 27);
     final output = File('experimental/arcside-react/evidence/trade/dart-trade-reference.json');
     output.parent.createSync(recursive: true);
     output.writeAsStringSync('${const JsonEncoder.withIndent('  ').convert(result)}\n');

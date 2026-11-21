@@ -59,6 +59,16 @@ describe('independent original Dart CBA contract port',()=>{
    {asset:a('2029','AAA',0,{round:1,draft_year:2029},'draftPick'),destinationTeam:'BBB'}]);
   expect(codes(scenario)).toContain('STEPIEN_REVIEW');
  });
+ it('covers original-backed multi-team and draft-asset scenarios in 27 fixtures',()=>{
+  const scenarios=originalCbaFixtureScenarios();
+  expect(Object.keys(scenarios)).toHaveLength(27);
+  expect(Object.keys(validateTrade(scenarios.three_team_rotation).teamSummaries)).toHaveLength(3);
+  expect(Object.keys(validateTrade(scenarios.five_team_rotation).teamSummaries)).toHaveLength(5);
+  expect(codes(scenarios.six_team_rejection)).toContain('MAX_TEAMS');
+  expect(codes(scenarios.frozen_draft_pick)).toContain('FROZEN_PICK');
+  expect(codes(scenarios.distant_draft_pick)).toContain('PICK_TOO_DISTANT');
+  expect(codes(scenarios.unknown_destination)).toContain('TEAM_SCOPE');
+ });
  it('serializes Dart non-finite salary limits faithfully',()=>{
   const result=jsonTradeReport(validateTrade(s([],140000000,140000000,
    {capContexts:{AAA:nba2026Cap('AAA',140000000)}})));
