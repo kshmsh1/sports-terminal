@@ -178,3 +178,33 @@ h2{font-size:21px;letter-spacing:-.4px;margin:0 0 7px}h3{font-size:15px}.subtle{
 .trade-actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
 .trade-results{border-top:1px solid var(--line);padding-top:15px}
 .trade-results .stats-table th,.trade-results .stats-table td{min-width:128px;padding:12px}
+
+/* Phase 3 incremental route pilots: retain common Arcside typography and density. */
+.comparison-slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:18px 0}
+.comparison-slot,.financial-inspector,.box-inspector,.withwithout-player{border:1px solid var(--line);border-radius:11px;padding:16px;min-width:0}
+.comparison-slot label{display:flex;flex-direction:column;gap:6px;margin-top:12px;font-size:12px;color:var(--sub)}
+.comparison-slot select{background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:8px;min-width:0;width:100%}
+.comparison-metric-toolbar{margin:12px 0}
+.comparison-matrix td,.comparison-matrix th{min-width:120px;white-space:nowrap}
+.comparison-matrix th:first-child{position:sticky;left:0;z-index:2;background:var(--panel)}
+.comparison-leader{font-weight:800;color:var(--accent)}
+.comparison-standings{display:flex;gap:16px;flex-wrap:wrap;padding:14px 0}
+.comparison-standings p{border:1px solid var(--line);border-radius:8px;padding:12px;margin:0}
+.comparison-standings button{margin-left:10px}
+.box-layout{display:grid;grid-template-columns:minmax(230px,32%) minmax(0,1fr);gap:16px;margin-top:14px}
+.box-index{height:650px;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.box-game{display:flex;flex-direction:column;align-items:stretch;gap:6px;text-align:left;border:1px solid var(--line);padding:12px;border-radius:8px;background:var(--panel)}
+.box-game small{color:var(--sub)}
+.box-game.selected{border-color:var(--accent)}
+.box-score-strip{display:flex;gap:20px;font-size:20px;margin:12px 0}
+.box-spotlight{border:1px solid var(--line);border-radius:10px;padding:12px;margin:14px 0}
+.financial-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(250px,1fr);gap:16px;margin-top:18px}
+.financial-inspector{align-self:start}
+.financial-facts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.financial-facts dt{color:var(--sub);font-size:11px}
+.financial-facts dd{margin:5px 0 0;font-weight:700}
+.selected-financial{background:var(--panel-light)}
+.withwithout-grids{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:15px 0}
+.withwithout-player{overflow:hidden}
+.withwithout-player .stats-table{min-width:500px}
+@media(max-width:900px){.box-layout,.financial-layout,.withwithout-grids{grid-template-columns:1fr}.box-index{height:320px}}
