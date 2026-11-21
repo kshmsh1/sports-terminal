@@ -254,3 +254,17 @@ test('limited independent CBA golden parity records matched cases but never appr
   tradeCandidate:{...candidate,cases:{equal_salaries:{...base,errorCount:1}}},readiness});
  assert.equal(mismatched.gates.find(x=>x.name==='full_cba_trade_rules_and_player_profiles').detail.limitedCbaGoldenParity,false);
 });
+
+test('five source-backed module route probes stay observational and cannot certify full parity',()=>{
+ const readiness={kind:'ARCSIDE_PHASE3_FULL_SCOPE_AUDIT_V1',status:'GAPS_CONFIRMED',
+  fullScopeFeatureParity:false,fullTradeAndProfileParity:false,modules:[],directFailures:[]};
+ const modules={kind:'ARCSIDE_PHASE3_NEW_MODULES_REAL_CORPUS_PROBE_V1',
+  manifestSha256:hash,status:'SOURCE_ROUTE_SMOKE_PASS',
+  rows:['/player-compare','/team-compare','/box-scores','/financials','/with-without'].map(path=>({path,status:'SOURCE_ROUTE_SMOKE_PASS'}))};
+ const result=assess({manifestBytes,readiness,modules});
+ const gate=result.gates.find(g=>g.name==='functional_full_scope_feature_parity');
+ assert.equal(gate.status,'FAIL');
+ assert.equal(gate.detail.newModuleSourceProbe,'SOURCE_ROUTE_SMOKE_PASS');
+ assert.equal(gate.detail.newModuleSourceRoutes,5);
+ assert.equal(result.fullMigrationApproved,false);
+});
