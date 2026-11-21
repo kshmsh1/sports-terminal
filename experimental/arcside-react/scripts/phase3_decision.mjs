@@ -46,7 +46,7 @@ function grouped(guided){
 }
 export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
  advancedSource=null,advancedGuided=null,visualizationSource=null,visualizationGuided=null,
- readiness=null,objective=null,accessibility=null,labs=null}){
+ readiness=null,objective=null,accessibility=null,labs=null,profiles=null,tradeReference=null}){
  const g=[];
  const corpusHash=manifestBytes?sha256(manifestBytes):null;
  const realCases=parity?.byCase??{};
@@ -217,11 +217,15 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
   accessibility.manifestSha256===corpusHash;
  const verifiedLabs=labs?.kind==='ARCSIDE_PHASE3_LABS_LOCAL_INTEGRITY_V1'&&
   labs.manifestSha256===corpusHash;
+ const verifiedProfiles=profiles?.kind==='ARCSIDE_REAL_PLAYER_PROFILE_CORPUS_PROBE_V1'&&
+  profiles.manifestSha256===corpusHash;
+ const originalCbaOnly=tradeReference?.kind==='ARCSIDE_ORIGINAL_DART_CBA_GOLDENS_V1'&&
+  tradeReference.candidateEquivalentImplemented===false;
  const evidenceByGate={
   functional_full_scope_feature_parity:{status:verifiedAudit&&readiness.fullScopeFeatureParity===false?false:null,
-   detail:{auditStatus:readiness?.status??'NOT_RUN',missingRoutes:readiness?.modules?.filter(x=>x.status==='CANDIDATE_ROUTE_MISSING').map(x=>x.module)??[]}},
+   detail:{auditStatus:readiness?.status??'NOT_RUN',missingRoutes:readiness?.modules?.filter(x=>x.status==='CANDIDATE_ROUTE_MISSING').map(x=>x.module)??[],playerDossierSourceProbe:verifiedProfiles?profiles.status:'NOT_RUN'}},
   full_cba_trade_rules_and_player_profiles:{status:verifiedAudit&&readiness.fullTradeAndProfileParity===false?false:null,
-   detail:{auditStatus:readiness?.status??'NOT_RUN',directFailures:readiness?.directFailures?.map(x=>x.check)??[]}},
+   detail:{auditStatus:readiness?.status??'NOT_RUN',directFailures:readiness?.directFailures?.map(x=>x.check)??[],originalDartRuleCases:originalCbaOnly?Object.keys(tradeReference.cases??{}).length:0,independentReactCbaEngineVerified:false,playerDossierSourceProbe:verifiedProfiles?profiles.status:'NOT_RUN'}},
   real_safari_voiceover_nvda_accessibility:{status:null,
    detail:{automatedBrowserProbe:verifiedAccessibility?accessibility.status:'NOT_RUN',
     nativeAssistiveTechnologyTested:false}},
@@ -276,10 +280,12 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
  const objective=await maybeJson(path.join(home,'evidence/objective/objective-browser-performance.json'));
  const accessibility=await maybeJson(path.join(home,'evidence/accessibility/accessibility-smoke.json'));
  const labs=await maybeJson(path.join(home,'evidence/labs/lab-integrity.json'));
+ const profiles=await maybeJson(path.join(home,'evidence/profiles/profile-corpus-smoke.json'));
+ const tradeReference=await maybeJson(path.join(home,'evidence/trade/dart-trade-reference.json'));
  let manifestBytes=null;try{manifestBytes=await readFile(path.join(repo,'web/data/nba_static/manifest.json'))}catch(e){
   if(e.code!=='ENOENT')throw e;
  }
- const result=assess({parity,real,guided,manifestBytes,featureBlocker,advancedSource,advancedGuided,visualizationSource,visualizationGuided,readiness,objective,accessibility,labs});
+ const result=assess({parity,real,guided,manifestBytes,featureBlocker,advancedSource,advancedGuided,visualizationSource,visualizationGuided,readiness,objective,accessibility,labs,profiles,tradeReference});
  const dest=path.join(home,'evidence/decision');
  await mkdir(dest,{recursive:true});
  await writeFile(path.join(dest,'phase3-decision.json'),JSON.stringify(result,null,2)+'\n');
