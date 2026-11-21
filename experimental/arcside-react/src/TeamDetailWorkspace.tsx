@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useState} from 'react';
 import type {DatedContractSnapshot,JsonRow,SeasonSnapshot} from './data';
-import {getDatedContracts,getTeamDossier,getTeamIndex} from './data';
+import {getDatedContracts,getTeamDossier,getTeamIndex,getSeason} from './data';
 import {buildRows} from './engine';
 const rows=(v:unknown):JsonRow[]=>Array.isArray(v)?v.filter((x):x is JsonRow=>x!==null&&typeof x==='object'&&!Array.isArray(x)):[];
 const obj=(v:unknown):JsonRow=>v&&typeof v==='object'&&!Array.isArray(v)?v as JsonRow:{};
@@ -49,6 +49,7 @@ export function TeamDetailWorkspace({teamKey,snapshot,onPlayer,onGame,onTeam}:{
 }){
  const [index,setIndex]=useState<JsonRow[]>([]),[dossier,setDossier]=useState<JsonRow|null>(null);
  const [contracts,setContracts]=useState<DatedContractSnapshot|null>(null);
+ const [teamSeason,setTeamSeason]=useState<SeasonSnapshot|null>(null);
  const [historySegment,setHistorySegment]=useState<'regular'|'playoffs'>('regular');
  const [error,setError]=useState(''),[loading,setLoading]=useState(true);
  useEffect(()=>{const controller=new AbortController();setLoading(true);setError('');setDossier(null);
@@ -60,9 +61,13 @@ export function TeamDetailWorkspace({teamKey,snapshot,onPlayer,onGame,onTeam}:{
    .finally(()=>{if(!controller.signal.aborted)setLoading(false)});
   return ()=>controller.abort();
  },[teamKey]);
+ useEffect(()=>{const controller=new AbortController();
+  getSeason('2025-26','regular',controller.signal).then(setTeamSeason).catch(()=>setTeamSeason(null));
+  return ()=>controller.abort();
+ },[]);
  const profile=obj(dossier?.profile),franchise=obj(dossier?.franchise);
  const abbr=str(profile.abbreviation,'');
- const roster=useMemo(()=>joinTeamRoster(contracts,abbr,snapshot),[contracts,abbr,snapshot]);
+ const roster=useMemo(()=>joinTeamRoster(contracts,abbr,teamSeason??snapshot),[contracts,abbr,teamSeason,snapshot]);
  const history=dossier?teamCareerSeasons(dossier,historySegment):[];
  const injuries=rows(dossier?.injuries_2026_27??dossier?.current_injuries??dossier?.injuries);
  const transactions=rows(dossier?.transactions_2026_27??dossier?.current_transactions??dossier?.transactions);
@@ -97,7 +102,7 @@ export function TeamDetailWorkspace({teamKey,snapshot,onPlayer,onGame,onTeam}:{
      <td className="numeric">{amount(contract.guaranteed)}</td><td className="numeric">{previous?.values.gp??'—'}</td>
      <td className="numeric">{previous?.values.pts?.toFixed(1)??'—'}</td></tr>)}</tbody>
    </table></div>:<p className="empty">No 2026–27 salary-seed roster is available for this team. No roster has been inferred.</p>}
-   <p className="subtle">Salary seed as of {contracts?.asOf??'unavailable'}; previous-season stats from the current canonical season selection, not an assumed live depth chart.</p>
+   <p className="subtle">Salary seed as of {contracts?.asOf??'unavailable'}; previous-season stats from the original 2025–26 regular-season source, not an assumed live depth chart.</p>
    <div className="team-detail-pair">
     <div><h3>Injuries</h3>{injuries.length?<ul>{injuries.map((r,i)=><li key={i}>{names(r)} · {str(r.status)}</li>)}</ul>:<p className="empty">No published injury feed for this team.</p>}</div>
     <div><h3>Transactions</h3>{transactions.length?<ul>{transactions.map((r,i)=><li key={i}>{str(r.date)} · {str(r.description,str(r.transaction))}</li>)}</ul>:<p className="empty">No published transaction feed for this team.</p>}</div>
