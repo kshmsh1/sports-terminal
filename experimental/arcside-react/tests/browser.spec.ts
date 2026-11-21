@@ -277,7 +277,7 @@ test('box scores use published original index and detail, including player inspe
  const detail=page.getByLabel('Game box-score inspector');
  await expect(detail.getByText('BOS @ CHI')).toBeVisible();
  await expect(page.getByRole('region',{name:'Individual game box score'})).toContainText('Synthetic Player 0');
- await page.getByRole('button',{name:'Synthetic Player 0'}).click();
+ await page.getByRole('region',{name:'Individual game box score'}).getByRole('button',{name:'Synthetic Player 0'}).click();
  await expect(detail).toContainText('PTS: 25');
 });
 test('Financials renders original Flutter team reference, never a synthesized mock',async({page})=>{
