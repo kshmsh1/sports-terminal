@@ -60,6 +60,7 @@ jobs:
           node --check scripts/phase3_readiness_audit.mjs
           node --check scripts/phase3_accessibility_probe.mjs
           node --check scripts/phase3_lab_integrity_probe.mjs
+          node --check scripts/phase3_profile_corpus_probe.mjs
           node scripts/phase3_readiness_audit.mjs
           bash -n ../../scripts/phase3_release_compare.sh
           node scripts/phase3_decision.mjs
