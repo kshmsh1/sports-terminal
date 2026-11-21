@@ -36,10 +36,42 @@ const originalFlutterContractSeed = () => {
     asOf:'2026-09-11',sourceNote:'Duplicate source rows collapsed by normalized player name.',
     dartSeedSha256:createHash('sha256').update(source).digest('hex'),records});
 };
+// Export the original team financial snapshot exactly from the Dart reference,
+// never a second hand-maintained set of NBA cap values.
+const originalTeamFinancialSeed=()=>{
+ const source=readFileSync(path.resolve(cwd,'../../lib/services/nba_team_financial_reference_2026.dart'),'utf8');
+ const rows=[...source.matchAll(/'([A-Z]{3})':\s*NbaTeamFinancialSnapshot\(([^\n]+)\)/g)].map((match)=>{
+  const team=match[1],body=match[2];
+  const numeric=(key:string)=>{
+   const hit=body.match(new RegExp('\\b'+key+':(-?\\d+(?:\\.\\d+)?)'));
+   return hit?Number(hit[1]):null;
+  };
+  const literal=(key:string)=>body.match(new RegExp('\\b'+key+':\\x27([^\\x27]+)\\x27'))?.[1]??null;
+  const exceptionsText=body.match(/availableExceptions:\{([^}]*)\}/)?.[1]??'';
+  const availableExceptions=Object.fromEntries([...exceptionsText.matchAll(/'([^']+)':(-?\d+(?:\.\d+)?)/g)]
+   .map(x=>[x[1],Number(x[2])]));
+  return {team,standardRoster:numeric('standardRoster'),twoWayRoster:numeric('twoWayRoster'),
+   capSpace:numeric('capSpace'),taxSpace:numeric('taxSpace'),firstApronSpace:numeric('firstApronSpace'),
+   secondApronSpace:numeric('secondApronSpace'),hardCap:literal('hardCap'),
+   availableExceptions,largestTpe:numeric('largestTpe'),largestTpeExpires:literal('largestTpeExpires')};
+ });
+ if(rows.length!==30||rows.some(row=>row.capSpace===null||row.standardRoster===null))
+  throw Error('Original 2026–27 team financial data parsing failed: expected 30 verified teams.');
+ return JSON.stringify({kind:'ARCSIDE_ORIGINAL_FLUTTER_TEAM_FINANCIALS_2026_27_V1',
+  sourceAsOf:'2026-10-05',source:'User-supplied 2026–27 NBA Team Summary screenshots',
+  dartSourceSha256:createHash('sha256').update(source).digest('hex'),teams:rows});
+};
 const assets = (server: {middlewares: {use: (prefix: string, middleware: any) => void}}) => {
   // Serve the SAME local corpus and ORIGINAL Labs, not demo copies or remote API data.
   server.middlewares.use('/data/nba_static', sirv(path.join(repoWeb, 'data/nba_static'), { dev: true, etag: true }));
   server.middlewares.use('/labs', sirv(path.join(repoWeb, 'labs'), { dev: true, etag: true, single: false }));
+  server.middlewares.use('/data/phase3/2026-27-team-financials.json',(
+   req:IncomingMessage,res:ServerResponse,next:()=>void)=>{
+    if(req.method!=='GET'&&req.method!=='HEAD')return next();
+    res.setHeader('content-type','application/json; charset=utf-8');
+    res.setHeader('cache-control','no-store');
+    res.end(req.method==='HEAD'?'':originalTeamFinancialSeed());
+  });
   server.middlewares.use('/data/phase3/2026-27-contracts.json',(
     req:IncomingMessage,res:ServerResponse,next:()=>void)=>{
     if(req.method!=='GET'&&req.method!=='HEAD')return next();
@@ -52,6 +84,8 @@ const assets = (server: {middlewares: {use: (prefix: string, middleware: any) =>
 export default defineConfig({
   plugins: [react(),
     {name:'arcside-2026-27-dated-contract-seed',generateBundle(){
+      this.emitFile({type:'asset',fileName:'data/phase3/2026-27-team-financials.json',
+        source:originalTeamFinancialSeed()});
       this.emitFile({type:'asset',fileName:'data/phase3/2026-27-contracts.json',
         source:originalFlutterContractSeed()});
     }},
