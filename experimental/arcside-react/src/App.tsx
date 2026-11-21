@@ -7,6 +7,7 @@ import {Chart} from './Chart';
 import {AdvancedStatsTable} from './AdvancedStatsTable';
 import {dossierName,dossierSegments,PlayerProfileTables} from './ProfileTable';
 import {ProfileSummary,ProfileContracts,ProfileHonors} from './ProfileContext';
+import {TradeMachinePilot} from './TradeMachinePilot';
 
 type ViewState={path:string;season:string;segment:SeasonType;basis:RateBasis};
 function fromUrl():ViewState {
@@ -23,9 +24,10 @@ function urlFor(v:ViewState):string {
 }
 const qualify=(r:Row,segment:SeasonType)=> (r.values.gp??0)>=(segment==='regular'?50:4);
 const metricLabel=(m:MetricKey)=>metrics.find(x=>x.key===m)?.label??m;
-const allowedRoutes=['/stats','/advanced','/visualizations','/workspaces/python','/workspaces/sheets'];
+const allowedRoutes=['/stats','/advanced','/visualizations','/trade','/workspaces/python','/workspaces/sheets'];
 function labelFor(route:string):string {
  return ({'/stats':'Stats','/advanced':'Advanced Stats','/visualizations':'Visualizations',
+ '/trade':'Trade Machine',
  '/workspaces/python':'Python Lab','/workspaces/sheets':'Excel Workspace'} as Record<string,string>)[route]??'Player detail';
 }
 export function App(){
@@ -218,6 +220,7 @@ export function App(){
       Source-verified team stints only. Scroll inside the table to inspect additional rows.</p>
     </section>}
     {view.path==='/visualizations'&&<Chart rows={rows} basis={view.basis} segment={view.segment}/>}
+     {view.path==='/trade'&&<TradeMachinePilot/>}
     {isLab&&<section className="panel lab-panel">
      <div className="panel-title"><div><p className="eyebrow">BROWSER-NATIVE WORKSPACE / ORIGINAL MODULE</p>
        <h2>{labelFor(view.path)}</h2>
