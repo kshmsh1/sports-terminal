@@ -51,6 +51,7 @@ try{
    }
    if(item.name.endsWith('Lab')){
     checks.iframeTitle=await page.locator('iframe.lab-frame[title]').count()===1;
+    await page.getByText('Context handshake: acknowledged',{exact:false}).waitFor({timeout:30000});
     checks.bridgeAcknowledged=await page.getByText('Context handshake: acknowledged',{exact:false}).count()===1;
    }
    raw.push({page:item.name,checks,status:Object.values(checks).every(x=>typeof x==='boolean'?x:true)&&
