@@ -83,3 +83,13 @@ An additional *source-backed but not yet feature-equivalent* slice now exists fo
 Unit tests for team-metric completeness/tie semantics, intercepted-fixture three-engine browser tests, a separate authentic-corpus five-route smoke, and the readiness audit provide incremental evidence. `scripts/phase3_release_compare.sh --objective` runs the real source smoke when the owner's untracked NBA v5 corpus is available.
 
 **No whole-migration authorization is inferred.** The five routes omit parts of Flutter's controls, saved views, detailed analytics and integrations; remaining Team Detail, Games, Franchise History, complete original player profiles, full Trade Machine UX/CBA coverage, Labs authentication, native screen readers, truly matched GPU/response timings, and owner visual signoff remain unresolved. PR #89 stays DRAFT.
+
+## Follow-through: Team Detail, Games, and Franchise History, plus profile and operator improvements
+
+The React pilot now implements the three previously missing module categories using the original NBA static-v5 contracts: `/teams` directory and `/team/:key` dossier; `/games` and `/game/:key` historical archive and optional source play-by-play; and `/franchise-history`, reflecting the original Flutter *planning-stage* six-topic roadmap and authentic indexed team identities. Dated salary roster joins use the original Flutter 2026–27 seed and its 2025–26 regular-season performance baseline, not an assumed live roster. Lineup and scheduled-event gaps remain explicit.
+
+The original Flutter Franchise History screen was itself a six-row future build plan, so implementing a full verified franchise lineage remains a distinct *future data-provenance project*. No unverified relocation edges, previous-team identities, or schedule events are manufactured in this pilot.
+
+Comparison now supports browser-local saved presets; published player profiles expose more source-known context; and the hypothetical CBA scenario editor can choose from the original dated player salary seed. These incremental additions do not verify authenticated preset interoperability, complete original profile widgets or the Trade Machine's full asset and cap sources.
+
+Unit and browser checks, a source-code audit and an 8-route authentic corpus smoke (including an indexed team dossier) were added. They cannot establish matched native assistive technology, full CBA legality, user approval, Labs native security, GPU equivalence, or all interaction-level feature parity. **Keep the full migration decision at NOT AUTHORIZED and PR #89 in draft.** The original Flutter shell remains authoritative.
