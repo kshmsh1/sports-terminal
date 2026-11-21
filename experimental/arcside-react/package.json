@@ -13,7 +13,8 @@
     "inspect:corpus": "node scripts/inspect_corpus.mjs",
     "test:parity": "ARCSIDE_RUN_PARITY=1 vitest run tests/parity.test.ts",
     "test:real": "node scripts/real_corpus_journeys.mjs",
-    "compare:guided": "node scripts/paired_guided_tasks.mjs"
+    "compare:guided": "node scripts/paired_guided_tasks.mjs",
+    "test:trade:goldens": "node --experimental-strip-types scripts/export_trade_candidate.ts && node scripts/compare_trade_goldens.mjs evidence/trade/dart-trade-reference.json evidence/trade/react-trade-candidate.json"
   },
   "dependencies": {
     "echarts": "6.1.0",
