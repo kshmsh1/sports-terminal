@@ -114,7 +114,7 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
    .catch(e=>{if(alive&&!controller.signal.aborted)setError(String(e.message??e))});
   return ()=>{alive=false;controller.abort()};
  },[slots,segment,snapshot,localSnapshots]);
- useEffect(()=>{setLocalSnapshots({});setMetricSet([])},[segment,kind]);
+ useEffect(()=>{setMetricSet([])},[segment,kind]);
  const candidates=useMemo(()=>{
   const m=new Map<string,{id:string;label:string;player?:Row;team?:TeamRow}[]>();
   for(const s of slots.map(x=>x.season).filter(Boolean)){
