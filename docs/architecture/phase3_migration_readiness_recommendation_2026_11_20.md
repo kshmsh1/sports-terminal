@@ -69,3 +69,17 @@ Run `(cd experimental/arcside-react && npm test && npm run test:browser)` as the
 **Independent evidence:** 15 CBA goldens, source-labeled salary browser tests and the actual-original-corpus profile smoke belong to the isolated Phase 3 branch. The owner-local objective runner compares the engines before browser acceptance; it never upgrades a 15-case PASS into unrestricted CBA authority.
 
 **Architecture decision remains unchanged:** Flutter is authoritative; **no merge into main or full framework migration** before broad route parity, matched input/GPU metrics on hardware, native screen-reader testing, Labs security validation and explicit owner signoff.
+
+## Five original-corpus React route pilots — implementation follow-through
+
+An additional *source-backed but not yet feature-equivalent* slice now exists for Player Compare, Team Compare, Box Scores, Financials and With/Without. These five modules reuse published original NBA v5 data files and the original Dart 2026–27 team financial reference; no production React route falls back to synthetic data. The original Flutter implementations were consulted for reference contracts and their more extensive interface behavior remains authoritative.
+
+- Player Compare reuses the independently validated numerical player-season transform, supports 2–5 slots, different historical season choices, metric groups, head-to-head tied leaders and profile navigation.
+- Team Compare derives values only from canonical team records, standings, or adequately complete actual team game logs. W/L, percentages, and other values are left unavailable if insufficient underlying data exists.
+- Box Scores uses the original game index and per-game detail, filters history and inspects source-backed team and player lines. Explicit empty state for unmaterialized games; corrected initial home-team player selection and Firefox hit targets.
+- Financials consumes the unchanged Dart team-financial reference exported as an immutable and date-labeled 30-team 2026–27 JSON asset; it is **not** live payroll or contract validation.
+- With/Without reads optional canonical lineup-pair files by season and segment; unknown pair splits display unavailable rather than invented impact.
+
+Unit tests for team-metric completeness/tie semantics, intercepted-fixture three-engine browser tests, a separate authentic-corpus five-route smoke, and the readiness audit provide incremental evidence. `scripts/phase3_release_compare.sh --objective` runs the real source smoke when the owner's untracked NBA v5 corpus is available.
+
+**No whole-migration authorization is inferred.** The five routes omit parts of Flutter's controls, saved views, detailed analytics and integrations; remaining Team Detail, Games, Franchise History, complete original player profiles, full Trade Machine UX/CBA coverage, Labs authentication, native screen readers, truly matched GPU/response timings, and owner visual signoff remain unresolved. PR #89 stays DRAFT.
