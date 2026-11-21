@@ -218,9 +218,9 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
  const verifiedLabs=labs?.kind==='ARCSIDE_PHASE3_LABS_LOCAL_INTEGRITY_V1'&&
   labs.manifestSha256===corpusHash;
  const evidenceByGate={
-  functional_full_scope_feature_parity:{status:verifiedAudit&&readiness.fullScopeFeatureParity===false?'FAIL':null,
+  functional_full_scope_feature_parity:{status:verifiedAudit&&readiness.fullScopeFeatureParity===false?false:null,
    detail:{auditStatus:readiness?.status??'NOT_RUN',missingRoutes:readiness?.modules?.filter(x=>x.status==='CANDIDATE_ROUTE_MISSING').map(x=>x.module)??[]}},
-  full_cba_trade_rules_and_player_profiles:{status:verifiedAudit&&readiness.fullTradeAndProfileParity===false?'FAIL':null,
+  full_cba_trade_rules_and_player_profiles:{status:verifiedAudit&&readiness.fullTradeAndProfileParity===false?false:null,
    detail:{auditStatus:readiness?.status??'NOT_RUN',directFailures:readiness?.directFailures?.map(x=>x.check)??[]}},
   real_safari_voiceover_nvda_accessibility:{status:null,
    detail:{automatedBrowserProbe:verifiedAccessibility?accessibility.status:'NOT_RUN',
