@@ -27,7 +27,7 @@ export async function mockStatic(page:Page,count=150){
    'players/synthetic-0.json':{profile:{canonical_name:'Synthetic Player 0',positions:'SF',
      birth_date:'2000-01-01',draft_year:2018},
     regular_seasons:[
-     {season_id:'2025-26',team_abbreviation:'CHI',positions:'SF',games:65,minutes:2100,
+     {season_id:'2025-26',team_abbreviation:'CHI',positions:'SF',games:65,minutes:2100,min:2100,
       pts:1300,reb:325,ast:260,fg_pct:0.5,ts_pct:0.58,bpm:2.2},
      {season_id:'2024-25',team_abbreviation:'BOS',positions:'SF',games:60,minutes:1800,
       pts:1080,reb:240,ast:180,fg_pct:0.45,ts_pct:0.55,bpm:1.7}],
