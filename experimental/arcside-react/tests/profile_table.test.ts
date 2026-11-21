@@ -3,7 +3,7 @@ import {dossierMetric,dossierMetricText,dossierName,dossierSegments} from '../sr
 import {advancedMetricCatalog} from '../src/advancedCatalog';
 describe('original Flutter player dossier source semantics',()=>{
  const fixture={profile:{canonical_name:'Fixture Player'},
-  regular_seasons:[{season_id:'2025-26',games:65,points:1300,minutes:2100,
+  regular_seasons:[{season_id:'2025-26',games:65,pts:1300,min:2100,points:1300,minutes:2100,
    rebounds:325,fg_pct:0.50,bpm:2.2}],
   playoff_seasons:[{season_id:'2025-26',games:6,points:120}]};
  it('reads the nested original player dossier contract and independent segments',()=>{
