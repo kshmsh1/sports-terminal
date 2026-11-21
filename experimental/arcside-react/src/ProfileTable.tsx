@@ -1,4 +1,4 @@
-import {useMemo,useState} from 'react';
+import {useState} from 'react';
 import type {JsonRow,RateBasis,SeasonType} from './data';
 import {advancedGroups,advancedMetricCatalog,advancedChildren} from './advancedCatalog';
 import type {AdvancedMetric} from './advancedCatalog';
@@ -94,7 +94,7 @@ export function PlayerProfileTables({dossier,segment,basis}:{
  dossier:JsonRow;segment:SeasonType;basis:RateBasis;
 }){
  const segments=dossierSegments(dossier);
- const rows=useMemo(()=>ordered(segments[segment]),[dossier,segment]);
+ const rows=ordered(segments[segment]);
  const [expanded,setExpanded]=useState<Set<string>>(()=>new Set());
  const [group,setGroup]=useState(advancedGroups[0].name);
  const [expandedAdvanced,setExpandedAdvanced]=useState<Set<string>>(()=>new Set());
