@@ -12,7 +12,7 @@ import {ComparisonWorkspace} from './ComparisonWorkspaces';
 import {BoxScoresWorkspace} from './BoxScoresWorkspace';
 import {FinancialsWorkspace} from './FinancialsWorkspace';
 import {WithWithoutWorkspace} from './WithWithoutWorkspace';
-import {TeamDetailWorkspace} from './TeamDetailWorkspace';
+import {TeamDetailWorkspace,TeamsDirectory} from './TeamDetailWorkspace';
 import {GamesWorkspace} from './GamesWorkspace';
 import {FranchiseHistoryWorkspace} from './FranchiseHistoryWorkspace';
 
@@ -259,11 +259,12 @@ export function App(){
     {view.path==='/financials'&&<FinancialsWorkspace/>}
     {view.path==='/with-without'&&<WithWithoutWorkspace rows={rows} season={view.season}
      segment={view.segment} basis={view.basis}/>}
-    {(view.path==='/teams'||view.path.startsWith('/team/'))&&<TeamDetailWorkspace
-     teamKey={view.path.startsWith('/team/')?decodeURIComponent(view.path.slice('/team/'.length)):team==='All'?'BOS':team}
+    {view.path==='/teams'&&<TeamsDirectory onTeam={id=>navigate('/team/'+encodeURIComponent(id))}/>}
+    {view.path.startsWith('/team/')&&<TeamDetailWorkspace
+     teamKey={decodeURIComponent(view.path.slice('/team/'.length))}
      snapshot={snapshot} onPlayer={id=>navigate('/player/'+encodeURIComponent(id))}
      onGame={id=>navigate('/game/'+encodeURIComponent(id))}
-     onTeam={id=>navigate('/team-compare?team='+encodeURIComponent(id))}/>}
+     onTeam={id=>navigate('/team-compare')}/>}
     {(view.path==='/games'||view.path.startsWith('/game/'))&&<GamesWorkspace
      season={view.season} segment={view.segment}
      initialGame={view.path.startsWith('/game/')?decodeURIComponent(view.path.slice('/game/'.length)):''}
