@@ -88,6 +88,50 @@ void main() {
       metadata: {'recently_signed_until': '2026-12-15T00:00:00Z'},
     );
 
+    const cash = TradeAsset(
+      id:'cash',type:TradeAssetType.cash,label:'Cash',originTeam:'AAA',
+      salary:400000,metadata:{'amount':400000},
+    );
+    const first2028 = TradeAsset(
+      id:'first28',type:TradeAssetType.draftPick,label:'2028 first',
+      originTeam:'AAA',metadata:{'round':'1','draft_year':2028,'protection':'top-5'},
+    );
+    const first2029 = TradeAsset(
+      id:'first29',type:TradeAssetType.draftPick,label:'2029 first',
+      originTeam:'AAA',metadata:{'round':'1','draft_year':2029},
+    );
+    const twoWay = TradeAsset(
+      id:'two-way',type:TradeAssetType.player,label:'Two-way contract',
+      originTeam:'AAA',salary:1200000,metadata:{'two_way':true},
+    );
+    const exception = TradeAsset(
+      id:'exception',type:TradeAssetType.tradeException,label:'Expired TPE',
+      originTeam:'AAA',metadata:{'amount':5000000,'expires_at':'2026-10-01T00:00:00Z'},
+    );
+    const restrictedBonus = TradeAsset(
+      id:'restricted-bonus',type:TradeAssetType.player,label:'Restricted bonus',
+      originTeam:'AAA',salary:8000000,
+      metadata:{'no_trade':true,'trade_restricted':true,'cannot_aggregate':true,'trade_bonus':500000},
+    );
+    const secondPlayer = TradeAsset(
+      id:'second-player',type:TradeAssetType.player,label:'Second outgoing player',
+      originTeam:'AAA',salary:7000000,
+    );
+    final missingContext = scenario('missing_context', [
+      const TradeAssignment(asset: playerA,destinationTeam:'BBB'),
+    ]);
+    final secondApron = scenario('second_apron_cash_aggregation', [
+      const TradeAssignment(asset: cash,destinationTeam:'BBB'),
+      const TradeAssignment(asset: playerA,destinationTeam:'BBB'),
+      const TradeAssignment(asset: secondPlayer,destinationTeam:'BBB'),
+      const TradeAssignment(asset: playerB,destinationTeam:'AAA'),
+    ],aaaSalary:240000000,bbbSalary:140000000);
+    final cashLimit = scenario('cash_limit', [
+      const TradeAssignment(asset: cash,destinationTeam:'BBB'),
+    ]);
+    final hardCap = scenario('hard_cap', [
+      const TradeAssignment(asset: playerB,destinationTeam:'AAA'),
+    ]);
     final cases = <String, TradeScenario>{
       'equal_salaries': scenario('equal_salaries', [
         const TradeAssignment(asset: playerA, destinationTeam: 'BBB'),
@@ -105,6 +149,50 @@ void main() {
       'sign_trade_first_apron': scenario('sign_trade_first_apron', [
         const TradeAssignment(asset: sat, destinationTeam: 'BBB'),
       ], aaaSalary: 150000000, bbbSalary: 200000000),
+      'empty_scenario': scenario('empty_scenario', []),
+      'duplicate_assignment': scenario('duplicate_assignment', [
+        const TradeAssignment(asset: playerA,destinationTeam:'BBB'),
+        const TradeAssignment(asset: playerA,destinationTeam:'BBB'),
+      ]),
+      'two_way_salary_exclusion': scenario('two_way_salary_exclusion', [
+        const TradeAssignment(asset: twoWay,destinationTeam:'BBB'),
+      ]),
+      'pick_protection_stepien': scenario('pick_protection_stepien', [
+        const TradeAssignment(asset: first2028,destinationTeam:'BBB'),
+        const TradeAssignment(asset: first2029,destinationTeam:'BBB'),
+      ]),
+      'exception_expired': scenario('exception_expired', [
+        const TradeAssignment(asset: exception,destinationTeam:'BBB'),
+      ]),
+      'restricted_bonus': scenario('restricted_bonus', [
+        const TradeAssignment(asset: restrictedBonus,destinationTeam:'BBB'),
+        const TradeAssignment(asset: secondPlayer,destinationTeam:'BBB'),
+      ]),
+      'second_apron_cash_aggregation': secondApron,
+      'missing_cap_context': TradeScenario(
+        id:'missing_cap_context',name:'missing_cap_context',operatingSeason:'2026-27',
+        teams:const ['AAA','BBB'],assignments:missingContext.assignments,
+        capContexts:{'AAA':team('AAA',140000000)},asOfDateIso:'2026-11-20T00:00:00Z',
+      ),
+      'cash_limit': TradeScenario(
+        id:'cash_limit',name:'cash_limit',operatingSeason:'2026-27',
+        teams:const ['AAA','BBB'],assignments:cashLimit.assignments,
+        capContexts:{
+          'AAA':TeamCapContext.nba2026_27(
+             team:'AAA',teamSalary:140000000,cashSentThisSeason:100000,cashLimitThisSeason:300000,
+          ),
+          'BBB':team('BBB',140000000),
+        },asOfDateIso:'2026-11-20T00:00:00Z',
+      ),
+      'hard_cap': TradeScenario(
+        id:'hard_cap',name:'hard_cap',operatingSeason:'2026-27',
+        teams:const ['AAA','BBB'],assignments:hardCap.assignments,
+        capContexts:{
+          'AAA':TeamCapContext.nba2026_27(
+            team:'AAA',teamSalary:210000000,hardCappedAt:209015000),
+          'BBB':team('BBB',140000000),
+        },asOfDateIso:'2026-11-20T00:00:00Z',
+      ),
     };
     final result = <String, dynamic>{
       'kind': 'ARCSIDE_ORIGINAL_DART_CBA_GOLDENS_V1',
@@ -116,7 +204,7 @@ void main() {
           entry.key: reportJson(engine.validate(entry.value)),
       },
     };
-    expect((result['cases'] as Map).length, 5);
+    expect((result['cases'] as Map).length, 15);
     final output = File('experimental/arcside-react/evidence/trade/dart-trade-reference.json');
     output.parent.createSync(recursive: true);
     output.writeAsStringSync('${const JsonEncoder.withIndent('  ').convert(result)}\n');
