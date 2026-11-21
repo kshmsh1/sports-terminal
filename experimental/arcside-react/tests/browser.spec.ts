@@ -385,3 +385,29 @@ test('Trade Machine imports only exact original Flutter cap ledger for selected 
  await page.getByLabel('First team salary').fill('140000000');
  await expect(page.getByRole('status').filter({hasText:'Using original Flutter dated cap ledgers'})).toHaveCount(0);
 });
+
+test('Trade Machine imports canonical dated first/second-round interests and TPE with restrictions',async({page})=>{
+ await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ const response=await page.request.get('/data/phase3/2026-27-draft-exceptions.json');
+ expect(response.status()).toBe(200);
+ const payload=await response.json();
+ expect(payload.kind).toBe('ARCSIDE_ORIGINAL_FLUTTER_DRAFT_TPE_2026_27_V1');
+ expect(payload.draftAssets.length).toBeGreaterThan(500);
+ expect(payload.exceptions.length).toBeGreaterThan(50);
+ expect(payload.firstSourceSha256).toMatch(/^[a-f0-9]{64}$/);
+ expect(payload.secondSourceSha256).toMatch(/^[a-f0-9]{64}$/);
+ const unavailable=payload.draftAssets.find((x:{id:string})=>x.id==='BOS-2029-1-OUT');
+ expect(unavailable?.tradable).toBe(false);
+ await page.getByLabel('Trade first team').fill('BOS');
+ await page.getByLabel('Trade second team').fill('PHI');
+ await expect(page.getByLabel('Source draft interest').locator('option[value="BOS-2029-1-OUT"]')).toBeDisabled();
+ await page.getByLabel('Source draft interest').selectOption('BOS-2027-1');
+ await page.getByLabel('Source asset receiving team').selectOption('PHI');
+ await page.getByRole('button',{name:'Add source draft interest'}).click();
+ await expect(page.getByLabel('Asset 3 ID')).toHaveValue('BOS-2027-1');
+ const tpe=payload.exceptions.find((x:{id:string})=>x.id==='BOS-simons-2027');
+ expect(tpe?.available).toBeGreaterThan(0);
+ await page.getByLabel('Source trade exception').selectOption('BOS-simons-2027');
+ await page.getByRole('button',{name:'Add source trade exception'}).click();
+ await expect(page.getByLabel('Asset 4 ID')).toHaveValue('BOS-simons-2027');
+});
