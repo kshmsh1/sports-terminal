@@ -73,3 +73,29 @@ export async function getPlayerDossier(playerKey: string, signal?: AbortSignal):
   if (!record || typeof record.file !== 'string') throw Error('No canonical player dossier for ' + playerKey);
   return asObject(await getJson(record.file, signal));
 }
+
+export interface DatedContractRecord {
+ id:string;player:string;team:string;salaries:Record<string,number>;
+ guaranteed:number|null;sourceStatus:string;sourceLabel:string;
+}
+export interface DatedContractSnapshot {
+ kind:'ARCSIDE_ORIGINAL_FLUTTER_2026_27_CONTRACT_SEED_V1';
+ asOf:string;sourceNote:string;dartSeedSha256:string;records:DatedContractRecord[];
+}
+export async function getDatedContracts(signal?:AbortSignal):Promise<DatedContractSnapshot|null>{
+ const res=await fetch('/data/phase3/2026-27-contracts.json',{signal,credentials:'same-origin'});
+ if(res.status===404)return null;
+ if(!res.ok)throw Error('Original Flutter 2026–27 contract snapshot could not be loaded: '+res.status);
+ const raw=asObject(await res.json());
+ if(raw.kind!=='ARCSIDE_ORIGINAL_FLUTTER_2026_27_CONTRACT_SEED_V1'||!Array.isArray(raw.records)||
+    typeof raw.asOf!=='string'||typeof raw.dartSeedSha256!=='string')
+  throw Error('Unverified dated contract seed response.');
+ return raw as unknown as DatedContractSnapshot;
+}
+export async function getFrontOfficeContracts(signal?:AbortSignal):Promise<JsonRow[]>{
+ const res=await fetch('/data/nba_static/front_office/contracts.json',{signal,credentials:'same-origin'});
+ if(res.status===404)return [];
+ if(!res.ok)throw Error('Front-office static contract read failed: '+res.status);
+ const data=await res.json();
+ return asRows(data,'front_office/contracts.json');
+}
