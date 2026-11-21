@@ -127,13 +127,15 @@ export function setupPowerPanel(ctx) {
   $('localEnvUse').onclick=async()=>{
     try{
       const data=await runtime.selectEnv($('localEnvSelect').value);
-      report('Selected interpreter: '+data.interpreter);
       terminalSocket?.close();terminalSocket=null;
       notebookSocket?.close();notebookSocket=null;
       lsp?.stop();lsp=null;
       ctx.setStatus('Using '+data.active);
       await refreshEnvironments();
       await attachLanguageServer(runtime.info);
+      // A failed optional language-server startup must not obscure a
+      // successful interpreter selection from the operator or tests.
+      report('Selected interpreter: '+data.interpreter);
     }catch(error){reportError(error);}
   };
   async function installInput(source){
@@ -364,7 +366,9 @@ export function setupPowerPanel(ctx) {
     ctx.save();notebookRender();
   };
   $('notebookExport').onclick=()=>{
-    const document={
+    // Do not shadow the browser document with notebook JSON: exporting
+    // must be able to create a real DOM download anchor.
+    const notebookDocument={
       nbformat:4,nbformat_minor:5,metadata:{kernelspec:{name:'python3',display_name:'Python 3'}},
       cells:notebookCells().map(cell=>({
         cell_type:'code',metadata:{},execution_count:null,outputs:[],
@@ -372,7 +376,7 @@ export function setupPowerPanel(ctx) {
         source:cell.source.split('\n').map((line,i,array)=>line+(i<array.length-1?'\n':'')),
       })),
     };
-    const url=URL.createObjectURL(new Blob([JSON.stringify(document,null,2)],{type:'application/json'}));
+    const url=URL.createObjectURL(new Blob([JSON.stringify(notebookDocument,null,2)],{type:'application/json'}));
     const anchor=document.createElement('a');anchor.href=url;anchor.download='arcside-notebook.ipynb';
     // Attach the download link to the document for reliable browser activation.
     document.body.append(anchor);anchor.click();anchor.remove();
