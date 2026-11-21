@@ -57,6 +57,10 @@ if [[ "$MODE" == "--visualization-acceptance" || "$MODE" == "--visualization-gui
   --dart-define=ARCSIDE_VIS_CORPUS=web/data/nba_static \
   --dart-define=ARCSIDE_VIS_SEASONS=2025-26,1986-87,1946-47
 fi
+if [[ "$MODE" == "--objective" ]];then
+ echo 'Exporting original Dart CBA/Trade Machine rule reports (NO independent React CBA candidate)...'
+ flutter test test/phase3_trade_reference_export_test.dart --reporter expanded
+fi
 OUT="$ROOT/experimental/arcside-react/evidence/release"
 mkdir -p "$OUT"
 FLUTTER_PID=''; REACT_PID=''
