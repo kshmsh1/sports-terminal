@@ -45,6 +45,26 @@ test('scatter interactions and theme persist across refresh',async({page})=>{
  await expect(page.getByLabel('X metric')).toHaveValue('reb');
  await expect(page.locator('html')).toHaveAttribute('data-theme','light');
 });
+test('wheel zoom, direct drag pan, and reset move the actual chart viewport without mode switches',async({page})=>{
+ await page.goto('/visualizations?season=2025-26&segment=regular&basis=perGame');
+ const plot=page.locator('.studio-chart');
+ await expect(plot).toHaveAttribute('data-viewport-range','0.000:100.000|0.000:100.000');
+ const bounds=await plot.boundingBox();
+ expect(bounds).not.toBeNull();
+ const box=bounds!;
+ await page.mouse.move(box.x+box.width*.55,box.y+box.height*.52);
+ await page.mouse.wheel(0,-600);
+ await expect.poll(()=>plot.getAttribute('data-viewport-range')).not.toBe('0.000:100.000|0.000:100.000');
+ const zoomed=await plot.getAttribute('data-viewport-range');
+ await page.mouse.move(box.x+box.width*.50,box.y+box.height*.52);
+ await page.mouse.down();
+ await page.mouse.move(box.x+box.width*.68,box.y+box.height*.65,{steps:12});
+ await page.mouse.up();
+ await expect.poll(()=>plot.getAttribute('data-viewport-range')).not.toBe(zoomed);
+ await page.getByRole('button',{name:'Reset view'}).click();
+ await expect(plot).toHaveAttribute('data-viewport-range','0.000:100.000|0.000:100.000');
+ await expect(page.getByRole('button',{name:'Drag pan'})).toHaveCount(0);
+});
 test('original embedded Python and Sheets receive strictly typed, same-origin context',async({page})=>{
  await page.goto('/workspaces/python?season=2025-26&segment=regular&basis=perGame');
  await expect(page.getByText('Context handshake: acknowledged')).toBeVisible({timeout:30000});
