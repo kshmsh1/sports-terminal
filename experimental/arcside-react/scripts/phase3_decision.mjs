@@ -5,6 +5,7 @@ import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
+import {isDeepStrictEqual} from 'node:util';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const home=path.resolve(here,'..');
@@ -46,7 +47,7 @@ function grouped(guided){
 }
 export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
  advancedSource=null,advancedGuided=null,visualizationSource=null,visualizationGuided=null,
- readiness=null,objective=null,accessibility=null,labs=null,profiles=null,tradeReference=null}){
+ readiness=null,objective=null,accessibility=null,labs=null,profiles=null,tradeReference=null,tradeCandidate=null}){
  const g=[];
  const corpusHash=manifestBytes?sha256(manifestBytes):null;
  const realCases=parity?.byCase??{};
@@ -221,11 +222,24 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
   profiles.manifestSha256===corpusHash;
  const originalCbaOnly=tradeReference?.kind==='ARCSIDE_ORIGINAL_DART_CBA_GOLDENS_V1'&&
   tradeReference.candidateEquivalentImplemented===false;
+ const candidateCompared=originalCbaOnly&&
+  tradeCandidate?.kind==='ARCSIDE_INDEPENDENT_REACT_CBA_CANDIDATE_V1'&&
+  tradeCandidate.candidateEquivalentImplemented===true&&
+  tradeCandidate.implementationSource==='experimental/arcside-react/src/tradeEngine.ts'&&
+  Object.keys(tradeReference.cases??{}).length>0&&
+  Object.keys(tradeReference.cases??{}).length===Object.keys(tradeCandidate.cases??{}).length&&
+  Object.entries(tradeReference.cases??{}).every(([key,ref])=>{
+   const candidate=tradeCandidate.cases?.[key];
+   return candidate&&ref.isValid===candidate.isValid&&
+    ref.errorCount===candidate.errorCount&&ref.warningCount===candidate.warningCount&&
+    isDeepStrictEqual(ref.findings,candidate.findings)&&
+    isDeepStrictEqual(ref.teamSummaries,candidate.teamSummaries);
+  });
  const evidenceByGate={
   functional_full_scope_feature_parity:{status:verifiedAudit&&readiness.fullScopeFeatureParity===false?false:null,
    detail:{auditStatus:readiness?.status??'NOT_RUN',missingRoutes:readiness?.modules?.filter(x=>x.status==='CANDIDATE_ROUTE_MISSING').map(x=>x.module)??[],playerDossierSourceProbe:verifiedProfiles?profiles.status:'NOT_RUN'}},
   full_cba_trade_rules_and_player_profiles:{status:verifiedAudit&&readiness.fullTradeAndProfileParity===false?false:null,
-   detail:{auditStatus:readiness?.status??'NOT_RUN',directFailures:readiness?.directFailures?.map(x=>x.check)??[],originalDartRuleCases:originalCbaOnly?Object.keys(tradeReference.cases??{}).length:0,independentReactCbaEngineVerified:false,playerDossierSourceProbe:verifiedProfiles?profiles.status:'NOT_RUN'}},
+   detail:{auditStatus:readiness?.status??'NOT_RUN',directFailures:readiness?.directFailures?.map(x=>x.check)??[],originalDartRuleCases:originalCbaOnly?Object.keys(tradeReference.cases??{}).length:0,limitedCbaGoldenParity:!!candidateCompared,matchedIndependentCbaCases:candidateCompared?Object.keys(tradeReference.cases).length:0,fullIndependentCbaRuleCoverageVerified:false,playerDossierSourceProbe:verifiedProfiles?profiles.status:'NOT_RUN'}},
   real_safari_voiceover_nvda_accessibility:{status:null,
    detail:{automatedBrowserProbe:verifiedAccessibility?accessibility.status:'NOT_RUN',
     nativeAssistiveTechnologyTested:false}},
@@ -282,10 +296,11 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
  const labs=await maybeJson(path.join(home,'evidence/labs/lab-integrity.json'));
  const profiles=await maybeJson(path.join(home,'evidence/profiles/profile-corpus-smoke.json'));
  const tradeReference=await maybeJson(path.join(home,'evidence/trade/dart-trade-reference.json'));
+ const tradeCandidate=await maybeJson(path.join(home,'evidence/trade/react-trade-candidate.json'));
  let manifestBytes=null;try{manifestBytes=await readFile(path.join(repo,'web/data/nba_static/manifest.json'))}catch(e){
   if(e.code!=='ENOENT')throw e;
  }
- const result=assess({parity,real,guided,manifestBytes,featureBlocker,advancedSource,advancedGuided,visualizationSource,visualizationGuided,readiness,objective,accessibility,labs,profiles,tradeReference});
+ const result=assess({parity,real,guided,manifestBytes,featureBlocker,advancedSource,advancedGuided,visualizationSource,visualizationGuided,readiness,objective,accessibility,labs,profiles,tradeReference,tradeCandidate});
  const dest=path.join(home,'evidence/decision');
  await mkdir(dest,{recursive:true});
  await writeFile(path.join(dest,'phase3-decision.json'),JSON.stringify(result,null,2)+'\n');
