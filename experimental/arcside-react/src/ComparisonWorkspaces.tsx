@@ -112,8 +112,7 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
   const controller=new AbortController();let alive=true;
   Promise.all(missing.map(s=>getSeason(s,segment,controller.signal).then(data=>[segment+':'+s,data] as const)))
    .then(entries=>{if(alive)setLocalSnapshots(prev=>({...prev,...Object.fromEntries(entries)}))})
-   .catch(e=>{if(alive&&!controller.signal.aborted)setError(String(e.message??e))})
-;
+   .catch(e=>{if(alive&&!controller.signal.aborted)setError(String(e.message??e))});
   return ()=>{alive=false;controller.abort()};
  },[slots,segment,snapshot,localSnapshots]);
  useEffect(()=>{setMetricSet([])},[segment,kind]);
@@ -129,7 +128,7 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
   return m;
  },[slots,snapshot,localSnapshots,basis,segment,kind]);
  const selected=slots.map(slot=>candidates.get(slot.season)?.find(r=>r.id===slot.selected));
-const saveKey='arcside.phase3.compare.'+kind+'.v1';
+ const saveKey='arcside.phase3.compare.'+kind+'.v1';
  const savePreset=()=>{
   const name=savedName.trim();if(!name)return;
   try{
