@@ -61,7 +61,13 @@ try{
      await detailPage.goto(url+'/team/'+encodeURIComponent(first.team_key)+'?season='+sampleSeasons[0]+'&segment=regular&basis=perGame');
      await detailPage.getByRole('region',{name:'Team detail'}).waitFor({timeout:20000});
      await detailPage.getByRole('heading',{level:2}).first().waitFor({timeout:20000});
-     await detailPage.getByRole('region',{name:'Team season history'}).waitFor({timeout:20000});
+     const history=detailPage.getByRole('region',{name:'Team season history'});
+     await history.waitFor({timeout:20000});
+     // Historical identities may have no regular-season rows. Require either
+     // actual source rows or the UI's explicit missing-source state.
+     const rowCount=await history.locator('tbody tr').count();
+     const noHistory=await history.getByText('No published regular history rows for this team.').count();
+     if(!rowCount&&!noHistory)throw Error('Team dossier has neither published history nor an explicit unavailable state');
      if(await detailPage.getByRole('alert').count())throw Error('Source-backed team profile reported an error');
     }finally{await detailPage.close()}
    }

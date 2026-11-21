@@ -116,10 +116,12 @@ export function TeamDetailWorkspace({teamKey,snapshot,onPlayer,onGame,onTeam}:{
      className={historySegment===segment?'selected':''} onClick={()=>setHistorySegment(segment)}>
      {segment==='regular'?'Regular season':'Playoffs'}</button>)}
    </div>
-   {history.length?<div className="table-scroll" role="region" tabIndex={0} aria-label="Team season history"><table className="stats-table">
+   <div role="region" aria-label="Team season history">
+   {history.length?<div className="table-scroll" tabIndex={0}><table className="stats-table">
     <thead><tr>{cols.map(c=><th key={c}>{c.replaceAll('_',' ').toUpperCase()}</th>)}</tr></thead>
     <tbody>{history.map((r,i)=><tr key={i}>{cols.map(c=><td key={c}>{str(r[c])}</td>)}</tr>)}</tbody>
    </table></div>:<p className="empty">No published {historySegment} history rows for this team.</p>}
+   </div>
    <div className="team-detail-pair">
     <div><h3>Notable players</h3>{notable.length?<ul>{notable.slice(0,25).map((r,i)=><li key={i}>
      {typeof r.player_key==='string'?<button className="sort-button" onClick={()=>onPlayer(String(r.player_key))}>{names(r)}</button>:names(r)}
