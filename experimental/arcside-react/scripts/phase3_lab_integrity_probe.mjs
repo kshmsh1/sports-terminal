@@ -77,9 +77,11 @@ try{
    window.removeEventListener('message',onMessage);
    return {ack};
   });
-  // Sender-origin is the host itself; this proves only the typed-context
-  // response schema does not reflect unknown injected secret-like fields.
-  return {...captured,scope:'same-origin schema smoke; NOT adversarial-origin, authentication or privilege audit'};
+  // Original Lab bridge rejects extra fields, including token-like payloads.
+  // This is a schema smoke, not an adversarial-origin authentication audit.
+  if(captured.ack!==0)throw Error('Lab incorrectly acknowledged a context payload carrying a forbidden token field.');
+  return {...captured,strictExtraFieldsRejected:true,
+   scope:'same-origin schema smoke; NOT adversarial-origin, authentication or privilege audit'};
  });
 }finally{
  await context.close().catch(()=>{});await browser.close();
