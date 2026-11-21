@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import {nba2026Cap,validateTrade} from './tradeEngine';
-import type {TradeAsset,TradeAssignment,TradeScenario} from './tradeEngine';
-import type {DatedContractSnapshot,TeamCapLedgerSnapshot,OriginalDraftExceptions} from './data';
+import type {TradeAsset,TradeAssignment,TradeScenario,TradeReport,TradeFinding} from './tradeEngine';
+import type {DatedContractSnapshot,TeamCapLedgerSnapshot,OriginalDraftExceptions,OriginalTradeException} from './data';
 import {getDatedContracts,getOriginalTeamCapLedger,getOriginalDraftExceptions} from './data';
 type RawDraft={id:string;label:string;originTeam:string;destinationTeam:string;type:TradeAsset['type'];salary:string;metadata:string};
 // Input validation is strict: JS Number('') === 0 and Number('0x10') === 16
@@ -21,6 +21,40 @@ export function originalCapContext(team:string,salary:number,ledger:TeamCapLedge
  return nba2026Cap(team,salary,{hardCappedAt:source.hardCap==='first'?base.firstApron:
   source.hardCap==='second'?base.secondApron:null});
 }
+// A source TPE belongs to the RECEIVING team. It cannot be transferred.
+export function reviewTeamTpes(base:TradeReport,scenario:TradeScenario,
+ selections:Record<string,string>,source:OriginalTradeException[],asOf:string):TradeReport{
+ const findings:TradeFinding[]=[...base.findings];
+ const add=(team:string,code:string,message:string,severity:TradeFinding['severity'])=>
+  findings.push({team,code,message,severity,assetId:null});
+ for(const team of scenario.teams){
+  const id=selections[team];if(!id)continue;
+  const tpe=source.find(x=>x.id===id&&x.team===team);
+  if(!tpe){add(team,'TPE_MISSING','Selected exception does not belong to the acquiring team.','error');continue}
+  if(tpe.available<=0){add(team,'TPE_EXHAUSTED','Selected exception is exhausted.','error');continue}
+  if(!asOf||tpe.expires<asOf){add(team,'TPE_EXPIRED','Selected exception expired '+tpe.expires+' or lacks an as-of date.','error');continue}
+  const context=scenario.capContexts[team];
+  if(!context){add(team,'TPE_MISSING_CONTEXT','Missing receiving-team cap context.','error');continue}
+  const incoming=scenario.assignments.filter(x=>x.destinationTeam===team&&x.asset.type==='player')
+   .reduce((value,x)=>value+x.asset.salary,0);
+  if(incoming<=0){add(team,'TPE_UNUSED','No incoming standard player salary to absorb.','warning');continue}
+  if(context.teamSalary>context.secondApron||
+   (base.teamSummaries[team]?.postTradeSalary??Infinity)>context.secondApron){
+   add(team,'TPE_APRON','Selected TPE is blocked by the modeled second-apron restriction.','error');continue
+  }
+  if(incoming>tpe.available+100000){
+   add(team,'TPE_AMOUNT','Incoming salary exceeds TPE capacity plus modeled $100K allowance.','error');continue
+  }
+  for(let i=findings.length-1;i>=0;i--){
+   if(findings[i].team===team&&findings[i].code==='SALARY_MATCH')findings.splice(i,1);
+  }
+  add(team,'TPE_OK',tpe.sourceTransaction+' models absorption of $'+incoming.toLocaleString()+
+   ' using $'+tpe.available.toLocaleString()+' TPE capacity (expires '+tpe.expires+').','info');
+ }
+ const errorCount=findings.filter(x=>x.severity==='error').length;
+ return {...base,findings,errorCount,
+  warningCount:findings.filter(x=>x.severity==='warning').length,isValid:errorCount===0};
+}
 const sample=[
  {id:'a',label:'Player A',originTeam:'AAA',destinationTeam:'BBB',type:'player',salary:'8000000',metadata:'{}'},
  {id:'b',label:'Player B',originTeam:'BBB',destinationTeam:'AAA',type:'player',salary:'8000000',metadata:'{}'}
@@ -38,6 +72,8 @@ export function TradeMachinePilot(){
  const [draftSource,setDraftSource]=useState<OriginalDraftExceptions|null>(null);
  const [draftSourceError,setDraftSourceError]=useState('');
  const [sourceDraftId,setSourceDraftId]=useState(''),[sourceTpeId,setSourceTpeId]=useState('');
+ const [tpeTeam,setTpeTeam]=useState('');
+ const [selectedTpeByTeam,setSelectedTpeByTeam]=useState<Record<string,string>>({});
  const [sourceAssetDestination,setSourceAssetDestination]=useState('');
  const [capError,setCapError]=useState('');
  const [usingOriginalLedger,setUsingOriginalLedger]=useState(false);
@@ -71,17 +107,12 @@ export function TradeMachinePilot(){
     source:item.source,source_dossier:item.description})}]);
   setSourceDraftId('');
  };
- const routeSourceTpe=()=>{
+ const chooseReceivingTpe=()=>{
   const item=publishedTpes.find(x=>x.id===sourceTpeId);
-  if(!item||item.available<=0||item.expires<asOf||!sourceAssetDestination||
-    item.team===sourceAssetDestination)return;
-  setDirty(true);
-  setDrafts(prev=>[...prev,{id:item.id,label:item.sourceTransaction,originTeam:item.team,
-   destinationTeam:sourceAssetDestination,type:'tradeException',salary:'0',
-   metadata:JSON.stringify({amount:item.available,expires_at:item.expires+'T00:00:00Z',
-    source:'Original Flutter dated traded-player exception register',
-    unusable_above_second_apron:item.unusableAboveSecondApron,note:item.note})}]);
-  setSourceTpeId('');
+  if(!item||item.team!==tpeTeam||!participating.includes(tpeTeam)||
+   item.available<=0||item.expires<asOf)return;
+  setSelectedTpeByTeam(prev=>({...prev,[tpeTeam]:item.id}));
+  setDirty(true);setSourceTpeId('');
  };
  const publishedTeams=[...new Set((publishedContracts?.records??[]).map(x=>x.team))].sort();
  const applyOriginalLedger=()=>{
@@ -128,8 +159,10 @@ export function TradeMachinePilot(){
    [team,originalCapContext(team,salaries[i]!,capLedger,usingOriginalLedger)]));
   const scenario:TradeScenario={id:'phase3-review',name:'Review scenario',operatingSeason:'2026-27',
    teams,assignments,capContexts,asOfDateIso:asOf?asOf+'T00:00:00Z':''};
-  return {errors,scenario,report:validateTrade(scenario)};
- },[teamA,teamB,salaryA,salaryB,extraTeams,drafts,asOf,capLedger,usingOriginalLedger]);
+  const base=validateTrade(scenario);
+  return {errors,scenario,report:reviewTeamTpes(base,scenario,selectedTpeByTeam,
+   draftSource?.exceptions??[],asOf)};
+ },[teamA,teamB,salaryA,salaryB,extraTeams,drafts,asOf,capLedger,usingOriginalLedger,draftSource,selectedTpeByTeam]);
  const update=(index:number,patch:Partial<RawDraft>)=>{setDirty(true);
   setDrafts(old=>old.map((d,i)=>i===index?{...d,...patch}:d))};
  const add=()=>{setDirty(true);setDrafts(old=>[...old,{id:'new-'+old.length,label:'New asset',
@@ -238,7 +271,7 @@ export function TradeMachinePilot(){
   </fieldset>)}</div>
   <div className="trade-actions">
    <button onClick={add}>Add asset</button>
-   <button onClick={()=>{setDrafts(sample);setTeamA('AAA');setTeamB('BBB');setSalaryA('140000000');setSalaryB('140000000');setExtraTeams([]);setAsOf('2026-11-20');setUsingOriginalLedger(false);setDirty(false)}}>Reset example</button>
+   <button onClick={()=>{setDrafts(sample);setTeamA('AAA');setTeamB('BBB');setSalaryA('140000000');setSalaryB('140000000');setExtraTeams([]);setAsOf('2026-11-20');setUsingOriginalLedger(false);setSelectedTpeByTeam({});setTpeTeam('');setDirty(false)}}>Reset example</button>
    <button onClick={()=>setDetails(x=>!x)} aria-expanded={details}>Show modeled validation details</button>
   </div>
   {info.errors.length>0&&<div role="alert">{info.errors.join(' ')}</div>}
