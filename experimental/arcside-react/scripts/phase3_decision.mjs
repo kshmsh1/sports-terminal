@@ -45,7 +45,8 @@ function grouped(guided){
  return rows;
 }
 export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
- advancedSource=null,advancedGuided=null,visualizationSource=null,visualizationGuided=null}){
+ advancedSource=null,advancedGuided=null,visualizationSource=null,visualizationGuided=null,
+ readiness=null,objective=null,accessibility=null,labs=null}){
  const g=[];
  const corpusHash=manifestBytes?sha256(manifestBytes):null;
  const realCases=parity?.byCase??{};
@@ -207,12 +208,41 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
    advanced:{valid:advGuideValid&&advFeaturePass,p95ReactOverFlutter:advRatio??null,samples:observed.length},
    visualization:{sourceValid:vizSourceOk,valid:vizValid,p95ReactOverFlutter:vizRatio,samples:vizObserved.length},
    legacyBasisAndChartExcluded:true}));
+ // Objective scripts are observational and cannot substitute for matched chart
+ // rendering latency, native GPU measurements or an owner architectural decision.
+ const verifiedAudit=readiness?.kind==='ARCSIDE_PHASE3_FULL_SCOPE_AUDIT_V1';
+ const verifiedObjective=objective?.kind==='ARCSIDE_OBJECTIVE_BROWSER_PERFORMANCE_V1'&&
+  objective.manifestSha256===corpusHash;
+ const verifiedAccessibility=accessibility?.kind==='ARCSIDE_PHASE3_ACCESSIBILITY_SMOKE_V1'&&
+  accessibility.manifestSha256===corpusHash;
+ const verifiedLabs=labs?.kind==='ARCSIDE_PHASE3_LABS_LOCAL_INTEGRITY_V1'&&
+  labs.manifestSha256===corpusHash;
+ const evidenceByGate={
+  functional_full_scope_feature_parity:{status:verifiedAudit&&readiness.fullScopeFeatureParity===false?'FAIL':null,
+   detail:{auditStatus:readiness?.status??'NOT_RUN',missingRoutes:readiness?.modules?.filter(x=>x.status==='CANDIDATE_ROUTE_MISSING').map(x=>x.module)??[]}},
+  full_cba_trade_rules_and_player_profiles:{status:verifiedAudit&&readiness.fullTradeAndProfileParity===false?'FAIL':null,
+   detail:{auditStatus:readiness?.status??'NOT_RUN',directFailures:readiness?.directFailures?.map(x=>x.check)??[]}},
+  real_safari_voiceover_nvda_accessibility:{status:null,
+   detail:{automatedBrowserProbe:verifiedAccessibility?accessibility.status:'NOT_RUN',
+    nativeAssistiveTechnologyTested:false}},
+  labs_import_export_and_native_service_security:{status:null,
+   detail:{isolatedRoundtrip:verifiedLabs?labs.status:'NOT_RUN',localServiceSecurityCertified:false}},
+  rendering_frames_memory_and_gpu_on_matched_hardware:{status:null,
+   detail:{observationalBrowserProbe:verifiedObjective?objective.status:'NOT_RUN',
+    trulyMatchedChartRenderGpuMeasurements:false}},
+  owner_visual_ux_and_migration_signoff:{status:null,detail:{signedOwnerDecision:false}}
+ };
  // Presence of synthetic or Playwright evidence cannot satisfy these human/runtime gates.
  for(const name of ['functional_full_scope_feature_parity','full_cba_trade_rules_and_player_profiles',
   'real_safari_voiceover_nvda_accessibility','labs_import_export_and_native_service_security',
   'rendering_frames_memory_and_gpu_on_matched_hardware',
   'owner_visual_ux_and_migration_signoff']){
-  g.push(gate(name,null,['This mandatory acceptance gate needs separately reviewed evidence and is not inferred from scripts or synthetic tests']));
+  const observation=evidenceByGate[name];
+  g.push(gate(name,observation.status,
+   observation.status===false?
+    ['Source-backed scope audit confirms the React pilot is not yet functionally equivalent to Flutter']:
+    ['This mandatory acceptance gate requires independent validated evidence and is not inferred from browser smoke tests'],
+   observation.detail));
  }
  const blockers=g.filter(x=>x.status!=='PASS').map(x=>x.name);
  return {kind:'ARCSIDE_PHASE3_DECISION_EVIDENCE_V1',createdAt:new Date().toISOString(),
@@ -230,7 +260,7 @@ function markdown(result){
   '| Gate | State | Notes |','| --- | --- | --- |',
   ...result.gates.map(x=>'| '+x.name+' | '+x.status+' | '+x.reasons.join('; ').replaceAll('|','/')+' |'),
   '','Remaining blockers: '+result.blockers.join(', '),'',
-  'Performance ratios, when reported, reflect matched human task completion only. Missing chart trials are not a pass.',
+  'Objective load/frame probes are observational only. No unmeasured Flutter chart readiness, GPU frame timings or native accessibility are inferred. Historical guided-task data remains immutable.',
   'This is an engineering decision report, not a signed framework migration authorization.',''].join('\n');
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
@@ -242,10 +272,14 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
  const advancedGuided=await maybeJson(path.join(home,'evidence/advanced/advanced-guided-timings-v2.json'));
  const visualizationSource=await maybeJson(path.join(home,'evidence/visualization/visualization-source-parity.json'));
  const visualizationGuided=await maybeJson(path.join(home,'evidence/visualization/visualization-guided-timings-v2.json'));
+ const readiness=await maybeJson(path.join(home,'evidence/readiness/phase3-readiness-audit.json'));
+ const objective=await maybeJson(path.join(home,'evidence/objective/objective-browser-performance.json'));
+ const accessibility=await maybeJson(path.join(home,'evidence/accessibility/accessibility-smoke.json'));
+ const labs=await maybeJson(path.join(home,'evidence/labs/lab-integrity.json'));
  let manifestBytes=null;try{manifestBytes=await readFile(path.join(repo,'web/data/nba_static/manifest.json'))}catch(e){
   if(e.code!=='ENOENT')throw e;
  }
- const result=assess({parity,real,guided,manifestBytes,featureBlocker,advancedSource,advancedGuided,visualizationSource,visualizationGuided});
+ const result=assess({parity,real,guided,manifestBytes,featureBlocker,advancedSource,advancedGuided,visualizationSource,visualizationGuided,readiness,objective,accessibility,labs});
  const dest=path.join(home,'evidence/decision');
  await mkdir(dest,{recursive:true});
  await writeFile(path.join(dest,'phase3-decision.json'),JSON.stringify(result,null,2)+'\n');
