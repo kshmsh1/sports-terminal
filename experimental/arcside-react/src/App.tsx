@@ -8,6 +8,10 @@ import {AdvancedStatsTable} from './AdvancedStatsTable';
 import {dossierName,dossierSegments,PlayerProfileTables} from './ProfileTable';
 import {ProfileSummary,ProfileContracts,ProfileHonors} from './ProfileContext';
 import {TradeMachinePilot} from './TradeMachinePilot';
+import {ComparisonWorkspace} from './ComparisonWorkspaces';
+import {BoxScoresWorkspace} from './BoxScoresWorkspace';
+import {FinancialsWorkspace} from './FinancialsWorkspace';
+import {WithWithoutWorkspace} from './WithWithoutWorkspace';
 
 type ViewState={path:string;season:string;segment:SeasonType;basis:RateBasis};
 function fromUrl():ViewState {
@@ -24,10 +28,12 @@ function urlFor(v:ViewState):string {
 }
 const qualify=(r:Row,segment:SeasonType)=> (r.values.gp??0)>=(segment==='regular'?50:4);
 const metricLabel=(m:MetricKey)=>metrics.find(x=>x.key===m)?.label??m;
-const allowedRoutes=['/stats','/advanced','/visualizations','/trade','/workspaces/python','/workspaces/sheets'];
+const allowedRoutes=['/stats','/advanced','/visualizations','/trade','/player-compare','/team-compare','/box-scores','/financials','/with-without','/workspaces/python','/workspaces/sheets'];
 function labelFor(route:string):string {
  return ({'/stats':'Stats','/advanced':'Advanced Stats','/visualizations':'Visualizations',
  '/trade':'Trade Machine',
+ '/player-compare':'Player Compare','/team-compare':'Team Compare',
+ '/box-scores':'Box Scores','/financials':'Financials','/with-without':'With/Without',
  '/workspaces/python':'Python Lab','/workspaces/sheets':'Excel Workspace'} as Record<string,string>)[route]??'Player detail';
 }
 export function App(){
@@ -240,6 +246,15 @@ export function App(){
     </section>}
     {view.path==='/visualizations'&&<Chart rows={rows} basis={view.basis} segment={view.segment}/>}
      {view.path==='/trade'&&<TradeMachinePilot/>}
+    {view.path==='/player-compare'&&<ComparisonWorkspace kind="player" seasons={seasons}
+     season={view.season} segment={view.segment} basis={view.basis} snapshot={snapshot}
+     onPlayer={id=>navigate('/player/'+encodeURIComponent(id))}/>}
+    {view.path==='/team-compare'&&<ComparisonWorkspace kind="team" seasons={seasons}
+     season={view.season} segment={view.segment} basis={view.basis} snapshot={snapshot}/>}
+    {view.path==='/box-scores'&&<BoxScoresWorkspace onPlayer={id=>navigate('/player/'+encodeURIComponent(id))}/>}
+    {view.path==='/financials'&&<FinancialsWorkspace/>}
+    {view.path==='/with-without'&&<WithWithoutWorkspace rows={rows} season={view.season}
+     segment={view.segment} basis={view.basis}/>}
     {isLab&&<section className="panel lab-panel">
      <div className="panel-title"><div><p className="eyebrow">BROWSER-NATIVE WORKSPACE / ORIGINAL MODULE</p>
        <h2>{labelFor(view.path)}</h2>
