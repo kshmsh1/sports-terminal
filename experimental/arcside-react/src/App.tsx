@@ -6,6 +6,7 @@ import {advancedKeys,bases,buildRows,formatMetric,metrics,overviewKeys,sortRows,
 import {Chart} from './Chart';
 import {AdvancedStatsTable} from './AdvancedStatsTable';
 import {dossierName,dossierSegments,PlayerProfileTables} from './ProfileTable';
+import {ProfileSummary,ProfileContracts,ProfileHonors} from './ProfileContext';
 
 type ViewState={path:string;season:string;segment:SeasonType;basis:RateBasis};
 function fromUrl():ViewState {
@@ -240,6 +241,7 @@ export function App(){
        .filter(([k,v])=>['canonical_name','positions','primary_position','birth_date','height','draft_year','draft_number'].includes(k)
         && v!==null && typeof v!=='object').map(([k,v])=><div key={k}><dt>{k.replaceAll('_',' ')}</dt><dd>{String(v)}</dd></div>)}
      </div>}
+     {dossier&&<ProfileSummary dossier={dossier}/>}
      {dossier&&<div className="profile-stats-wrapper">
       <div className="profile-segment-actions" role="group" aria-label="Player career season type">
        <button aria-pressed={view.segment==='regular'} className={view.segment==='regular'?'active-control':''}
@@ -249,6 +251,8 @@ export function App(){
        <span>{dossierSegments(dossier)[view.segment].length} original published rows</span>
       </div>
       <PlayerProfileTables dossier={dossier} segment={view.segment} basis={view.basis}/>
+      <ProfileContracts dossier={dossier}/>
+      <ProfileHonors dossier={dossier}/>
      </div>}
     </section>}
     <footer className="footer">Arcside experimental React workbench · Read-only, static-first · Existing Flutter shell unchanged</footer>
