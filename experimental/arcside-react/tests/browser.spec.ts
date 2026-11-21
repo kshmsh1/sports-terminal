@@ -288,7 +288,7 @@ test('Financials renders original Flutter team reference, never a synthesized mo
     dartSourceSha256:'synthetic-browser-only',teams:Array.from({length:30},(_,i)=>({
      team:i===0?'CHI':'T'+String(i).padStart(2,'0'),standardRoster:14,twoWayRoster:3,
      capSpace:i===0?1000000:0,taxSpace:0,firstApronSpace:0,secondApronSpace:0,
-     hardCap:null,availableExceptions:{},largestTpe:null,largestTpeExpires:null}))})})}));
+     hardCap:null,availableExceptions:{},largestTpe:null,largestTpeExpires:null}))})}));
  await page.goto('/financials?season=2025-26&segment=regular&basis=perGame');
  await expect(page.getByRole('heading',{name:'Financials'})).toBeVisible();
  await page.getByRole('button',{name:'CHI'}).click();
