@@ -7,10 +7,11 @@
 # --visualization-guided: acceptance plus human 24-trial chart UX benchmark
 # --advanced-acceptance: actual Dart catalog reference + React comparison + browser journeys
 # --advanced-guided: above plus isolated 30-trial post-repair operator confirmation
+# --objective: repeatable non-certifying load/frame probes, Labs roundtrips, accessibility smoke and source scope audit
 set -euo pipefail
 MODE="${1:---automated}"
-if [[ "$MODE" != "--automated" && "$MODE" != "--advanced-acceptance" && "$MODE" != "--advanced-guided" && "$MODE" != "--visualization-guided" && "$MODE" != "--visualization-acceptance" && "$MODE" != "--all" ]]; then
- echo 'Usage: bash scripts/phase3_release_compare.sh [--automated|--advanced-acceptance|--advanced-guided|--visualization-acceptance|--visualization-guided]' >&2;exit 2
+if [[ "$MODE" != "--automated" && "$MODE" != "--advanced-acceptance" && "$MODE" != "--advanced-guided" && "$MODE" != "--visualization-guided" && "$MODE" != "--visualization-acceptance" && "$MODE" != "--objective" && "$MODE" != "--all" ]]; then
+ echo 'Usage: bash scripts/phase3_release_compare.sh [--automated|--advanced-acceptance|--advanced-guided|--visualization-acceptance|--visualization-guided|--objective]' >&2;exit 2
 fi
 if [[ "$MODE" == "--all" ]];then
  echo 'The pre-repair 90-trial --all protocol is retired. Valid season trials are preserved; use --visualization-guided for the new chart measurements.' >&2;exit 2
@@ -133,8 +134,25 @@ if [[ "$MODE" == "--visualization-guided" ]];then
   ) || STATUS=1
  fi
 fi
+if [[ "$MODE" == "--objective" ]];then
+ echo 'Collecting original-corpus scope coverage (absent React modules remain explicit blockers)...'
+ (cd "$ROOT/experimental/arcside-react" && node scripts/phase3_readiness_audit.mjs) || STATUS=1
+ echo 'Collecting observational, alternating release browser metrics (NOT GPU/chart parity)...'
+ (cd "$ROOT/experimental/arcside-react" && \\
+  ARCSIDE_FLUTTER_URL="$FLUTTER_URL" ARCSIDE_REACT_URL="$REACT_URL" \\
+  ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \\
+  node scripts/phase3_objective_benchmark.mjs) || STATUS=1
+ echo 'Probing browser-semantic accessibility (NOT native Safari/VoiceOver/NVDA)...'
+ (cd "$ROOT/experimental/arcside-react" && \\
+  ARCSIDE_REACT_URL="$REACT_URL" ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \\
+  node scripts/phase3_accessibility_probe.mjs) || STATUS=1
+ echo 'Checking original Labs exports using isolated disposable browser data...'
+ (cd "$ROOT/experimental/arcside-react" && \\
+  ARCSIDE_REACT_URL="$REACT_URL" ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \\
+  node scripts/phase3_lab_integrity_probe.mjs) || STATUS=1
+fi
 (cd "$ROOT/experimental/arcside-react" && node scripts/phase3_decision.mjs) || STATUS=1
-echo 'Phase 3 evidence: experimental/arcside-react/evidence/{real,guided,advanced,visualization,decision}/'
+echo 'Phase 3 evidence: experimental/arcside-react/evidence/{real,guided,advanced,visualization,objective,readiness,accessibility,labs,decision}/'
 if [[ "$STATUS" -ne 0 ]];then
  echo 'At least one evaluation step failed. Inspect evidence; NEVER call this a pass.' >&2
 fi
