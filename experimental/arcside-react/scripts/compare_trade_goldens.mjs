@@ -3,6 +3,7 @@
 // Usage: node scripts/compare_trade_goldens.mjs reference.json candidate.json
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
+import {isDeepStrictEqual} from 'node:util';
 const [baseline,candidate]=process.argv.slice(2);
 if(!baseline||!candidate){console.error('Usage: node scripts/compare_trade_goldens.mjs original_dart.json candidate.json');process.exit(2);}
 if(resolve(baseline)===resolve(candidate)){
@@ -24,9 +25,9 @@ for(const key of keys){
  const metricFields=['isValid','errorCount','warningCount'];
  for(const k of metricFields)if(original[k]!==next[k])fail.push(key+'.'+k);
  const fa=original.findings??[],fb=next.findings??[];
- if(JSON.stringify(fa)!==JSON.stringify(fb))fail.push(key+'.findings severity/codes/messages');
+ if(!isDeepStrictEqual(fa,fb))fail.push(key+'.findings severity/codes/messages');
  const sa=original.teamSummaries??{},sb=next.teamSummaries??{};
- if(JSON.stringify(sa)!==JSON.stringify(sb))fail.push(key+'.teamSummaries salary/roster/apron');
+ if(!isDeepStrictEqual(sa,sb))fail.push(key+'.teamSummaries salary/roster/apron');
 }
 if(Object.keys(b.cases??{}).length!==keys.length)fail.push('scenario coverage differs');
 if(fail.length){console.error('CBA golden parity FAIL:\n'+fail.join('\n'));process.exit(1);}
