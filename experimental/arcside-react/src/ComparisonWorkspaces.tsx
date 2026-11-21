@@ -101,7 +101,7 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
   Efficiency:['pace','ortg','drtg','net_rtg','srs'],
   Games:['games','wins','losses','win_pct']
  };
- const selectedMetrics: string[]=metricSet.length?metricSet:(groups as Record<string,string[]>)[group]??groups.Basic;
+ const selectedMetrics: string[]=metricSet.length?metricSet:(groups as unknown as Record<string,string[]>)[group]??groups.Basic;
  useEffect(()=>{setSlots(prev=>prev.map(s=>({...s,season:s.season||season})))},[season]);
  useEffect(()=>{
   const missing=[...new Set(slots.map(s=>s.season).filter(Boolean))].filter(s=>s!==snapshot?.season_id||snapshot?.season_type!==segment).filter(s=>!localSnapshots[s]);
