@@ -117,3 +117,15 @@ Only reuse the Flutter binary if its original sources and build/web have not cha
 - The objective accessibility probe now covers fourteen navigation routes and checks first-keyboard-Tab behavior, named navigation, focusable theme control, landmark IDs and relevant Lab/chart alternatives. This remains a browser-automation smoke, not VoiceOver/NVDA/WCAG certification.
 
 See [the updated engineering closeout and gate ledger](../../docs/architecture/phase3_closeout_and_migration_gates_2026_11_21.md). React remains an isolated candidate; Flutter is the source of truth; PR #89 remains draft. The physical-device, genuinely matched interaction/GPU, native Labs security, complete UI/CBA parity and human owner-signoff gates remain required.
+
+## Single-command original-Mac automated acceptance
+
+To rerun all three independent source-backed acceptance channels as a coordinated release-build study, execute:
+
+```bash
+cd ~/sports_terminal
+git pull --ff-only
+bash scripts/phase3_full_automated_acceptance.sh
+```
+
+This rebuilds Flutter and React **once** for the first objective stage, then reuses the identical release binaries for Advanced Stats and Visualization Studio source acceptance. It requires the original **untracked** Mac NBA corpus and installed Flutter/Node/Chrome/Playwright. It deliberately avoids synthetic substitutions, the retired manual 90-trial suite and stale build reuse. It does not run native VoiceOver/NVDA, certify GPU performance or approve full migration. Any failed acceptance command exits nonzero and leaves local evidence to inspect.

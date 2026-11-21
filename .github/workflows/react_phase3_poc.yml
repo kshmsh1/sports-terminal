@@ -67,6 +67,7 @@ jobs:
           node --check scripts/phase3_bundle_gate.mjs
           node scripts/phase3_readiness_audit.mjs
           bash -n ../../scripts/phase3_release_compare.sh
+          bash -n ../../scripts/phase3_full_automated_acceptance.sh
           node scripts/phase3_decision.mjs
       - name: Retain read-only tracked-source scope audit
         if: always()
