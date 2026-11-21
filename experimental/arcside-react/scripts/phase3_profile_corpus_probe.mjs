@@ -46,8 +46,14 @@ try{
    if(count!==expected)throw Error('Published '+segment+' dossier rows '+expected+' versus React '+count);
    const advancedHeading=await page.getByRole('heading',{name:'Advanced statistics'}).count();
    if(advancedHeading!==1)throw Error('Advanced table section absent');
+   if(await page.getByRole('region',{name:'Player contract'}).count()!==1)
+    throw Error('Original Flutter contract section absent from source-backed dossier');
+   if(await page.getByRole('region',{name:'Player awards and context'}).count()!==1)
+    throw Error('Original Flutter honors section absent from source-backed dossier');
+   if(await page.locator('.profile-summary').count()!==1)
+    throw Error('Original Flutter career context summary absent');
    checks.push({...player,segment,expectedRows:player[segment],observedRows:count-1,
-    summary:'Published names and original dossier season row count visible; not a source value-by-value Flutter comparison'});
+    summary:'Published names and original dossier season row count, summary, contract/honors sections visible; NOT exact Flutter column/contract equivalence'});
   }catch(e){errors.push({playerKey:player.playerKey,error:String(e.message??e)})}
   finally{await page.close()}
  }
