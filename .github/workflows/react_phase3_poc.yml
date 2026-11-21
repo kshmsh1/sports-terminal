@@ -1,0 +1,101 @@
+name: React Phase 3 prototype quality
+on:
+  pull_request:
+    paths:
+      - 'experimental/arcside-react/**'
+      - 'scripts/phase3_release_compare.sh'
+      - 'test/phase3_advanced_acceptance_export_test.dart'
+      - 'web/labs/arcside_context_bridge.mjs'
+      - 'web/labs/python/index.html'
+      - 'web/labs/sheets/index.html'
+      - '.github/workflows/react_phase3_poc.yml'
+  workflow_dispatch:
+
+jobs:
+  react-poc:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: experimental/arcside-react
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Use current npm 11 installer
+        run: npm install -g npm@11
+      - name: Install exactly pinned dependency lock
+        run: npm ci --no-audit --no-fund
+      - name: 'Security gate - no known moderate-or-higher dependency advisories'
+        run: npm audit --audit-level=moderate
+      - name: Typecheck and build experimental shell
+        run: npm run build
+      - name: Contract unit tests
+        run: npm test
+      - name: Guard Phase 3 evaluation against unsupported migration claims
+        run: node --test tests/phase3_decision.test.mjs tests/trade_gate.test.mjs
+      - name: Install three Playwright browser engines for synthetic journeys
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Browser journeys (synthetic fixtures, not real Safari/assistive technology)
+        run: npm run test:browser
+      - name: Offline synthetic UI benchmark smoke (NOT a Flutter comparison)
+        run: |
+          npm run dev -- --port 5173 > /tmp/arcside-react-vite.log 2>&1 &
+          for i in $(seq 1 30); do curl --fail --silent http://127.0.0.1:5173/ >/dev/null && break; sleep 1; done
+          ARCSIDE_COLD_RUNS=1 ARCSIDE_WARM_RUNS=2 npm run benchmark
+      - name: Validate locally executable real-corpus and Flutter comparison tools
+        run: |
+          node --check scripts/inspect_corpus.mjs
+          node --check scripts/real_corpus_journeys.mjs
+          node --check scripts/paired_guided_tasks.mjs
+          node --check scripts/phase3_decision.mjs
+          node --check scripts/advanced_acceptance_compare.mjs
+          node --check scripts/guided_advanced_acceptance.mjs
+          node --check scripts/guided_overlay.mjs
+          node --check scripts/guided_visualization_acceptance.mjs
+          node --check scripts/visualization_acceptance_compare.mjs
+          node --check scripts/phase3_objective_benchmark.mjs
+          node --check scripts/phase3_readiness_audit.mjs
+          node --check scripts/phase3_accessibility_probe.mjs
+          node --check scripts/phase3_lab_integrity_probe.mjs
+          node --check scripts/phase3_profile_corpus_probe.mjs
+          node --check scripts/phase3_module_corpus_probe.mjs
+          node scripts/phase3_readiness_audit.mjs
+          bash -n ../../scripts/phase3_release_compare.sh
+          node scripts/phase3_decision.mjs
+      - name: Retain read-only tracked-source scope audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arcside-phase3-readiness-audit
+          path: experimental/arcside-react/evidence/readiness/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Retain decision-evidence gate report (missing local sources are NOT_RUN)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arcside-phase3-gate-report
+          path: experimental/arcside-react/evidence/decision/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Retain synthetic benchmark samples
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arcside-react-phase3-synthetic-benchmark
+          path: experimental/arcside-react/evidence/benchmarks
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Retain traces and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arcside-react-phase3-browser-evidence
+          path: |
+            experimental/arcside-react/test-results
+            experimental/arcside-react/playwright-report
+          if-no-files-found: ignore
+          retention-days: 14
