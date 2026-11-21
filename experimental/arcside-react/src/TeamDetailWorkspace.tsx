@@ -53,7 +53,9 @@ export function TeamDetailWorkspace({teamKey,snapshot,onPlayer,onGame,onTeam}:{
  const [historySegment,setHistorySegment]=useState<'regular'|'playoffs'>('regular');
  const [error,setError]=useState(''),[loading,setLoading]=useState(true);
  useEffect(()=>{const controller=new AbortController();setLoading(true);setError('');setDossier(null);
-  Promise.all([getTeamIndex(controller.signal),getDatedContracts(controller.signal)]).then(async([items,salary])=>{
+  Promise.allSettled([getTeamIndex(controller.signal),getDatedContracts(controller.signal)]).then(async results=>{
+   if(results[0].status!=='fulfilled')throw results[0].reason;
+   const items=results[0].value,salary=results[1].status==='fulfilled'?results[1].value:null;
    if(controller.signal.aborted)return;
    setIndex(items);setContracts(salary);
    setDossier(await getTeamDossier(teamKey,items,controller.signal));
