@@ -232,7 +232,13 @@ for(const name of browsers){
     // top 40 (not the entire season population), minimum 50/4 GP, AST vs PTS.
     assert.equal(await p.getByLabel('Chart type').inputValue(),'scatter');
     assert.equal(await p.getByLabel('Population size').inputValue(),'40');
-    assert.equal(await p.getByLabel('Minimum games').inputValue(),segment==='regular'?'50':'4');
+    // React restores saved chart settings, then applies segment defaults in an effect.
+     // The playoffs range input temporarily clamps the restored regular-season 50
+     // to its HTML max of 28 before the effect sets the intended value of 4.
+     // Wait for the settled UI state rather than asserting during that transition.
+     await p.waitForFunction(expected=>
+      document.querySelector('input[aria-label="Minimum games"]')?.value===expected,
+      segment==='regular'?'50':'4',{timeout:10000});
     assert.equal(await p.getByLabel('X metric').inputValue(),'ast');
     assert.equal(await p.getByLabel('Y metric').inputValue(),'pts');
     const displayedRows=await p.locator('.studio .chart-accessible tbody tr').count();
