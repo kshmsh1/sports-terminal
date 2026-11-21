@@ -400,7 +400,7 @@ test('Trade Machine imports canonical dated first/second-round interests and TPE
  expect(unavailable?.tradable).toBe(false);
  await page.getByLabel('Trade first team').fill('BOS');
  await page.getByLabel('Trade second team').fill('PHI');
- await expect(page.getByLabel('Source draft interest').locator('option[value="BOS-2029-1-OUT"]')).toBeDisabled();
+ await expect(page.getByLabel('Source draft interest').locator('option[value="BOS-2029-1-OUT"]')).toHaveAttribute('disabled','');
  await page.getByLabel('Source draft interest').selectOption('BOS-2027-1');
  await page.getByLabel('Source asset receiving team').selectOption('PHI');
  await page.getByRole('button',{name:'Add source draft interest'}).click();
