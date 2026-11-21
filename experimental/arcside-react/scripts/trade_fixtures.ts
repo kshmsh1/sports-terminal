@@ -1,7 +1,7 @@
 // Exact fixtures constructed independently in TypeScript, matching the original
 // Dart phase3_trade_reference_export_test.dart scenario inputs.
-import {nba2026Cap,validateTrade,jsonTradeReport} from '../src/tradeEngine';
-import type {TradeAsset,TradeAssignment,TradeScenario} from '../src/tradeEngine';
+import {nba2026Cap,validateTrade,jsonTradeReport} from '../src/tradeEngine.ts';
+import type {TradeAsset,TradeAssignment,TradeScenario} from '../src/tradeEngine.ts';
 export function originalCbaFixtureScenarios():Record<string,TradeScenario>{
  const player=(id:string,label:string,originTeam:string,salary:number,metadata:Record<string,unknown>={}):TradeAsset=>
   ({id,type:'player',label,originTeam,salary,metadata});
