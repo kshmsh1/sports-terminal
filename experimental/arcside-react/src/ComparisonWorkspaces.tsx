@@ -106,7 +106,7 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
  const selectedMetrics: string[]=metricSet.length?metricSet:(groups as unknown as Record<string,string[]>)[group]??groups.Basic;
  useEffect(()=>{setSlots(prev=>prev.map(s=>s.season?s:{...s,season}))},[season]);
  useEffect(()=>{
-  const missing=[...new Set(slots.map(s=>s.season).filter(Boolean))].filter(s=>s!==snapshot?.season_id||snapshot?.season_type!==segment).filter(s=>!localSnapshots[s]);
+  const missing=[...new Set(slots.map(s=>s.season).filter(Boolean))].filter(s=>!(s===snapshot?.season_id&&snapshot?.season_type===segment)).filter(s=>!localSnapshots[s]);
   if(!missing.length)return;
   const controller=new AbortController();let alive=true;
   Promise.all(missing.map(s=>getSeason(s,segment,controller.signal).then(data=>[s,data] as const)))
