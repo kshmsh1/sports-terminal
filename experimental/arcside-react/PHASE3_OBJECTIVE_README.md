@@ -62,3 +62,28 @@ ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --objectiv
 If `build/web` is missing or you have separately changed Flutter application source since that build, omit `ARCSIDE_COMPARE_REUSE_BUILDS=1` and run `bash scripts/phase3_release_compare.sh --objective` to rebuild both release shells.
 
 The read-only salary artifact is emitted under `experimental/arcside-react/dist/data/phase3/2026-27-contracts.json`. Never commit generated historical corpus files, a local workbook, or service credentials.
+
+## Five-route source-backed expansion (2026-11-20 continuation)
+
+The experiment now has initial `/player-compare`, `/team-compare`, `/box-scores`, `/financials`, and `/with-without` routes. These are not placeholders or invented source rows:
+
+- **Player Compare:** 2–5 slots, independent historical seasons, source-backed standard rate bases, head-to-head leader and tie rules. Reuses the existing React engine already covered by original-Dart metrics parity. Flutter saved-view and full advanced metric customization parity remain outstanding.
+- **Team Compare:** 2–5 slots and historical seasons; canonical team-season records, standings, and complete actual team game logs are read with missing values left unavailable. No player-to-team inferred zeros.
+- **Box Scores:** original historical v5 `games/index.json` and published per-game detail files; date/season/type filtering, team toggles, player game inspection. Per-game records not materialized in the corpus are explicitly unavailable.
+- **Financials:** same original Flutter team financial snapshot from `lib/services/nba_team_financial_reference_2026.dart`, emitted into the isolated React build; immutable 30-team financial reference dated 2026-10-05, not live contract updates.
+- **With/Without:** same optional original `lineups/<season>/<segment>/with_without.json` pair split files as Flutter; lack of a lineup source never produces fabricated on/off values.
+
+Added Vitest checks of the team-record completeness and comparison winning/tie behavior, Playwright UI tests with **explicitly synthetic** intercepted reference shards, and a separate authentic-corpus route smoke script `scripts/phase3_module_corpus_probe.mjs`, now called by the objective shell script. The readiness audit marks each route `SOURCE_BACKED_PILOT_ROUTE_NOT_FULL_PARITY`, not complete Flutter equivalence.
+
+### Fast local release verification
+
+Because these changes only affect the isolated React app and the original Dart financial-reference parser is part of the **React Vite build**, and provided `build/web` still reflects unchanged Flutter sources:
+
+```bash
+cd ~/sports_terminal
+git pull --ff-only
+(cd experimental/arcside-react && npm run build && npm test)
+ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --objective
+```
+
+If Flutter source or `build/web` has changed, omit `ARCSIDE_COMPARE_REUSE_BUILDS=1`. The original Flutter parity engine remains authoritative, and the draft branch must not be merged until complete semantic, UX, assistive technology, Labs security and matched visual performance gates have passed.
