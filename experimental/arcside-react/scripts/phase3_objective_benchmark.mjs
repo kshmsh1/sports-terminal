@@ -45,7 +45,7 @@ async function manifestCheck(base){
   throw Error('Stale or mismatched authentic manifest: '+base);
 }
 try{
- for(const base of Object.values(urls))await manifestCheck(base.replace(/\\/$/,''));
+ for(const base of Object.values(urls))await manifestCheck(base.replace(/\/$/,''));
  for(let trial=1;trial<=rounds;trial++){
   for(const app of trial%2?['Flutter','React']:['React','Flutter']){
    const isCold=trial<=cold,base=urls[app].replace(/\\/$/,'');
