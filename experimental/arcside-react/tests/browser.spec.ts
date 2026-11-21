@@ -193,6 +193,18 @@ test('Trade Machine pilot validates an editable modeled scenario without implyin
  await expect(page.getByRole('status').filter({hasText:'No modeled blocking errors'})).toBeVisible();
 });
 
+test('multi-team hypothetical trade editor never treats blank payroll as zero',async({page})=>{
+ await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:'Add participating team (2–5)'}).click();
+ await expect(page.getByLabel('Trade team 3',{exact:true})).toHaveValue('CCC');
+ await expect(page.getByRole('row').filter({hasText:'CCC'})).toBeVisible();
+ await page.getByLabel('Trade team 3 salary').fill('');
+ await expect(page.getByRole('alert')).toContainText('Enter nonnegative numeric payrolls');
+ await page.getByLabel('Trade team 3 salary').fill('140000000');
+ await page.getByRole('button',{name:'Remove team 3'}).click();
+ await expect(page.getByLabel('Trade team 3',{exact:true})).toHaveCount(0);
+});
+
 test('player dossier exposes published historical career and advanced family tables',async({page})=>{
  await page.goto('/player/synthetic-0?season=2025-26&segment=regular&basis=perGame');
  await expect(page.getByRole('heading',{name:'Synthetic Player 0'})).toBeVisible();

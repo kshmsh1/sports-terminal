@@ -32,6 +32,8 @@ jobs:
         run: npm audit --audit-level=moderate
       - name: Typecheck and build experimental shell
         run: npm run build
+      - name: Enforce deferred analytical workspace bundle budget
+        run: node scripts/phase3_bundle_gate.mjs
       - name: Contract unit tests
         run: npm test
       - name: Guard Phase 3 evaluation against unsupported migration claims
@@ -62,6 +64,7 @@ jobs:
           node --check scripts/phase3_lab_integrity_probe.mjs
           node --check scripts/phase3_profile_corpus_probe.mjs
           node --check scripts/phase3_module_corpus_probe.mjs
+          node --check scripts/phase3_bundle_gate.mjs
           node scripts/phase3_readiness_audit.mjs
           bash -n ../../scripts/phase3_release_compare.sh
           node scripts/phase3_decision.mjs

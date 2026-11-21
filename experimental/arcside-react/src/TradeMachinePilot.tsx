@@ -4,7 +4,14 @@ import type {TradeAsset,TradeAssignment,TradeScenario} from './tradeEngine';
 import type {DatedContractSnapshot} from './data';
 import {getDatedContracts} from './data';
 type RawDraft={id:string;label:string;originTeam:string;destinationTeam:string;type:TradeAsset['type'];salary:string;metadata:string};
-const asNumber=(s:string)=>{const n=Number(s);return Number.isFinite(n)?n:null};
+// Input validation is strict: JS Number('') === 0 and Number('0x10') === 16
+// must never silently turn an empty or malformed salary into a valid trade.
+export function parseTradeAmount(input:string):number|null{
+ const raw=input.trim();
+ if(!/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(raw))return null;
+ const value=Number(raw);
+ return Number.isFinite(value)&&Number.isSafeInteger(Math.round(value*100))?value:null;
+}
 const sample=[
  {id:'a',label:'Player A',originTeam:'AAA',destinationTeam:'BBB',type:'player',salary:'8000000',metadata:'{}'},
  {id:'b',label:'Player B',originTeam:'BBB',destinationTeam:'AAA',type:'player',salary:'8000000',metadata:'{}'}
@@ -12,6 +19,7 @@ const sample=[
 export function TradeMachinePilot(){
  const [teamA,setTeamA]=useState('AAA'),[teamB,setTeamB]=useState('BBB');
  const [salaryA,setSalaryA]=useState('140000000'),[salaryB,setSalaryB]=useState('140000000');
+ const [extraTeams,setExtraTeams]=useState<{name:string;salary:string}[]>([]);
  const [asOf,setAsOf]=useState('2026-11-20');
  const [drafts,setDrafts]=useState<RawDraft[]>(sample),[dirty,setDirty]=useState(false);
  const [details,setDetails]=useState(false);
@@ -37,13 +45,15 @@ export function TradeMachinePilot(){
 
  const info=useMemo(()=>{
   const errors:string[]=[];
-  const teams=[teamA.trim().toUpperCase(),teamB.trim().toUpperCase()];
-  if(teams.some(x=>!x)||teams[0]===teams[1])errors.push('Teams must be two distinct nonempty identifiers.');
-  const salA=asNumber(salaryA),salB=asNumber(salaryB);
-  if(salA===null||salB===null||salA<0||salB<0)errors.push('Enter valid nonnegative team salaries.');
+  const teams=[teamA.trim().toUpperCase(),teamB.trim().toUpperCase(),
+   ...extraTeams.map(t=>t.name.trim().toUpperCase())];
+  if(teams.some(x=>!x)||new Set(teams).size!==teams.length)
+   errors.push('All participating teams must have distinct nonempty identifiers.');
+  const salaries=[salaryA,salaryB,...extraTeams.map(t=>t.salary)].map(parseTradeAmount);
+  if(salaries.some(x=>x===null))errors.push('Enter nonnegative numeric payrolls with no commas or currency symbols.');
   const assignments:TradeAssignment[]=[];
   for(const [i,d] of drafts.entries()){
-   const salary=asNumber(d.salary);
+   const salary=parseTradeAmount(d.salary);
    if(salary===null||salary<0){errors.push('Asset '+(i+1)+' has an invalid salary.');continue}
    let metadata:Record<string,unknown>={};
    try{const parsed=JSON.parse(d.metadata||'{}');if(!parsed||Array.isArray(parsed)||typeof parsed!=='object')
@@ -53,12 +63,11 @@ export function TradeMachinePilot(){
     type:d.type,salary,metadata},destinationTeam:d.destinationTeam});
   }
   if(errors.length)return {errors,scenario:null,report:null};
-  const capContexts={ [teams[0]]:nba2026Cap(teams[0],salA!),
-   [teams[1]]:nba2026Cap(teams[1],salB!)};
+  const capContexts=Object.fromEntries(teams.map((team,i)=>[team,nba2026Cap(team,salaries[i]!) ]));
   const scenario:TradeScenario={id:'phase3-review',name:'Review scenario',operatingSeason:'2026-27',
    teams,assignments,capContexts,asOfDateIso:asOf?asOf+'T00:00:00Z':''};
   return {errors,scenario,report:validateTrade(scenario)};
- },[teamA,teamB,salaryA,salaryB,drafts,asOf]);
+ },[teamA,teamB,salaryA,salaryB,extraTeams,drafts,asOf]);
  const update=(index:number,patch:Partial<RawDraft>)=>{setDirty(true);
   setDrafts(old=>old.map((d,i)=>i===index?{...d,...patch}:d))};
  const add=()=>{setDirty(true);setDrafts(old=>[...old,{id:'new-'+old.length,label:'New asset',
@@ -71,8 +80,18 @@ export function TradeMachinePilot(){
    <label>First team payroll ($)<input aria-label="First team salary" inputMode="numeric" value={salaryA} onChange={e=>{setDirty(true);setSalaryA(e.target.value)}}/></label>
    <label>Second team identifier<input aria-label="Trade second team" value={teamB} onChange={e=>{setDirty(true);setTeamB(e.target.value.toUpperCase())}}/></label>
    <label>Second team payroll ($)<input aria-label="Second team salary" inputMode="numeric" value={salaryB} onChange={e=>{setDirty(true);setSalaryB(e.target.value)}}/></label>
+   {extraTeams.map((team,index)=><div key={index} className="trade-extra-team">
+    <label>Participating team {index+3}<input aria-label={'Trade team '+(index+3)}
+     value={team.name} onChange={e=>{setDirty(true);setExtraTeams(xs=>xs.map((x,i)=>i===index?{...x,name:e.target.value.toUpperCase()}:x))}}/></label>
+    <label>Team {index+3} payroll ($)<input aria-label={'Trade team '+(index+3)+' salary'}
+     inputMode="decimal" value={team.salary} onChange={e=>{setDirty(true);setExtraTeams(xs=>xs.map((x,i)=>i===index?{...x,salary:e.target.value}:x))}}/></label>
+    <button aria-label={'Remove team '+(index+3)} onClick={()=>{setDirty(true);setExtraTeams(xs=>xs.filter((_,i)=>i!==index))}}>Remove team {index+3}</button>
+   </div>)}
    <label>As-of date<input aria-label="Trade as-of date" type="date" value={asOf} onChange={e=>{setDirty(true);setAsOf(e.target.value)}}/></label>
   </div>
+  <div className="trade-actions"><button disabled={extraTeams.length>=3}
+   onClick={()=>{setDirty(true);setExtraTeams(xs=>[...xs,{name:['CCC','DDD','EEE'][xs.length],salary:'140000000'}])}}>
+   Add participating team (2–5)</button></div>
   <fieldset className="trade-published-assets"><legend>Source-backed player salary library · optional scenario inputs</legend>
    <p className="subtle">Published salary values as of {publishedContracts?.asOf??'unavailable'}. These are historical seed records, not verified current cap charges or tradeable assets.</p>
    {publishedError&&<p role="alert">Published salary snapshot unavailable: {publishedError}</p>}
@@ -103,7 +122,7 @@ export function TradeMachinePilot(){
   </fieldset>)}</div>
   <div className="trade-actions">
    <button onClick={add}>Add asset</button>
-   <button onClick={()=>{setDrafts(sample);setTeamA('AAA');setTeamB('BBB');setSalaryA('140000000');setSalaryB('140000000');setAsOf('2026-11-20');setDirty(false)}}>Reset example</button>
+   <button onClick={()=>{setDrafts(sample);setTeamA('AAA');setTeamB('BBB');setSalaryA('140000000');setSalaryB('140000000');setExtraTeams([]);setAsOf('2026-11-20');setDirty(false)}}>Reset example</button>
    <button onClick={()=>setDetails(x=>!x)} aria-expanded={details}>Show modeled validation details</button>
   </div>
   {info.errors.length>0&&<div role="alert">{info.errors.join(' ')}</div>}
@@ -118,6 +137,6 @@ export function TradeMachinePilot(){
     <p key={i}><strong>{f.severity.toUpperCase()} · {f.code}</strong> · {f.team??'Scenario'}: {f.message}</p>):
     <p>No findings on this modeled scenario.</p>}</div>}
   </div>}
-  <p className="table-note">The original Flutter Trade Machine is authoritative. This experimental UI can import dated, source-labeled player salary records, but still lacks verified live cap team payroll, draft protections, complete asset eligibility and a full production transaction workflow; it cannot confirm CBA legality. Full production feature parity remains blocked.</p>
+  <p className="table-note">The original Flutter Trade Machine is authoritative. This experimental UI models up to five teams and can import dated, source-labeled player salary records for the first two teams, but still lacks verified live cap team payroll, draft protections, complete asset eligibility and a full production transaction workflow; it cannot confirm CBA legality. Full production feature parity remains blocked.</p>
  </section>;
 }
