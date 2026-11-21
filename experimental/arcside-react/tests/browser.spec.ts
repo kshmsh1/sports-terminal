@@ -30,8 +30,12 @@ test('scatter interactions and theme persist across refresh',async({page})=>{
  const plottedSummary=page.locator('.studio-chart-title p.subtle');
  await expect(plottedSummary).toHaveCount(1);
  await expect(plottedSummary).toContainText(/^40 plotted from 150 eligible/);
- await page.getByRole('button',{name:'Drag pan'}).click();
- await expect(page.getByRole('button',{name:'Drag pan'})).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByRole('button',{name:'Drag pan'})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Wheel zoom'})).toHaveCount(0);
+ // ECharts exposes inside dataZoom for wheel zoom and mouse-drag panning together.
+ const chart=page.locator('.studio-chart');
+ await expect(chart).toBeVisible();
+ await expect(page.getByRole('button',{name:'Reset view'})).toBeVisible();
  await page.getByLabel('X metric').selectOption('reb');
  await page.getByRole('checkbox',{name:'Best-fit line'}).check();
  await page.getByRole('button',{name:'Reset view'}).click();
