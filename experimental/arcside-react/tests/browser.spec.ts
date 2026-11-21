@@ -364,3 +364,24 @@ test('franchise history preserves Flutter planned-only scope and published ident
  await page.getByRole('button',{name:'Open team detail'}).click();
  await expect(page.getByRole('heading',{name:'Chicago',exact:true})).toBeVisible();
 });
+
+test('Trade Machine imports only exact original Flutter cap ledger for selected teams',async({page})=>{
+ await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ const res=await page.request.get('/data/phase3/2026-27-team-cap-ledger.json');
+ expect(res.status()).toBe(200);
+ const ledger=await res.json();
+ expect(ledger.kind).toBe('ARCSIDE_ORIGINAL_DART_TEAM_CAP_LEDGER_2026_27_V1');
+ expect(ledger.teams).toHaveLength(30);
+ const bos=ledger.teams.find((x:{team:string})=>x.team==='BOS');
+ const phi=ledger.teams.find((x:{team:string})=>x.team==='PHI');
+ expect(bos?.totalCap).toBeGreaterThan(0);
+ expect(phi?.totalCap).toBeGreaterThan(0);
+ await page.getByLabel('Trade first team').fill('BOS');
+ await page.getByLabel('Trade second team').fill('PHI');
+ await page.getByRole('button',{name:'Apply original team cap ledgers to participating teams'}).click();
+ await expect(page.getByLabel('First team salary')).toHaveValue(String(bos.totalCap));
+ await expect(page.getByLabel('Second team salary')).toHaveValue(String(phi.totalCap));
+ await expect(page.getByRole('status').filter({hasText:'Using original Flutter dated cap ledgers'})).toBeVisible();
+ await page.getByLabel('First team salary').fill('140000000');
+ await expect(page.getByRole('status').filter({hasText:'Using original Flutter dated cap ledgers'})).toHaveCount(0);
+});
