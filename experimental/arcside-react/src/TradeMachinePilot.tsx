@@ -145,6 +145,10 @@ export function TradeMachinePilot(){
   if(salaries.some(x=>x===null))errors.push('Enter nonnegative numeric payrolls with no commas or currency symbols.');
   const assignments:TradeAssignment[]=[];
   for(const [i,d] of drafts.entries()){
+   if(d.type==='tradeException'||d.type==='signingException'){
+    errors.push('Asset '+(i+1)+': TPEs and signing exceptions are not transferable. Select receiving-team TPE capacity or model a player/draft asset instead.');
+    continue;
+   }
    const salary=parseTradeAmount(d.salary);
    if(salary===null||salary<0){errors.push('Asset '+(i+1)+' has an invalid salary.');continue}
    let metadata:Record<string,unknown>={};

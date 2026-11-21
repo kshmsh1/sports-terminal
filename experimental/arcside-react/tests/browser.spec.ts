@@ -415,3 +415,11 @@ test('Trade Machine imports canonical dated first/second-round interests and TPE
  await page.getByRole('button',{name:'Show modeled validation details'}).click();
  await expect(page.getByLabel('CBA findings')).toContainText('TPE_UNUSED');
 });
+
+test('manual asset routing refuses to transfer TPE or signing exceptions',async({page})=>{
+ await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByLabel('Asset 1 type').selectOption('tradeException');
+ await expect(page.getByRole('alert').filter({hasText:'TPEs and signing exceptions are not transferable'})).toBeVisible();
+ await page.getByLabel('Asset 1 type').selectOption('signingException');
+ await expect(page.getByRole('alert').filter({hasText:'TPEs and signing exceptions are not transferable'})).toBeVisible();
+});
