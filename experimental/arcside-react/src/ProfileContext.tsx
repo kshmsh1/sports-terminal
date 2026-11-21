@@ -1,4 +1,4 @@
-import type {JsonRow} from './data';
+import type {JsonRow,DatedContractSnapshot} from './data';
 import {profileHonors} from './profileHonors';
 type Row=JsonRow;
 const rows=(x:unknown):Row[]=>Array.isArray(x)?x.filter((v):v is Row=>v!==null&&typeof v==='object'&&!Array.isArray(v)):[];
@@ -22,15 +22,45 @@ export function ProfileSummary({dossier}: {dossier:Row}){
   <div><span>ALL-STAR</span><strong>{starYears}</strong></div>
  </div>;
 }
-export function ProfileContracts({dossier}: {dossier:Row}){
- const contracts=rows(dossier.contracts);
+const normalizedName=(v:string)=>v.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+export function ProfileContracts({dossier,dated,registry,playerKey,playerName,loading=false}:{
+ dossier:Row;dated:DatedContractSnapshot|null;registry:Row[];
+ playerKey:string;playerName:string;loading?:boolean;
+}){
+ // Mirror original Flutter profile priority: dated authoritative snapshot
+ // first, then the published front-office contract registry.
+ const matchingDated=dated?.records.filter(item=>
+  normalizedName(item.player)===normalizedName(playerName)&&
+  Number(item.salaries['2026-27']??0)>0)??[];
+ const matches=registry.flatMap(wrapper=>{
+  const record=wrapper.record;
+  if(!record||Array.isArray(record)||typeof record!=='object')return [];
+  const row=record as Row;
+  if(String(row.player_id??'')===playerKey||
+     String(row.player_name??'').trim().toLowerCase()===playerName.toLowerCase())return [row];
+  return [];
+ });
+ const dossierContracts=rows(dossier.contracts);
  return <section className="panel profile-contract-panel" aria-label="Player contract">
   <div className="panel-title"><div><p className="eyebrow">ORIGINAL SOURCE CONTEXT</p><h2>Contract</h2></div></div>
-  {!contracts.length?<p className="empty">No registered contract record is available in this player dossier. The original Flutter profile may additionally resolve a separately maintained front-office registry and dated 2026–27 trade-contract snapshot; those feeds are not yet joined to React.</p>:
-   <div className="contract-list">{contracts.map((r,i)=><div key={i} className="contract-entry">
-    <strong>{fmt(r.team_id)} · {fmt(r.season)}</strong>
-    <div>{rows(r.years).map((item,j)=><p key={j}>{fmt(item.season)} · {money(item.salary)} · {money(item.guaranteed_amount)} guaranteed</p>)}</div>
-   </div>)}</div>}
+  {loading&&<p className="subtle" role="status">Checking original published salary records...</p>}
+  {matchingDated.length>0?<>
+   <h3>2026–27 · Current salary record</h3>
+   {matchingDated.map(item=><p key={item.id}>{item.team} · {money(item.salaries['2026-27'])} salary
+    {item.guaranteed!==null?' · '+money(item.guaranteed)+' source-reported guarantee':''}</p>)}
+   <p className="subtle">Source: {matchingDated[0].sourceLabel} · as of {dated?.asOf}. This is a dated salary snapshot, not a verified live contract feed.</p>
+  </>:matches.length>0?<div className="contract-list">
+   {matches.map((row,i)=><div key={i} className="contract-entry">
+    <strong>{fmt(row.team_id)} · {fmt(row.season)}</strong>
+    {rows(row.years).map((year,j)=><p key={j}>{fmt(year.season)} · {money(year.salary)} · {money(year.guaranteed_amount)} guaranteed</p>)}
+   </div>)}
+  </div>:dossierContracts.length>0?<div className="contract-list">
+   <p className="subtle">Historical dossier contract rows (not the original front-office registry)</p>
+   {dossierContracts.map((row,i)=><div key={i} className="contract-entry">
+    <strong>{fmt(row.team_id)} · {fmt(row.season)}</strong>
+    {rows(row.years).map((year,j)=><p key={j}>{fmt(year.season)} · {money(year.salary)} · {money(year.guaranteed_amount)} guaranteed</p>)}
+   </div>)}
+  </div>:<p className="empty">No registered contract record is currently available for this player. Historical statistics remain independent of contract-data availability.</p>}
  </section>;
 }
 export function ProfileHonors({dossier}: {dossier:Row}){
