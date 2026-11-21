@@ -83,6 +83,15 @@ def create_app(root: Path, origins: list[str] | None = None, token: str | None =
                        allow_credentials=False, allow_methods=["GET", "POST", "OPTIONS"],
                        allow_headers=["authorization", "content-type"])
 
+    @app.middleware("http")
+    async def confidential_api_headers(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["Referrer-Policy"] = "no-referrer"
+        return response
+
     def authorize(request: Request):
         security.check_http(request)
 
@@ -94,7 +103,11 @@ def create_app(root: Path, origins: list[str] | None = None, token: str | None =
 
     def validate_file(path: str) -> Path:
         file = security.file(path)
-        if file.relative_to(security.root).parts[0] in {".git", ".arcside"}:
+        # Reject reserved directories at ANY nesting depth, including
+        # a symlink resolved to a reserved subtree inside the workspace.
+        # This protects the companion's environment state and Git metadata.
+        if any(part in {".git", ".arcside", ".venv", "node_modules"} for part in
+               file.relative_to(security.root).parts):
             raise HTTPException(403, "Reserved project directory")
         return file
 

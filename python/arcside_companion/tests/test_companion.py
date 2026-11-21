@@ -233,3 +233,59 @@ def test_pip_input_cannot_accept_command_or_url_arguments(client):
     for p in bad:
         response=client.post("/api/env/install",headers=auth(),json={"packages":[p]})
         assert response.status_code==400, (p,response.text)
+
+
+def test_nested_reserved_paths_and_internal_symlink_are_denied(client, tmp_path):
+    (tmp_path / "nested" / ".git").mkdir(parents=True)
+    (tmp_path / "nested" / ".arcside").mkdir(parents=True)
+    (tmp_path / "nested" / ".venv").mkdir(parents=True)
+    (tmp_path / "nested" / "node_modules").mkdir(parents=True)
+    for folder in (".git", ".arcside", ".venv", "node_modules"):
+        path = f"nested/{folder}/config.py"
+        resp = client.post("/api/sync", json={"files": {path: "print(1)"}},
+                           headers=auth())
+        assert resp.status_code == 403, (path, resp.text)
+        assert not (tmp_path / path).exists()
+    (tmp_path / "alias").symlink_to(tmp_path / "nested" / ".arcside",
+                                    target_is_directory=True)
+    denied = client.post("/api/sync", json={"files": {"alias/secret.py": "x"}},
+                         headers=auth())
+    assert denied.status_code == 403
+
+
+def test_csrf_origin_cookie_and_token_denials_across_mutating_endpoints(client, tmp_path):
+    bad_origin = {**auth(), "Origin": "https://attacker.example"}
+    for route, payload in [
+        ("/api/sync", {"files": {"marker.py": "print('unsafe')"}}),
+        ("/api/run", {"mode": "selection", "source": "print(1)"}),
+        ("/api/git", {"action": "init"}),
+        ("/api/env/install", {"packages": ["example"]}),
+        ("/api/interrupt", {"job_id": "not-running"}),
+    ]:
+        cross = client.post(route, json=payload, headers=bad_origin)
+        assert cross.status_code == 403, (route, cross.text)
+        tokenless = client.post(route, json=payload, headers={
+            "Origin": "http://127.0.0.1:8765",
+            "Cookie": "access_token=test-secret",
+        })
+        assert tokenless.status_code == 401, (route, tokenless.text)
+    assert not (tmp_path / "marker.py").exists()
+
+
+def test_no_sensitive_api_cache_and_no_credential_reflection(client):
+    response = client.get("/api/env", headers=auth())
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["referrer-policy"] == "no-referrer"
+    assert "test-secret" not in response.text
+
+
+def test_websocket_rejects_foreign_origin_even_with_valid_token(client):
+    from starlette.websockets import WebSocketDisconnect
+    with pytest.raises(WebSocketDisconnect):
+        with client.websocket_connect("/ws/terminal", headers={
+            "Origin": "https://attacker.example", "Host": "127.0.0.1:8766"
+        }) as ws:
+            ws.send_json({"type": "authenticate", "token": "test-secret"})
+            ws.receive_json()

@@ -21,8 +21,11 @@ def main() -> None:
     if not 1024 <= args.port <= 65535:
         parser.error("Port must be 1024–65535")
     origins = args.allow_origin or ["http://127.0.0.1:8765", "http://localhost:8765"]
-    app = create_app(args.workspace, origins,
-                     token=os.environ.get('ARCSIDE_COMPANION_TOKEN') or None)
+    supplied_token = os.environ.get("ARCSIDE_COMPANION_TOKEN")
+    if supplied_token and len(supplied_token.encode("utf-8")) < 32:
+        parser.error("ARCSIDE_COMPANION_TOKEN must be at least 32 UTF-8 bytes; "
+                     "omit it to generate a random 256-bit token")
+    app = create_app(args.workspace, origins, token=supplied_token or None)
     token = app.state.security.token
     print("\nArcside local companion — TRUSTED PROJECTS ONLY", flush=True)
     print(f"Workspace: {app.state.security.root}", flush=True)
