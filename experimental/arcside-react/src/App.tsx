@@ -12,6 +12,9 @@ import {ComparisonWorkspace} from './ComparisonWorkspaces';
 import {BoxScoresWorkspace} from './BoxScoresWorkspace';
 import {FinancialsWorkspace} from './FinancialsWorkspace';
 import {WithWithoutWorkspace} from './WithWithoutWorkspace';
+import {TeamDetailWorkspace} from './TeamDetailWorkspace';
+import {GamesWorkspace} from './GamesWorkspace';
+import {FranchiseHistoryWorkspace} from './FranchiseHistoryWorkspace';
 
 type ViewState={path:string;season:string;segment:SeasonType;basis:RateBasis};
 function fromUrl():ViewState {
@@ -28,13 +31,14 @@ function urlFor(v:ViewState):string {
 }
 const qualify=(r:Row,segment:SeasonType)=> (r.values.gp??0)>=(segment==='regular'?50:4);
 const metricLabel=(m:MetricKey)=>metrics.find(x=>x.key===m)?.label??m;
-const allowedRoutes=['/stats','/advanced','/visualizations','/trade','/player-compare','/team-compare','/box-scores','/financials','/with-without','/workspaces/python','/workspaces/sheets'];
+const allowedRoutes=['/stats','/advanced','/visualizations','/trade','/player-compare','/team-compare','/box-scores','/financials','/with-without','/teams','/games','/franchise-history','/workspaces/python','/workspaces/sheets'];
 function labelFor(route:string):string {
  return ({'/stats':'Stats','/advanced':'Advanced Stats','/visualizations':'Visualizations',
  '/trade':'Trade Machine',
  '/player-compare':'Player Compare','/team-compare':'Team Compare',
  '/box-scores':'Box Scores','/financials':'Financials','/with-without':'With/Without',
- '/workspaces/python':'Python Lab','/workspaces/sheets':'Excel Workspace'} as Record<string,string>)[route]??'Player detail';
+ '/teams':'Teams','/games':'Games','/franchise-history':'Franchise History',
+ '/workspaces/python':'Python Lab','/workspaces/sheets':'Excel Workspace'} as Record<string,string>)[route]??(route.startsWith('/team/')?'Team detail':route.startsWith('/game/')?'Game detail':'Player detail');
 }
 export function App(){
  const [view,setView]=useState(fromUrl);
@@ -191,7 +195,7 @@ export function App(){
     {error&&<div className="warning" role="alert"><strong>Data or integration gate not met.</strong> {error}
       <p>No historical values have been invented or substituted. Generate the canonical static corpus and reload.</p></div>}
     {loading&&<p role="status" className="loading">Loading verified NBA static data…</p>}
-    {!allowedRoutes.includes(view.path)&&!view.path.startsWith('/player/')&&
+    {!allowedRoutes.includes(view.path)&&!view.path.startsWith('/player/')&&!view.path.startsWith('/team/')&&!view.path.startsWith('/game/')&&
      <div className="panel"><h2>Route not found</h2><button onClick={()=>navigate('/stats')}>Return to Stats</button></div>}
     {view.path==='/advanced'&&<AdvancedStatsTable rows={rows}
       basis={view.basis} segment={view.segment} season={view.season}
@@ -255,6 +259,19 @@ export function App(){
     {view.path==='/financials'&&<FinancialsWorkspace/>}
     {view.path==='/with-without'&&<WithWithoutWorkspace rows={rows} season={view.season}
      segment={view.segment} basis={view.basis}/>}
+    {(view.path==='/teams'||view.path.startsWith('/team/'))&&<TeamDetailWorkspace
+     teamKey={view.path.startsWith('/team/')?decodeURIComponent(view.path.slice('/team/'.length)):team==='All'?'BOS':team}
+     snapshot={snapshot} onPlayer={id=>navigate('/player/'+encodeURIComponent(id))}
+     onGame={id=>navigate('/game/'+encodeURIComponent(id))}
+     onTeam={id=>navigate('/team-compare?team='+encodeURIComponent(id))}/>}
+    {(view.path==='/games'||view.path.startsWith('/game/'))&&<GamesWorkspace
+     season={view.season} segment={view.segment}
+     initialGame={view.path.startsWith('/game/')?decodeURIComponent(view.path.slice('/game/'.length)):''}
+     onTeam={id=>navigate('/team/'+encodeURIComponent(id))}
+     onPlayer={id=>navigate('/player/'+encodeURIComponent(id))}/>}
+    {view.path==='/franchise-history'&&<FranchiseHistoryWorkspace
+     onTeam={id=>navigate('/team/'+encodeURIComponent(id))}/>}
+
     {isLab&&<section className="panel lab-panel">
      <div className="panel-title"><div><p className="eyebrow">BROWSER-NATIVE WORKSPACE / ORIGINAL MODULE</p>
        <h2>{labelFor(view.path)}</h2>
