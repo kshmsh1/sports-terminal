@@ -117,11 +117,11 @@ For the meaningful frontend comparison, do **not** time a Flutter debug server a
 ~~~bash
 git pull --ff-only
 bash scripts/phase3_release_compare.sh --automated
-# Or do the full paired task study, including 90 manually verified runs:
-bash scripts/phase3_release_compare.sh --all
+# Preferred Phase 3 continuation: source-backed objective browser observations
+bash scripts/phase3_release_compare.sh --objective
 ~~~
 
-The launcher compiles Flutter web **release** and React **production**, serves both on new loopback ports (Flutter 8768; React 4173), hashes the exact original manifest and selected season shards on both servers, runs real-data browser journeys with installed Chrome, and emits a PASS / FAIL / NOT_RUN decision report. The --all mode collects 5 cold + 10 warm same-machine repetitions for each app across season switching, rate/sort switching and chart zoom/pan tasks, alternating variant order. You mark completion or failure; the script cannot infer a user's successful Flutter interaction from a DOM selector. Each finished trial is checkpointed.
+The launcher compiles Flutter web **release** and React **production**, serves both on new loopback ports (Flutter 8768; React 4173), hashes the exact original manifest and selected season shards on both servers, runs real-data browser journeys with installed Chrome, and emits a PASS / FAIL / NOT_RUN decision report. The legacy --all human stopwatch protocol has been retired because it mixed unresolved feature mismatches and operator time with frontend latency. --objective instead collects browser-observable load, animation frame scheduling, React chart zoom/pan DOM events, source-based module coverage, disposable-Lab roundtrip checks and an accessibility smoke. Flutter chart rendering/GPU latency, native Safari/VoiceOver/NVDA and local privilege security remain unmeasured and BLOCKED. See PHASE3_OBJECTIVE_README.md.
 
 Outputs are kept in ignored local evidence directories: evidence/real, evidence/guided and evidence/decision. Review the artifacts and the design tradeoffs in docs/architecture/phase3_ui_ux_comparative_evaluation_2026_11_20.md. Run node scripts/phase3_decision.mjs in this directory to re-evaluate without rebuilding. Missing evidence is NOT_RUN; a synthetic React-only benchmark never proves Flutter-vs-React speedup. Any 10% p95 claim requires complete operator-verified same-hardware samples. Full product migration and owner sign-off remain separate mandatory gates.
 
