@@ -4,7 +4,7 @@ import type {JsonRow} from './data';
 export interface Honor {title:string;years:number[]}
 export function orderedPositions(raw:string){
  const allowed=['PG','SG','SF','PF','C'];
- const words=new Set((raw.toUpperCase().match(/(?:PG|SG|SF|PF|C)/g)??[]));
+ const words=new Set((raw.toUpperCase().match(/(?<![A-Z])(?:PG|SG|SF|PF|C)(?![A-Z])/g)??[]));
  return allowed.filter(pos=>words.has(pos)).join(', ');
 }
 function awardYear(row:JsonRow){
