@@ -10,8 +10,8 @@
 # --objective: repeatable non-certifying load/frame probes, Labs roundtrips, accessibility smoke and source scope audit
 set -euo pipefail
 MODE="${1:---automated}"
-if [[ "$MODE" != "--automated" && "$MODE" != "--advanced-acceptance" && "$MODE" != "--advanced-guided" && "$MODE" != "--visualization-guided" && "$MODE" != "--visualization-acceptance" && "$MODE" != "--objective" && "$MODE" != "--all" ]]; then
- echo 'Usage: bash scripts/phase3_release_compare.sh [--automated|--advanced-acceptance|--advanced-guided|--visualization-acceptance|--visualization-guided|--objective]' >&2;exit 2
+if [[ "$MODE" != "--frame-memory-guided" && "$MODE" != "--automated" && "$MODE" != "--advanced-acceptance" && "$MODE" != "--advanced-guided" && "$MODE" != "--visualization-guided" && "$MODE" != "--visualization-acceptance" && "$MODE" != "--objective" && "$MODE" != "--all" ]]; then
+ echo 'Usage: bash scripts/phase3_release_compare.sh [--frame-memory-guided|--automated|--advanced-acceptance|--advanced-guided|--visualization-acceptance|--visualization-guided|--objective]' >&2;exit 2
 fi
 if [[ "$MODE" == "--all" ]];then
  echo 'The pre-repair 90-trial --all protocol is retired. Valid season trials are preserved; use --visualization-guided for the new chart measurements.' >&2;exit 2
@@ -138,6 +138,11 @@ if [[ "$MODE" == "--visualization-guided" ]];then
    node scripts/guided_visualization_acceptance.mjs
   ) || STATUS=1
  fi
+fi
+if [[ "$MODE" == "--frame-memory-guided" ]];then
+ echo 'Operator matched chart tasks; capture browser frame scheduling and JS heap (NOT GPU performance)...'
+ (cd "$ROOT/experimental/arcside-react" &&
+  ARCSIDE_FLUTTER_URL="$FLUTTER_URL" ARCSIDE_REACT_URL="$REACT_URL" node scripts/phase3_paired_frame_memory.mjs) || STATUS=1
 fi
 if [[ "$MODE" == "--objective" ]];then
  echo 'Collecting original-corpus scope coverage (absent React modules remain explicit blockers)...'

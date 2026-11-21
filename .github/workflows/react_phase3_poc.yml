@@ -64,6 +64,7 @@ jobs:
           node --check scripts/phase3_lab_integrity_probe.mjs
           node --check scripts/phase3_profile_corpus_probe.mjs
           node --check scripts/phase3_module_corpus_probe.mjs
+          node --check scripts/phase3_paired_frame_memory.mjs
           node --check scripts/phase3_bundle_gate.mjs
           node scripts/phase3_readiness_audit.mjs
           bash -n ../../scripts/phase3_release_compare.sh
