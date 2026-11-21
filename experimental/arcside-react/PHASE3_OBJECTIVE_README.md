@@ -50,12 +50,15 @@ The React `/trade` path is an isolated two-team **hypothetical** scenario editor
 
 Player profiles now reuse the original published dossier, original-Dart honor naming/ending-year semantics, and a dated read-only salary seed derived at Vite build time from `lib/services/nba_trade_contract_seed.dart`. The source is labeled `2026-09-11` and is not claimed as live. The page can also join original published static `/data/nba_static/front_office/contracts.json` rows, when available, but doesn't read Flutter's browser-local mutable registry overlay.
 
-After pulling these source changes, **do not** set `ARCSIDE_COMPARE_REUSE_BUILDS=1`; run a fresh build:
+After pulling these changes, the React Vite build must be refreshed because its code and dated salary asset changed. The original Flutter application source was not modified, so **you may safely reuse your existing Flutter release build only after rebuilding React**:
 
 ```bash
 cd ~/sports_terminal
 git pull --ff-only
-bash scripts/phase3_release_compare.sh --objective
+(cd experimental/arcside-react && npm run build)
+ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --objective
 ```
+
+If `build/web` is missing or you have separately changed Flutter application source since that build, omit `ARCSIDE_COMPARE_REUSE_BUILDS=1` and run `bash scripts/phase3_release_compare.sh --objective` to rebuild both release shells.
 
 The read-only salary artifact is emitted under `experimental/arcside-react/dist/data/phase3/2026-27-contracts.json`. Never commit generated historical corpus files, a local workbook, or service credentials.
