@@ -106,10 +106,10 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
  const selectedMetrics: string[]=metricSet.length?metricSet:(groups as unknown as Record<string,string[]>)[group]??groups.Basic;
  useEffect(()=>{setSlots(prev=>prev.map(s=>s.season?s:{...s,season}))},[season]);
  useEffect(()=>{
-  const missing=[...new Set(slots.map(s=>s.season).filter(Boolean))].filter(s=>!(s===snapshot?.season_id&&snapshot?.season_type===segment)).filter(s=>!localSnapshots[s]);
+  const missing=[...new Set(slots.map(s=>s.season).filter(Boolean))].filter(s=>!(s===snapshot?.season_id&&snapshot?.season_type===segment)).filter(s=>!localSnapshots[segment+':'+s]);
   if(!missing.length)return;
   const controller=new AbortController();let alive=true;
-  Promise.all(missing.map(s=>getSeason(s,segment,controller.signal).then(data=>[s,data] as const)))
+  Promise.all(missing.map(s=>getSeason(s,segment,controller.signal).then(data=>[segment+':'+s,data] as const)))
    .then(entries=>{if(alive)setLocalSnapshots(prev=>({...prev,...Object.fromEntries(entries)}))})
    .catch(e=>{if(alive&&!controller.signal.aborted)setError(String(e.message??e))});
   return ()=>{alive=false;controller.abort()};
@@ -119,7 +119,7 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
   const m=new Map<string,{id:string;label:string;player?:Row;team?:TeamRow}[]>();
   for(const s of slots.map(x=>x.season).filter(Boolean)){
    if(m.has(s))continue;
-   const snap=s===snapshot?.season_id&&snapshot.season_type===segment?snapshot:localSnapshots[s];
+   const snap=s===snapshot?.season_id&&snapshot.season_type===segment?snapshot:localSnapshots[segment+':'+s];
    if(!snap){m.set(s,[]);continue}
    m.set(s,kind==='player'?buildRows(snap,basis).map(row=>({id:row.id,label:row.player,player:row})):
     buildTeamRows(snap).map(team=>({id:team.key,label:team.name,team})));
