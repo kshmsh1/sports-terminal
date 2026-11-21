@@ -266,7 +266,7 @@ test('team comparison uses published team records, not fabricated team values',a
  await page.getByLabel('Compare team 2',{exact:true}).selectOption('BOS');
  const table=page.getByRole('region',{name:'Team comparison metrics'});
  await expect(table).toContainText('Chicago');
- await expect(table.getByRole('row',{name:/PPG/})).toContainText('105.0');
+ await expect(table.getByRole('row').filter({has:page.getByRole('rowheader',{name:'PPG',exact:true})})).toContainText('105.0');
  await page.getByLabel('Compare metric group').selectOption('Efficiency');
  await expect(table.getByRole('row',{name:/SRS/})).toContainText('—');
 });
@@ -276,6 +276,7 @@ test('box scores use published original index and detail, including player inspe
  await page.getByRole('button',{name:/BOS 100 @ CHI 110/}).click();
  const detail=page.getByLabel('Game box-score inspector');
  await expect(detail.getByText('BOS @ CHI')).toBeVisible();
+ await page.getByRole('group',{name:'Box score team'}).getByRole('button',{name:'CHI'}).click();
  await expect(page.getByRole('region',{name:'Individual game box score'})).toContainText('Synthetic Player 0');
  await page.getByRole('region',{name:'Individual game box score'}).getByRole('button',{name:'Synthetic Player 0'}).click();
  await expect(detail).toContainText('PTS: 25');
