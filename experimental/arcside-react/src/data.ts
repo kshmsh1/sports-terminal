@@ -14,6 +14,10 @@ export interface SeasonSnapshot {
   season_type: SeasonType;
   player_season_totals: JsonRow[];
   players: JsonRow[];
+  team_records?:JsonRow[];
+  standings?:JsonRow[];
+  teams?:JsonRow[];
+  team_game_logs?:JsonRow[];
   source_season_id?: string;
 }
 const BASE = '/data/nba_static';
@@ -60,6 +64,10 @@ export async function getSeason(season: string, segment: SeasonType, signal?: Ab
     season_type: segment,
     player_season_totals: asRows(raw.player_season_totals, 'player_season_totals'),
     players: asRows(raw.players ?? [], 'players'),
+    team_records:asRows(raw.team_records??[], 'team_records'),
+    standings:asRows(raw.standings??[], 'standings'),
+    teams:asRows(raw.teams??[], 'teams'),
+    team_game_logs:asRows(raw.team_game_logs??[], 'team_game_logs'),
     source_season_id: typeof raw.source_season_id === 'string' ? raw.source_season_id : undefined
   };
 }
@@ -98,4 +106,43 @@ export async function getFrontOfficeContracts(signal?:AbortSignal):Promise<JsonR
  if(!res.ok)throw Error('Front-office static contract read failed: '+res.status);
  const data=await res.json();
  return asRows(data,'front_office/contracts.json');
+}
+
+export async function getGameIndex(signal?:AbortSignal):Promise<JsonRow[]> {
+ return asRows(await getJson('games/index.json',signal),'games/index');
+}
+export async function getGameDetail(game:JsonRow,signal?:AbortSignal):Promise<JsonRow|null> {
+ if(typeof game.file!=='string'||!game.file)return null;
+ return asObject(await getJson(game.file,signal));
+}
+export interface WithWithoutRow {
+ team:string;player_id:string;teammate_id:string;minutes_with:number|null;minutes_without:number|null;
+ with:Record<string,number|null>;without:Record<string,number|null>;
+}
+export interface WithWithoutData {
+ available:boolean;source:string;rows:WithWithoutRow[];message:string;
+}
+const asNullableNumber=(value:unknown):number|null=>{
+ if(typeof value==='number'&&Number.isFinite(value))return value;
+ if(typeof value==='string'&&value.trim()!==''&&Number.isFinite(Number(value)))return Number(value);
+ return null;
+};
+export async function getWithWithout(season:string,segment:SeasonType,signal?:AbortSignal):Promise<WithWithoutData>{
+ if(!/^\d{4}-\d{2}$/.test(season))throw Error('Invalid lineup season');
+ const path='lineups/'+season+'/'+segment+'/with_without.json';
+ const res=await fetch(BASE+'/'+path,{signal,credentials:'same-origin'});
+ if(res.status===404)return {available:false,source:'',rows:[],message:'Lineup stint / play-by-play splits have not been materialized for this season yet.'};
+ if(!res.ok)return {available:false,source:'',rows:[],message:'With/without dataset is unavailable ('+res.status+').'};
+ if(!(res.headers.get('content-type')??'').includes('json'))return {available:false,source:'',rows:[],message:'Lineup split data has not been published for this season.'};
+ const raw=asObject(await res.json());
+ const data=asRows(raw.rows??[],'lineups');
+ const records=data.map(row=>{
+  const statMap=(obj:unknown):Record<string,number|null>=>!obj||Array.isArray(obj)||typeof obj!=='object'?{}:
+   Object.fromEntries(Object.entries(obj).map(([key,val])=>[key,asNullableNumber(val)]));
+  return {team:String(row.team??''),player_id:String(row.player_id??''),teammate_id:String(row.teammate_id??''),
+   minutes_with:asNullableNumber(row.minutes_with),minutes_without:asNullableNumber(row.minutes_without),
+   with:statMap(row.with),without:statMap(row.without)};
+ });
+ return {available:records.length>0,source:String(raw.source??''),rows:records,
+  message:records.length?'':'The lineup split file is present but contains no player-pair rows.'};
 }
