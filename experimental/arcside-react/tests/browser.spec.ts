@@ -118,7 +118,7 @@ test('advanced stats exposes all Flutter metric families, filters, pagination an
  await expect(page.getByText('Page 2 / 8').first()).toBeVisible();
  await page.getByRole('button',{name:'Overview',exact:true}).click();
  await expect(page.getByRole('button',{name:'Expand RPG'})).toBeVisible();
- await career.getByRole('button',{name:'Expand RPG'}).click();
+ await page.getByRole('button',{name:'Expand RPG'}).click();
  await expect(page.getByRole('button',{name:'Sort by ORB'})).toBeVisible();
 });
 
@@ -187,7 +187,7 @@ test('player dossier exposes published historical career and advanced family tab
  await expect(career.getByRole('row')).toHaveCount(3);
  await expect(career.getByRole('row').nth(1)).toContainText('2025-26');
  await expect(career.getByRole('row').nth(1)).toContainText('20.0');
- await page.getByRole('button',{name:'Expand RPG'}).click();
+ await career.getByRole('button',{name:'Expand RPG'}).click();
  await expect(career.getByRole('columnheader',{name:'ORB'})).toBeVisible();
  const advanced=page.getByRole('region',{name:'Player advanced statistics table'});
  await expect(advanced.getByRole('columnheader',{name:'BPM'})).toBeVisible();
