@@ -307,3 +307,36 @@ test('with/without displays only genuinely published player-pair splits',async({
  await page.getByRole('button',{name:'Playoffs'}).first().click();
  await expect(page.getByText(/Lineup stint \/ play-by-play splits have not been materialized/)).toBeVisible();
 });
+
+test('team directory resolves source index and opens true historical dossier',async({page})=>{
+ await page.goto('/teams?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByRole('heading',{name:'Teams',exact:true})).toBeVisible();
+ await page.getByLabel('Find team').fill('Chicago');
+ await page.getByRole('button',{name:/Chicago.*CHI/}).click();
+ await expect(page.getByRole('heading',{name:'Chicago',exact:true})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Team season history'})).toContainText('2025-26');
+ await page.getByRole('group',{name:'Team history segment'}).getByRole('button',{name:'Playoffs'}).click();
+ await expect(page.getByRole('region',{name:'Team season history'})).toContainText('2025-26');
+ await expect(page.getByRole('region',{name:'Team season history'})).toContainText('6');
+});
+test('historical game finder shows published box score and optional true play-by-play',async({page})=>{
+ await page.goto('/games?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByRole('heading',{name:'Games',exact:true})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Published games'})).toContainText('synthetic-game-001');
+ await page.getByRole('region',{name:'Published games'}).getByRole('button',{name:'Inspect'}).click();
+ await expect(page.getByRole('region',{name:'Game player statistics'})).toContainText('Synthetic Player 0');
+ await expect(page.getByRole('region',{name:'Published play-by-play'})).toContainText('Synthetic opening shot');
+ await page.getByRole('button',{name:'Close game'}).click();
+ await expect(page.getByRole('region',{name:'Game details'})).toHaveCount(0);
+});
+test('franchise history preserves Flutter planned-only scope and published identities',async({page})=>{
+ await page.goto('/franchise-history?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByRole('heading',{name:'Franchise History'})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Franchise history build plan'})).toContainText('Historical names and relocations');
+ await expect(page.getByRole('region',{name:'Franchise history build plan'})).toContainText('Planned');
+ await page.getByLabel('Find franchise').fill('Chicago');
+ await page.getByRole('region',{name:'Published franchise identity records'}).getByRole('button',{name:/Chicago/}).click();
+ await expect(page.getByLabel('Franchise identity details')).toContainText('franchise-chi');
+ await page.getByRole('button',{name:'Open team detail'}).click();
+ await expect(page.getByRole('heading',{name:'Chicago',exact:true})).toBeVisible();
+});
