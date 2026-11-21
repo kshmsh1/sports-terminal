@@ -58,8 +58,9 @@ if [[ "$MODE" == "--visualization-acceptance" || "$MODE" == "--visualization-gui
   --dart-define=ARCSIDE_VIS_SEASONS=2025-26,1986-87,1946-47
 fi
 if [[ "$MODE" == "--objective" ]];then
- echo 'Exporting original Dart CBA/Trade Machine rule reports (NO independent React CBA candidate)...'
+ echo 'Exporting original Dart CBA rule reports and verifying independent TypeScript parity...'
  flutter test test/phase3_trade_reference_export_test.dart --reporter expanded
+ (cd experimental/arcside-react && npm run test:trade:goldens)
 fi
 OUT="$ROOT/experimental/arcside-react/evidence/release"
 mkdir -p "$OUT"
