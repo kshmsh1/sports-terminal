@@ -58,6 +58,7 @@ jobs:
       - name: Exercise authenticated native Python in Chromium
         env:
           ARCSIDE_LOCAL_E2E_TOKEN: arcside-e2e-secret-token-0123456789
+          ARCSIDE_LOCAL_E2E_RESET_FIXTURE: '1'
         run: cd web/labs && npx playwright test tests/local_runtime.browser.spec.mjs tests/local_ux_audit.browser.spec.mjs -c playwright.config.mjs --workers=1
       - name: Upload native-browser failure traces
         if: failure()

@@ -1,4 +1,14 @@
 import {test,expect} from '@playwright/test';
+import {readdir,rm} from 'node:fs/promises';
+import path from 'node:path';
+// Only the explicitly opt-in disposable CI fixture is reset. The real
+// companion always retains its revision-checked overwrite protection.
+test.beforeEach(async()=>{
+  if(process.env.ARCSIDE_LOCAL_E2E_RESET_FIXTURE!=='1')return;
+  const root='/tmp/arcside-native-fixture';
+  for(const entry of await readdir(root))
+    await rm(path.join(root,entry),{recursive:true,force:true});
+});
 const token=process.env.ARCSIDE_LOCAL_E2E_TOKEN;
 test.skip(!token,'Native workbench exploratory QA runs only with the isolated loopback companion');
 test.describe.configure({timeout:120000});

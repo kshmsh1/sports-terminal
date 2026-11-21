@@ -374,7 +374,9 @@ export function setupPowerPanel(ctx) {
     };
     const url=URL.createObjectURL(new Blob([JSON.stringify(document,null,2)],{type:'application/json'}));
     const anchor=document.createElement('a');anchor.href=url;anchor.download='arcside-notebook.ipynb';
-    anchor.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
+    // Attach the download link to the document for reliable browser activation.
+    document.body.append(anchor);anchor.click();anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
   };
   notebookRender();
 

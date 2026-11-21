@@ -1,20 +1,26 @@
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {lazy,Suspense,useEffect,useMemo,useRef,useState} from 'react';
 import type {Manifest,RateBasis,Season,SeasonSnapshot,SeasonType,JsonRow,DatedContractSnapshot} from './data';
 import {getManifest,getSeasons,getSeason,getPlayerDossier,getDatedContracts,getFrontOfficeContracts} from './data';
 import type {MetricKey,Row} from './engine';
 import {advancedKeys,bases,buildRows,formatMetric,metrics,overviewKeys,sortRows,stintRows} from './engine';
-import {Chart} from './Chart';
-import {AdvancedStatsTable} from './AdvancedStatsTable';
-import {dossierName,dossierSegments,PlayerProfileTables} from './ProfileTable';
-import {ProfileSummary,ProfileContracts,ProfileHonors,ProfileSourceContext} from './ProfileContext';
-import {TradeMachinePilot} from './TradeMachinePilot';
-import {ComparisonWorkspace} from './ComparisonWorkspaces';
-import {BoxScoresWorkspace} from './BoxScoresWorkspace';
-import {FinancialsWorkspace} from './FinancialsWorkspace';
-import {WithWithoutWorkspace} from './WithWithoutWorkspace';
-import {TeamDetailWorkspace,TeamsDirectory} from './TeamDetailWorkspace';
-import {GamesWorkspace} from './GamesWorkspace';
-import {FranchiseHistoryWorkspace} from './FranchiseHistoryWorkspace';
+
+import {dossierName,dossierSegments} from './ProfileTable';
+const AdvancedStatsTable=lazy(()=>import('./AdvancedStatsTable').then(m=>({default:m.AdvancedStatsTable})));
+const Chart=lazy(()=>import('./Chart').then(m=>({default:m.Chart})));
+const PlayerProfileTables=lazy(()=>import('./ProfileTable').then(m=>({default:m.PlayerProfileTables})));
+const ProfileSummary=lazy(()=>import('./ProfileContext').then(m=>({default:m.ProfileSummary})));
+const ProfileContracts=lazy(()=>import('./ProfileContext').then(m=>({default:m.ProfileContracts})));
+const ProfileHonors=lazy(()=>import('./ProfileContext').then(m=>({default:m.ProfileHonors})));
+const ProfileSourceContext=lazy(()=>import('./ProfileContext').then(m=>({default:m.ProfileSourceContext})));
+const TradeMachinePilot=lazy(()=>import('./TradeMachinePilot').then(m=>({default:m.TradeMachinePilot})));
+const ComparisonWorkspace=lazy(()=>import('./ComparisonWorkspaces').then(m=>({default:m.ComparisonWorkspace})));
+const BoxScoresWorkspace=lazy(()=>import('./BoxScoresWorkspace').then(m=>({default:m.BoxScoresWorkspace})));
+const FinancialsWorkspace=lazy(()=>import('./FinancialsWorkspace').then(m=>({default:m.FinancialsWorkspace})));
+const WithWithoutWorkspace=lazy(()=>import('./WithWithoutWorkspace').then(m=>({default:m.WithWithoutWorkspace})));
+const TeamDetailWorkspace=lazy(()=>import('./TeamDetailWorkspace').then(m=>({default:m.TeamDetailWorkspace})));
+const TeamsDirectory=lazy(()=>import('./TeamDetailWorkspace').then(m=>({default:m.TeamsDirectory})));
+const GamesWorkspace=lazy(()=>import('./GamesWorkspace').then(m=>({default:m.GamesWorkspace})));
+const FranchiseHistoryWorkspace=lazy(()=>import('./FranchiseHistoryWorkspace').then(m=>({default:m.FranchiseHistoryWorkspace})));
 
 type ViewState={path:string;season:string;segment:SeasonType;basis:RateBasis};
 function fromUrl():ViewState {
@@ -197,6 +203,7 @@ export function App(){
     {loading&&<p role="status" className="loading">Loading verified NBA static data…</p>}
     {!allowedRoutes.includes(view.path)&&!view.path.startsWith('/player/')&&!view.path.startsWith('/team/')&&!view.path.startsWith('/game/')&&
      <div className="panel"><h2>Route not found</h2><button onClick={()=>navigate('/stats')}>Return to Stats</button></div>}
+    <Suspense fallback={<p role="status" className="loading">Loading selected Arcside workspace…</p>}>
     {view.path==='/advanced'&&<AdvancedStatsTable rows={rows}
       basis={view.basis} segment={view.segment} season={view.season}
       onPlayer={id=>navigate('/player/'+encodeURIComponent(id))}/>}
@@ -313,7 +320,8 @@ export function App(){
       <ProfileSourceContext dossier={dossier}/>
      </div>}
     </section>}
-    <footer className="footer">Arcside experimental React workbench · Read-only, static-first · Existing Flutter shell unchanged</footer>
+    </Suspense>
+     <footer className="footer">Arcside experimental React workbench · Read-only, static-first · Existing Flutter shell unchanged</footer>
    </main>
   </div>
  </div>;

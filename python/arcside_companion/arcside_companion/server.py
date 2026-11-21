@@ -76,7 +76,7 @@ def create_app(root: Path, origins: list[str] | None = None, token: str | None =
                   description="Loopback-only. Run trusted workspaces, never exposed to untrusted clients.",
                   version="0.2.0", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.security = security
-    app.state.environment = "default"
+    app.state.environment = "system"
     app.state.jobs = {}
     app.state.semaphore = asyncio.Semaphore(3)
     app.add_middleware(CORSMiddleware, allow_origins=list(security.origins),
