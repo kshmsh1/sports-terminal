@@ -86,6 +86,68 @@ const originalTeamCapLedger=()=>{
   sourceNote:'Dated snapshot only; use only with explicit source selection; not a live cap feed.',
   dartSourceSha256:createHash('sha256').update(source).digest('hex'),teams});
 };
+// Read-only first- and second-round draft interests + TPEs from the Dart
+// canonical repository. Conditional rights remain CONDITIONAL, not owned picks.
+const originalDraftAndExceptions=()=>{
+ const firstSource=readFileSync(path.resolve(cwd,'../../lib/services/nba_future_draft_asset_repository.dart'),'utf8');
+ const secondSource=readFileSync(path.resolve(cwd,'../../lib/services/nba_second_round_draft_seed.dart'),'utf8');
+ const tpeSource=readFileSync(path.resolve(cwd,'../../lib/services/nba_trade_exception_reference_2026.dart'),'utf8');
+ const stringField=(line:string,name:string)=>line.match(new RegExp('\\b'+name+":'((?:\\\\'|[^'])*)'"))?.[1]?.replace(/\\'/g,"'")??null;
+ const numberField=(line:string,name:string)=>{const match=line.match(new RegExp('\\b'+name+':(\\d+)'));return match?Number(match[1]):null};
+ const first=firstSource.split('\n').filter(line=>line.includes('NbaFutureDraftAsset(id:')).map(line=>{
+  const id=stringField(line,'id'),team=stringField(line,'team'),year=numberField(line,'year'),round=numberField(line,'round');
+  if(!id||!team||!year||round!==1)throw Error('Malformed original Dart first-round draft asset: '+line.slice(0,120));
+  return {id,team,year,round,label:stringField(line,'label')??id,
+   description:stringField(line,'description')??'',
+   tradable:!line.includes('tradable:false'),frozen:line.includes('frozen:true'),
+   conditional:line.includes('conditional:true'),swapRight:line.includes('swapRight:true'),
+   stepienSafe:line.includes('stepienSafe:true'),protection:stringField(line,'protection'),
+   source:'Original Flutter RealGM future-draft seed 2026-09-11'};
+ });
+ if(first.length<180||new Set(first.map(x=>x.id)).size!==first.length)
+  throw Error('Original Dart first-round interests could not be parsed completely.');
+ const secondText=secondSource.match(/const nbaSecondRoundSeed2027To2033\s*=\s*r?'''([\s\S]*?)''';/)?.[1];
+ if(!secondText)throw Error('Original second-round seed missing');
+ let sequence=0;
+ const second=secondText.split('\n').flatMap(line=>{
+  const [team,yearText,...payload]=line.split('|');const year=Number(yearText);
+  if(!/^[A-Z]{3}$/.test(team??'')||!Number.isInteger(year))return [];
+  return payload.join('|').split(';').map(raw=>raw.trim()).filter(Boolean).map(text=>{
+   sequence++;
+   const outgoing=text.startsWith('OUT:');
+   const conditional=text.startsWith('COND:')||text.startsWith('SWAP:')||
+    text.includes(' if ')||text.includes('favorable')||text.includes('allocation');
+   const swap=text.startsWith('SWAP:')||text.toLowerCase().includes('swap');
+   const clean=text.replace(/^(OUT|COND|SWAP):\s*/,'');
+   const slug=clean.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+   return {id:team+'-'+year+'-2-'+sequence+'_'+slug,team,year,round:2,
+    label:year+' 2nd · '+clean,description:clean,tradable:!outgoing,frozen:false,
+    conditional,swapRight:swap,stepienSafe:true,protection:null,
+    source:'Original Flutter RealGM 2nd-round seed 2026-09-11'};
+  });
+ });
+ if(second.length<200||new Set(second.map(x=>x.id)).size!==second.length)
+  throw Error('Original Dart second-round interests could not be parsed completely.');
+ const tpeText=tpeSource.match(/const _tpeSeed\s*=\s*r?'''([\s\S]*?)''';/)?.[1];
+ if(!tpeText)throw Error('Original Dart TPE seed missing');
+ const exceptions=tpeText.split('\n').filter(x=>x.trim()).map(line=>{
+  const fields=line.split('|');
+  if(fields.length!==8||!Number.isFinite(Number(fields[5])))
+   throw Error('Malformed original TPE row: '+line.slice(0,100));
+  return {id:fields[0]+'-'+fields[1]+'-'+fields[2].slice(0,4),
+   team:fields[0],expires:fields[2],sourceTransaction:fields[3],
+   original:Number(fields[4]),available:Number(fields[5]),note:fields[6]||null,
+   unusableAboveSecondApron:fields[7]==='1'};
+ });
+ if(exceptions.length<30)throw Error('Original Flutter TPE ledger is unexpectedly incomplete.');
+ return JSON.stringify({
+  kind:'ARCSIDE_ORIGINAL_FLUTTER_DRAFT_TPE_2026_27_V1',sourceAsOf:'2026-09-11',
+  firstSourceSha256:createHash('sha256').update(firstSource).digest('hex'),
+  secondSourceSha256:createHash('sha256').update(secondSource).digest('hex'),
+  tpeSourceSha256:createHash('sha256').update(tpeSource).digest('hex'),
+  draftAssets:[...first,...second],exceptions,
+  caveat:'Dated Flutter source interests, NOT guaranteed pick ownership or current tradeability. Protections, restrictions and exception eligibility require verification.'});
+};
 const assets = (server: {middlewares: {use: (prefix: string, middleware: any) => void}}) => {
   // Serve the SAME local corpus and ORIGINAL Labs, not demo copies or remote API data.
   server.middlewares.use('/data/nba_static', sirv(path.join(repoWeb, 'data/nba_static'), { dev: true, etag: true }));
@@ -96,6 +158,13 @@ const assets = (server: {middlewares: {use: (prefix: string, middleware: any) =>
     res.setHeader('content-type','application/json; charset=utf-8');
     res.setHeader('cache-control','no-store');
     res.end(req.method==='HEAD'?'':originalTeamFinancialSeed());
+  });
+  server.middlewares.use('/data/phase3/2026-27-draft-exceptions.json',(
+   req:IncomingMessage,res:ServerResponse,next:()=>void)=>{
+    if(req.method!=='GET'&&req.method!=='HEAD')return next();
+    res.setHeader('content-type','application/json; charset=utf-8');
+    res.setHeader('cache-control','no-store');
+    res.end(req.method==='HEAD'?'':originalDraftAndExceptions());
   });
   server.middlewares.use('/data/phase3/2026-27-team-cap-ledger.json',(
    req:IncomingMessage,res:ServerResponse,next:()=>void)=>{
@@ -118,6 +187,8 @@ export default defineConfig({
     {name:'arcside-2026-27-dated-contract-seed',generateBundle(){
       this.emitFile({type:'asset',fileName:'data/phase3/2026-27-team-financials.json',
         source:originalTeamFinancialSeed()});
+      this.emitFile({type:'asset',fileName:'data/phase3/2026-27-draft-exceptions.json',
+        source:originalDraftAndExceptions()});
       this.emitFile({type:'asset',fileName:'data/phase3/2026-27-team-cap-ledger.json',
         source:originalTeamCapLedger()});
       this.emitFile({type:'asset',fileName:'data/phase3/2026-27-contracts.json',
