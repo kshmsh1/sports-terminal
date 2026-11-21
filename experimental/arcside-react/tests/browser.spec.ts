@@ -257,7 +257,7 @@ test('player comparison reuses canonical player metrics, multiple slots and tied
  await page.getByLabel('Compare metric group').selectOption('Defense');
  await expect(table.getByRole('row',{name:/STOCKS/})).toBeVisible();
  await page.getByRole('button',{name:'Reset comparison'}).click();
- await expect(page.getByText('Select at least two source-backed players')).toBeVisible();
+ await expect(page.getByText(/Select at least two source-backed players/)).toBeVisible();
 });
 test('team comparison uses published team records, not fabricated team values',async({page})=>{
  await page.goto('/team-compare?season=2025-26&segment=regular&basis=perGame');
@@ -304,5 +304,5 @@ test('with/without displays only genuinely published player-pair splits',async({
  await expect(table).toContainText('24.0');
  await expect(table).toContainText('20.0');
  await page.getByRole('button',{name:'Playoffs'}).first().click();
- await expect(page.getByText('Lineup stint / play-by-play splits have not been materialized')).toBeVisible();
+ await expect(page.getByText(/Lineup stint \/ play-by-play splits have not been materialized/)).toBeVisible();
 });
