@@ -64,7 +64,8 @@ export function TeamDetailWorkspace({teamKey,snapshot,onPlayer,onGame,onTeam}:{
   return ()=>controller.abort();
  },[teamKey]);
  useEffect(()=>{const controller=new AbortController();
-  getSeason('2025-26','regular',controller.signal).then(setTeamSeason).catch(()=>setTeamSeason(null));
+  getSeason('2025-26','regular',controller.signal).then(data=>{if(!controller.signal.aborted)setTeamSeason(data)})
+   .catch(()=>{if(!controller.signal.aborted)setTeamSeason(null)});
   return ()=>controller.abort();
  },[]);
  const profile=obj(dossier?.profile),franchise=obj(dossier?.franchise);
