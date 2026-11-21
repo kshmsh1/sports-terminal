@@ -15,6 +15,7 @@ const out=path.resolve(here,'../evidence/objective');
 const bytes=await readFile(path.join(repo,'web/data/nba_static/manifest.json'));
 const manifestSha256=createHash('sha256').update(bytes).digest('hex');
 const manifest=JSON.parse(bytes);
+if(typeof globalThis.fetch!=='function')throw Error('Requires Node 18+ built-in fetch');
 if(manifest.contract!=='sports-terminal-static-nba-website-v5'||manifest.static_schema_version!==5)
  throw Error('Objective comparison requires the genuine original NBA v5 manifest.');
 const urls={Flutter:process.env.ARCSIDE_FLUTTER_URL??'http://127.0.0.1:8768',
@@ -83,7 +84,8 @@ try{
       if(!ctx)return false;
       const {width,height}=c;if(!width||!height)return false;
       const image=ctx.getImageData(0,0,width,height).data;
-      for(let i=3;i<image.length;i+=Math.max(4,Math.floor(image.length/1200/4)*4))if(image[i]>0)return true;
+      const stride=Math.max(4,Math.floor(image.length/1200/4)*4);
+      for(let i=3;i<image.length;i+=stride)if(image[i]>0)return true;
       return false;
      }).catch(()=>false);
     }else{
