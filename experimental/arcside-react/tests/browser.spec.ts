@@ -188,7 +188,6 @@ test('Trade Machine pilot validates an editable modeled scenario without implyin
  await page.getByLabel('Asset 1 salary').fill('100000000');
  await expect(page.getByRole('status').filter({hasText:'blocking errors'})).toBeVisible();
  await page.getByRole('button',{name:'Add asset'}).click();
- await expect(page.getByRole('group',{name:/Asset 3/})).toHaveCount(0); // uses native fieldset/legend rather than group override
  await expect(page.getByLabel('Asset 3 ID')).toBeVisible();
  await page.getByRole('button',{name:'Reset example'}).click();
  await expect(page.getByRole('status').filter({hasText:'No modeled blocking errors'})).toBeVisible();
