@@ -142,3 +142,17 @@ h2{font-size:21px;letter-spacing:-.4px;margin:0 0 7px}h3{font-size:15px}.subtle{
  padding:12px 0;color:var(--sub);font-size:12px}
 .studio-readout-pages button{padding:6px 12px;font-size:12px}
 .studio-readout-pages button:disabled{opacity:.4;cursor:default}
+
+/* Phase 3 source-backed player dossier tables. Dense metrics without changing type size. */
+.profile-stats-wrapper{padding:0 0 2px}
+.profile-segment-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:14px 0}
+.profile-segment-actions span{color:var(--sub);font-size:12px;margin-left:auto}
+.profile-table-scroll{height:auto;max-height:560px;overflow:auto}
+.profile-table{width:max-content;min-width:100%;table-layout:auto}
+.profile-table th,.profile-table td{white-space:nowrap;padding:11px 12px}
+.profile-table th:first-child,.profile-table td:first-child{position:sticky;left:0;z-index:2;
+ background:var(--panel);min-width:110px;text-align:left;width:110px}
+.profile-table thead th:first-child{background:var(--panel-light);z-index:5}
+.profile-table th:nth-child(2),.profile-table td:nth-child(2){position:static;width:auto}
+.profile-table th:nth-child(3),.profile-table td:nth-child(3){width:auto}
+.profile-table th:not(:nth-child(-n+3)),.profile-table td:not(:nth-child(-n+3)){min-width:72px}
