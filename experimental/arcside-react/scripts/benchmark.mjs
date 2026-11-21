@@ -71,7 +71,7 @@ async function sample(context,kind,n,run,coldStart){
   interactionMs=performance.now()-t;
  }else{
   const t=performance.now();
-  await page.getByRole('button',{name:'Drag pan'}).click();
+  // Mode buttons were removed: both drag pan and wheel zoom are always enabled.
   await page.getByLabel('X metric').selectOption('reb');
   await page.waitForTimeout(150);
   interactionMs=performance.now()-t;
