@@ -116,6 +116,7 @@ try{
      const initial='0.000:100.000|0.000:100.000';
      if(await plot.getAttribute('data-viewport-range')!==initial)
       throw Error('React chart viewport did not reset before scripted interaction');
+     await plot.scrollIntoViewIfNeeded();
      const box=await plot.boundingBox();
      if(!box)throw Error('React canvas bounding box not available');
      const x=box.x+box.width*.55,y=box.y+box.height*.52;
