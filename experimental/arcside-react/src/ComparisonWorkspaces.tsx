@@ -84,6 +84,8 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
  snapshot:SeasonSnapshot|null;onPlayer?:(id:string)=>void
 }){
  const [slots,setSlots]=useState<Slot[]>(()=>seed(season));
+ // Historical comparisons may intentionally compare different seasons. The
+ // global season is an initial default; changing a slot must not be overridden.
  const [localSnapshots,setLocalSnapshots]=useState<Record<string,SeasonSnapshot>>({});
  const [error,setError]=useState('');
  const [group,setGroup]=useState('Basic');
@@ -102,7 +104,7 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
   Games:['games','wins','losses','win_pct']
  };
  const selectedMetrics: string[]=metricSet.length?metricSet:(groups as unknown as Record<string,string[]>)[group]??groups.Basic;
- useEffect(()=>{setSlots(prev=>prev.map(s=>({...s,season:s.season||season})))},[season]);
+ useEffect(()=>{setSlots(prev=>prev.map(s=>s.season?s:{...s,season}))},[season]);
  useEffect(()=>{
   const missing=[...new Set(slots.map(s=>s.season).filter(Boolean))].filter(s=>s!==snapshot?.season_id||snapshot?.season_type!==segment).filter(s=>!localSnapshots[s]);
   if(!missing.length)return;
