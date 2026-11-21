@@ -138,17 +138,17 @@ if [[ "$MODE" == "--objective" ]];then
  echo 'Collecting original-corpus scope coverage (absent React modules remain explicit blockers)...'
  (cd "$ROOT/experimental/arcside-react" && node scripts/phase3_readiness_audit.mjs) || STATUS=1
  echo 'Collecting observational, alternating release browser metrics (NOT GPU/chart parity)...'
- (cd "$ROOT/experimental/arcside-react" && \\
-  ARCSIDE_FLUTTER_URL="$FLUTTER_URL" ARCSIDE_REACT_URL="$REACT_URL" \\
-  ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \\
+ (cd "$ROOT/experimental/arcside-react" && \
+  ARCSIDE_FLUTTER_URL="$FLUTTER_URL" ARCSIDE_REACT_URL="$REACT_URL" \
+  ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \
   node scripts/phase3_objective_benchmark.mjs) || STATUS=1
  echo 'Probing browser-semantic accessibility (NOT native Safari/VoiceOver/NVDA)...'
- (cd "$ROOT/experimental/arcside-react" && \\
-  ARCSIDE_REACT_URL="$REACT_URL" ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \\
+ (cd "$ROOT/experimental/arcside-react" && \
+  ARCSIDE_REACT_URL="$REACT_URL" ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \
   node scripts/phase3_accessibility_probe.mjs) || STATUS=1
  echo 'Checking original Labs exports using isolated disposable browser data...'
- (cd "$ROOT/experimental/arcside-react" && \\
-  ARCSIDE_REACT_URL="$REACT_URL" ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \\
+ (cd "$ROOT/experimental/arcside-react" && \
+  ARCSIDE_REACT_URL="$REACT_URL" ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \
   node scripts/phase3_lab_integrity_probe.mjs) || STATUS=1
 fi
 (cd "$ROOT/experimental/arcside-react" && node scripts/phase3_decision.mjs) || STATUS=1
