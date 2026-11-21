@@ -208,3 +208,12 @@ h2{font-size:21px;letter-spacing:-.4px;margin:0 0 7px}h3{font-size:15px}.subtle{
 .withwithout-player{overflow:hidden}
 .withwithout-player .stats-table{min-width:500px}
 @media(max-width:900px){.box-layout,.financial-layout,.withwithout-grids{grid-template-columns:1fr}.box-index{height:320px}}
+
+/* Keep the entire player selection control above adjacent box-score numeric cells
+   in Firefox's table layout while retaining the dense stats-table type scale. */
+.box-workspace .box-player-cell{position:sticky;left:0;z-index:2;background:var(--panel);min-width:170px}
+.box-workspace .box-player-button{position:relative;z-index:3;display:block;width:100%;min-width:150px;
+ text-align:left;white-space:nowrap;padding:7px 9px;border:1px solid transparent;background:transparent;
+ color:var(--text);font:inherit;cursor:pointer}
+.box-workspace .box-player-button:hover,.box-workspace .box-player-button:focus-visible{border-color:var(--accent);border-radius:6px}
+.box-workspace .stats-table td.numeric{position:relative;z-index:0}
