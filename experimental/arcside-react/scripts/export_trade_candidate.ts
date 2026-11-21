@@ -1,7 +1,7 @@
 import {writeFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {originalCbaFixtureCandidate} from './trade_fixtures';
+import {originalCbaFixtureCandidate} from './trade_fixtures.ts';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const out=path.resolve(here,'../evidence/trade/react-trade-candidate.json');
 await mkdir(path.dirname(out),{recursive:true});
