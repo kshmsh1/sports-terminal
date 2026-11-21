@@ -5,6 +5,7 @@ import type {MetricKey,Row} from './engine';
 import {advancedKeys,bases,buildRows,formatMetric,metrics,overviewKeys,sortRows,stintRows} from './engine';
 import {Chart} from './Chart';
 import {AdvancedStatsTable} from './AdvancedStatsTable';
+import {dossierName,dossierSegments,PlayerProfileTables} from './ProfileTable';
 
 type ViewState={path:string;season:string;segment:SeasonType;basis:RateBasis};
 function fromUrl():ViewState {
@@ -232,11 +233,23 @@ export function App(){
     {view.path.startsWith('/player/')&&<section className="panel">
      <button onClick={()=>navigate('/stats')}>← Return to Stats</button>
      <p className="eyebrow">CANONICAL PLAYER DOSSIER</p>
-     <h2>{String(dossier?.player_name??dossier?.canonical_name??dossier?.player_label??'Loading player')}</h2>
-     <p className="subtle">Reads the original published player dossier when its canonical index maps this identifier.</p>
-     {dossier&&<dl className="profile-data">{Object.entries(dossier).filter(([k,v])=>
-      ['player_key','player_id','canonical_name','birth_date','height','position','draft_year','team_name'].includes(k)
-       && typeof v!=='object').map(([k,v])=><div key={k}><dt>{k.replaceAll('_',' ')}</dt><dd>{String(v??'—')}</dd></div>)}</dl>}
+     <h2>{dossierName(dossier,'Loading player')}</h2>
+     <p className="subtle">Original source-backed historical player dossier. The active season type determines career and advanced statistics below.</p>
+     {dossier&&<div className="profile-data" aria-label="Published player profile">
+      {Object.entries((dossier.profile&&typeof dossier.profile==='object'&&!Array.isArray(dossier.profile)?dossier.profile:{}) as Record<string,unknown>)
+       .filter(([k,v])=>['canonical_name','positions','primary_position','birth_date','height','draft_year','draft_number'].includes(k)
+        && v!==null && typeof v!=='object').map(([k,v])=><div key={k}><dt>{k.replaceAll('_',' ')}</dt><dd>{String(v)}</dd></div>)}
+     </div>}
+     {dossier&&<div className="profile-stats-wrapper">
+      <div className="profile-segment-actions" role="group" aria-label="Player career season type">
+       <button aria-pressed={view.segment==='regular'} className={view.segment==='regular'?'active-control':''}
+        onClick={()=>change({segment:'regular'})}>Regular season</button>
+       <button aria-pressed={view.segment==='playoffs'} className={view.segment==='playoffs'?'active-control':''}
+        onClick={()=>change({segment:'playoffs'})}>Playoffs</button>
+       <span>{dossierSegments(dossier)[view.segment].length} original published rows</span>
+      </div>
+      <PlayerProfileTables dossier={dossier} segment={view.segment} basis={view.basis}/>
+     </div>}
     </section>}
     <footer className="footer">Arcside experimental React workbench · Read-only, static-first · Existing Flutter shell unchanged</footer>
    </main>
