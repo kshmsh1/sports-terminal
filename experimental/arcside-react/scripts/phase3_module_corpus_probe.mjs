@@ -52,6 +52,18 @@ try{
    }
    if(route.path==='/teams'){
     await page.getByRole('region',{name:'NBA teams directory'}).waitFor({timeout:20000});
+    const teams=await page.request.get(url+'/data/nba_static/teams/index.json');
+    const teamIndex=await teams.json();
+    const first=teamIndex.find(item=>typeof item.team_key==='string'&&typeof item.file==='string');
+    if(!first)throw Error('Original team index has no usable source-backed dossier');
+    const detailPage=await ctx.newPage();
+    try{
+     await detailPage.goto(url+'/team/'+encodeURIComponent(first.team_key)+'?season='+sampleSeasons[0]+'&segment=regular&basis=perGame');
+     await detailPage.getByRole('region',{name:'Team detail'}).waitFor({timeout:20000});
+     await detailPage.getByRole('heading',{level:2}).first().waitFor({timeout:20000});
+     await detailPage.getByRole('region',{name:'Team season history'}).waitFor({timeout:20000});
+     if(await detailPage.getByRole('alert').count())throw Error('Source-backed team profile reported an error');
+    }finally{await detailPage.close()}
    }
    if(route.path==='/games'&&boxes.length){
     await page.getByRole('region',{name:'Published games'}).waitFor({timeout:20000});
