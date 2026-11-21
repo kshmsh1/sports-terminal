@@ -146,3 +146,40 @@ export async function getWithWithout(season:string,segment:SeasonType,signal?:Ab
  return {available:records.length>0,source:String(raw.source??''),rows:records,
   message:records.length?'':'The lineup split file is present but contains no player-pair rows.'};
 }
+
+/** Original Flutter WebsiteNbaStaticRepository teamIndex/teamDossier contract. */
+export async function getTeamIndex(signal?:AbortSignal):Promise<JsonRow[]>{
+ return asRows(await getJson('teams/index.json',signal),'teams/index');
+}
+export function resolveTeamIndex(index:JsonRow[],requested:string):JsonRow|null{
+ const token=(v:unknown)=>String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+ const needle=token(requested);
+ if(!needle)return null;
+ let best:JsonRow|null=null,score=-1,latest=-1;
+ for(const item of index){
+  const key=token(item.team_key),abbr=token(item.abbreviation),
+   name=token(item.canonical_name),franchise=token(item.franchise_key);
+  let rank=-1;
+  if(key===needle)rank=100;
+  else if(abbr===needle)rank=95;
+  else if(name===needle)rank=90;
+  else if(key.endsWith(needle)||key.includes(needle))rank=75;
+  else if(franchise===needle||franchise.endsWith(needle))rank=70;
+  else if(name.includes(needle)||needle.includes(name)&&name.length>0)rank=60;
+  if(rank<0)continue;
+  const season=String(item.active_to??'').match(/^\d{4}/);
+  const year=season?Number(season[0]):9999;
+  if(rank>score||rank===score&&year>latest){best=item;score=rank;latest=year}
+ }
+ return best;
+}
+export async function getTeamDossier(key:string,index?:JsonRow[],signal?:AbortSignal):Promise<JsonRow>{
+ const entries=index??await getTeamIndex(signal);
+ const item=resolveTeamIndex(entries,key);
+ if(!item||typeof item.file!=='string'||!item.file)throw Error('Original team dossier unavailable: '+key);
+ return asObject(await getJson(item.file,signal));
+}
+export async function getGamePlayByPlay(game:JsonRow,signal?:AbortSignal):Promise<JsonRow[]>{
+ if(typeof game.pbp_file!=='string'||!game.pbp_file)return [];
+ return asRows(asObject(await getJson(game.pbp_file,signal)).rows,'game play-by-play rows');
+}
