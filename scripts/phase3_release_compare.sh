@@ -150,9 +150,13 @@ if [[ "$MODE" == "--objective" ]];then
  (cd "$ROOT/experimental/arcside-react" && \
   ARCSIDE_REACT_URL="$REACT_URL" ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \
   node scripts/phase3_lab_integrity_probe.mjs) || STATUS=1
+ echo 'Verifying original published player dossiers across source-backed career routes...'
+ (cd "$ROOT/experimental/arcside-react" && \
+  ARCSIDE_REACT_URL="$REACT_URL" ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \
+  node scripts/phase3_profile_corpus_probe.mjs) || STATUS=1
 fi
 (cd "$ROOT/experimental/arcside-react" && node scripts/phase3_decision.mjs) || STATUS=1
-echo 'Phase 3 evidence: experimental/arcside-react/evidence/{real,guided,advanced,visualization,objective,readiness,accessibility,labs,decision}/'
+echo 'Phase 3 evidence: experimental/arcside-react/evidence/{real,guided,advanced,visualization,objective,readiness,accessibility,labs,profiles,trade,decision}/'
 if [[ "$STATUS" -ne 0 ]];then
  echo 'At least one evaluation step failed. Inspect evidence; NEVER call this a pass.' >&2
 fi
