@@ -2,7 +2,6 @@ import type {JsonRow} from './data';
 type Row=JsonRow;
 const rows=(x:unknown):Row[]=>Array.isArray(x)?x.filter((v):v is Row=>v!==null&&typeof v==='object'&&!Array.isArray(v)):[];
 const fmt=(x:unknown)=>x===null||x===undefined||String(x).trim()===''?'—':String(x);
-const year=(x:unknown)=>Number.isFinite(Number(x))?Number(x):null;
 const money=(v:unknown)=>{
  const n=Number(v);if(!Number.isFinite(n)||v==null||v==='')return '—';
  return '$'+Math.round(n).toLocaleString('en-US');
