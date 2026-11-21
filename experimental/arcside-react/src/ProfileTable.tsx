@@ -16,7 +16,7 @@ const number=(v:unknown):number|null=>{
  if(typeof v==='number')return Number.isFinite(v)?v:null;
  if(typeof v!=='string')return null;
  const cleaned=v.trim();
- if(!/^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?$/.test(cleaned))return null;
+ if(!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(cleaned))return null;
  const parsed=Number(cleaned);
  return Number.isFinite(parsed)?parsed:null;
 };

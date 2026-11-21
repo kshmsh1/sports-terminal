@@ -22,6 +22,13 @@ describe('original Flutter player dossier source semantics',()=>{
   expect(dossierMetricText({fg_pct:50},advancedMetricCatalog.fg_pct)).toBe('50.0%');
   expect(dossierMetricText({fg_pct:1.3},advancedMetricCatalog.fg_pct)).toBe('130.0%');
  });
+ it('accepts exact source numeric strings but rejects malformed numbers and empty fields',()=>{
+  expect(dossierMetricText({games:'65',pts:'1300'},advancedMetricCatalog.ppg)).toBe('20.0');
+  expect(dossierMetricText({fg_pct:'0.51'},advancedMetricCatalog.fg_pct)).toBe('51.0%');
+  expect(dossierMetricText({bpm:'-2.25'},advancedMetricCatalog.bpm)).toBe('-2.3');
+  expect(dossierMetricText({bpm:'0x10'},advancedMetricCatalog.bpm)).toBe('—');
+  expect(dossierMetricText({bpm:'unknown'},advancedMetricCatalog.bpm)).toBe('—');
+ });
  it('does not make missing fields into zeros and retains actual zeroes',()=>{
   expect(dossierMetric({},advancedMetricCatalog.bpm)).toBeNull();
   expect(dossierMetricText({},advancedMetricCatalog.bpm)).toBe('—');
