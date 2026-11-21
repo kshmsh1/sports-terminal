@@ -87,3 +87,24 @@ ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --objectiv
 ```
 
 If Flutter source or `build/web` has changed, omit `ARCSIDE_COMPARE_REUSE_BUILDS=1`. The original Flutter parity engine remains authoritative, and the draft branch must not be merged until complete semantic, UX, assistive technology, Labs security and matched visual performance gates have passed.
+
+## Three final source-backed route pilots and deeper parity work (2026-11-21)
+
+New routes: `/teams` (canonical indexed team directory), `/team/:key` (original Flutter team dossier, historical season tabs, dated 2026–27 salary-seed roster, optional injury/transaction/recent games, 2025–26 baseline player join), `/games` and `/game/:key` (historical game catalog, indexed player/team details and optional published play-by-play), and `/franchise-history` (exact original Flutter six-item build plan plus searchable historical team identity index). The original Flutter Franchise History screen is **a roadmap**, not an implemented continuity database. These routes must not infer missing schedule, arena, injury, relocation or game details.
+
+Additional implementation slices: browser-local player/team comparison presets preserving slot-specific seasons/metrics; additional source-only player identity and context sections; and the ability to add 2026–27 original dated salary records to the **isolated hypothetical** React CBA validator. Do **not** use these salaries to assert current asset eligibility, team cap amounts or transaction legality.
+
+CI now includes synthetic fixture browser journeys, unit tests for team identity, season history, dated player salary join, games filtering, and the original franchise planning status. The existing objective local suite extends the genuine-corpus smoke to all **8** new module routes and a published team dossier. This is route/source availability evidence, not comprehensive Flutter visual/feature equivalence.
+
+The React pilot still does not match the original complete NBA Trade Machine, native Safari VoiceOver/NVDA interactions, secured Labs runtime, every user-specific saved-view control, or full GPU/frame/memory comparison. Even if all routes pass, the decision gate remains **NOT AUTHORIZED** until a complete feature-by-feature operator signoff and original-source evidence are accepted.
+
+Run after pulling:
+
+```bash
+cd ~/sports_terminal
+git pull --ff-only
+(cd experimental/arcside-react && npm run build && npm test)
+ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --objective
+```
+
+Only reuse the Flutter binary if its original sources and build/web have not changed. The original Flutter app remains authoritative and draft PR #89 must not be merged automatically.
