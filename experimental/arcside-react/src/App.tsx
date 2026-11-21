@@ -6,7 +6,7 @@ import {advancedKeys,bases,buildRows,formatMetric,metrics,overviewKeys,sortRows,
 import {Chart} from './Chart';
 import {AdvancedStatsTable} from './AdvancedStatsTable';
 import {dossierName,dossierSegments,PlayerProfileTables} from './ProfileTable';
-import {ProfileSummary,ProfileContracts,ProfileHonors} from './ProfileContext';
+import {ProfileSummary,ProfileContracts,ProfileHonors,ProfileSourceContext} from './ProfileContext';
 import {TradeMachinePilot} from './TradeMachinePilot';
 import {ComparisonWorkspace} from './ComparisonWorkspaces';
 import {BoxScoresWorkspace} from './BoxScoresWorkspace';
@@ -310,6 +310,7 @@ export function App(){
         playerKey={decodeURIComponent(view.path.slice('/player/'.length))}
         playerName={dossierName(dossier)} loading={contractLoading}/>
       <ProfileHonors dossier={dossier}/>
+      <ProfileSourceContext dossier={dossier}/>
      </div>}
     </section>}
     <footer className="footer">Arcside experimental React workbench · Read-only, static-first · Existing Flutter shell unchanged</footer>
