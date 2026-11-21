@@ -254,11 +254,9 @@ for(const name of browsers){
     task.checks.push('Flutter default top-40 by PTS, GP 50/4, AST/PTS axes and source-backed readout');
     const chartStart=performance.now();
     await p.getByRole('img',{name:/Scatter plot of/}).waitFor();
-    await p.getByRole('button',{name:'Drag pan'}).click();
-    assert.equal(await p.getByRole('button',{name:'Drag pan'}).getAttribute('aria-pressed'),'true');
-    await p.getByRole('button',{name:'Wheel zoom'}).click();
-    assert.equal(await p.getByRole('button',{name:'Wheel zoom'}).getAttribute('aria-pressed'),'true');
-    await p.getByRole('button',{name:'Drag pan'}).click();
+    assert.equal(await p.getByRole('button',{name:'Drag pan'}).count(),0);
+    assert.equal(await p.getByRole('button',{name:'Wheel zoom'}).count(),0);
+    assert.equal(await p.getByRole('img',{name:/Scatter plot of/}).isVisible(),true);
     await p.getByLabel('X metric').selectOption('reb');
     await p.getByLabel('Y metric').selectOption('ast');
     await p.getByRole('button',{name:'Reset view'}).click();
@@ -267,14 +265,14 @@ for(const name of browsers){
     await p.getByLabel('Player labels').uncheck();
     await p.getByLabel('Player labels').check();
     task.browserPerf.chartControlSequenceMs=performance.now()-chartStart;
-    task.checks.push('chart re-axis, pan/zoom, reset, original best-fit line, label and group toggles; response observed');
+    task.checks.push('chart re-axis, always-enabled wheel zoom/drag pan configuration, reset, original best-fit line, label and group toggles; response observed');
     if(segment==='regular'&&season===seasons[0]){
      await p.reload({waitUntil:'domcontentloaded'});
      await p.getByRole('heading',{name:'Player scatter explorer'}).waitFor();
      assert.equal(await p.getByLabel('X metric').inputValue(),'reb');
      assert.equal(await p.getByLabel('Y metric').inputValue(),'ast');
-     assert.equal(await p.getByRole('button',{name:'Drag pan'}).getAttribute('aria-pressed'),'true');
-     task.checks.push('visualization axis and pan settings persist after reload');
+     assert.equal(await p.getByRole('button',{name:'Drag pan'}).count(),0);
+     task.checks.push('visualization axes persist after reload, with no pan mode selection');
      await p.screenshot({path:path.join(dir,name+'-react-visualizations-'+season+'.png'),fullPage:true});
      await p.getByRole('link',{name:'Stats',exact:true}).click();
      await p.getByRole('heading',{name:'Player statistics'}).waitFor();
