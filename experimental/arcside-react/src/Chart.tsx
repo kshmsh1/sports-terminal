@@ -135,6 +135,14 @@ export function Chart({rows,basis,segment='regular'}:{
   if(!host.current)return;
   const instance=echarts.init(host.current,undefined,{renderer:'canvas'});
   chart.current=instance;
+  // This attribute exposes actual ECharts ranges for regression assertions
+  // without triggering React renders on every drag/wheel frame.
+  const recordViewport=()=>{
+   const zoom=instance.getOption().dataZoom as {start?:number;end?:number}[]|undefined;
+   host.current?.setAttribute('data-viewport-range',(zoom??[]).map(z=>
+    [z.start??0,z.end??100].map(n=>n.toFixed(3)).join(':')).join('|'));
+  };
+  instance.on('datazoom',recordViewport);
   const ro=new ResizeObserver(()=>instance.resize());ro.observe(host.current);
   instance.on('click',evt=>{
    const data=evt.data as {id?:string}|undefined;
@@ -267,6 +275,9 @@ export function Chart({rows,basis,segment='regular'}:{
      areaStyle:{opacity:.15}}))}]};
   }
   chart.current.setOption(option,true);
+  const zoom=chart.current.getOption().dataZoom as {start?:number;end?:number}[]|undefined;
+  host.current?.setAttribute('data-viewport-range',(zoom??[]).map(z=>
+   [z.start??0,z.end??100].map(n=>n.toFixed(3)).join(':')).join('|'));
   viewport.current={rows,basis,kind:settings.kind,x:settings.x,y:settings.y,size:settings.size,
    filter:settings.filter,population:settings.population,minGames:settings.minGames,reset};
  },[rows,basis,plotted,eligible,ranked,analytics,settings,reset]);
