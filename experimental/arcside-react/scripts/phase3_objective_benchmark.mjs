@@ -65,7 +65,7 @@ try{
      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
      const nav=performance.getEntriesByType('navigation')[0];
      const paints=performance.getEntriesByType('paint');
-     const memory=performance.memory;
+     const memory=globalThis.performance?.memory;
      return {navDomContentLoadedMs:nav?.domContentLoadedEventEnd??null,
       browserFirstPaintMs:paints.find(x=>x.name==='first-paint')?.startTime??null,
       browserFirstContentfulPaintMs:paints.find(x=>x.name==='first-contentful-paint')?.startTime??null,
