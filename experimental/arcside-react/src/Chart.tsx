@@ -8,7 +8,7 @@ import {correlationLabel,histogram,linearStats,quantile,rowTeams,selectVisualiza
 import type {ChartKind,ColorBy,LabelDensity} from './visualization_math';
 
 type Settings={
- x:MetricKey;y:MetricKey;size:MetricKey;pan:boolean;regression:boolean;selected:string;
+ x:MetricKey;y:MetricKey;size:MetricKey;regression:boolean;selected:string;
  kind:ChartKind;colorBy:ColorBy;minGames:number;population:number;rankingSize:number;
  filter:string;labels:boolean;means:boolean;grid:boolean;zero:boolean;
  density:LabelDensity;bins:number;radarCompare:string;
@@ -16,7 +16,7 @@ type Settings={
 type SavedPreset={name:string;settings:Settings};
 const settingsKey='arcside.phase3.chart.v2',presetsKey='arcside.phase3.chart.presets.v1';
 const defaults:Settings={
- x:'ast',y:'pts',size:'reb',pan:false,regression:true,selected:'',
+ x:'ast',y:'pts',size:'reb',regression:true,selected:'',
  kind:'scatter',colorBy:'Team',minGames:50,population:40,rankingSize:20,
  filter:'',labels:true,means:false,grid:true,zero:false,density:'More',bins:12,radarCompare:''
 };
@@ -51,7 +51,7 @@ function validSettings(candidate:unknown):Settings {
   population:scatterPopulationSizes.includes(s.population as 0)?s.population!:40,
   rankingSize:s.rankingSize===10?10:20,
   minGames:number(s.minGames,0,82,50),bins:number(s.bins,8,20,12),
-  labels:s.labels!==false,regression:s.regression!==false,pan:s.pan===true,
+  labels:s.labels!==false,regression:s.regression!==false,
   means:s.means===true,grid:s.grid!==false,zero:s.zero===true,
   selected:typeof s.selected==='string'?s.selected:'',
   filter:typeof s.filter==='string'&&/^(team|player):/.test(s.filter)?s.filter:'',
@@ -197,11 +197,11 @@ export function Chart({rows,basis,segment='regular'}:{
   let option:Record<string,unknown>={...common,
    grid:{left:68,right:30,top:36,bottom:66},
    xAxis,yAxis,
-   dataZoom:[{type:'inside',xAxisIndex:0,zoomOnMouseWheel:!settings.pan,
-    moveOnMouseMove:settings.pan,moveOnMouseWheel:false,
+   dataZoom:[{type:'inside',xAxisIndex:0,zoomOnMouseWheel:true,
+    moveOnMouseMove:true,moveOnMouseWheel:false,
     start:prior?.[0]?.start??0,end:prior?.[0]?.end??100},
-    {type:'inside',yAxisIndex:0,zoomOnMouseWheel:!settings.pan,
-     moveOnMouseMove:settings.pan,moveOnMouseWheel:false,
+    {type:'inside',yAxisIndex:0,zoomOnMouseWheel:true,
+     moveOnMouseMove:true,moveOnMouseWheel:false,
      start:prior?.[1]?.start??0,end:prior?.[1]?.end??100}],
    series:[{name:'Players',type:'scatter',data:points,large:largeScatter,largeThreshold:2000,
     progressive:2000,progressiveThreshold:3000,emphasis:{focus:'self'},
@@ -383,10 +383,6 @@ export function Chart({rows,basis,segment='regular'}:{
        <span>linear model</span></div>
      </div>}
     {xyChart&&<div className="studio-chart-actions">
-      <button className={!settings.pan?'active-control':''} onClick={()=>update({pan:false})}
-       aria-pressed={!settings.pan}>Wheel zoom</button>
-      <button className={settings.pan?'active-control':''} onClick={()=>update({pan:true})}
-       aria-pressed={settings.pan}>Drag pan</button>
       <button onClick={()=>setReset(n=>n+1)}>Reset view</button>
      </div>}
     <div ref={host} className="chart studio-chart" role="img"
