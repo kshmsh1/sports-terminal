@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
 const cwd = path.dirname(fileURLToPath(import.meta.url));
 const repoWeb = path.resolve(cwd, '../../web');
@@ -39,7 +40,8 @@ const assets = (server: {middlewares: {use: (prefix: string, middleware: any) =>
   // Serve the SAME local corpus and ORIGINAL Labs, not demo copies or remote API data.
   server.middlewares.use('/data/nba_static', sirv(path.join(repoWeb, 'data/nba_static'), { dev: true, etag: true }));
   server.middlewares.use('/labs', sirv(path.join(repoWeb, 'labs'), { dev: true, etag: true, single: false }));
-  server.middlewares.use('/data/phase3/2026-27-contracts.json',(req,res,next)=>{
+  server.middlewares.use('/data/phase3/2026-27-contracts.json',(
+    req:IncomingMessage,res:ServerResponse,next:()=>void)=>{
     if(req.method!=='GET'&&req.method!=='HEAD')return next();
     const json=originalFlutterContractSeed();
     res.setHeader('content-type','application/json; charset=utf-8');
