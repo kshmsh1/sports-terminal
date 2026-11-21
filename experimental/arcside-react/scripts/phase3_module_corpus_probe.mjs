@@ -13,7 +13,7 @@ const manifestSha256=createHash('sha256').update(bytes).digest('hex');
 const url=(process.env.ARCSIDE_REACT_URL??'http://127.0.0.1:4173').replace(/\/$/,'');
 const seasons=JSON.parse(await readFile(path.join(root,'seasons.json'),'utf8'));
 const index=Array.isArray(seasons)?seasons:[];
-const gameIndex=JSON.parse(await readFile(path.join(root,'games/index.json'),'utf8').catch(()=> '[]'));
+const gameIndex=JSON.parse(await readFile(path.join(root,'games/index.json'),'utf8').catch(error=>{if(error.code==='ENOENT')return '[]';throw error}));
 const boxes=Array.isArray(gameIndex)?gameIndex:[];
 const sampleSeasons=index.slice(0,12).map(s=>s.season_id).filter(Boolean);
 if(!sampleSeasons.length)throw Error('No original NBA seasons in source index');
