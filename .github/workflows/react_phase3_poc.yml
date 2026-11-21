@@ -35,7 +35,7 @@ jobs:
       - name: Contract unit tests
         run: npm test
       - name: Guard Phase 3 evaluation against unsupported migration claims
-        run: node --test tests/phase3_decision.test.mjs
+        run: node --test tests/phase3_decision.test.mjs tests/trade_gate.test.mjs
       - name: Install three Playwright browser engines for synthetic journeys
         run: npx playwright install --with-deps chromium firefox webkit
       - name: Browser journeys (synthetic fixtures, not real Safari/assistive technology)
