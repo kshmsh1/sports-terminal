@@ -324,7 +324,7 @@ test('team directory resolves source index and opens true historical dossier',as
  await page.goto('/teams?season=2025-26&segment=regular&basis=perGame');
  await expect(page.getByRole('heading',{name:'Teams',exact:true})).toBeVisible();
  await page.getByLabel('Find team').fill('Chicago');
- await page.getByRole('button',{name:/Chicago.*CHI/}).click();
+ await page.getByRole('region',{name:'NBA teams directory'}).getByRole('button',{name:/Chicago.*CHI/}).click();
  await expect(page.getByRole('heading',{name:'Chicago',exact:true})).toBeVisible();
  await expect(page.getByRole('region',{name:'Team season history'})).toContainText('2025-26');
  await page.getByRole('group',{name:'Team history segment'}).getByRole('button',{name:'Playoffs'}).click();
