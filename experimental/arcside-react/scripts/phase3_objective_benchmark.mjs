@@ -48,7 +48,7 @@ try{
  for(const base of Object.values(urls))await manifestCheck(base.replace(/\/$/,''));
  for(let trial=1;trial<=rounds;trial++){
   for(const app of trial%2?['Flutter','React']:['React','Flutter']){
-   const isCold=trial<=cold,base=urls[app].replace(/\\/$/,'');
+   const isCold=trial<=cold,base=urls[app].replace(/\/$/,'');
    const context=isCold?await browser.newContext({viewport:{width:1440,height:900}}):
     (contexts[app]??=await browser.newContext({viewport:{width:1440,height:900}}));
    const page=await context.newPage(),exceptions=[];
