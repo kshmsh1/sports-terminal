@@ -148,7 +148,7 @@ export function validateTrade(s:TradeScenario):TradeReport{
   if(!ctx){add('MISSING_CAP_CONTEXT',`${team} needs salary-cap context before legal validation can be completed.`,'warning',team);continue}
   if(roster>15)add('ROSTER_MAX',
    `${team} projects to ${roster} standard-contract players; the transaction requires a roster-compliance move.`,'warning',team);
-  if(roster>(-Infinity)&&roster<(ctx.minimumStandardRosterPlayers??14))add('ROSTER_MIN',
+  if(roster<(ctx.minimumStandardRosterPlayers??14))add('ROSTER_MIN',
    `${team} projects to ${roster} standard-contract players, below the modeled minimum of ${ctx.minimumStandardRosterPlayers??14}; subsequent signings or roster actions are required.`,'warning',team);
   if(ctx.hardCappedAt!=null&&post>ctx.hardCappedAt)add('HARD_CAP',
    `${team} exceeds its modeled hard cap after the trade.`,'error',team);
