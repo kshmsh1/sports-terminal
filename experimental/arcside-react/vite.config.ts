@@ -74,17 +74,34 @@ const originalTeamCapLedger=()=>{
    retained:field('retained')??0,capHolds:field('capHolds')??0,
    incompleteRosterCharges:field('incompleteRosterCharges')??0};
  });
+ const salarySource=readFileSync(path.resolve(cwd,'../../lib/services/nba_team_salary_position_2026.dart'),'utf8');
+ const salaryRows=[...salarySource.matchAll(/'([A-Z]{3})':\s*NbaTeamSalaryPosition\(([^)]*)\)/g)];
+ const salaryEntries=new Map(salaryRows.map(row=>{
+  const field=(key:string)=>{
+   const found=row[2].match(new RegExp('(?:^|,)\\s*'+key+':\\s*(-?\\d+(?:\\.\\d+)?)'));
+   return found?Number(found[1]):null;
+  };
+  return [row[1],{salaryPosition:field('totalSalary'),guaranteedSalary:field('guaranteed'),
+   salaryPositionDeadMoney:field('deadMoney')??0}];
+ }));
+ if(salaryRows.length!==30||salaryEntries.size!==30||
+   [...salaryEntries.values()].some(x=>x.salaryPosition===null))
+  throw Error('Missing original Flutter 30-team salary positions.');
  const capBlock=source.match(/static const Map<String, String> hardCap = \{([\s\S]*?)\};/)?.[1];
  if(!capBlock)throw Error('Original hard-cap map is missing.');
  const caps=new Map([...capBlock.matchAll(/'([A-Z]{3})':\s*'(first|second)'/g)].map(x=>[x[1],x[2]]));
  if(records.length!==30||new Set(records.map(x=>x.team)).size!==30||
     records.some(x=>x.totalCap===null||x.active===null||x.dead===null))
   throw Error('Original Dart team ledger parse failed: require exactly 30 complete unique teams.');
- const teams=records.map(x=>({...x,hardCap:caps.get(x.team)??null}));
+ const teams=records.map(x=>{const salary=salaryEntries.get(x.team);
+  if(!salary)throw Error('Original Flutter salary position missing: '+x.team);
+  return {...x,...salary,hardCap:caps.get(x.team)??null};
+ });
  return JSON.stringify({kind:'ARCSIDE_ORIGINAL_DART_TEAM_CAP_LEDGER_2026_27_V1',
   operatingSeason:'2026-27',source:'Original Flutter Spotrac-transcribed static cap ledger',
   sourceNote:'Dated snapshot only; use only with explicit source selection; not a live cap feed.',
-  dartSourceSha256:createHash('sha256').update(source).digest('hex'),teams});
+  dartSourceSha256:createHash('sha256').update(source).digest('hex'),
+  dartSalarySourceSha256:createHash('sha256').update(salarySource).digest('hex'),teams});
 };
 // Read-only first- and second-round draft interests + TPEs from the Dart
 // canonical repository. Conditional rights remain CONDITIONAL, not owned picks.
