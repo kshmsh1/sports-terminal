@@ -87,7 +87,6 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
  // Historical comparisons may intentionally compare different seasons. The
  // global season is an initial default; changing a slot must not be overridden.
  const [localSnapshots,setLocalSnapshots]=useState<Record<string,SeasonSnapshot>>({});
- const [pendingKeys,setPendingKeys]=useState<string[]>([]);
  const [error,setError]=useState('');
  const [group,setGroup]=useState('Basic');
  const [metricSet,setMetricSet]=useState<string[]>([]);
@@ -107,16 +106,15 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
  const selectedMetrics: string[]=metricSet.length?metricSet:(groups as unknown as Record<string,string[]>)[group]??groups.Basic;
  useEffect(()=>{setSlots(prev=>prev.map(s=>s.season?s:{...s,season}))},[season]);
  useEffect(()=>{
-  const missing=[...new Set(slots.map(s=>s.season).filter(Boolean))].filter(s=>!(s===snapshot?.season_id&&snapshot?.season_type===segment)).filter(s=>!localSnapshots[segment+':'+s]&&!pendingKeys.includes(segment+':'+s));
+  const missing=[...new Set(slots.map(s=>s.season).filter(Boolean))].filter(s=>!(s===snapshot?.season_id&&snapshot?.season_type===segment)).filter(s=>!localSnapshots[segment+':'+s]);
   if(!missing.length)return;
   const controller=new AbortController();let alive=true;
-  setPendingKeys(prev=>[...new Set([...prev,...missing.map(s=>segment+':'+s)])]);
   Promise.all(missing.map(s=>getSeason(s,segment,controller.signal).then(data=>[segment+':'+s,data] as const)))
    .then(entries=>{if(alive)setLocalSnapshots(prev=>({...prev,...Object.fromEntries(entries)}))})
    .catch(e=>{if(alive&&!controller.signal.aborted)setError(String(e.message??e))})
-   .finally(()=>{if(alive)setPendingKeys(prev=>prev.filter(key=>!missing.some(s=>key===segment+':'+s))) });
+;
   return ()=>{alive=false;controller.abort()};
- },[slots,segment,snapshot,localSnapshots,pendingKeys]);
+ },[slots,segment,snapshot,localSnapshots]);
  useEffect(()=>{setMetricSet([])},[segment,kind]);
  const candidates=useMemo(()=>{
   const m=new Map<string,{id:string;label:string;player?:Row;team?:TeamRow}[]>();
