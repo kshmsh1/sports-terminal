@@ -82,7 +82,7 @@ export function BoxScoresWorkspace({onPlayer}:{onPlayer?:(id:string)=>void}){
      <div className="table-scroll" role="region" tabIndex={0} aria-label="Individual game box score">
       <table className="stats-table"><thead><tr><th scope="col">Player</th>{columns.map(c=><th scope="col" key={c}>{c.toUpperCase()}</th>)}</tr></thead>
        <tbody>{playerRows.map((r,i)=><tr key={String(r.player_id??i)}>
-        <td><button className="sort-button" onClick={()=>setPlayer(r)}>{val(r,'player_name','Player')}</button></td>
+        <td className="box-player-cell"><button className="box-player-button" onClick={()=>setPlayer(r)}>{val(r,'player_name','Player')}</button></td>
         {columns.map(c=><td className="numeric" key={c}>{val(r,c)}</td>)}</tr>)}</tbody>
       </table></div>
      {player&&<div className="box-spotlight"><strong>{val(player,'player_name')}</strong>
