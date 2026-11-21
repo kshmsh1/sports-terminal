@@ -1,8 +1,8 @@
 import {useEffect,useMemo,useState} from 'react';
 import {nba2026Cap,validateTrade} from './tradeEngine';
 import type {TradeAsset,TradeAssignment,TradeScenario} from './tradeEngine';
-import type {DatedContractSnapshot,TeamCapLedgerSnapshot} from './data';
-import {getDatedContracts,getOriginalTeamCapLedger} from './data';
+import type {DatedContractSnapshot,TeamCapLedgerSnapshot,OriginalDraftExceptions} from './data';
+import {getDatedContracts,getOriginalTeamCapLedger,getOriginalDraftExceptions} from './data';
 type RawDraft={id:string;label:string;originTeam:string;destinationTeam:string;type:TradeAsset['type'];salary:string;metadata:string};
 // Input validation is strict: JS Number('') === 0 and Number('0x10') === 16
 // must never silently turn an empty or malformed salary into a valid trade.
@@ -35,6 +35,10 @@ export function TradeMachinePilot(){
  const [publishedContracts,setPublishedContracts]=useState<DatedContractSnapshot|null>(null);
  const [publishedError,setPublishedError]=useState('');
  const [capLedger,setCapLedger]=useState<TeamCapLedgerSnapshot|null>(null);
+ const [draftSource,setDraftSource]=useState<OriginalDraftExceptions|null>(null);
+ const [draftSourceError,setDraftSourceError]=useState('');
+ const [sourceDraftId,setSourceDraftId]=useState(''),[sourceTpeId,setSourceTpeId]=useState('');
+ const [sourceAssetDestination,setSourceAssetDestination]=useState('');
  const [capError,setCapError]=useState('');
  const [usingOriginalLedger,setUsingOriginalLedger]=useState(false);
  const [allTeamSource,setAllTeamSource]=useState(''),[allTeamDestination,setAllTeamDestination]=useState('');
@@ -44,12 +48,41 @@ export function TradeMachinePilot(){
    .catch(e=>{if(!controller.signal.aborted)setPublishedError(String(e.message??e))});
   getOriginalTeamCapLedger(controller.signal).then(setCapLedger)
    .catch(e=>{if(!controller.signal.aborted)setCapError(String(e.message??e))});
+  getOriginalDraftExceptions(controller.signal).then(setDraftSource)
+   .catch(e=>{if(!controller.signal.aborted)setDraftSourceError(String(e.message??e))});
   return ()=>controller.abort();
  },[]);
  const [pickFirst,setPickFirst]=useState('');
  const [pickSecond,setPickSecond]=useState('');
  const participating=[teamA.trim().toUpperCase(),teamB.trim().toUpperCase(),
   ...extraTeams.map(t=>t.name.trim().toUpperCase())];
+ const publishedDraft=(draftSource?.draftAssets??[]).filter(x=>participating.includes(x.team));
+ const publishedTpes=(draftSource?.exceptions??[]).filter(x=>participating.includes(x.team));
+ const routeSourceDraft=()=>{
+  const item=publishedDraft.find(x=>x.id===sourceDraftId);
+  if(!item||!item.tradable||item.frozen||!sourceAssetDestination||
+   item.team===sourceAssetDestination)return;
+  setDirty(true);
+  setDrafts(prev=>[...prev,{id:item.id,label:item.label,originTeam:item.team,
+   destinationTeam:sourceAssetDestination,type:'draftPick',salary:'0',
+   metadata:JSON.stringify({draft_year:item.year,round:String(item.round),
+    stepien_safe:item.stepienSafe,frozen:item.frozen,swap_right:item.swapRight,
+    protection:item.protection,conveyance_uncertain:item.conditional,
+    source:item.source,source_dossier:item.description})}]);
+  setSourceDraftId('');
+ };
+ const routeSourceTpe=()=>{
+  const item=publishedTpes.find(x=>x.id===sourceTpeId);
+  if(!item||item.available<=0||item.expires<asOf||!sourceAssetDestination||
+    item.team===sourceAssetDestination)return;
+  setDirty(true);
+  setDrafts(prev=>[...prev,{id:item.id,label:item.sourceTransaction,originTeam:item.team,
+   destinationTeam:sourceAssetDestination,type:'tradeException',salary:'0',
+   metadata:JSON.stringify({amount:item.available,expires_at:item.expires+'T00:00:00Z',
+    source:'Original Flutter dated traded-player exception register',
+    unusable_above_second_apron:item.unusableAboveSecondApron,note:item.note})}]);
+  setSourceTpeId('');
+ };
  const publishedTeams=[...new Set((publishedContracts?.records??[]).map(x=>x.team))].sort();
  const applyOriginalLedger=()=>{
   const entries=participating.map(team=>capLedger?.teams.find(row=>row.team===team));
@@ -159,6 +192,35 @@ export function TradeMachinePilot(){
    </div>
    <p className="subtle">{publishedTeams.length} original source team identifiers available. All selections remain editable hypothetical assets.</p>
   </fieldset>
+  <fieldset className="trade-published-assets"><legend>Original Flutter draft rights and traded-player exceptions</legend>
+   <p className="subtle">{draftSource?.draftAssets.length??0} first/second-round source interests and {draftSource?.exceptions.length??0} original TPE records. The ledger is dated {draftSource?.sourceAsOf??'unavailable'}, with ownership/protection uncertainty preserved. These assets are hypothetical until independently verified.</p>
+   {draftSourceError&&<p role="alert">{draftSourceError}</p>}
+   <div className="trade-grid">
+    <label>Source draft interest<select aria-label="Source draft interest" value={sourceDraftId}
+     onChange={e=>{setSourceDraftId(e.target.value);setSourceTpeId('')}}>
+     <option value="">Select dated pick/right</option>
+     {publishedDraft.map(x=><option key={x.id} value={x.id} disabled={!x.tradable||x.frozen}>
+      {x.team} · {x.label}{!x.tradable?' · obligated/unavailable':''}{x.frozen?' · frozen':''}{x.conditional?' · conditional':''}</option>)}
+    </select></label>
+    <label>Source traded-player exception<select aria-label="Source trade exception" value={sourceTpeId}
+     onChange={e=>{setSourceTpeId(e.target.value);setSourceDraftId('')}}>
+     <option value="">Select dated TPE</option>
+     {publishedTpes.map(x=><option key={x.id} value={x.id} disabled={x.available<=0||x.expires<asOf}>
+      {x.team} · {x.sourceTransaction} · ${x.available.toLocaleString()} · expires {x.expires}</option>)}
+    </select></label>
+    <label>Source asset receiving team<select aria-label="Source asset receiving team" value={sourceAssetDestination}
+     onChange={e=>setSourceAssetDestination(e.target.value)}>
+     <option value="">Choose participating team</option>
+     {participating.filter(Boolean).map(x=><option key={x}>{x}</option>)}
+    </select></label>
+    <button disabled={!sourceDraftId||!sourceAssetDestination||
+     publishedDraft.find(x=>x.id===sourceDraftId)?.team===sourceAssetDestination}
+     onClick={routeSourceDraft}>Add source draft interest</button>
+    <button disabled={!sourceTpeId||!sourceAssetDestination||
+     publishedTpes.find(x=>x.id===sourceTpeId)?.team===sourceAssetDestination}
+     onClick={routeSourceTpe}>Add source trade exception</button>
+   </div>
+  </fieldset>
   <h3>Assigned assets</h3><div className="trade-assets">{drafts.map((d,i)=><fieldset key={i} className="trade-asset">
    <legend>Asset {i+1}</legend>
    <div className="trade-grid">
@@ -191,6 +253,6 @@ export function TradeMachinePilot(){
     <p key={i}><strong>{f.severity.toUpperCase()} · {f.code}</strong> · {f.team??'Scenario'}: {f.message}</p>):
     <p>No findings on this modeled scenario.</p>}</div>}
   </div>}
-  <p className="table-note">The original Flutter Trade Machine is authoritative. This experimental UI models up to five teams and can import dated, source-labeled player salary records for the first two teams, but still lacks live salary updates, draft protections, complete asset eligibility and a full production transaction workflow; it cannot confirm CBA legality. Full production feature parity remains blocked.</p>
+  <p className="table-note">The original Flutter Trade Machine is authoritative. This experimental UI models up to five teams and can import dated, source-labeled player salary records for the first two teams, but still lacks live salary updates, complete draft conveyance/Stepien eligibility, verified exception use and a full production transaction workflow; it cannot confirm CBA legality. Full production feature parity remains blocked.</p>
  </section>;
 }
