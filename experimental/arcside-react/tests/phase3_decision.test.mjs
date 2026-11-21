@@ -213,3 +213,21 @@ test('observational browser, Labs and a11y smoke never certifies GPU, security o
   assert.equal(result.gates.find(x=>x.name===key).status,'NOT_RUN');
  assert.equal(result.fullMigrationApproved,false);
 });
+
+test('actual profile route smoke and original Dart CBA exports are evidence, not full profile or CBA parity',()=>{
+ const readiness={kind:'ARCSIDE_PHASE3_FULL_SCOPE_AUDIT_V1',fullScopeFeatureParity:false,
+  fullTradeAndProfileParity:false,modules:[],directFailures:[]};
+ const profiles={kind:'ARCSIDE_REAL_PLAYER_PROFILE_CORPUS_PROBE_V1',
+  manifestSha256:hash,status:'SOURCE_DOSSIER_SMOKE_PASS'};
+ const tradeReference={kind:'ARCSIDE_ORIGINAL_DART_CBA_GOLDENS_V1',
+  candidateEquivalentImplemented:false,cases:{a:{},b:{},c:{},d:{},e:{}}};
+ const result=assess({manifestBytes,readiness,profiles,tradeReference});
+ const scope=result.gates.find(x=>x.name==='functional_full_scope_feature_parity');
+ const cba=result.gates.find(x=>x.name==='full_cba_trade_rules_and_player_profiles');
+ assert.equal(scope.status,'FAIL');
+ assert.equal(scope.detail.playerDossierSourceProbe,'SOURCE_DOSSIER_SMOKE_PASS');
+ assert.equal(cba.detail.originalDartRuleCases,5);
+ assert.equal(cba.detail.independentReactCbaEngineVerified,false);
+ assert.equal(cba.status,'FAIL');
+ assert.equal(result.fullMigrationApproved,false);
+});
