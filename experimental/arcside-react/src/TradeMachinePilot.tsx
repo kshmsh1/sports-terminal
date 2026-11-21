@@ -235,11 +235,16 @@ export function TradeMachinePilot(){
      {publishedDraft.map(x=><option key={x.id} value={x.id} disabled={!x.tradable||x.frozen}>
       {x.team} · {x.label}{!x.tradable?' · obligated/unavailable':''}{x.frozen?' · frozen':''}{x.conditional?' · conditional':''}</option>)}
     </select></label>
+    <label>Team using exception to acquire player<select aria-label="TPE receiving team"
+     value={tpeTeam} onChange={e=>{setTpeTeam(e.target.value);setSourceTpeId('')}}>
+     <option value="">Choose receiving team</option>
+     {participating.filter(Boolean).map(x=><option key={x}>{x}</option>)}
+    </select></label>
     <label>Source traded-player exception<select aria-label="Source trade exception" value={sourceTpeId}
-     onChange={e=>{setSourceTpeId(e.target.value);setSourceDraftId('')}}>
+     onChange={e=>setSourceTpeId(e.target.value)}>
      <option value="">Select dated TPE</option>
-     {publishedTpes.map(x=><option key={x.id} value={x.id} disabled={x.available<=0||x.expires<asOf}>
-      {x.team} · {x.sourceTransaction} · ${x.available.toLocaleString()} · expires {x.expires}</option>)}
+     {publishedTpes.filter(x=>x.team===tpeTeam).map(x=><option key={x.id} value={x.id} disabled={x.available<=0||x.expires<asOf}>
+      {x.sourceTransaction} · {'$'}{x.available.toLocaleString()} · expires {x.expires}</option>)}
     </select></label>
     <label>Source asset receiving team<select aria-label="Source asset receiving team" value={sourceAssetDestination}
      onChange={e=>setSourceAssetDestination(e.target.value)}>
@@ -249,10 +254,16 @@ export function TradeMachinePilot(){
     <button disabled={!sourceDraftId||!sourceAssetDestination||
      publishedDraft.find(x=>x.id===sourceDraftId)?.team===sourceAssetDestination}
      onClick={routeSourceDraft}>Add source draft interest</button>
-    <button disabled={!sourceTpeId||!sourceAssetDestination||
-     publishedTpes.find(x=>x.id===sourceTpeId)?.team===sourceAssetDestination}
-     onClick={routeSourceTpe}>Add source trade exception</button>
+    <button disabled={!sourceTpeId||!tpeTeam}
+     onClick={chooseReceivingTpe}>Use TPE for receiving team</button>
+    <button disabled={!tpeTeam||!selectedTpeByTeam[tpeTeam]} onClick={()=>{
+     setSelectedTpeByTeam(prev=>{const next={...prev};delete next[tpeTeam];return next})}}>
+     Clear receiving team TPE</button>
    </div>
+   <p className="subtle">A traded-player exception is a receiving-team acquisition mechanism; it is never transferred to another team. This modeled TPE review is not a legal CBA authorization.</p>
+   {participating.filter(x=>selectedTpeByTeam[x]).map(team=><p key={team} className="subtle">
+    {team} models acquisition with {publishedTpes.find(x=>x.id===selectedTpeByTeam[team])?.sourceTransaction??'unavailable source exception'}.
+   </p>)}
   </fieldset>
   <h3>Assigned assets</h3><div className="trade-assets">{drafts.map((d,i)=><fieldset key={i} className="trade-asset">
    <legend>Asset {i+1}</legend>
@@ -286,6 +297,6 @@ export function TradeMachinePilot(){
     <p key={i}><strong>{f.severity.toUpperCase()} · {f.code}</strong> · {f.team??'Scenario'}: {f.message}</p>):
     <p>No findings on this modeled scenario.</p>}</div>}
   </div>}
-  <p className="table-note">The original Flutter Trade Machine is authoritative. This experimental UI models up to five teams and can import dated, source-labeled player salary records for the first two teams, but still lacks live salary updates, complete draft conveyance/Stepien eligibility, verified exception use and a full production transaction workflow; it cannot confirm CBA legality. Full production feature parity remains blocked.</p>
+  <p className="table-note">The original Flutter Trade Machine is authoritative. This experimental UI models up to five teams and can import dated source-labeled player salary records across participating teams, but still lacks live salary updates, complete draft conveyance/Stepien eligibility, verified exception use and a full production transaction workflow; it cannot confirm CBA legality. Full production feature parity remains blocked.</p>
  </section>;
 }
