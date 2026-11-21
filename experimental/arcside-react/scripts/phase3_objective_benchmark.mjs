@@ -31,7 +31,7 @@ const rounds=cold+warm;
 const browser=await launcher.launch({headless:true,...(engine==='chromium'&&process.env.ARCSIDE_BROWSER_CHANNEL?
  {channel:process.env.ARCSIDE_BROWSER_CHANNEL}:{})});
 const meta={kind:'ARCSIDE_OBJECTIVE_BROWSER_PERFORMANCE_V1',source:'ACTUAL_LOCAL_V5_CORPUS',
- manifestSha256,manifestSeasonCount:manifest.season_count,method:'Identical v5 manifest; 1440x900; alternating app order; fresh context per cold sample, reused context per warm sample; Chromium/Firefox/WebKit headless browser probes. Browser navigation/DOM readiness and request/animation frame telemetry are NOT matched GPU render-completion metrics. Flutter feature-specific UI actions are not automated.',
+ manifestSha256,manifestSeasonCount:manifest.season_count,method:'Identical v5 manifest; 1440x900; alternating app order; fresh context per cold sample, reused context per warm sample; Chromium/Firefox/WebKit headless browser probes. Browser navigation/DOM readiness and request/animation frame telemetry are NOT matched GPU render-completion metrics. React chart wheel, drag, reset and axis controls are instrumented as one-sided scripted probes; Flutter feature-specific UI actions are not automated.',
  hardware:{platform:platform(),release:release(),arch:arch(),cpu:cpus()[0]?.model,
  cores:cpus().length,ram:totalmem()},browserEngine:engine,browserVersion:browser.version(),
  cold,warm,createdAt:new Date().toISOString()};
@@ -106,8 +106,55 @@ try{
      return {frameSamples:gaps.length,rafP95GapMs:sorted[Math.ceil(sorted.length*.95)-1]??null,
       rafMaxGapMs:sorted.at(-1)??null,rafGapsOver50Ms:gaps.filter(x=>x>50).length};
     });
+    let reactChartActions=null;
+    if(app==='React'){
+     // Scripted React input latency is NOT a comparable Flutter chart/GPU measurement.
+     const plot=page.locator('.studio-chart');
+     await page.getByLabel('X metric').selectOption('ast');
+     await page.getByLabel('Y metric').selectOption('pts');
+     await page.getByRole('button',{name:'Reset view'}).click();
+     const initial='0.000:100.000|0.000:100.000';
+     if(await plot.getAttribute('data-viewport-range')!==initial)
+      throw Error('React chart viewport did not reset before scripted interaction');
+     const box=await plot.boundingBox();
+     if(!box)throw Error('React canvas bounding box not available');
+     const x=box.x+box.width*.55,y=box.y+box.height*.52;
+     await page.mouse.move(x,y);
+     const wheelAt=performance.now();
+     await page.mouse.wheel(0,-600);
+     await page.waitForFunction(previous=>
+      document.querySelector('.studio-chart')?.getAttribute('data-viewport-range')!==previous,
+      initial,{timeout:10000});
+     const wheelMs=performance.now()-wheelAt;
+     const zoomed=await plot.getAttribute('data-viewport-range');
+     await page.mouse.move(x,y);
+     const panAt=performance.now();
+     await page.mouse.down();
+     await page.mouse.move(box.x+box.width*.68,box.y+box.height*.65,{steps:12});
+     await page.mouse.up();
+     await page.waitForFunction(previous=>
+      document.querySelector('.studio-chart')?.getAttribute('data-viewport-range')!==previous,
+      zoomed,{timeout:10000});
+     const scriptedPanMs=performance.now()-panAt;
+     const panned=await plot.getAttribute('data-viewport-range');
+     await page.getByRole('button',{name:'Reset view'}).click();
+     await page.waitForFunction(expected=>
+      document.querySelector('.studio-chart')?.getAttribute('data-viewport-range')===expected,
+      initial,{timeout:10000});
+     const beforeAxes=await plot.getAttribute('aria-label');
+     const axesAt=performance.now();
+     await page.getByLabel('X metric').selectOption('reb');
+     await page.getByLabel('Y metric').selectOption('ast');
+     await page.waitForFunction(previous=>
+      document.querySelector('.studio-chart')?.getAttribute('aria-label')!==previous,
+      beforeAxes,{timeout:10000});
+     reactChartActions={wheelMs,scriptedPanMs,axisDomUpdateMs:performance.now()-axesAt,
+      zoomed,panned,resetVerified:true,
+      caveat:'Times contain Playwright input overhead and DOM observations, not GPU presentation. Flutter chart not instrumented.'};
+    }
     const requests=responses.filter(x=>x.url.startsWith(base));
     raw.push({app,trial,cold:isCold,route,domContentLoadedMs,readyMs,readyType,readyVerified,
+     reactChartActions,
      ...firstPaint,...settled,responseStatus:response?.status()??null,
      sameOriginRequests:requests.length,badResponses:requests.filter(x=>x.status>=400),
      exceptions,qualifiedForMatchedChartP95:false});
@@ -128,6 +175,9 @@ try{
  for(const app of ['Flutter','React']){
   const samples=raw.filter(x=>x.app===app);
   summary[app]={cold:samples.filter(x=>x.cold).length,warm:samples.filter(x=>!x.cold).length,
+   reactOnlyWheelInputLatency:app==='React'?stats(samples.filter(x=>!x.cold&&x.reactChartActions).map(x=>x.reactChartActions.wheelMs)):null,
+   reactOnlyDragSequenceLatency:app==='React'?stats(samples.filter(x=>!x.cold&&x.reactChartActions).map(x=>x.reactChartActions.scriptedPanMs)):null,
+   reactOnlyAxisDomLatency:app==='React'?stats(samples.filter(x=>!x.cold&&x.reactChartActions).map(x=>x.reactChartActions.axisDomUpdateMs)):null,
    failures:samples.filter(x=>x.failed||x.exceptions?.length||x.badResponses?.length).length,
    domContentLoaded:stats(samples.filter(x=>!x.cold&&Number.isFinite(x.domContentLoadedMs)).map(x=>x.domContentLoadedMs)),
    visibleProbe:stats(samples.filter(x=>!x.cold&&Number.isFinite(x.readyMs)).map(x=>x.readyMs)),
