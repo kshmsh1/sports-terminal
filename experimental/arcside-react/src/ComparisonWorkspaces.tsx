@@ -90,6 +90,7 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
  const [error,setError]=useState('');
  const [group,setGroup]=useState('Basic');
  const [metricSet,setMetricSet]=useState<string[]>([]);
+ const [savedName,setSavedName]=useState(''),[savedVersion,setSavedVersion]=useState(0);
  const groups=kind==='player'?{
   Basic:['pts','reb','ast','stl','blk','tov','pf'],
   Scoring:['pts','fgm','fga','three_pm','fta','points_per_shot'],
@@ -128,6 +129,31 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
   return m;
  },[slots,snapshot,localSnapshots,basis,segment,kind]);
  const selected=slots.map(slot=>candidates.get(slot.season)?.find(r=>r.id===slot.selected));
+const saveKey='arcside.phase3.compare.'+kind+'.v1';
+ const savePreset=()=>{
+  const name=savedName.trim();if(!name)return;
+  try{
+   const old=JSON.parse(localStorage.getItem(saveKey)??'{}') as Record<string,unknown>;
+   localStorage.setItem(saveKey,JSON.stringify({...old,[name]:{slots,group,metricSet,segment,basis}}));
+   setSavedVersion(x=>x+1);
+  }catch(e){setError('Local comparison preset could not be saved: '+String(e))}
+ };
+ const presets=useMemo(()=>{
+  try{return JSON.parse(localStorage.getItem(saveKey)??'{}') as Record<string,unknown>}
+  catch{return {} as Record<string,unknown>}
+ },[saveKey,savedVersion]);
+ const restorePreset=(name:string)=>{
+  const item=presets[name];
+  if(!item||typeof item!=='object'||Array.isArray(item))return;
+  const data=item as Record<string,unknown>;
+  if(!Array.isArray(data.slots)||data.slots.length<2||data.slots.length>5)return;
+  const restored=data.slots.filter(v=>v&&typeof v==='object'&&!Array.isArray(v)&&
+   typeof v.season==='string'&&typeof v.selected==='string').map(v=>{
+    const row=v as Slot;return {id:nextSlotId++,season:row.season,selected:row.selected};
+   });
+  if(restored.length>=2){setSlots(restored);setGroup(typeof data.group==='string'?data.group:'Basic');
+   setMetricSet(Array.isArray(data.metricSet)?data.metricSet.filter(x=>typeof x==='string'):[])}
+ };
  const label=(metric:string)=>kind==='player'?metrics.find(m=>m.key===metric)?.label??metric:
   ({games:'GP',wins:'W',losses:'L',win_pct:'W%',ppg:'PPG',opp_ppg:'OPP PPG',point_diff:'DIFF',
    pace:'PACE',ortg:'ORTG',drtg:'DRTG',net_rtg:'NET',srs:'SRS',fg_pct:'FG%',three_pct:'3P%',
@@ -171,6 +197,14 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
    {Object.keys(groups).map(g=><option key={g}>{g}</option>)}</select></label>
    <label>Custom metrics<select aria-label="Add comparison metric" value="" onChange={e=>{if(e.target.value)setMetricSet(prev=>[...new Set([...(prev.length?prev:selectedMetrics),e.target.value])])}}>
     <option value="">Add metric…</option>{(kind==='player'?metrics.map(m=>m.key):[...teamCompareKeys]).filter(k=>!selectedMetrics.includes(k)).map(k=><option key={k} value={k}>{label(k)}</option>)}</select></label></div>
+  <div className="toolbar comparison-presets">
+   <label>Preset name<input aria-label="Comparison preset name" value={savedName} placeholder="My historical comparison"
+    onChange={e=>setSavedName(e.target.value)}/></label>
+   <button disabled={!savedName.trim()} onClick={savePreset}>Save local preset</button>
+   <label>Saved comparison<select aria-label="Saved comparison" value="" onChange={e=>restorePreset(e.target.value)}>
+    <option value="">Load preset…</option>{Object.keys(presets).sort().map(k=><option key={k} value={k}>{k}</option>)}
+   </select></label>
+  </div>
   {error&&<p role="alert">{error}</p>}
   {selected.filter(Boolean).length<2?<p className="empty">Select at least two source-backed {kind==='player'?'players':'teams'} to see a comparison. A single value cannot establish a winner.</p>:
   <div className="table-scroll" role="region" tabIndex={0} aria-label={kind==='player'?'Player comparison metrics':'Team comparison metrics'}>
