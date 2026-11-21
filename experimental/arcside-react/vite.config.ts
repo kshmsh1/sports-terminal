@@ -61,6 +61,31 @@ const originalTeamFinancialSeed=()=>{
   sourceAsOf:'2026-10-05',source:'User-supplied 2026–27 NBA Team Summary screenshots',
   dartSourceSha256:createHash('sha256').update(source).digest('hex'),teams:rows});
 };
+// Single source of truth: extract the 30 original Dart team cap ledgers.
+// Never reinterpret a sum of salaries as the team's full cap ledger.
+const originalTeamCapLedger=()=>{
+ const source=readFileSync(path.resolve(cwd,'../../lib/services/nba_team_cap_reference_2026.dart'),'utf8');
+ const records=[...source.matchAll(/'([A-Z]{3})':\s*NbaTeamCapLedgerEntry\(([^)]*)\)/g)].map(match=>{
+  const body=match[2],field=(key:string)=>{
+   const found=body.match(new RegExp('(?:^|,)\\s*'+key+':\\s*(-?\\d+(?:\\.\\d+)?)'));
+   return found?Number(found[1]):null;
+  };
+  return {team:match[1],totalCap:field('totalCap'),active:field('active'),dead:field('dead'),
+   retained:field('retained')??0,capHolds:field('capHolds')??0,
+   incompleteRosterCharges:field('incompleteRosterCharges')??0};
+ });
+ const capBlock=source.match(/static const Map<String, String> hardCap = \{([\s\S]*?)\};/)?.[1];
+ if(!capBlock)throw Error('Original hard-cap map is missing.');
+ const caps=new Map([...capBlock.matchAll(/'([A-Z]{3})':\s*'(first|second)'/g)].map(x=>[x[1],x[2]]));
+ if(records.length!==30||new Set(records.map(x=>x.team)).size!==30||
+    records.some(x=>x.totalCap===null||x.active===null||x.dead===null))
+  throw Error('Original Dart team ledger parse failed: require exactly 30 complete unique teams.');
+ const teams=records.map(x=>({...x,hardCap:caps.get(x.team)??null}));
+ return JSON.stringify({kind:'ARCSIDE_ORIGINAL_DART_TEAM_CAP_LEDGER_2026_27_V1',
+  operatingSeason:'2026-27',source:'Original Flutter Spotrac-transcribed static cap ledger',
+  sourceNote:'Dated snapshot only; use only with explicit source selection; not a live cap feed.',
+  dartSourceSha256:createHash('sha256').update(source).digest('hex'),teams});
+};
 const assets = (server: {middlewares: {use: (prefix: string, middleware: any) => void}}) => {
   // Serve the SAME local corpus and ORIGINAL Labs, not demo copies or remote API data.
   server.middlewares.use('/data/nba_static', sirv(path.join(repoWeb, 'data/nba_static'), { dev: true, etag: true }));
@@ -71,6 +96,13 @@ const assets = (server: {middlewares: {use: (prefix: string, middleware: any) =>
     res.setHeader('content-type','application/json; charset=utf-8');
     res.setHeader('cache-control','no-store');
     res.end(req.method==='HEAD'?'':originalTeamFinancialSeed());
+  });
+  server.middlewares.use('/data/phase3/2026-27-team-cap-ledger.json',(
+   req:IncomingMessage,res:ServerResponse,next:()=>void)=>{
+    if(req.method!=='GET'&&req.method!=='HEAD')return next();
+    res.setHeader('content-type','application/json; charset=utf-8');
+    res.setHeader('cache-control','no-store');
+    res.end(req.method==='HEAD'?'':originalTeamCapLedger());
   });
   server.middlewares.use('/data/phase3/2026-27-contracts.json',(
     req:IncomingMessage,res:ServerResponse,next:()=>void)=>{
@@ -86,6 +118,8 @@ export default defineConfig({
     {name:'arcside-2026-27-dated-contract-seed',generateBundle(){
       this.emitFile({type:'asset',fileName:'data/phase3/2026-27-team-financials.json',
         source:originalTeamFinancialSeed()});
+      this.emitFile({type:'asset',fileName:'data/phase3/2026-27-team-cap-ledger.json',
+        source:originalTeamCapLedger()});
       this.emitFile({type:'asset',fileName:'data/phase3/2026-27-contracts.json',
         source:originalFlutterContractSeed()});
     }},
