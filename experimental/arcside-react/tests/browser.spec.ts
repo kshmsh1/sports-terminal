@@ -243,3 +243,66 @@ test('player contract panel prioritizes dated original salary snapshot over fron
  await expect(section).toContainText('Synthetic test source');
  await expect(section).not.toContainText('BOS · 2025-26');
 });
+
+test('player comparison reuses canonical player metrics, multiple slots and tied-value rules',async({page})=>{
+ await page.goto('/player-compare?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByRole('heading',{name:'Player Comparison'})).toBeVisible();
+ await page.getByLabel('Compare player 1',{exact:true}).selectOption('synthetic-0');
+ await page.getByLabel('Compare player 2',{exact:true}).selectOption('synthetic-2');
+ const table=page.getByRole('region',{name:'Player comparison metrics'});
+ await expect(table).toBeVisible();
+ await expect(table.getByRole('row',{name:/PTS/})).toBeVisible();
+ await page.getByRole('button',{name:'Add player'}).click();
+ await expect(page.getByLabel('Compare player 3',{exact:true})).toBeVisible();
+ await page.getByLabel('Compare metric group').selectOption('Defense');
+ await expect(table.getByRole('row',{name:/STOCKS/})).toBeVisible();
+ await page.getByRole('button',{name:'Reset comparison'}).click();
+ await expect(page.getByText('Select at least two source-backed players')).toBeVisible();
+});
+test('team comparison uses published team records, not fabricated team values',async({page})=>{
+ await page.goto('/team-compare?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByRole('heading',{name:'Team Comparison'})).toBeVisible();
+ await page.getByLabel('Compare team 1',{exact:true}).selectOption('CHI');
+ await page.getByLabel('Compare team 2',{exact:true}).selectOption('BOS');
+ const table=page.getByRole('region',{name:'Team comparison metrics'});
+ await expect(table).toContainText('Chicago');
+ await expect(table.getByRole('row',{name:/PPG/})).toContainText('105.0');
+ await page.getByLabel('Compare metric group').selectOption('Efficiency');
+ await expect(table.getByRole('row',{name:/SRS/})).toContainText('—');
+});
+test('box scores use published original index and detail, including player inspection',async({page})=>{
+ await page.goto('/box-scores?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByRole('heading',{name:'Box Scores'})).toBeVisible();
+ await page.getByRole('button',{name:/BOS 100 @ CHI 110/}).click();
+ const detail=page.getByLabel('Game box-score inspector');
+ await expect(detail.getByText('BOS @ CHI')).toBeVisible();
+ await expect(page.getByRole('region',{name:'Individual game box score'})).toContainText('Synthetic Player 0');
+ await page.getByRole('button',{name:'Synthetic Player 0'}).click();
+ await expect(detail).toContainText('PTS: 25');
+});
+test('Financials renders original Flutter team reference, never a synthesized mock',async({page})=>{
+ await page.route('**/data/phase3/2026-27-team-financials.json',route=>
+  route.fulfill({status:200,contentType:'application/json',
+   body:JSON.stringify({kind:'ARCSIDE_ORIGINAL_FLUTTER_TEAM_FINANCIALS_2026_27_V1',
+    sourceAsOf:'2026-10-05',source:'Synthetic browser fixture',
+    dartSourceSha256:'synthetic-browser-only',teams:Array.from({length:30},(_,i)=>({
+     team:i===0?'CHI':'T'+String(i).padStart(2,'0'),standardRoster:14,twoWayRoster:3,
+     capSpace:i===0?1000000:0,taxSpace:0,firstApronSpace:0,secondApronSpace:0,
+     hardCap:null,availableExceptions:{},largestTpe:null,largestTpeExpires:null}))})})}));
+ await page.goto('/financials?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByRole('heading',{name:'Financials'})).toBeVisible();
+ await page.getByRole('button',{name:'CHI'}).click();
+ await expect(page.getByLabel('Financial team inspector')).toContainText('$1,000,000');
+});
+test('with/without displays only genuinely published player-pair splits',async({page})=>{
+ await page.goto('/with-without?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByRole('heading',{name:'With / Without'})).toBeVisible();
+ await expect(page.getByText('SYNTHETIC_PLAYWRIGHT_ONLY')).toBeVisible();
+ await page.getByLabel('With/without team').selectOption('CHI');
+ await page.getByLabel('With/without player B').selectOption('synthetic-2');
+ const table=page.getByRole('region',{name:'Synthetic Player 0 published splits'});
+ await expect(table).toContainText('24.0');
+ await expect(table).toContainText('20.0');
+ await page.getByRole('button',{name:'Playoffs'}).first().click();
+ await expect(page.getByText('Lineup stint / play-by-play splits have not been materialized')).toBeVisible();
+});
