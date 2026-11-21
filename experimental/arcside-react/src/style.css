@@ -156,3 +156,14 @@ h2{font-size:21px;letter-spacing:-.4px;margin:0 0 7px}h3{font-size:15px}.subtle{
 .profile-table th:nth-child(2),.profile-table td:nth-child(2){position:static;width:auto}
 .profile-table th:nth-child(3),.profile-table td:nth-child(3){width:auto}
 .profile-table th:not(:nth-child(-n+3)),.profile-table td:not(:nth-child(-n+3)){min-width:72px}
+
+.profile-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}
+.profile-summary>div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.profile-summary span{font-size:11px;color:var(--sub);letter-spacing:.06em}
+.profile-summary strong{font-size:22px;font-weight:800}
+.profile-stats-wrapper .profile-contract-panel,.profile-stats-wrapper .profile-honors-panel{margin-top:20px}
+.profile-award-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
+.profile-award-grid p{margin:8px 0 0;color:var(--sub)}
+.contract-entry{padding:12px 0;border-bottom:1px solid var(--line)}
+.contract-entry p{margin:8px 0;color:var(--sub)}
+@media(max-width:600px){.profile-summary{grid-template-columns:1fr}}
