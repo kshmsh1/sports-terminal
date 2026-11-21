@@ -12,6 +12,7 @@ const hash=s=>createHash('sha256').update(s).digest('hex');
 const app=await read('experimental/arcside-react/src/App.tsx');
 const chart=await read('experimental/arcside-react/src/Chart.tsx');
 const profile=await read('experimental/arcside-react/src/ProfileTable.tsx');
+const tradeCandidate=await read('experimental/arcside-react/src/tradeEngine.ts');
 const flutterTrade=await read('lib/services/trade_machine_engine.dart');
 const python=await read('web/labs/python/index.html');
 const sheets=await read('web/labs/sheets/index.html');
@@ -22,7 +23,7 @@ const reference=[
  {module:'Visualization Studio',path:'lib/screens/website_nba_visualizations_v2_screen.dart',candidate:'/visualizations'},
  {module:'Player comparison',path:'lib/screens/compare_screen.dart'},
  {module:'Team comparison',path:'lib/screens/website_nba_team_comparison_screen.dart'},
- {module:'Trade Machine',path:'lib/screens/product_trade_machine_complete_screen.dart'},
+ {module:'Trade Machine',path:'lib/screens/product_trade_machine_complete_screen.dart',candidate:'/trade'},
  {module:'Box scores',path:'lib/screens/website_nba_box_scores_screen.dart'},
  {module:'Financials and player contracts',path:'lib/screens/contracts_screen.dart'},
  {module:'Team detail',path:'lib/screens/website_nba_team_detail_screen.dart'},
@@ -39,16 +40,17 @@ for(const item of reference){
  const route=item.candidate?.startsWith('/player/')?app.includes("view.path.startsWith('/player/')"):
   !!item.candidate&&routes.includes(item.candidate);
  const status=!tracked?'REFERENCE_PATH_MISSING':!route?'CANDIDATE_ROUTE_MISSING':
-  item.module==='Player profiles'?'CAREER_AND_ADVANCED_TABLES_PRESENT_FULL_PROFILE_NOT_VALIDATED':
+  item.module==='Player profiles'?'CAREER_ADVANCED_CONTRACT_HONORS_PARTIAL_NOT_PARITY_VALIDATED':
+  item.module==='Trade Machine'?'SCENARIO_VALIDATOR_PILOT_ONLY_NOT_PRODUCTION_UI':
   ['Python Lab','Excel Workspace'].includes(item.module)?'ORIGINAL_MODULE_EMBEDDED_NOT_FULLY_VALIDATED':
   'PILOT_ROUTE_PRESENT_NOT_FULL_SCOPE_VALIDATED';
  modules.push({...item,referencePathExists:tracked,candidateRoutePresent:route,status});
 }
 const directFailures=[
- {check:'Full CBA trade rules',status:'NOT_IMPLEMENTED_IN_REACT_PILOT',
-  detail:'Original Dart TradeMachineEngine exists; React candidate has no independent equivalent or transaction UI. Exporter alone cannot establish port parity.'},
+ {check:'Full CBA trade rules and production transaction UI',status:'INDEPENDENT_TS_VALIDATOR_PRESENT_BUT_UNVERIFIED_FULL_SCOPE',
+  detail:'An independent TypeScript validator and two-team scenario editor exist. Exact reviewed Dart golden comparisons, real cap/asset feeds, production trade UX and all rule/edge-case coverage are still required.'},
  {check:'Player dossier holistic profile parity',status:'PARTIAL_IN_REACT_PILOT',
-  detail:'React /player/:key now renders original published career and Advanced Stats tables, but source-level parity, complete awards, contracts, roster context and the full Flutter player-profile interactions are not validated.'},
+  detail:'React /player/:key now renders published career, Advanced Stats, dossier honors and contract placeholders. Flutter additionally joins independent front-office and dated trade-contract feeds, whose source-level joins and complete UX are not validated.'},
  {check:'React chart keyboard alternative',status:chart.includes('className="chart-accessible"')?'PARTIAL_TABLE_ALTERNATIVE':'NOT_VERIFIED',
   detail:'Underlying data table may support screen readers, but plot navigation, focus and tooltip parity require real assistive-technology tests.'}
 ];
@@ -68,7 +70,7 @@ const checkFiles=[
 const sourceTests=[];for(const p of checkFiles)sourceTests.push({path:p,exists:await exists(p)});
 const report={kind:'ARCSIDE_PHASE3_FULL_SCOPE_AUDIT_V1',createdAt:new Date().toISOString(),
  branchPurpose:'narrow React proof of concept only',
- gitReference:{tradeEngineSha256:hash(flutterTrade),reactAppSha256:hash(app),reactChartSha256:hash(chart),reactProfileTablesSha256:hash(profile)},
+ gitReference:{tradeEngineSha256:hash(flutterTrade),reactTradeEngineSha256:hash(tradeCandidate),reactAppSha256:hash(app),reactChartSha256:hash(chart),reactProfileTablesSha256:hash(profile)},
  candidateRoutes:routes,modules,directFailures,backendRisks,sourceTests,
  fullScopeFeatureParity:false,fullTradeAndProfileParity:false,securityCertified:false,accessibilityCertified:false,
  status:'GAPS_CONFIRMED',
