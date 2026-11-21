@@ -49,7 +49,7 @@ try{
     checks.chartTextAlternative=await page.locator('.studio .chart-accessible table').count()===1;
     checks.resetButton=await page.getByRole('button',{name:'Reset view'}).count()===1;
    }
-   if(item.name.endsWith('Lab')){
+   if(['Python Lab','Excel Workspace'].includes(item.name)){
     checks.iframeTitle=await page.locator('iframe.lab-frame[title]').count()===1;
     await page.getByText('Context handshake: acknowledged',{exact:false}).waitFor({timeout:30000});
     checks.bridgeAcknowledged=await page.getByText('Context handshake: acknowledged',{exact:false}).count()===1;
