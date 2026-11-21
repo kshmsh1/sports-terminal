@@ -38,7 +38,7 @@ export function GamesWorkspace({season,segment,initialGame='',onTeam,onPlayer}:{
     if(results[0].status==='fulfilled')setDetail(results[0].value);
     else setDetailError(String(results[0].reason));
     if(results[1].status==='fulfilled')setPbp(results[1].value);
-    else setDetailError(prev=>prev+' Play-by-play unavailable: '+String(results[1].reason));
+    else if(results[1].status==='rejected')setDetailError(prev=>prev+' Play-by-play unavailable: '+String(results[1].reason));
    }).finally(()=>{if(!controller.signal.aborted)setDetailLoading(false)});
   return ()=>controller.abort();
  },[selected]);
