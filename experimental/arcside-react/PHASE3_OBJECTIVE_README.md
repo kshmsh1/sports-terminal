@@ -129,3 +129,9 @@ bash scripts/phase3_full_automated_acceptance.sh
 ```
 
 This rebuilds Flutter and React **once** for the first objective stage, then reuses the identical release binaries for Advanced Stats and Visualization Studio source acceptance. It requires the original **untracked** Mac NBA corpus and installed Flutter/Node/Chrome/Playwright. It deliberately avoids synthetic substitutions, the retired manual 90-trial suite and stale build reuse. It does not run native VoiceOver/NVDA, certify GPU performance or approve full migration. Any failed acceptance command exits nonzero and leaves local evidence to inspect.
+
+## Native a11y and operator frame/memory tasks
+
+After rebuilding React following source edits, keep Flutter/React release servers open using `bash scripts/phase3_serve_release_pair.sh` from root. In a second terminal run `node experimental/arcside-react/scripts/phase3_native_a11y_session.mjs` on a physical Mac with native Safari/VoiceOver, and separately on physical Windows with Chrome/NVDA, each serving identical original NBA v5 source. Stop both servers with CTRL-C.
+
+For same-machine operator chart frame and heap samples run `ARCSIDE_FRAME_SAMPLES=10 ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --frame-memory-guided` in place of the server-pair process. It is NOT GPU frame timing; see `docs/architecture/phase3_remaining_five_gates_execution.md`.

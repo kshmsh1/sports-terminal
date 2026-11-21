@@ -41,10 +41,10 @@ On a physical **Mac**, use real **Safari + VoiceOver**, then on a physical **Win
 
 ```bash
 cd ~/sports_terminal
-ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --frame-memory-guided
+bash scripts/phase3_serve_release_pair.sh
 ```
 
-That script runs the paired frame study, not the accessibility audit. For accessibility, with both servers active:
+With both servers active (in a second terminal), run the native accessibility audit:
 
 ```bash
 cd ~/sports_terminal/experimental/arcside-react
