@@ -1,4 +1,5 @@
 import type {JsonRow} from './data';
+import {profileHonors} from './profileHonors';
 type Row=JsonRow;
 const rows=(x:unknown):Row[]=>Array.isArray(x)?x.filter((v):v is Row=>v!==null&&typeof v==='object'&&!Array.isArray(v)):[];
 const fmt=(x:unknown)=>x===null||x===undefined||String(x).trim()===''?'—':String(x);
@@ -6,22 +7,10 @@ const money=(v:unknown)=>{
  const n=Number(v);if(!Number.isFinite(n)||v==null||v==='')return '—';
  return '$'+Math.round(n).toLocaleString('en-US');
 };
-const groupHonors=(dossier:Row)=>{
- const awards=rows(dossier.awards),stars=rows(dossier.all_star),draft=rows(dossier.draft);
- const honors=new Map<string,Set<string>>();
- for(const row of awards){
-  const label=String(row.award??row.award_name??row.award_type??row.description??'').trim();
-  const season=String(row.season_id??row.season??row.year??'').trim();
-  if(!label)continue;
-  if(!honors.has(label))honors.set(label,new Set());
-  if(season)honors.get(label)?.add(season);
- }
- if(stars.length){
-  const seasons=new Set(stars.map(r=>String(r.season_id??r.season??r.year??'').trim()).filter(Boolean));
-  honors.set('All-Star',seasons);
- }
- return {awards:[...honors].map(([title,seasons])=>({title,seasons:[...seasons].sort()})),draft};
-};
+const groupHonors=(dossier:Row)=>({
+ awards:profileHonors(rows(dossier.awards),rows(dossier.all_star)),
+ draft:rows(dossier.draft)
+});
 const countYears=(data:Row[])=>new Set(data.map(r=>r.season_id).filter(Boolean)).size;
 export function ProfileSummary({dossier}: {dossier:Row}){
  const regular=rows(dossier.regular_seasons),playoffs=rows(dossier.playoff_seasons);
