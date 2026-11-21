@@ -40,7 +40,7 @@ for(const item of reference){
  const route=item.candidate?.startsWith('/player/')?app.includes("view.path.startsWith('/player/')"):
   !!item.candidate&&routes.includes(item.candidate);
  const status=!tracked?'REFERENCE_PATH_MISSING':!route?'CANDIDATE_ROUTE_MISSING':
-  item.module==='Player profiles'?'CAREER_ADVANCED_CONTRACT_HONORS_PARTIAL_NOT_PARITY_VALIDATED':
+  item.module==='Player profiles'?'CAREER_ADVANCED_DATED_SALARY_CONTRACT_HONORS_PARTIAL_NOT_PARITY_VALIDATED':
   item.module==='Trade Machine'?'SCENARIO_VALIDATOR_PILOT_ONLY_NOT_PRODUCTION_UI':
   ['Python Lab','Excel Workspace'].includes(item.module)?'ORIGINAL_MODULE_EMBEDDED_NOT_FULLY_VALIDATED':
   'PILOT_ROUTE_PRESENT_NOT_FULL_SCOPE_VALIDATED';
@@ -48,9 +48,9 @@ for(const item of reference){
 }
 const directFailures=[
  {check:'Full CBA trade rules and production transaction UI',status:'INDEPENDENT_TS_VALIDATOR_PRESENT_BUT_UNVERIFIED_FULL_SCOPE',
-  detail:'An independent TypeScript validator and two-team scenario editor exist. Exact reviewed Dart golden comparisons, real cap/asset feeds, production trade UX and all rule/edge-case coverage are still required.'},
+  detail:'An independent TypeScript validator and isolated two-team editor exist. Limited original-Dart golden comparisons have been implemented, but real cap/asset feeds, multi-team production UI and complete CBA rule/edge-case coverage still require review.'},
  {check:'Player dossier holistic profile parity',status:'PARTIAL_IN_REACT_PILOT',
-  detail:'React /player/:key now renders published career, Advanced Stats, dossier honors and contract placeholders. Flutter additionally joins independent front-office and dated trade-contract feeds, whose source-level joins and complete UX are not validated.'},
+  detail:'React /player/:key now renders source-backed career and Advanced Stats tables, Dart-format honors, and same-origin dated 2026-27 salary seed plus optional static front-office contract joins. Browser-local front-office overlays, exact all-column comparisons, deep links and complete Flutter UX remain unverified.'},
  {check:'React chart keyboard alternative',status:chart.includes('className="chart-accessible"')?'PARTIAL_TABLE_ALTERNATIVE':'NOT_VERIFIED',
   detail:'Underlying data table may support screen readers, but plot navigation, focus and tooltip parity require real assistive-technology tests.'}
 ];
