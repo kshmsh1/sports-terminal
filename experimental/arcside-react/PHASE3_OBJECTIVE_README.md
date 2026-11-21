@@ -108,3 +108,12 @@ ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --objectiv
 ```
 
 Only reuse the Flutter binary if its original sources and build/web have not changed. The original Flutter app remains authoritative and draft PR #89 must not be merged automatically.
+
+## November 21 — further Phase 3 engineering closure
+
+- Analytical workspaces now load through React `lazy` / `Suspense` boundaries; the root production entry JavaScript has a **500 kB uncompressed CI budget**, with chart and route modules deferred. This is an initial transfer-size guard only, not a matched render-performance result.
+- Hypothetical trades support two through five participating teams in a **non-production** scenario editor; a strict payroll parser rejects empty strings and malformed financial inputs. The independent original-Dart/TypeScript CBA fixture matrix has been expanded from 15 to **27** cases, including a three-team rotation, a five-team rotation, invalid six-team scope, missing date/cash inputs, and pick restrictions. The entire 2023 CBA is **not** certified by 27 scenarios.
+- Native Python browser CI had an existing red test suite. Its root issues were inconsistent initial `default` / `system` environment naming and shared pre-existing files between separate browser tests. The patch initializes a real `system` environment and only resets the explicitly configured **disposable CI fixture**, preserving strict optimistic file revision checks for actual workspaces. Notebook export now activates a DOM-attached download link. **Verify the completed native browser CI run** before describing this as resolved.
+- The objective accessibility probe now covers fourteen navigation routes and checks first-keyboard-Tab behavior, named navigation, focusable theme control, landmark IDs and relevant Lab/chart alternatives. This remains a browser-automation smoke, not VoiceOver/NVDA/WCAG certification.
+
+See [the updated engineering closeout and gate ledger](../../docs/architecture/phase3_closeout_and_migration_gates_2026_11_21.md). React remains an isolated candidate; Flutter is the source of truth; PR #89 remains draft. The physical-device, genuinely matched interaction/GPU, native Labs security, complete UI/CBA parity and human owner-signoff gates remain required.

@@ -18,7 +18,16 @@ const pages=[
  {name:'Advanced Stats',route:'/advanced?season=2025-26&segment=regular&basis=perGame',heading:'Advanced player statistics'},
  {name:'Visualization Studio',route:'/visualizations?season=2025-26&segment=regular&basis=perGame',heading:'Player scatter explorer'},
  {name:'Python Lab',route:'/workspaces/python?season=2025-26&segment=regular&basis=perGame',heading:'Python Lab'},
- {name:'Excel Workspace',route:'/workspaces/sheets?season=2025-26&segment=regular&basis=perGame',heading:'Excel Workspace'}
+ {name:'Excel Workspace',route:'/workspaces/sheets?season=2025-26&segment=regular&basis=perGame',heading:'Excel Workspace'},
+ {name:'Trade Machine',route:'/trade?season=2025-26&segment=regular&basis=perGame',heading:'Trade Machine'},
+ {name:'Player Compare',route:'/player-compare?season=2025-26&segment=regular&basis=perGame',heading:'Player Comparison'},
+ {name:'Team Compare',route:'/team-compare?season=2025-26&segment=regular&basis=perGame',heading:'Team Comparison'},
+ {name:'Box Scores',route:'/box-scores?season=2025-26&segment=regular&basis=perGame',heading:'Box Scores'},
+ {name:'Financials',route:'/financials?season=2025-26&segment=regular&basis=perGame',heading:'Financials'},
+ {name:'With/Without',route:'/with-without?season=2025-26&segment=regular&basis=perGame',heading:'With / Without'},
+ {name:'Teams',route:'/teams?season=2025-26&segment=regular&basis=perGame',heading:'Teams'},
+ {name:'Games',route:'/games?season=2025-26&segment=regular&basis=perGame',heading:'Games'},
+ {name:'Franchise History',route:'/franchise-history?season=2025-26&segment=regular&basis=perGame',heading:'Franchise History'}
 ];
 const raw=[],errors=[];
 try{
@@ -30,7 +39,13 @@ try{
    await page.getByRole('heading',{name:item.heading}).first().waitFor({timeout:60000});
    checks.httpStatus=res?.status()??null;
    checks.skipLink=await page.getByRole('link',{name:'Skip to content'}).count()===1;
+   // A keyboard user must reach the bypass navigation link first.
+   await page.keyboard.press('Tab');
+   checks.firstKeyboardTabIsSkip=await page.evaluate(()=>
+    document.activeElement?.classList.contains('skip')===true);
    checks.main=await page.locator('main#main').count()===1;
+   checks.navLinksNamed=await page.locator('aside.sidebar nav a').evaluateAll(nodes=>
+    nodes.length>=14&&nodes.every(node=>Boolean(node.textContent?.trim())));
    checks.focusableTheme=await page.getByRole('button',{name:/Switch to (dark|light) theme/}).count()===1;
    checks.invalidIdReferences=await page.evaluate(()=>{
     const missing=[];
@@ -66,6 +81,7 @@ const report={kind:'ARCSIDE_PHASE3_ACCESSIBILITY_SMOKE_V1',manifestSha256,browse
  browserSource:'Playwright bundled engine or explicit Chrome channel; NOT native Safari/VoiceOver or NVDA',
  raw,errors,status:errors.length||raw.some(x=>x.status!=='AUTOMATED_SMOKE_PASS')?'INCOMPLETE_OR_FAIL':'AUTOMATED_SMOKE_PASS',
  nativeAssistiveTechnologyTested:false,wcag22AaCertified:false,
+ automatedRouteCount:pages.length,
  requiredManual:['macOS Safari + VoiceOver','Windows Chrome + NVDA','keyboard-only full routes',
  'chart hover-independent point access','spreadsheet semantic grid and virtual rows','focus restoration and contrast']};
 await writeFile(path.join(out,'accessibility-smoke.json'),JSON.stringify(report,null,2)+'\n');
