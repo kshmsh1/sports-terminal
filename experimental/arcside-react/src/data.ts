@@ -111,11 +111,12 @@ export async function getFrontOfficeContracts(signal?:AbortSignal):Promise<JsonR
 
 export interface TeamCapLedgerRecord {
  team:string;totalCap:number;active:number;dead:number;retained:number;capHolds:number;
- incompleteRosterCharges:number;hardCap:'first'|'second'|null;
+ incompleteRosterCharges:number;salaryPosition:number;guaranteedSalary:number;
+ salaryPositionDeadMoney:number;hardCap:'first'|'second'|null;
 }
 export interface TeamCapLedgerSnapshot {
  kind:'ARCSIDE_ORIGINAL_DART_TEAM_CAP_LEDGER_2026_27_V1';operatingSeason:'2026-27';
- source:string;sourceNote:string;dartSourceSha256:string;teams:TeamCapLedgerRecord[];
+ source:string;sourceNote:string;dartSourceSha256:string;dartSalarySourceSha256:string;teams:TeamCapLedgerRecord[];
 }
 export async function getOriginalTeamCapLedger(signal?:AbortSignal):Promise<TeamCapLedgerSnapshot>{
  const res=await fetch('/data/phase3/2026-27-team-cap-ledger.json',{signal,credentials:'same-origin'});
@@ -124,8 +125,10 @@ export async function getOriginalTeamCapLedger(signal?:AbortSignal):Promise<Team
  const teams=asRows(raw.teams,'original Flutter cap ledger');
  if(raw.kind!=='ARCSIDE_ORIGINAL_DART_TEAM_CAP_LEDGER_2026_27_V1'||
   raw.operatingSeason!=='2026-27'||typeof raw.dartSourceSha256!=='string'||
+  typeof raw.dartSalarySourceSha256!=='string'||
   teams.length!==30||new Set(teams.map(x=>x.team)).size!==30||
-  teams.some(x=>typeof x.team!=='string'||typeof x.totalCap!=='number'||
+  teams.some(x=>typeof x.team!=='string'||typeof x.salaryPosition!=='number'||
+   !Number.isFinite(x.salaryPosition)||x.salaryPosition<=0||typeof x.totalCap!=='number'||
    !Number.isFinite(x.totalCap)||x.totalCap<=0||
    !['first','second',null].includes(x.hardCap as 'first'|'second'|null)))
   throw Error('Original team-cap source ledger failed contract validation.');

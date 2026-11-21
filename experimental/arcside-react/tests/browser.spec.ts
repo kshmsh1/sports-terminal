@@ -379,8 +379,8 @@ test('Trade Machine imports only exact original Flutter cap ledger for selected 
  await page.getByLabel('Trade first team').fill('BOS');
  await page.getByLabel('Trade second team').fill('PHI');
  await page.getByRole('button',{name:'Apply original team cap ledgers to participating teams'}).click();
- await expect(page.getByLabel('First team salary')).toHaveValue(String(bos.totalCap));
- await expect(page.getByLabel('Second team salary')).toHaveValue(String(phi.totalCap));
+ await expect(page.getByLabel('First team salary')).toHaveValue(String(bos.salaryPosition));
+ await expect(page.getByLabel('Second team salary')).toHaveValue(String(phi.salaryPosition));
  await expect(page.getByRole('status').filter({hasText:'Using original Flutter dated cap ledgers'})).toBeVisible();
  await page.getByLabel('First team salary').fill('140000000');
  await expect(page.getByRole('status').filter({hasText:'Using original Flutter dated cap ledgers'})).toHaveCount(0);

@@ -17,7 +17,7 @@ export function parseTradeAmount(input:string):number|null{
 export function originalCapContext(team:string,salary:number,ledger:TeamCapLedgerSnapshot|null,active:boolean){
  const base=nba2026Cap(team,salary);
  const source=ledger?.teams.find(r=>r.team===team);
- if(!active||!source||source.totalCap!==salary)return base;
+ if(!active||!source||source.salaryPosition!==salary)return base;
  return nba2026Cap(team,salary,{hardCappedAt:source.hardCap==='first'?base.firstApron:
   source.hardCap==='second'?base.secondApron:null});
 }
@@ -90,8 +90,8 @@ export function TradeMachinePilot(){
    setCapError('Select only teams with original Flutter cap ledgers before applying the reference.');
    return;
   }
-  setSalaryA(String(entries[0]!.totalCap));setSalaryB(String(entries[1]!.totalCap));
-  setExtraTeams(prev=>prev.map((x,i)=>({...x,salary:String(entries[i+2]!.totalCap)})));
+  setSalaryA(String(entries[0]!.salaryPosition));setSalaryB(String(entries[1]!.salaryPosition));
+  setExtraTeams(prev=>prev.map((x,i)=>({...x,salary:String(entries[i+2]!.salaryPosition)})));
   setCapError('');setUsingOriginalLedger(true);setDirty(true);
  };
  const publishedPlayers=(team:string)=>(publishedContracts?.records??[]).filter(x=>x.team===team&&x.salaries['2026-27']>0);
@@ -155,7 +155,7 @@ export function TradeMachinePilot(){
    onClick={()=>{setDirty(true);setUsingOriginalLedger(false);setExtraTeams(xs=>[...xs,{name:['CCC','DDD','EEE'][xs.length],salary:'140000000'}])}}>
    Add participating team (2–5)</button></div>
   <fieldset className="trade-published-assets"><legend>Original Flutter 2026–27 team-cap reference</legend>
-   <p className="subtle">Reference contains {capLedger?.teams.length??0} source-backed team ledgers; not a live transaction clearing feed. Source SHA: {capLedger?.dartSourceSha256.slice(0,12)??'unavailable'}.</p>
+   <p className="subtle">Reference contains {capLedger?.teams.length??0} source-backed cap/salary ledgers; not a live clearing feed. Payroll uses Flutter Trade Machine's salary-position total, distinct from cap ledger total. Source SHA: {capLedger?.dartSalarySourceSha256.slice(0,12)??'unavailable'}.</p>
    <button disabled={!capLedger} onClick={applyOriginalLedger}>Apply original team cap ledgers to participating teams</button>
    {usingOriginalLedger&&<p role="status">Using original Flutter dated cap ledgers and hard-cap designations. Manual payroll edits switch back to hypothetical modeling.</p>}
    {capError&&<p role="alert">Original cap reference: {capError}</p>}
