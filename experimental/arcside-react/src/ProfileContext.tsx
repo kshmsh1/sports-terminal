@@ -40,7 +40,7 @@ export function ProfileHonors({dossier}: {dossier:Row}){
   {record&&<p className="subtle">Draft · {fmt(record.draft_year)} · Round {fmt(record.round_text)} · Pick {fmt(record.pick_number)} · {fmt(record.drafting_team_text)}</p>}
   {!awards.length&&!record?<p className="empty">No confirmed source-backed award or draft data is available.</p>:
    <div className="profile-award-grid">{awards.map(a=><div key={a.title}><strong>{a.title}</strong>
-    <p>{a.seasons.length}x: {a.seasons.length?a.seasons.join(', '):'Source did not include seasons'}</p></div>)}</div>}
+    <p>{a.years.length}x: {a.years.length?a.years.join(', '):'Source did not include seasons'}</p></div>)}</div>}
  </section>;
 }
 export function profileContextCounts(dossier:Row){
