@@ -213,3 +213,33 @@ test('player dossier exposes published historical career and advanced family tab
  await expect(page).toHaveURL(/segment=playoffs/);
  await expect(career.getByRole('row')).toHaveCount(2);
 });
+
+test('original Flutter 2026–27 seed is served with source and dated provenance',async({page})=>{
+ const response=await page.request.get('/data/phase3/2026-27-contracts.json');
+ expect(response.ok()).toBeTruthy();
+ const payload=await response.json();
+ expect(payload.kind).toBe('ARCSIDE_ORIGINAL_FLUTTER_2026_27_CONTRACT_SEED_V1');
+ expect(payload.asOf).toBe('2026-09-11');
+ expect(payload.records.find((x:{player:string})=>x.player==='Stephen Curry')?.salaries['2026-27']).toBe(62587158);
+ expect(payload.records.length).toBeGreaterThan(100);
+});
+
+test('player contract panel prioritizes dated original salary snapshot over front-office registry',async({page})=>{
+ await page.route('**/data/phase3/2026-27-contracts.json',route=>
+  route.fulfill({status:200,contentType:'application/json',
+   body:JSON.stringify({kind:'ARCSIDE_ORIGINAL_FLUTTER_2026_27_CONTRACT_SEED_V1',
+    asOf:'2026-09-11',dartSeedSha256:'synthetic-test-only',sourceNote:'Fixture',
+    records:[{id:'CHI:synthetic-player-0',player:'Synthetic Player 0',team:'CHI',
+     salaries:{'2026-27':12000000},guaranteed:8000000,sourceStatus:'uploaded',
+     sourceLabel:'Synthetic test source'}]})}));
+ await page.route('**/data/nba_static/front_office/contracts.json',route=>
+  route.fulfill({status:200,contentType:'application/json',body:JSON.stringify([{
+   record:{player_id:'synthetic-0',team_id:'BOS',season:'2025-26',years:[{season:'2025-26',salary:6000000}]}
+  }])}));
+ await page.goto('/player/synthetic-0?season=2025-26&segment=regular&basis=perGame');
+ const section=page.getByRole('region',{name:'Player contract'});
+ await expect(section.getByText('2026–27 · Current salary record')).toBeVisible();
+ await expect(section).toContainText('$12,000,000');
+ await expect(section).toContainText('Synthetic test source');
+ await expect(section).not.toContainText('BOS · 2025-26');
+});
