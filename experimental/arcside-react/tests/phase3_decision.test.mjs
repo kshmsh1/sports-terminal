@@ -188,3 +188,28 @@ test('visualization original-Dart source parity gate cannot pass with missing or
  assert.equal(mismatched.gates.find(g=>g.name==='visualization_source_semantic_parity').status,'FAIL');
  assert.equal(mismatched.gates.find(g=>g.name==='matched_flutter_react_operator_tasks_p95').status,'FAIL');
 });
+
+test('full-scope audit exposes absent modules and blocks a full migration',()=>{
+ const readiness={kind:'ARCSIDE_PHASE3_FULL_SCOPE_AUDIT_V1',status:'GAPS_CONFIRMED',
+  fullScopeFeatureParity:false,fullTradeAndProfileParity:false,
+  modules:[{module:'Trade Machine',status:'CANDIDATE_ROUTE_MISSING'}],
+  directFailures:[{check:'Full CBA trade rules'}]};
+ const result=assess({readiness});
+ assert.equal(result.gates.find(x=>x.name==='functional_full_scope_feature_parity').status,'FAIL');
+ assert.equal(result.gates.find(x=>x.name==='full_cba_trade_rules_and_player_profiles').status,'FAIL');
+ assert.equal(result.fullMigrationApproved,false);
+});
+
+test('observational browser, Labs and a11y smoke never certifies GPU, security or assistive technology',()=>{
+ const objective={kind:'ARCSIDE_OBJECTIVE_BROWSER_PERFORMANCE_V1',manifestSha256:hash,
+  status:'OBSERVATIONAL_PASS'};
+ const accessibility={kind:'ARCSIDE_PHASE3_ACCESSIBILITY_SMOKE_V1',manifestSha256:hash,
+  status:'AUTOMATED_SMOKE_PASS'};
+ const labs={kind:'ARCSIDE_PHASE3_LABS_LOCAL_INTEGRITY_V1',manifestSha256:hash,
+  status:'BROWSER_ROUNDTRIPS_PASS'};
+ const result=assess({manifestBytes,objective,accessibility,labs});
+ for(const key of ['rendering_frames_memory_and_gpu_on_matched_hardware',
+  'real_safari_voiceover_nvda_accessibility','labs_import_export_and_native_service_security'])
+  assert.equal(result.gates.find(x=>x.name===key).status,'NOT_RUN');
+ assert.equal(result.fullMigrationApproved,false);
+});
