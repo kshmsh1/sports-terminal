@@ -132,6 +132,38 @@ export async function getOriginalTeamCapLedger(signal?:AbortSignal):Promise<Team
  return raw as unknown as TeamCapLedgerSnapshot;
 }
 
+
+export interface OriginalDraftAsset {
+ id:string;team:string;year:number;round:1|2;label:string;description:string;
+ tradable:boolean;frozen:boolean;conditional:boolean;swapRight:boolean;stepienSafe:boolean;
+ protection:string|null;source:string;
+}
+export interface OriginalTradeException {
+ id:string;team:string;expires:string;sourceTransaction:string;original:number;
+ available:number;note:string|null;unusableAboveSecondApron:boolean;
+}
+export interface OriginalDraftExceptions {
+ kind:'ARCSIDE_ORIGINAL_FLUTTER_DRAFT_TPE_2026_27_V1';sourceAsOf:string;
+ firstSourceSha256:string;secondSourceSha256:string;tpeSourceSha256:string;
+ draftAssets:OriginalDraftAsset[];exceptions:OriginalTradeException[];caveat:string;
+}
+export async function getOriginalDraftExceptions(signal?:AbortSignal):Promise<OriginalDraftExceptions>{
+ const res=await fetch('/data/phase3/2026-27-draft-exceptions.json',
+  {signal,credentials:'same-origin'});
+ if(!res.ok)throw Error('Original Flutter draft/TPE source unavailable ('+res.status+')');
+ const raw=asObject(await res.json()),draft=asRows(raw.draftAssets,'draft assets'),
+  exceptions=asRows(raw.exceptions,'trade exceptions');
+ if(raw.kind!=='ARCSIDE_ORIGINAL_FLUTTER_DRAFT_TPE_2026_27_V1'||
+  typeof raw.firstSourceSha256!=='string'||typeof raw.secondSourceSha256!=='string'||
+  typeof raw.tpeSourceSha256!=='string'||draft.length<380||exceptions.length<30||
+  new Set(draft.map(a=>a.id)).size!==draft.length||
+  draft.some(a=>typeof a.team!=='string'||typeof a.year!=='number'||
+   ![1,2].includes(a.round as number)||typeof a.tradable!=='boolean')||
+  exceptions.some(e=>typeof e.available!=='number'||!Number.isFinite(e.available)))
+  throw Error('Original Flutter draft/TPE snapshot failed contract validation.');
+ return raw as unknown as OriginalDraftExceptions;
+}
+
 export async function getGameIndex(signal?:AbortSignal):Promise<JsonRow[]> {
  return asRows(await getJson('games/index.json',signal),'games/index');
 }
