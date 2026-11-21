@@ -56,8 +56,21 @@ jobs:
           node --check scripts/guided_overlay.mjs
           node --check scripts/guided_visualization_acceptance.mjs
           node --check scripts/visualization_acceptance_compare.mjs
+          node --check scripts/phase3_objective_benchmark.mjs
+          node --check scripts/phase3_readiness_audit.mjs
+          node --check scripts/phase3_accessibility_probe.mjs
+          node --check scripts/phase3_lab_integrity_probe.mjs
+          node scripts/phase3_readiness_audit.mjs
           bash -n ../../scripts/phase3_release_compare.sh
           node scripts/phase3_decision.mjs
+      - name: Retain read-only tracked-source scope audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arcside-phase3-readiness-audit
+          path: experimental/arcside-react/evidence/readiness/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Retain decision-evidence gate report (missing local sources are NOT_RUN)
         if: always()
         uses: actions/upload-artifact@v4
