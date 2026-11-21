@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
-import type {Manifest,RateBasis,Season,SeasonSnapshot,SeasonType,JsonRow} from './data';
-import {getManifest,getSeasons,getSeason,getPlayerDossier} from './data';
+import type {Manifest,RateBasis,Season,SeasonSnapshot,SeasonType,JsonRow,DatedContractSnapshot} from './data';
+import {getManifest,getSeasons,getSeason,getPlayerDossier,getDatedContracts,getFrontOfficeContracts} from './data';
 import type {MetricKey,Row} from './engine';
 import {advancedKeys,bases,buildRows,formatMetric,metrics,overviewKeys,sortRows,stintRows} from './engine';
 import {Chart} from './Chart';
@@ -51,6 +51,9 @@ export function App(){
  const [labAck,setLabAck]=useState(false);
  const labRef=useRef<HTMLIFrameElement>(null);
  const [dossier,setDossier]=useState<JsonRow|null>(null);
+ const [datedContracts,setDatedContracts]=useState<DatedContractSnapshot|null>(null);
+ const [registryContracts,setRegistryContracts]=useState<JsonRow[]>([]);
+ const [contractLoading,setContractLoading]=useState(false);
  useEffect(()=>{
   const onPop=()=>setView(fromUrl());
   window.addEventListener('popstate',onPop);return ()=>window.removeEventListener('popstate',onPop);
@@ -83,6 +86,22 @@ export function App(){
   getPlayerDossier(key,controller.signal).then(setDossier).catch(e=>{
    if(!controller.signal.aborted)setError(String(e.message??e));
   });
+  return ()=>controller.abort();
+ },[view.path]);
+ useEffect(()=>{
+  if(!view.path.startsWith('/player/')){
+   setDatedContracts(null);setRegistryContracts([]);setContractLoading(false);return;
+  }
+  const controller=new AbortController();
+  setDatedContracts(null);setRegistryContracts([]);setContractLoading(true);
+  Promise.allSettled([
+   getDatedContracts(controller.signal),
+   getFrontOfficeContracts(controller.signal)
+  ]).then(results=>{
+   if(controller.signal.aborted)return;
+   if(results[0].status==='fulfilled')setDatedContracts(results[0].value);
+   if(results[1].status==='fulfilled')setRegistryContracts(results[1].value);
+  }).finally(()=>{if(!controller.signal.aborted)setContractLoading(false)});
   return ()=>controller.abort();
  },[view.path]);
  useEffect(()=>{setExpanded(new Set());setScrollTop(0);if(tableRef.current)tableRef.current.scrollTop=0},[view.season,view.segment,view.basis,search,team,position,qualified,sort,descending]);
@@ -254,7 +273,9 @@ export function App(){
        <span>{dossierSegments(dossier)[view.segment].length} original published rows</span>
       </div>
       <PlayerProfileTables dossier={dossier} segment={view.segment} basis={view.basis}/>
-      <ProfileContracts dossier={dossier}/>
+      <ProfileContracts dossier={dossier} dated={datedContracts} registry={registryContracts}
+        playerKey={decodeURIComponent(view.path.slice('/player/'.length))}
+        playerName={dossierName(dossier)} loading={contractLoading}/>
       <ProfileHonors dossier={dossier}/>
      </div>}
     </section>}
