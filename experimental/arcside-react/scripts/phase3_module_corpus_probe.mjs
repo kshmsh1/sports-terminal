@@ -18,10 +18,7 @@ const boxes=Array.isArray(gameIndex)?gameIndex:[];
 const sampleSeasons=index.slice(0,12).map(s=>s.season_id).filter(Boolean);
 if(!sampleSeasons.length)throw Error('No original NBA seasons in source index');
 const errors=[],rows=[];
-const browser=await chromium.launch({headless:true,...(process.env.ARCSIDE_BROWSER_CHANNEL?{channel:process.env.ARCSIDE_BROWSER_CHANNEL}:{})});
-try{
- const ctx=await browser.newContext({viewport:{width:1440,height:900}});
- const routes=[
+const routes=[
   {path:'/player-compare',heading:'Player Comparison',check:'Player comparison'},
   {path:'/team-compare',heading:'Team Comparison',check:'Team comparison'},
   {path:'/box-scores',heading:'Box Scores',check:'Historical box scores'},
@@ -30,7 +27,11 @@ try{
   {path:'/teams',heading:'Teams',check:'Original team index directory'},
   {path:'/games',heading:'Games',check:'Original historical game index'},
   {path:'/franchise-history',heading:'Franchise History',check:'Original Flutter historical identity plan'}
- ];
+];
+const browser=await chromium.launch({headless:true,...(process.env.ARCSIDE_BROWSER_CHANNEL?{channel:process.env.ARCSIDE_BROWSER_CHANNEL}:{})});
+try{
+ const ctx=await browser.newContext({viewport:{width:1440,height:900}});
+
  for(const route of routes){
   const page=await ctx.newPage();
   const failures=[];
