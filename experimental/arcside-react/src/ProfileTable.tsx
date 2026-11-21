@@ -15,7 +15,9 @@ const source=(row:JsonRow,aliases:string[])=>{
 const number=(v:unknown):number|null=>{
  if(typeof v==='number')return Number.isFinite(v)?v:null;
  if(typeof v!=='string')return null;
- const parsed=Number(v.replaceAll(',','').replaceAll('%','').trim());
+ const cleaned=v.trim();
+ if(!/^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?$/.test(cleaned))return null;
+ const parsed=Number(cleaned);
  return Number.isFinite(parsed)?parsed:null;
 };
 export function dossierSegments(dossier:JsonRow|null){
@@ -32,7 +34,7 @@ const ordered=(rows:JsonRow[])=>[...rows].sort((a,b)=>
 const decimal=(v:unknown,places=1)=>{const n=number(v);return n===null?'—':n.toFixed(places)};
 const integer=(v:unknown)=>{const n=number(v);return n===null?'—':String(Math.round(n))};
 const perGame=(r:JsonRow,aliases:string[])=>{
- const v=number(source(r,aliases)),games=number(source(r,['games','gp']));
+ const v=number(source(r,aliases)),games=number(r.games);
  return v===null||games===null||games<=0?'—':(v/games).toFixed(1);
 };
 const percent=(r:JsonRow,aliases:string[])=>{
