@@ -7,6 +7,28 @@ const obj=(v:unknown):JsonRow=>v&&typeof v==='object'&&!Array.isArray(v)?v as Js
 const str=(v:unknown,missing='—')=>v===undefined||v===null||v===''?missing:String(v);
 const amount=(x:unknown)=>typeof x==='number'&&Number.isFinite(x)?'$'+Math.round(x).toLocaleString():'—';
 const norm=(x:string)=>x.toLowerCase().replace(/[^a-z0-9]/g,'');
+export function TeamsDirectory({onTeam}:{onTeam:(id:string)=>void}){
+ const [teams,setTeams]=useState<JsonRow[]>([]),[query,setQuery]=useState(''),[error,setError]=useState('');
+ useEffect(()=>{const controller=new AbortController();getTeamIndex(controller.signal).then(setTeams)
+  .catch(e=>{if(!controller.signal.aborted)setError(String(e.message??e))});
+  return ()=>controller.abort();
+ },[]);
+ const found=teams.filter(r=>[r.canonical_name,r.abbreviation,r.team_key].some(v=>
+  str(v,'').toLowerCase().includes(query.trim().toLowerCase())));
+ return <section className="panel" aria-label="NBA teams directory">
+  <div className="panel-title"><div><p className="eyebrow">NBA / SOURCE TEAM INDEX</p>
+   <h2>Teams</h2><p className="subtle">Search published team identities and open original historical dossiers.</p></div></div>
+  <label>Find team<input aria-label="Find team" value={query} onChange={e=>setQuery(e.target.value)}
+   placeholder="Team name or abbreviation"/></label>
+  {error&&<p role="alert">{error}</p>}
+  <div className="teams-directory">{found.slice(0,150).map((r,i)=><button key={String(r.team_key??i)}
+   onClick={()=>onTeam(str(r.team_key,''))}>
+   <strong>{str(r.canonical_name)}</strong><span>{str(r.abbreviation)} · {str(r.franchise_key)}</span>
+  </button>)}</div>
+  {found.length>150&&<p className="subtle">Showing 150 of {found.length} matching published identities.</p>}
+  <p className="table-note">Team index values originate in the original NBA v5 corpus; no team identities are synthesized.</p>
+ </section>;
+}
 export function teamCareerSeasons(dossier:JsonRow,segment:'regular'|'playoffs'){
  return rows(dossier.seasons).filter(r=>{
   const text=String(r.season_type??'regular').toLowerCase();
