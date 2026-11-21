@@ -14,6 +14,17 @@ export function originalCbaFixtureScenarios():Record<string,TradeScenario>{
  const sat=player('sat','Sign-and-trade','AAA',20000000,{sign_and_trade:true});
  const restricted=player('restricted','Restricted','AAA',8000000,{
   recently_signed_until:'2026-12-15T00:00:00Z'});
+ const cash:TradeAsset={id:'cash',type:'cash',label:'Cash',originTeam:'AAA',salary:400000,metadata:{amount:400000}};
+ const pick28:TradeAsset={id:'first28',type:'draftPick',label:'2028 first',originTeam:'AAA',
+  salary:0,metadata:{round:'1',draft_year:2028,protection:'top-5'}};
+ const pick29:TradeAsset={id:'first29',type:'draftPick',label:'2029 first',originTeam:'AAA',
+  salary:0,metadata:{round:'1',draft_year:2029}};
+ const twoWay=player('two-way','Two-way contract','AAA',1200000,{two_way:true});
+ const exception:TradeAsset={id:'exception',type:'tradeException',label:'Expired TPE',
+  originTeam:'AAA',salary:0,metadata:{amount:5000000,expires_at:'2026-10-01T00:00:00Z'}};
+ const restrictedBonus=player('restricted-bonus','Restricted bonus','AAA',8000000,{
+  no_trade:true,trade_restricted:true,cannot_aggregate:true,trade_bonus:500000});
+ const secondPlayer=player('second-player','Second outgoing player','AAA',7000000);
  const assign=(asset:TradeAsset,destinationTeam:string):TradeAssignment=>({asset,destinationTeam});
  const scenario=(id:string,assignments:TradeAssignment[],aaaSalary=140000000,
   bbbSalary=140000000,asOfDateIso='2026-11-20T00:00:00Z'):TradeScenario=>
@@ -26,7 +37,33 @@ export function originalCbaFixtureScenarios():Record<string,TradeScenario>{
   dated_restriction:scenario('dated_restriction',[assign(restricted,'BBB')],
    140000000,140000000,'2026-11-01T00:00:00Z'),
   sign_trade_first_apron:scenario('sign_trade_first_apron',[assign(sat,'BBB')],
-   150000000,200000000)
+   150000000,200000000),
+  empty_scenario:scenario('empty_scenario',[]),
+  duplicate_assignment:scenario('duplicate_assignment',[assign(a,'BBB'),assign(a,'BBB')]),
+  two_way_salary_exclusion:scenario('two_way_salary_exclusion',[assign(twoWay,'BBB')]),
+  pick_protection_stepien:scenario('pick_protection_stepien',
+   [assign(pick28,'BBB'),assign(pick29,'BBB')]),
+  exception_expired:scenario('exception_expired',[assign(exception,'BBB')]),
+  restricted_bonus:scenario('restricted_bonus',
+   [assign(restrictedBonus,'BBB'),assign(secondPlayer,'BBB')]),
+  second_apron_cash_aggregation:scenario('second_apron_cash_aggregation',
+   [assign(cash,'BBB'),assign(a,'BBB'),assign(secondPlayer,'BBB'),assign(b,'AAA')],
+   240000000,140000000),
+  missing_cap_context:{
+   ...scenario('missing_cap_context',[assign(a,'BBB')]),
+   capContexts:{AAA:nba2026Cap('AAA',140000000)}
+  },
+  cash_limit:{
+   ...scenario('cash_limit',[assign(cash,'BBB')]),
+   capContexts:{AAA:nba2026Cap('AAA',140000000,{
+    cashSentThisSeason:100000,cashLimitThisSeason:300000}),
+    BBB:nba2026Cap('BBB',140000000)}
+  },
+  hard_cap:{
+   ...scenario('hard_cap',[assign(b,'AAA')]),
+   capContexts:{AAA:nba2026Cap('AAA',210000000,{hardCappedAt:209015000}),
+    BBB:nba2026Cap('BBB',140000000)}
+  }
  };
 }
 export function originalCbaFixtureCandidate(){
