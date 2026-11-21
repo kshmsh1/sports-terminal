@@ -25,7 +25,7 @@ try{
   await frame.locator('#importFile').waitFor();
   const content='print("ARCSIDE_PHASE3_IMPORT_EXPORT_INTEGRITY")\n';
   await frame.locator('#picker').setInputFiles({name:'phase3_integrity.py',mimeType:'text/x-python',buffer:Buffer.from(content)});
-  await frame.locator('#activePath').getByText('phase3_integrity.py').waitFor({timeout:20000});
+  await frame.locator('#activePath').filter({hasText:'phase3_integrity.py'}).waitFor({timeout:20000});
   const [download]=await Promise.all([page.waitForEvent('download'),frame.locator('#exportFile').click()]);
   const pathToFile=await download.path();
   if(!pathToFile)throw Error('Export did not produce a local browser download.');
@@ -53,6 +53,7 @@ try{
   await frame.locator('#filePicker').setInputFiles({name:'phase3-roundtrip.json',
    mimeType:'application/json',buffer:Buffer.from(snapshot)});
   await frame.locator('#saveStatus').waitFor({timeout:20000});
+  await page.waitForTimeout(250); // allow import promise to settle before requesting the roundtrip export
   const [second]=await Promise.all([
    page.waitForEvent('download'),frame.locator('[data-action="exportWorkbook"]').click()]);
   const actual=JSON.parse(await readFile(await second.path(),'utf8'));
