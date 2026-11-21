@@ -15,6 +15,9 @@ const comparisons=await read('experimental/arcside-react/src/ComparisonWorkspace
 const financials=await read('experimental/arcside-react/src/FinancialsWorkspace.tsx');
 const boxScores=await read('experimental/arcside-react/src/BoxScoresWorkspace.tsx');
 const withWithout=await read('experimental/arcside-react/src/WithWithoutWorkspace.tsx');
+const teamDetail=await read('experimental/arcside-react/src/TeamDetailWorkspace.tsx');
+const games=await read('experimental/arcside-react/src/GamesWorkspace.tsx');
+const franchise=await read('experimental/arcside-react/src/FranchiseHistoryWorkspace.tsx');
 const profile=await read('experimental/arcside-react/src/ProfileTable.tsx');
 const tradeCandidate=await read('experimental/arcside-react/src/tradeEngine.ts');
 const flutterTrade=await read('lib/services/trade_machine_engine.dart');
@@ -30,9 +33,9 @@ const reference=[
  {module:'Trade Machine',path:'lib/screens/product_trade_machine_complete_screen.dart',candidate:'/trade'},
  {module:'Box scores',path:'lib/screens/website_nba_box_scores_screen.dart',candidate:'/box-scores'},
  {module:'Financials and player contracts',path:'lib/screens/website_nba_financials_screen.dart',candidate:'/financials'},
- {module:'Team detail',path:'lib/screens/website_nba_team_detail_screen.dart'},
- {module:'Games',path:'lib/screens/games_screen.dart'},
- {module:'Franchise history',path:'lib/screens/franchise_history_screen.dart'},
+ {module:'Team detail',path:'lib/screens/website_nba_team_detail_screen.dart',candidate:'/teams'},
+ {module:'Games',path:'lib/screens/games_screen.dart',candidate:'/games'},
+ {module:'Franchise history',path:'lib/screens/franchise_history_screen.dart',candidate:'/franchise-history'},
  {module:'With/Without',path:'lib/screens/website_nba_with_without_v2_screen.dart',candidate:'/with-without'},
  {module:'Player profiles',path:'lib/screens/entity_profile_screens.dart',candidate:'/player/:key'},
  {module:'Python Lab',path:'web/labs/python/index.html',candidate:'/workspaces/python'},
@@ -46,14 +49,14 @@ for(const item of reference){
  const status=!tracked?'REFERENCE_PATH_MISSING':!route?'CANDIDATE_ROUTE_MISSING':
   item.module==='Player profiles'?'CAREER_ADVANCED_DATED_SALARY_CONTRACT_HONORS_PARTIAL_NOT_PARITY_VALIDATED':
   item.module==='Trade Machine'?'SCENARIO_VALIDATOR_PILOT_ONLY_NOT_PRODUCTION_UI':
-  ['Player comparison','Team comparison','Box scores','Financials and player contracts','With/Without'].includes(item.module)?'SOURCE_BACKED_PILOT_ROUTE_NOT_FULL_PARITY':
+  ['Player comparison','Team comparison','Box scores','Financials and player contracts','With/Without','Team detail','Games','Franchise history'].includes(item.module)?'SOURCE_BACKED_PILOT_ROUTE_NOT_FULL_PARITY':
   ['Python Lab','Excel Workspace'].includes(item.module)?'ORIGINAL_MODULE_EMBEDDED_NOT_FULLY_VALIDATED':
   'PILOT_ROUTE_PRESENT_NOT_FULL_SCOPE_VALIDATED';
  modules.push({...item,referencePathExists:tracked,candidateRoutePresent:route,status});
 }
 const directFailures=[
  {check:'Cross-route full feature equivalence',status:'PARTIAL_SOURCE_BACKED_PILOTS',
-  detail:'Player Compare, Team Compare, Box Scores, Financials and With/Without now have real source-backed routes, but original Flutter saved presets, league-wide view state, complete column suites and UX are not yet proven equivalent. Absent static files never become synthetic data.'},
+  detail:'Player and Team Compare, Box Scores, Financials, With/Without, Team Detail, Games and Franchise History now expose source-backed pilot routes. Original Flutter feature controls, native device UX and cross-route parity remain unverified. The original Franchise History screen is a roadmap, not an implemented historical continuity database.'},
  {check:'Full CBA trade rules and production transaction UI',status:'INDEPENDENT_TS_VALIDATOR_PRESENT_BUT_UNVERIFIED_FULL_SCOPE',
   detail:'An independent TypeScript validator and isolated two-team editor exist. Limited original-Dart golden comparisons have been implemented, but real cap/asset feeds, multi-team production UI and complete CBA rule/edge-case coverage still require review.'},
  {check:'Player dossier holistic profile parity',status:'PARTIAL_IN_REACT_PILOT',
@@ -77,7 +80,7 @@ const checkFiles=[
 const sourceTests=[];for(const p of checkFiles)sourceTests.push({path:p,exists:await exists(p)});
 const report={kind:'ARCSIDE_PHASE3_FULL_SCOPE_AUDIT_V1',createdAt:new Date().toISOString(),
  branchPurpose:'narrow React proof of concept only',
- gitReference:{tradeEngineSha256:hash(flutterTrade),reactTradeEngineSha256:hash(tradeCandidate),reactAppSha256:hash(app),reactChartSha256:hash(chart),comparisonSha256:hash(comparisons),financialsSha256:hash(financials),boxScoreSha256:hash(boxScores),withWithoutSha256:hash(withWithout),reactProfileTablesSha256:hash(profile)},
+ gitReference:{tradeEngineSha256:hash(flutterTrade),reactTradeEngineSha256:hash(tradeCandidate),reactAppSha256:hash(app),reactChartSha256:hash(chart),comparisonSha256:hash(comparisons),financialsSha256:hash(financials),boxScoreSha256:hash(boxScores),withWithoutSha256:hash(withWithout),teamDetailSha256:hash(teamDetail),gamesSha256:hash(games),franchiseSha256:hash(franchise),reactProfileTablesSha256:hash(profile)},
  candidateRoutes:routes,modules,directFailures,backendRisks,sourceTests,
  fullScopeFeatureParity:false,fullTradeAndProfileParity:false,securityCertified:false,accessibilityCertified:false,
  status:'GAPS_CONFIRMED',
