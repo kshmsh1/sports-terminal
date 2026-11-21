@@ -407,7 +407,11 @@ test('Trade Machine imports canonical dated first/second-round interests and TPE
  await expect(page.getByLabel('Asset 3 ID')).toHaveValue('BOS-2027-1');
  const tpe=payload.exceptions.find((x:{id:string})=>x.id==='BOS-simons-2027');
  expect(tpe?.available).toBeGreaterThan(0);
+ await page.getByLabel('TPE receiving team').selectOption('BOS');
  await page.getByLabel('Source trade exception').selectOption('BOS-simons-2027');
- await page.getByRole('button',{name:'Add source trade exception'}).click();
- await expect(page.getByLabel('Asset 4 ID')).toHaveValue('BOS-simons-2027');
+ await page.getByRole('button',{name:'Use TPE for receiving team'}).click();
+ await expect(page.getByText(/BOS models acquisition with/)).toBeVisible();
+ await expect(page.getByLabel('Asset 4 ID')).toHaveCount(0);
+ await page.getByRole('button',{name:'Show modeled validation details'}).click();
+ await expect(page.getByLabel('CBA findings')).toContainText('TPE_UNUSED');
 });
