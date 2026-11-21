@@ -2,9 +2,21 @@
 // and a candidate rules service or TS port produces its own report in the same shape.
 // Usage: node scripts/compare_trade_goldens.mjs reference.json candidate.json
 import {readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
 const [baseline,candidate]=process.argv.slice(2);
 if(!baseline||!candidate){console.error('Usage: node scripts/compare_trade_goldens.mjs original_dart.json candidate.json');process.exit(2);}
+if(resolve(baseline)===resolve(candidate)){
+ console.error('CBA golden parity FAIL: a Dart reference file cannot serve as its own independent candidate.');
+ process.exit(1);
+}
 const a=JSON.parse(readFileSync(baseline,'utf8')),b=JSON.parse(readFileSync(candidate,'utf8'));
+if(a.kind!=='ARCSIDE_ORIGINAL_DART_CBA_GOLDENS_V1'||
+ b.kind!=='ARCSIDE_INDEPENDENT_REACT_CBA_CANDIDATE_V1'||
+ b.candidateEquivalentImplemented!==true||
+ typeof b.implementationSource!=='string'||!b.implementationSource.trim()){
+ console.error('CBA golden parity FAIL: requires original Dart exporter and independently implemented React candidate with explicit implementationSource. An exporter, snapshot, or copied reference is NOT a candidate.');
+ process.exit(1);
+}
 const keys=Object.keys(a.cases??{}),fail=[];
 for(const key of keys){
  const original=a.cases[key],next=b.cases?.[key];
@@ -18,4 +30,4 @@ for(const key of keys){
 }
 if(Object.keys(b.cases??{}).length!==keys.length)fail.push('scenario coverage differs');
 if(fail.length){console.error('CBA golden parity FAIL:\n'+fail.join('\n'));process.exit(1);}
-console.log('Exact reported CBA contract match on '+keys.length+' reviewed scenarios; NOT full CBA parity.');
+console.log('Exact reported CBA contract match on '+keys.length+' reviewed scenarios from '+b.implementationSource+'; NOT full CBA parity.');
