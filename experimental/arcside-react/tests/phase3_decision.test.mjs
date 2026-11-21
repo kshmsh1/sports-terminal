@@ -231,3 +231,26 @@ test('actual profile route smoke and original Dart CBA exports are evidence, not
  assert.equal(cba.status,'FAIL');
  assert.equal(result.fullMigrationApproved,false);
 });
+
+test('limited independent CBA golden parity records matched cases but never approves migration',()=>{
+ const base={isValid:true,errorCount:0,warningCount:0,findings:[],teamSummaries:{
+  AAA:{team:'AAA',incomingSalary:8000000,outgoingSalary:8000000}
+ }};
+ const reference={kind:'ARCSIDE_ORIGINAL_DART_CBA_GOLDENS_V1',
+  candidateEquivalentImplemented:false,cases:{equal_salaries:base}};
+ const candidate={kind:'ARCSIDE_INDEPENDENT_REACT_CBA_CANDIDATE_V1',
+  candidateEquivalentImplemented:true,
+  implementationSource:'experimental/arcside-react/src/tradeEngine.ts',
+  cases:{equal_salaries:{...base}}};
+ const readiness={kind:'ARCSIDE_PHASE3_FULL_SCOPE_AUDIT_V1',status:'GAPS_CONFIRMED',
+  fullScopeFeatureParity:false,fullTradeAndProfileParity:false,modules:[],directFailures:[]};
+ const verified=assess({tradeReference:reference,tradeCandidate:candidate,readiness});
+ const gate=verified.gates.find(x=>x.name==='full_cba_trade_rules_and_player_profiles');
+ assert.equal(gate.detail.limitedCbaGoldenParity,true);
+ assert.equal(gate.detail.matchedIndependentCbaCases,1);
+ assert.equal(gate.status,'FAIL');
+ assert.equal(verified.fullMigrationApproved,false);
+ const mismatched=assess({tradeReference:reference,
+  tradeCandidate:{...candidate,cases:{equal_salaries:{...base,errorCount:1}}},readiness});
+ assert.equal(mismatched.gates.find(x=>x.name==='full_cba_trade_rules_and_player_profiles').detail.limitedCbaGoldenParity,false);
+});
