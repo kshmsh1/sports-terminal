@@ -37,7 +37,7 @@ const perGame=(r:JsonRow,aliases:string[])=>{
 };
 const percent=(r:JsonRow,aliases:string[])=>{
  const v=number(source(r,aliases));
- return v===null?'—':(Math.abs(v)>1?v:v*100).toFixed(1)+'%';
+ return v===null?'—':(Math.abs(v)<=1.5?v*100:v).toFixed(1)+'%';
 };
 const signed=(r:JsonRow,aliases:string[])=>{
  const v=number(source(r,aliases));return v===null?'—':(v>=0?'+':'')+v.toFixed(1);
@@ -74,7 +74,7 @@ export function dossierMetric(row:JsonRow,metric:AdvancedMetric):number|null{
  const keys=[...metric.raw,...(metric.engine?[metric.engine]:[]),metric.key];
  for(const key of keys){
   const value=number(row[key]??byNormalized.get(normalized(key)));
-  if(value!==null)return metric.format==='percent'&&Math.abs(value)>1?value/100:value;
+  if(value!==null)return value;
  }
  return null;
 }
@@ -85,10 +85,15 @@ export function dossierMetricText(row:JsonRow,metric:AdvancedMetric){
  }
  const value=dossierMetric(row,metric);
  if(value===null)return '—';
- if(metric.format==='percent')return (value*100).toFixed(metric.decimals)+'%';
- if(metric.format==='integer')return String(Math.round(value));
- if(metric.format==='signed')return (value>=0?'+':'')+value.toFixed(metric.decimals);
- return value.toFixed(metric.decimals);
+ // The published Dart player dossier uses per-game values for these seven
+ // traditional categories and fixed one-decimal formatting for all metrics.
+ if(['ppg','rpg','apg','spg','bpg','tpg','mpg'].includes(metric.key)){
+  const games=number(row.games);
+  return games===null||games<=0?'—':(value/games).toFixed(1);
+ }
+ if(metric.format==='percent')return (Math.abs(value)<=1.5?value*100:value).toFixed(1)+'%';
+ if(metric.format==='signed')return (value>=0?'+':'')+value.toFixed(1);
+ return value.toFixed(1);
 }
 export function PlayerProfileTables({dossier,segment,basis}:{
  dossier:JsonRow;segment:SeasonType;basis:RateBasis;
