@@ -308,6 +308,18 @@ test('with/without displays only genuinely published player-pair splits',async({
  await expect(page.getByText(/Lineup stint \/ play-by-play splits have not been materialized/)).toBeVisible();
 });
 
+test('player comparison saves and restores independent historical slots locally',async({page})=>{
+ await page.goto('/player-compare?season=2025-26&segment=regular&basis=perGame');
+ await page.getByLabel('Compare player 1',{exact:true}).selectOption('synthetic-0');
+ await page.getByLabel('Compare player 2',{exact:true}).selectOption('synthetic-2');
+ await page.getByLabel('Comparison preset name').fill('Test player matchup');
+ await page.getByRole('button',{name:'Save local preset'}).click();
+ await page.getByRole('button',{name:'Reset comparison'}).click();
+ await expect(page.getByText(/Select at least two source-backed players/)).toBeVisible();
+ await page.getByLabel('Saved comparison').selectOption('Test player matchup');
+ await expect(page.getByLabel('Compare player 1',{exact:true})).toHaveValue('synthetic-0');
+ await expect(page.getByLabel('Compare player 2',{exact:true})).toHaveValue('synthetic-2');
+});
 test('team directory resolves source index and opens true historical dossier',async({page})=>{
  await page.goto('/teams?season=2025-26&segment=regular&basis=perGame');
  await expect(page.getByRole('heading',{name:'Teams',exact:true})).toBeVisible();
