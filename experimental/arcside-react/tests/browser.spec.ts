@@ -118,7 +118,7 @@ test('advanced stats exposes all Flutter metric families, filters, pagination an
  await expect(page.getByText('Page 2 / 8').first()).toBeVisible();
  await page.getByRole('button',{name:'Overview',exact:true}).click();
  await expect(page.getByRole('button',{name:'Expand RPG'})).toBeVisible();
- await page.getByRole('button',{name:'Expand RPG'}).click();
+ await career.getByRole('button',{name:'Expand RPG'}).click();
  await expect(page.getByRole('button',{name:'Sort by ORB'})).toBeVisible();
 });
 
