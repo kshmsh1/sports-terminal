@@ -23,7 +23,17 @@ export async function mockStatic(page:Page,count=150){
     players:[],player_season_totals:makeRows(count)},
    'seasons/2025-26/playoffs.json':{season_id:'2025-26',season_type:'playoffs',
     players:[],player_season_totals:[{...makeRows(1)[0],season_type:'playoffs',games:6}]},
-   'players/index.json':[]
+   'players/index.json':[{player_key:'synthetic-0',player_id:'synthetic-0',file:'players/synthetic-0.json'}],
+   'players/synthetic-0.json':{profile:{canonical_name:'Synthetic Player 0',positions:'SF',
+     birth_date:'2000-01-01',draft_year:2018},
+    regular_seasons:[
+     {season_id:'2025-26',team_abbreviation:'CHI',positions:'SF',games:65,minutes:2100,
+      pts:1300,reb:325,ast:260,fg_pct:0.5,ts_pct:0.58,bpm:2.2},
+     {season_id:'2024-25',team_abbreviation:'BOS',positions:'SF',games:60,minutes:1800,
+      pts:1080,reb:240,ast:180,fg_pct:0.45,ts_pct:0.55,bpm:1.7}],
+    playoff_seasons:[{season_id:'2025-26',team_abbreviation:'CHI',positions:'SF',
+     games:6,minutes:180,pts:120,reb:30,ast:24,fg_pct:0.52,ts_pct:0.6,bpm:3.1}],
+    awards:[],all_star:[],draft:[]}
   };
   if(path in bodies)await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(bodies[path])});
   else await route.fulfill({status:404,body:'Synthetic fixture not found'});
