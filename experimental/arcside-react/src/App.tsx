@@ -4,7 +4,7 @@ import {getManifest,getSeasons,getSeason,getPlayerDossier,getDatedContracts,getF
 import type {MetricKey,Row} from './engine';
 import {advancedKeys,bases,buildRows,formatMetric,metrics,overviewKeys,sortRows,stintRows} from './engine';
 
-import {dossierName,dossierSegments} from './ProfileTable';
+import {dossierName,dossierSegments} from './ProfileDossier';
 const AdvancedStatsTable=lazy(()=>import('./AdvancedStatsTable').then(m=>({default:m.AdvancedStatsTable})));
 const Chart=lazy(()=>import('./Chart').then(m=>({default:m.Chart})));
 const PlayerProfileTables=lazy(()=>import('./ProfileTable').then(m=>({default:m.PlayerProfileTables})));

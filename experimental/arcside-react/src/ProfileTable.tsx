@@ -1,4 +1,6 @@
 import {useState} from 'react';
+import {dossierSegments} from './ProfileDossier';
+export {dossierName,dossierSegments} from './ProfileDossier';
 import type {JsonRow,RateBasis,SeasonType} from './data';
 import {advancedGroups,advancedMetricCatalog,advancedChildren} from './advancedCatalog';
 import type {AdvancedMetric} from './advancedCatalog';
@@ -6,8 +8,6 @@ import type {AdvancedMetric} from './advancedCatalog';
 // The dossier's published career rows are an independent source contract.
 // Do not fabricate unpublished statistics or infer rate conversions that
 // the original Flutter player profile does not perform.
-const asRows=(v:unknown):JsonRow[]=>Array.isArray(v)?
- v.filter((r):r is JsonRow=>r!==null&&typeof r==='object'&&!Array.isArray(r)):[];
 const source=(row:JsonRow,aliases:string[])=>{
  for(const key of aliases){const value=row[key];if(value!==undefined&&value!==null&&value!=='')return value;}
  return null;
@@ -20,15 +20,6 @@ const number=(v:unknown):number|null=>{
  const parsed=Number(cleaned);
  return Number.isFinite(parsed)?parsed:null;
 };
-export function dossierSegments(dossier:JsonRow|null){
- return {regular:asRows(dossier?.regular_seasons),playoffs:asRows(dossier?.playoff_seasons)};
-}
-export function dossierName(dossier:JsonRow|null,fallback='Player profile'){
- const profile=dossier?.profile;
- const record=profile&&typeof profile==='object'&&!Array.isArray(profile)?profile as JsonRow:{};
- return String(source(record,['canonical_name','player_name','name'])??
-  source(dossier??{},['canonical_name','player_name','player_label'])??fallback);
-}
 const ordered=(rows:JsonRow[])=>[...rows].sort((a,b)=>
  String(b.season_id??'').localeCompare(String(a.season_id??'')));
 const decimal=(v:unknown,places=1)=>{const n=number(v);return n===null?'—':n.toFixed(places)};
