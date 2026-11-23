@@ -268,3 +268,17 @@ test('five source-backed module route probes stay observational and cannot certi
  assert.equal(gate.detail.newModuleSourceRoutes,5);
  assert.equal(result.fullMigrationApproved,false);
 });
+
+test('owner visual observations are shown but cannot silently authorize full migration',()=>{
+ const report={kind:'ARCSIDE_PHASE3_ORIGINAL_CORPUS_FINAL_VISUAL_REVIEW_V1',
+  manifestSha256:hash,status:'OPERATOR_VISUAL_SAMPLE_PASS_ONLY',
+  checks:Array.from({length:15},(_,id)=>({id})),issues:[]};
+ const result=assess({manifestBytes,visualReview:report,
+  frameMemory:{manifestSha256:hash,status:'INCOMPLETE_OR_FAIL',errors:['insufficient gestures']}});
+ const owner=result.gates.find(g=>g.name==='owner_visual_ux_and_migration_signoff');
+ assert.equal(owner.status,'NOT_RUN');
+ assert.equal(owner.detail.visualReviewStatus,'OPERATOR_VISUAL_SAMPLE_PASS_ONLY');
+ assert.equal(owner.detail.visuallyReviewedModules,15);
+ assert.equal(result.gates.find(g=>g.name==='rendering_frames_memory_and_gpu_on_matched_hardware').detail.operatorFrameMemoryErrors,1);
+ assert.equal(result.fullMigrationApproved,false);
+});

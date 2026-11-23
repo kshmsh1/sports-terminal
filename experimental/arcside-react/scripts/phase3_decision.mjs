@@ -47,7 +47,8 @@ function grouped(guided){
 }
 export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
  advancedSource=null,advancedGuided=null,visualizationSource=null,visualizationGuided=null,
- readiness=null,objective=null,accessibility=null,labs=null,profiles=null,modules=null,tradeReference=null,tradeCandidate=null}){
+ readiness=null,objective=null,accessibility=null,labs=null,profiles=null,modules=null,tradeReference=null,tradeCandidate=null,
+ frameMemory=null,nativeMac=null,nativeWindows=null,visualReview=null}){
  const g=[];
  const corpusHash=manifestBytes?sha256(manifestBytes):null;
  const realCases=parity?.byCase??{};
@@ -243,13 +244,25 @@ export function assess({parity,real,guided,manifestBytes,featureBlocker=null,
    detail:{auditStatus:readiness?.status??'NOT_RUN',directFailures:readiness?.directFailures?.map(x=>x.check)??[],originalDartRuleCases:originalCbaOnly?Object.keys(tradeReference.cases??{}).length:0,limitedCbaGoldenParity:!!candidateCompared,matchedIndependentCbaCases:candidateCompared?Object.keys(tradeReference.cases).length:0,fullIndependentCbaRuleCoverageVerified:false,independentReactCbaEngineVerified:false,playerDossierSourceProbe:verifiedProfiles?profiles.status:'NOT_RUN'}},
   real_safari_voiceover_nvda_accessibility:{status:null,
    detail:{automatedBrowserProbe:verifiedAccessibility?accessibility.status:'NOT_RUN',
+    nativeMacOperatorStatus:nativeMac?.manifestSha256===corpusHash?nativeMac.status:'NOT_RUN',
+    nativeWindowsOperatorStatus:nativeWindows?.manifestSha256===corpusHash?nativeWindows.status:'NOT_RUN',
     nativeAssistiveTechnologyTested:false}},
   labs_import_export_and_native_service_security:{status:null,
    detail:{isolatedRoundtrip:verifiedLabs?labs.status:'NOT_RUN',localServiceSecurityCertified:false}},
   rendering_frames_memory_and_gpu_on_matched_hardware:{status:null,
    detail:{observationalBrowserProbe:verifiedObjective?objective.status:'NOT_RUN',
+    operatorFrameMemoryStatus:frameMemory?.manifestSha256===corpusHash?
+     frameMemory.status:'NOT_RUN',
+    operatorFrameMemoryErrors:frameMemory?.errors?.length??null,
     trulyMatchedChartRenderGpuMeasurements:false}},
-  owner_visual_ux_and_migration_signoff:{status:null,detail:{signedOwnerDecision:false}}
+  owner_visual_ux_and_migration_signoff:{status:null,
+   detail:{signedOwnerDecision:false,
+    visualReviewStatus:visualReview?.manifestSha256===corpusHash?
+     visualReview.status:'NOT_RUN',
+    visuallyReviewedModules:visualReview?.manifestSha256===corpusHash?
+     visualReview.checks?.length??0:0,
+    outstandingVisualDefects:visualReview?.manifestSha256===corpusHash?
+     visualReview.issues?.length??null:null}}
  };
  // Presence of synthetic or Playwright evidence cannot satisfy these human/runtime gates.
  for(const name of ['functional_full_scope_feature_parity','full_cba_trade_rules_and_player_profiles',
@@ -299,10 +312,14 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
  const tradeReference=await maybeJson(path.join(home,'evidence/trade/dart-trade-reference.json'));
  const tradeCandidate=await maybeJson(path.join(home,'evidence/trade/react-trade-candidate.json'));
  const modules=await maybeJson(path.join(home,'evidence/modules/module-corpus-smoke.json'));
+ const frameMemory=await maybeJson(path.join(home,'evidence/frame-memory/paired-frame-memory.json'));
+ const nativeMac=await maybeJson(path.join(home,'evidence/native/native-darwin.json'));
+ const nativeWindows=await maybeJson(path.join(home,'evidence/native/native-win32.json'));
+ const visualReview=await maybeJson(path.join(home,'evidence/final-review/final-visual-review.json'));
  let manifestBytes=null;try{manifestBytes=await readFile(path.join(repo,'web/data/nba_static/manifest.json'))}catch(e){
   if(e.code!=='ENOENT')throw e;
  }
- const result=assess({parity,real,guided,manifestBytes,featureBlocker,advancedSource,advancedGuided,visualizationSource,visualizationGuided,readiness,objective,accessibility,labs,profiles,modules,tradeReference,tradeCandidate});
+ const result=assess({parity,real,guided,manifestBytes,featureBlocker,advancedSource,advancedGuided,visualizationSource,visualizationGuided,readiness,objective,accessibility,labs,profiles,modules,tradeReference,tradeCandidate,frameMemory,nativeMac,nativeWindows,visualReview});
  const dest=path.join(home,'evidence/decision');
  await mkdir(dest,{recursive:true});
  await writeFile(path.join(dest,'phase3-decision.json'),JSON.stringify(result,null,2)+'\n');
