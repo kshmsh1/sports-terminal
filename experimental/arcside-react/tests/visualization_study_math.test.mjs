@@ -19,7 +19,8 @@ test('a single warm tail anomaly remains in registered p95 even with smooth fram
  const a=evaluateVisualizationStudy(sample());
  assert.equal(a.status,'BENCHMARK_FAILED_REQUIRES_INVESTIGATION');
  assert.equal(a.by.React.warmP95Ms,879);
- assert.equal(a.by.React.allTrialP95Ms,420);
+ assert.equal(a.by.React.allTrialP95Ms,879);
+ assert.equal(a.by.React.coldMedianMs,420);
  assert.equal(a.suspectPairs.length,1);
  assert.equal(a.suspectPairs[0].trial,12);
 });
