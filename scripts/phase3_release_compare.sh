@@ -153,6 +153,10 @@ fi
 if [[ "$MODE" == "--diagnose-chart" ]];then
  echo 'Auditing original 24-trial Visualization data (no failed samples removed)...'
  (cd "$ROOT/experimental/arcside-react" && node scripts/diagnose_visualization_study.mjs) || STATUS=1
+ if [[ -s "$ROOT/experimental/arcside-react/evidence/frame-memory/paired-frame-memory.json" ]];then
+  echo 'Explaining which original physical frame/memory trials did not qualify (no result rewritten)...'
+  (cd "$ROOT/experimental/arcside-react" && node scripts/audit_frame_memory.mjs) || STATUS=1
+ fi
  echo 'Probing React-only chart operation boundaries with original NBA v5 source; this is NOT a matched Flutter benchmark...'
  (cd "$ROOT/experimental/arcside-react" &&
   ARCSIDE_REACT_URL="$REACT_URL" node scripts/phase3_react_chart_diagnostic.mjs) || STATUS=1
