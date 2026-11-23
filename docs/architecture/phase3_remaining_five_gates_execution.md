@@ -71,3 +71,38 @@ This is not true GPU frame-present-time measurement, nor does Chrome JS heap cap
 ## Final GO/NO GO decision
 
 Review `experimental/arcside-react/evidence/decision/phase3-decision.md` after original-source, human-native, security and performance evidence. Only once all gates are verified should the owner compare actual side-by-side visual output and choose staged React migration, hybrid or retain Flutter. Until then the decision remains **NOT AUTHORIZED** and PR #89 is **DRAFT**.
+
+
+## November 23: benchmark forensic audit and final operator review
+
+The previously reported Visualization Studio p95 *does not* mix cold with warm trials. It is nearest-rank p95 of **10 warm** trials per app, so the largest WARM observation is the registered p95. The original November 23 operator run failed on React warm trial 12 (879.91 ms; browser rAF p95 9.2 ms, no gaps >50 ms); do not discard that data, relabel it as a GPU freeze, or silently reinterpret the registered sample.
+
+With the locally built original-sourced React/Flutter releases reused, run this focused diagnostic (it does not ask for another 24 human timed trials):
+
+\`\`\`bash
+cd ~/sports_terminal
+git pull --ff-only
+ARCSIDE_DIAGNOSTIC_TRIALS=10 ARCSIDE_VIS_TRACE=1 ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --diagnose-chart
+\`\`\`
+
+This first audits the *immutable* original V2 24-trial data. The second step performs ten **React-only** automated zoom, pan, reset, X/Y axis and underlying-player-selection probes against the same local NBA v5 manifest. The diagnostic saves individual operation latencies and a React performance trace in \`experimental/arcside-react/evidence/visualization/\`. **REACT_OPERATIONS_OBSERVED is not the Flutter-versus-React p95 gate PASS**; an original-corpus repeat may be required after an actual chart fix. Do not weaken the established 1.10 threshold.
+
+For the operator's **final visual + functional review**, start both local release servers in terminal A:
+
+\`\`\`bash
+cd ~/sports_terminal
+bash scripts/phase3_serve_release_pair.sh
+\`\`\`
+
+In terminal B, run:
+
+\`\`\`bash
+cd ~/sports_terminal
+node experimental/arcside-react/scripts/phase3_final_visual_review.mjs
+\`\`\`
+
+The runner opens both app tabs with the exact same NBA v5 manifest. For **15 original Flutter modules**, manually inspect the corresponding React route, real player/team/game selections, functional controls, data equivalence, errors, keyboard behavior, dark/light readability and dimensions. It captures both actual screenshots and explicit operator notes. Enter FAIL/BLOCKED for an unimplemented original function or missing historical source; there are no skip/waive controls. The result is in \`experimental/arcside-react/evidence/final-review/final-visual-review.md\` with untracked screenshots.
+
+**Important:** \`OPERATOR_VISUAL_SAMPLE_PASS_ONLY\` does **not** certify full functional parity or authorize migration. React still has known incomplete original Trade Machine/CBA transaction work and some player-profile/front-office modules. The original Flutter app is untouched. Real Mac Safari+VoiceOver and physical Windows Chrome+NVDA must be reviewed separately. Labs native privilege boundaries and total process/GPU rendering still require independent evidence. A visually excellent candidate could still receive an architecture NO-GO or a hybrid migration recommendation.
+
+The decision program retains all original evidence and reports unavailable/failed gates explicitly. Do not mark PR #89 ready or merge it until a separate owner decision explicitly authorizes the selected rollout scope.
