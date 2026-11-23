@@ -98,6 +98,29 @@ try{
   '','**Full migration approved:** NO. Native assistive-technology, complete CBA / profiles, security and GPU/process evidence must be assessed independently.',
   '','Screenshots in evidence/final-review/screenshots. All report files remain on the operator machine.'];
  await writeFile(path.join(root,'final-visual-review.md'),lines.join('\n')+'\n');
+ const escape=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
+  .replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+ const cards=checks.map(x=>'<article><h2>'+escape(x.title)+'</h2><p><strong>Status: '+
+  escape(x.status)+'</strong> · '+escape(x.details)+'</p>'+
+  '<div class="pair"><figure><img alt="Flutter '+escape(x.title)+'" src="'+
+  escape(x.screenshots.Flutter)+'"><figcaption>Flutter reference</figcaption></figure>'+
+  '<figure><img alt="React '+escape(x.title)+'" src="'+
+  escape(x.screenshots.React)+'"><figcaption>React candidate</figcaption></figure></div></article>').join('\n');
+ const html='<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+  '<meta name="viewport" content="width=device-width, initial-scale=1">'+
+  '<title>Arcside Phase 3 visual review</title><style>'+
+  'body{font:14px system-ui;background:#0c1423;color:#eef2ff;margin:0 auto;padding:28px;max-width:1550px}'+
+  'h1{font-size:25px}h2{font-size:18px}article{background:#16233a;border:1px solid #38506a;'+
+  'border-radius:10px;margin:20px 0;padding:18px}p{line-height:1.55}.pair{display:grid;'+
+  'grid-template-columns:1fr 1fr;gap:16px}figure{margin:0;min-width:0}'+
+  'img{width:100%;border:1px solid #49627f;border-radius:6px}figcaption{padding:9px 0}'+
+  '@media(max-width:800px){.pair{grid-template-columns:1fr}}</style></head><body>'+
+  '<h1>Arcside Phase 3 — original Flutter / React operator review</h1>'+
+  '<p>Manifest SHA-256: '+escape(sourceHash)+'. Review result: '+escape(result.status)+'.</p>'+
+  '<p>Sampled screenshots and notes only. NOT full feature parity, native accessibility, GPU, security, CBA or migration certification.</p>'+
+  cards+'</body></html>';
+ await writeFile(path.join(root,'side-by-side.html'),html);
+ console.log('Offline screenshot contact sheet: '+path.join(root,'side-by-side.html'));
  console.log(JSON.stringify({status:result.status,modules:checks.length,issues,
   runtimeErrors,report:path.join(root,'final-visual-review.md')},null,2));
  rl.close();await context.close();await browser.close();
