@@ -106,3 +106,14 @@ The runner opens both app tabs with the exact same NBA v5 manifest. For **15 ori
 **Important:** \`OPERATOR_VISUAL_SAMPLE_PASS_ONLY\` does **not** certify full functional parity or authorize migration. React still has known incomplete original Trade Machine/CBA transaction work and some player-profile/front-office modules. The original Flutter app is untouched. Real Mac Safari+VoiceOver and physical Windows Chrome+NVDA must be reviewed separately. Labs native privilege boundaries and total process/GPU rendering still require independent evidence. A visually excellent candidate could still receive an architecture NO-GO or a hybrid migration recommendation.
 
 The decision program retains all original evidence and reports unavailable/failed gates explicitly. Do not mark PR #89 ready or merge it until a separate owner decision explicitly authorizes the selected rollout scope.
+
+### One-command final owner review
+
+For an interactive end-to-end final visual/functional check with the original v5 manifest and both release servers automatically managed:
+
+```bash
+cd ~/sports_terminal
+ARCSIDE_COMPARE_REUSE_BUILDS=1 bash scripts/phase3_release_compare.sh --final-review
+```
+
+This leaves the old evidence files untouched, saves screenshots and user observations for 15 workspaces, and recomputes the decision ledger. The command may exit nonzero when the original Flutter functionality is incomplete in React. Neither manual completion nor screenshot capture grants full migration approval without independent native, security, complete CBA/profile and GPU evidence.

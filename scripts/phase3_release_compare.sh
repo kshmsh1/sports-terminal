@@ -10,8 +10,8 @@
 # --objective: repeatable non-certifying load/frame probes, Labs roundtrips, accessibility smoke and source scope audit
 set -euo pipefail
 MODE="${1:---automated}"
-if [[ "$MODE" != "--diagnose-chart" && "$MODE" != "--frame-memory-guided" && "$MODE" != "--automated" && "$MODE" != "--advanced-acceptance" && "$MODE" != "--advanced-guided" && "$MODE" != "--visualization-guided" && "$MODE" != "--visualization-acceptance" && "$MODE" != "--objective" && "$MODE" != "--all" ]]; then
- echo 'Usage: bash scripts/phase3_release_compare.sh [--diagnose-chart|--frame-memory-guided|--automated|--advanced-acceptance|--advanced-guided|--visualization-acceptance|--visualization-guided|--objective]' >&2;exit 2
+if [[ "$MODE" != "--final-review" && "$MODE" != "--diagnose-chart" && "$MODE" != "--frame-memory-guided" && "$MODE" != "--automated" && "$MODE" != "--advanced-acceptance" && "$MODE" != "--advanced-guided" && "$MODE" != "--visualization-guided" && "$MODE" != "--visualization-acceptance" && "$MODE" != "--objective" && "$MODE" != "--all" ]]; then
+ echo 'Usage: bash scripts/phase3_release_compare.sh [--final-review|--diagnose-chart|--frame-memory-guided|--automated|--advanced-acceptance|--advanced-guided|--visualization-acceptance|--visualization-guided|--objective]' >&2;exit 2
 fi
 if [[ "$MODE" == "--all" ]];then
  echo 'The pre-repair 90-trial --all protocol is retired. Valid season trials are preserved; use --visualization-guided for the new chart measurements.' >&2;exit 2
@@ -137,6 +137,17 @@ if [[ "$MODE" == "--visualization-guided" ]];then
    ARCSIDE_FLUTTER_URL="$FLUTTER_URL" ARCSIDE_REACT_URL="$REACT_URL" \
    node scripts/guided_visualization_acceptance.mjs
   ) || STATUS=1
+ fi
+fi
+if [[ "$MODE" == "--final-review" ]];then
+ if [[ "$STATUS" -ne 0 ]];then
+  echo 'Real source browser checks failed. Do not record invalid owner review.' >&2
+ else
+  echo 'Starting live final 15-module Flutter/React owner visual and functional review; NO automatic migration approval...'
+  (cd "$ROOT/experimental/arcside-react" &&
+   ARCSIDE_FLUTTER_URL="$FLUTTER_URL" ARCSIDE_REACT_URL="$REACT_URL" \
+   ARCSIDE_BROWSER_CHANNEL="${ARCSIDE_BROWSER_CHANNEL:-chrome}" \
+   node scripts/phase3_final_visual_review.mjs) || STATUS=1
  fi
 fi
 if [[ "$MODE" == "--diagnose-chart" ]];then
