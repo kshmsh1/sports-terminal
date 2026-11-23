@@ -47,10 +47,18 @@ try{
   await flutter.bringToFront();
   console.log('Flutter tab foreground. Navigate and stage the requested source-backed task manually.');
   await rl.question('After staging Flutter and React to the same screen and inspecting both, press ENTER: ');
-  const result=(await rl.question('Real side-by-side visual AND functional result [PASS / FAIL / BLOCKED]: ')).trim().toUpperCase();
+  let result=(await rl.question('Real side-by-side visual AND functional result [PASS / FAIL / BLOCKED]: ')).trim().toUpperCase();
   if(!['PASS','FAIL','BLOCKED'].includes(result))throw Error('Invalid review response for '+module.id);
-  const details=(await rl.question('Concrete checked controls, rows, differences, or defect ID (at least 15 characters): ')).trim();
+  let details=(await rl.question('Concrete checked controls, rows, differences, or defect ID (at least 15 characters): ')).trim();
   if(details.length<15)throw Error('Specific evidence required. Review stopped at '+module.id);
+  const inspectedPath=new URL(react.url()).pathname;
+  const requiredPath=module.id==='player-profile'?'/player/':
+   module.id==='team-detail'?'/team/':null;
+  if(result==='PASS'&&requiredPath&&!inspectedPath.startsWith(requiredPath)){
+   result='BLOCKED';
+   details+='; React detail page not actually staged: expected '+requiredPath+'..., observed '+inspectedPath;
+   console.log('Cannot PASS a directory in place of the actual dossier. Automatically recorded BLOCKED.');
+  }
   const screenshots={};for(const [app,page] of Object.entries(pages)){
    const bytes=await page.screenshot({animations:'disabled'});
    const name=module.id+'-'+app.toLowerCase()+'.png';
