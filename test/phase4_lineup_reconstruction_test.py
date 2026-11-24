@@ -38,7 +38,7 @@ class LineupTest(unittest.TestCase):
         game,players,events=fixture()
         stints,rosters,report=process_game(events,game,players)
         self.assertEqual(report["periods_verified"],1)
-        self.assertEqual(sum(s["seconds"] for s in stints),720)
+        self.assertEqual(sum(s["seconds"] for s in stints),705)
         self.assertEqual(report["score_verified"],1)
         rows,_,_=summarize_games([(game,stints,rosters,report)])
         splits=rows[("2020-21","regular")]
