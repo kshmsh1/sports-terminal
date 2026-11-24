@@ -47,10 +47,21 @@ try{
   await flutter.bringToFront();
   console.log('Flutter tab foreground. Navigate and stage the requested source-backed task manually.');
   await rl.question('After staging Flutter and React to the same screen and inspecting both, press ENTER: ');
-  let result=(await rl.question('Real side-by-side visual AND functional result [PASS / FAIL / BLOCKED]: ')).trim().toUpperCase();
-  if(!['PASS','FAIL','BLOCKED'].includes(result))throw Error('Invalid review response for '+module.id);
-  let details=(await rl.question('Concrete checked controls, rows, differences, or defect ID (at least 15 characters): ')).trim();
-  if(details.length<15)throw Error('Specific evidence required. Review stopped at '+module.id);
+  let result='',details='';
+  while(!result){
+   const input=(await rl.question('Review outcome [PASS / FAIL / BLOCKED] (optional notes after a colon): ')).trim();
+   if(input.toUpperCase()==='PAUSE')throw Error('OPERATOR_PAUSE');
+   const match=input.match(/^(PASS|FAIL|BLOCKED)(?:\s*[:—-]\s*(.+))?$/i);
+   if(match){result=match[1].toUpperCase();details=(match[2]??'').trim();}
+   else if(input.length>=15){details=input;console.log('Observation captured. Please explicitly select PASS, FAIL, or BLOCKED.');}
+   else console.log('Please type PASS, FAIL, or BLOCKED; the review has not advanced.');
+  }
+  while(details.length<15){
+   const input=(await rl.question('Observations (15+ characters) or PAUSE: ')).trim();
+   if(input.toUpperCase()==='PAUSE')throw Error('OPERATOR_PAUSE');
+   if(input.length>=15)details=input;
+   else console.log('More specific observations required; this does not restart the review.');
+  }
   const inspectedPath=new URL(react.url()).pathname;
   const requiredPath=module.id==='player-profile'?'/player/':
    module.id==='team-detail'?'/team/':null;
