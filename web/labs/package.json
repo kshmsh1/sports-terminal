@@ -1,0 +1,11 @@
+{
+  "name": "arcside-labs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:browser": "playwright test -c playwright.config.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

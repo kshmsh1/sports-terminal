@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><script type="module" src="../arcside_context_bridge.mjs"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arcside Sheets</title><link rel="stylesheet" href="../shared.css"><link rel="stylesheet" href="./style.css"></head>
+<body>
+<div class="app sheets">
+<header class="titlebar">
+  <div class="brand"><span class="brandmark">A</span><span><strong>Arcside</strong> <span class="dim">/ Sheets</span></span></div>
+  <input id="workbookName" aria-label="Workbook name" value="Untitled workbook">
+  <span class="status" id="saveStatus">Stored in this browser</span><span class="status collab-state" id="collabStatus">Local only</span><span id="collabPeople" class="collab-people" aria-label="Active collaborators"></span>
+  <div class="spacer"></div><button id="commandPaletteButton" class="arcside-command-trigger" title="Search all spreadsheet actions">⌕ Commands <kbd>⌘K</kbd></button>
+  <button id="undo" title="Undo (Ctrl/Cmd+Z)">↶ Undo</button><button id="redo" title="Redo (Ctrl/Cmd+Shift+Z)">↷ Redo</button>
+  <button id="shareWorkbook" class="share-button" title="Share workbook for authenticated, persistent, real-time collaboration">Share workbook</button><button id="importButton">Import</button><button id="xlsxExport">Export XLSX</button><button id="exportButton" class="primary">Export CSV</button>
+  <input id="filePicker" type="file" accept=".csv,.tsv,.json,.xlsx" hidden>
+</header>
+<nav class="menubar" aria-label="Spreadsheet commands">
+  <div class="tool-group"><span class="tool-group-name">WORKBOOK</span>
+    <button data-action="new">New</button><button data-action="workbookLibrary">My workbooks</button><button data-action="addSheet">+ Sheet</button><button data-action="exportWorkbook">Download workbook</button>
+  </div>
+  <div class="tool-group"><span class="tool-group-name">EDIT</span>
+    <button data-action="sort">Sort selection</button><button data-action="fillDown" title="Fill selected range downward (Ctrl+D)">Fill ↓</button><button data-action="fillRight" title="Fill selected range rightward (Ctrl+R)">Fill →</button><button data-action="find">Find</button>
+  </div>
+  <div class="tool-group"><span class="tool-group-name">ANALYZE</span>
+    <button data-action="pivot">Quick pivot</button><button data-action="pivotStudio">Pivot Studio</button><button data-action="refreshPivots">Refresh pivots</button><button data-action="filterStudio">Filter table</button>
+  </div>
+  <div class="tool-group"><span class="tool-group-name">VISUALIZE</span>
+    <button data-action="chart">Quick chart</button><button data-action="chartStudio">Chart Studio</button><button data-action="savedCharts">Saved charts</button>
+  </div>
+  <div class="tool-group"><span class="tool-group-name">HELP</span><button data-action="help">Formulas</button></div>
+</nav>
+<div class="ribbon">
+  <span class="sectionlabel">Format</span>
+  <button data-action="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+  <button data-action="italic" title="Italic"><i>I</i></button><button data-action="conditional" title="Create color thresholds, data bars, and gradients">Conditional rules</button>
+  <button data-action="left">≡ Left</button><button data-action="center">☷ Center</button><button data-action="right">≡ Right</button>
+  <label>Fill <input id="fillColor" type="color" value="#243954"></label>
+  <label>Text <input id="textColor" type="color" value="#e8edf4"></label>
+  <span class="separator"></span><span class="sectionlabel">Number</span>
+  <select id="numberFormat" aria-label="Number format"><option value="general">General</option><option value="number">Number</option><option value="currency">Currency</option><option value="percent">Percent</option></select>
+  <span class="spacer"></span><label class="zoom-control" for="gridZoom">Grid zoom <select id="gridZoom" aria-label="Grid zoom"><option value="80">80%</option><option value="100" selected>100%</option><option value="125">125%</option><option value="150">150%</option></select></label>
+</div>
+<div class="formula-row"><input class="namebox" id="nameBox" value="A1" aria-label="Name box, enter a cell reference to navigate" title="Enter a cell reference, e.g. M150"><span class="fx">ƒx</span><input id="formulaInput" autocomplete="off" spellcheck="false" aria-label="Formula bar" placeholder="Enter value or formula, e.g. =SUM(A1:A10)"></div>
+<div class="sheet-area" id="sheetArea">
+  <div id="corner"></div><div id="columnHeaders"></div><div id="rowHeaders"></div>
+  <div id="gridScroll" tabindex="0" aria-label="Spreadsheet grid"><div id="gridSize"><div id="cells"></div></div></div>
+  <input id="cellEditor" spellcheck="false" autocomplete="off" hidden aria-label="Edit cell">
+</div>
+<div class="bottom">
+  <div id="sheetTabs" role="tablist"></div>
+  <div class="spacer"></div><span id="selectionStatus">Ready</span><span class="hint">Ctrl/Cmd+C · Ctrl/Cmd+V · arrows · Enter</span>
+</div>
+</div>
+<div id="modal" class="modal-backdrop" hidden><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-head"><strong id="modalTitle"></strong><button id="closeModal" aria-label="Close dialog">✕</button></div><div id="modalBody"></div></div></div>
+<script type="module" src="./app.mjs"></script>
+</body></html>

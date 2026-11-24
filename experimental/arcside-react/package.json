@@ -1,0 +1,35 @@
+{
+  "name": "arcside-react-phase3",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "benchmark": "node scripts/benchmark.mjs",
+    "inspect:corpus": "node scripts/inspect_corpus.mjs",
+    "test:parity": "ARCSIDE_RUN_PARITY=1 vitest run tests/parity.test.ts",
+    "test:real": "node scripts/real_corpus_journeys.mjs",
+    "compare:guided": "node scripts/paired_guided_tasks.mjs",
+    "test:trade:goldens": "node --experimental-strip-types scripts/export_trade_candidate.ts && node scripts/compare_trade_goldens.mjs evidence/trade/dart-trade-reference.json evidence/trade/react-trade-candidate.json"
+  },
+  "dependencies": {
+    "echarts": "6.1.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "22.15.30",
+    "@types/react": "19.2.4",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.1",
+    "sirv": "3.0.2",
+    "typescript": "5.9.3",
+    "vite": "7.3.8",
+    "vitest": "4.1.12"
+  }
+}

@@ -184,4 +184,78 @@ void main() {
     expect(alpha.percentiles['tov'], 0);
     expect(beta.percentiles['tov'], 100);
   });
+  test('equal recorded box-score values receive identical midrank percentiles', () {
+    final source = snapshot();
+    final tied = NbaTerminalSeedSnapshot(
+      manifest: source.manifest,
+      teams: source.teams,
+      players: source.players,
+      games: source.games,
+      teamRecords: source.teamRecords,
+      teamGameLogs: source.teamGameLogs,
+      playerSeasonTotals: [
+        source.playerSeasonTotals[0],
+        source.playerSeasonTotals[0].map((key, value) => MapEntry(
+          key,
+          key == 'player_id' ? 'alpha-copy' : value,
+        )),
+        source.playerSeasonTotals[1],
+      ],
+      playerLeaders: source.playerLeaders,
+      playerGameHighs: source.playerGameHighs,
+      playerGameLogsTop: source.playerGameLogsTop,
+      searchIndex: source.searchIndex,
+      dataDictionary: source.dataDictionary,
+      validationReport: source.validationReport,
+      assetManifest: source.assetManifest,
+    );
+    final rows = engine.buildRows(tied);
+    final first = rows.firstWhere((r) => r.playerId == 'alpha');
+    final copy = rows.firstWhere((r) => r.playerId == 'alpha-copy');
+    expect(first.percentiles['pts'], 75);
+    expect(copy.percentiles['pts'], 75);
+  });
+
+  test('missing historical plus-minus stays unavailable while explicit zero is preserved', () {
+    final source = snapshot();
+    final sparse = source.playerSeasonTotals.firstWhere((r) => r['player_id'] == 'alpha');
+    final absent = Map<String, dynamic>.from(sparse)..remove('plus_minus');
+    final explicitZero = {...absent, 'plus_minus': 0};
+    final missingRow = engine.buildRows(NbaTerminalSeedSnapshot(
+      manifest: source.manifest,
+      teams: source.teams,
+      players: source.players,
+      games: source.games,
+      teamRecords: source.teamRecords,
+      teamGameLogs: source.teamGameLogs,
+      playerSeasonTotals: [absent],
+      playerLeaders: source.playerLeaders,
+      playerGameHighs: source.playerGameHighs,
+      playerGameLogsTop: source.playerGameLogsTop,
+      searchIndex: source.searchIndex,
+      dataDictionary: source.dataDictionary,
+      validationReport: source.validationReport,
+      assetManifest: source.assetManifest,
+    )).single;
+    expect(missingRow.value('plus_minus'), isNull);
+    expect(engine.formatValue('plus_minus', missingRow.value('plus_minus')), '—');
+    final zeroRow = engine.buildRows(NbaTerminalSeedSnapshot(
+      manifest: source.manifest,
+      teams: source.teams,
+      players: source.players,
+      games: source.games,
+      teamRecords: source.teamRecords,
+      teamGameLogs: source.teamGameLogs,
+      playerSeasonTotals: [explicitZero],
+      playerLeaders: source.playerLeaders,
+      playerGameHighs: source.playerGameHighs,
+      playerGameLogsTop: source.playerGameLogsTop,
+      searchIndex: source.searchIndex,
+      dataDictionary: source.dataDictionary,
+      validationReport: source.validationReport,
+      assetManifest: source.assetManifest,
+    )).single;
+    expect(zeroRow.value('plus_minus'), 0);
+  });
+
 }

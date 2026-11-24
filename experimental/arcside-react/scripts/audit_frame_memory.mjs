@@ -1,0 +1,15 @@
+import {readFile,mkdir,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {auditFrameMemory} from './frame_memory_evidence_math.mjs';
+const here=path.dirname(fileURLToPath(import.meta.url));
+const repo=path.resolve(here,'../../..');
+const dir=path.resolve(here,'../evidence/frame-memory');
+const hash=createHash('sha256').update(await readFile(path.join(repo,'web/data/nba_static/manifest.json'))).digest('hex');
+const evidence=JSON.parse(await readFile(path.join(dir,'paired-frame-memory.json'),'utf8'));
+const report=auditFrameMemory(evidence,hash);
+await mkdir(dir,{recursive:true});
+await writeFile(path.join(dir,'frame-memory-audit.json'),JSON.stringify(report,null,2)+'\n');
+console.log(JSON.stringify(report,null,2));
+if(report.status==='INVALID_EVIDENCE')process.exitCode=1;

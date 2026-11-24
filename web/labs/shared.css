@@ -1,0 +1,36 @@
+*{box-sizing:border-box}html,body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b111a;color:#e7edf6;font-size:13px}
+button,input,select,textarea{font:inherit}button{border:1px solid transparent;background:transparent;color:#c4d2e3;border-radius:6px;cursor:pointer;padding:6px 9px;white-space:nowrap}
+button:hover{background:#2b3b51;color:#fff}button:focus-visible{outline:2px solid #7cabff}
+button.primary{background:#306bca;color:#fff;font-weight:700}button.primary:hover{background:#4180e7}
+button:disabled{opacity:.45;cursor:not-allowed}.spacer{flex:1}.dim{color:#879cb2}.status{color:#83a8cd;font-size:11px}
+.titlebar{height:53px;min-height:53px;display:flex;align-items:center;gap:12px;padding:0 14px;background:#111a26;border-bottom:1px solid #2c3a4d}
+.brand{font-size:15px;display:flex;align-items:center;gap:9px;white-space:nowrap;letter-spacing:-.02em}
+.brandmark{width:29px;height:29px;background:#355db9;color:#fff;border-radius:8px;display:grid;place-items:center;font-weight:900;font-size:17px}
+input,textarea,select{outline-color:#7cabff}
+.modal-backdrop[hidden]{display:none}.modal-backdrop{position:fixed;inset:0;display:grid;place-items:center;background:#000b;z-index:30;padding:18px}
+.modal-card{background:#162436;border:1px solid #40536e;border-radius:12px;padding:18px;box-shadow:0 18px 80px #0008;max-height:90vh;overflow:auto}
+.modal-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #2d4057;padding-bottom:10px;margin-bottom:13px;font-size:16px}
+.modal-card input,.modal-card select{padding:8px;background:#0c1928;color:#edf4fd;border:1px solid #3a4c63;border-radius:5px}
+
+
+/* Shared Arcside workbench surface, keyboard focus, and command discovery. */
+:root{color-scheme:dark;--arcside-border:#25384c;--arcside-muted:#94aac1;--arcside-focus:#8ab5ff}
+button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--arcside-focus);outline-offset:2px}
+button{transition:background-color .12s ease,border-color .12s ease}
+button:disabled{opacity:.48}
+.arcside-command-trigger{display:inline-flex;align-items:center;gap:7px;border:1px solid #3d536f!important;background:#19283b!important;color:#dae8fc!important;font-size:12px}
+.arcside-command-trigger:hover{background:#284362!important}
+.arcside-command-trigger kbd{border:1px solid #476080;border-radius:4px;padding:2px 4px;font:11px ui-monospace,monospace;color:#a9c5e6}
+.arcside-palette-layer[hidden]{display:none}
+.arcside-palette-layer{position:fixed;inset:0;z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:clamp(30px,12vh,120px) 18px 18px;background:rgba(3,9,17,.75);backdrop-filter:blur(3px)}
+.arcside-palette{width:min(620px,100%);overflow:hidden;border:1px solid #537195;border-radius:12px;background:#142135;box-shadow:0 25px 90px #000a;display:flex;flex-direction:column;max-height:min(75vh,680px)}
+.arcside-palette-search{padding:19px 20px;min-height:56px;width:100%;border:0!important;border-bottom:1px solid #36506b!important;border-radius:0!important;outline:0!important;background:#13243a!important;color:#f0f6ff!important;font-size:15px}
+.arcside-palette-results{overflow:auto;padding:6px 8px;min-height:100px}
+.arcside-command-section{font-size:10px;font-weight:800;letter-spacing:.11em;color:#8aa8c8;padding:14px 11px 6px;text-transform:uppercase}
+.arcside-palette-item{display:flex;align-items:center;gap:12px;width:100%;padding:11px 13px;border-radius:7px;min-height:39px;text-align:left;color:#e1ecfa}
+.arcside-palette-item.active,.arcside-palette-item:hover{background:#284b72;color:white}
+.arcside-palette-item .arcside-command-name{flex:1}
+.arcside-command-key{font:11px ui-monospace,monospace;background:#102035;color:#aac9ed;border:1px solid #3b5675;border-radius:4px;padding:3px 6px}
+.arcside-palette-empty{padding:14px 12px;color:#a0b5ce}
+.arcside-palette-footer{padding:12px 16px;border-top:1px solid #2e4663;font:11px ui-monospace,monospace;color:#8baac9}
+@media(prefers-reduced-motion:reduce){button{transition:none}.arcside-palette-layer{backdrop-filter:none}}
