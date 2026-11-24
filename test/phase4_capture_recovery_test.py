@@ -85,6 +85,44 @@ class RecoveryTest(unittest.TestCase):
         report=recover_capture_games(self.conn,self.root)
         self.assertEqual(report["counts"]["unresolved_team_identity"],1)
 
+    def test_incremental_index_publication_preserves_other_static_data(self):
+        from tools.phase4_publish_recovered_games import refresh
+        self.write(rows())
+        self.conn.execute(
+            "INSERT INTO canon_dim_game "
+            "(game_key,nba_game_id,game_date,season_id,league_id,season_type,"
+            "home_team_key,away_team_key,source_count) VALUES (?,?,?,?,?,?,?,?,?)",
+            ("existing","000999","2025-10-22","2025-26","NBA","regular","team-a","team-b",1))
+        self.conn.commit()
+        (self.root/"games").mkdir()
+        (self.root/"history").mkdir()
+        (self.root/"manifest.json").write_text(json.dumps({
+            "contract":"sports-terminal-static-nba-website-v5",
+            "static_schema_version":5,"game_count":1}))
+        (self.root/"games/index.json").write_text(json.dumps([{
+            "game_key":"existing","nba_game_id":"000999",
+            "season_id":"2025-26","season_type":"regular",
+            "file":"games/detail/existing.json","box_score_available":False
+        }]))
+        (self.root/"seasons.json").write_text('[{"season_id":"2025-26","games":1}]')
+        (self.root/"history/coverage.json").write_text("[]")
+        marker=self.root/"nba_com/retain-me.json"
+        marker.parent.mkdir(parents=True,exist_ok=True)
+        marker.write_text('{"must_preserve":true}')
+        recover_capture_games(self.conn,self.root,apply=True)
+        self.conn.commit()
+        preview=refresh(self.database,self.root,self.root/"backups",apply=False)
+        self.assertEqual(preview["additions"],1)
+        self.assertEqual(json.loads((self.root/"games/index.json").read_text()).__len__(),1)
+        published=refresh(self.database,self.root,self.root/"backups",apply=True,details=False)
+        self.assertEqual(published["additions"],1)
+        index=json.loads((self.root/"games/index.json").read_text())
+        self.assertEqual(len(index),2)
+        self.assertEqual(next(r for r in index if r["game_key"]=="existing")["file"],
+                         "games/detail/existing.json")
+        self.assertTrue(marker.is_file())
+        self.assertEqual(json.loads((self.root/"seasons.json").read_text())[0]["games"],2)
+
     def test_clock_minutes_parsed_only_for_minute_column(self):
         self.assertAlmostEqual(minutes("22:45"),22.75)
         self.assertIsNone(minutes("24:99"))
