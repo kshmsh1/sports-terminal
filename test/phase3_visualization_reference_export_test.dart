@@ -109,5 +109,7 @@ void main(){
    reason:'No populated source-backed sample');
   // ignore: avoid_print
   print('ARCSIDE_FLUTTER_VIS_REFERENCE: ${file.path}');
- });
+ }, skip: corpus.isEmpty
+   ? 'Requires explicit ARCSIDE_VIS_CORPUS pointing to the original local NBA v5 data'
+   : false);
 }

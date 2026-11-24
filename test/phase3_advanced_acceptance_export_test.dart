@@ -129,5 +129,7 @@ void main() {
       reason:'Cannot certify an all-empty data sample');
     // ignore: avoid_print
     print('ARCSIDE_ADVANCED_DART_REFERENCE: ${file.path}');
-  });
+  }, skip: corpus.isEmpty
+    ? 'Requires explicit ARCSIDE_ADVANCED_CORPUS pointing to the original local NBA v5 data'
+    : false);
 }
