@@ -1534,19 +1534,38 @@ def validate_canonical_integrity(db: sqlite3.Connection) -> dict[str, int]:
 
 def build_coverage(db: sqlite3.Connection) -> int:
     db.execute("DELETE FROM canon_coverage")
-    domains = [("player_season", "canon_fact_player_season", "league_id", "season_id", "primary_source"), ("team_season", "canon_fact_team_season", "league_id", "season_id", "primary_source"), ("player_game", "canon_fact_player_game", "league_id", "season_id", "source_key"), ("game", "canon_dim_game", "league_id", "season_id", None), ("award", "canon_fact_award", "league_id", "season_id", "source_key"), ("all_star", "canon_fact_all_star", "league_id", "season_id", "source_key")]
+    domains = [("player_season", "canon_fact_player_season", "league_id", "season_id", "primary_source"), ("team_season", "canon_fact_team_season", "league_id", "season_id", "primary_source"), ("player_game", "canon_fact_player_game", "league_id", "season_id", "source_key"), ("award", "canon_fact_award", "league_id", "season_id", "source_key"), ("all_star", "canon_fact_all_star", "league_id", "season_id", "source_key")]
     inserted = 0
     for domain, table, league_col, season_col, source_col in domains:
         if not table_exists(db, table):
             continue
-        query = f"SELECT {q(league_col)},{q(season_col)},COUNT(*)," + (f"COUNT(DISTINCT {q(source_col)}),GROUP_CONCAT(DISTINCT {q(source_col)})" if source_col else "1,'wyatt_nbadb'") + f" FROM {q(table)} GROUP BY {q(league_col)},{q(season_col)}"
+        query = (f"SELECT {q(league_col)},{q(season_col)},COUNT(*),"
+                 f"COUNT(DISTINCT {q(source_col)}),GROUP_CONCAT(DISTINCT {q(source_col)}) "
+                 f"FROM {q(table)} GROUP BY {q(league_col)},{q(season_col)}")
         for league, season, count, source_count, source_list in db.execute(query):
             if season is None:
                 continue
             sources = sorted(set(str(source_list or "").split(",")))
-            db.execute("INSERT OR REPLACE INTO canon_coverage VALUES (?,?,?,?,?,?)", (domain, league, season, int(count), int(source_count), json.dumps([source for source in sources if source])))
+            db.execute("INSERT OR REPLACE INTO canon_coverage VALUES (?,?,?,?,?,?)",
+                       (domain, league, season, int(count), int(source_count),
+                        json.dumps([source for source in sources if source])))
             inserted += 1
-    db.commit()
+    # The previous game coverage field hardcoded wyatt_nbadb even when a
+    # recovered NBA.com game was the only game present in a segment.
+    if table_exists(db, "canon_dim_game") and table_exists(db, "canon_game_source_xref"):
+        query = """
+            SELECT g.league_id,g.season_id,COUNT(DISTINCT g.game_key),
+                   COUNT(DISTINCT x.source_key),GROUP_CONCAT(DISTINCT x.source_key)
+            FROM canon_dim_game g
+            LEFT JOIN canon_game_source_xref x ON x.game_key=g.game_key
+            GROUP BY g.league_id,g.season_id
+        """
+        for league, season, count, source_count, source_list in db.execute(query):
+            if season is None:continue
+            sources=sorted(set(str(source_list or "").split(","))- {""})
+            db.execute("INSERT OR REPLACE INTO canon_coverage VALUES (?,?,?,?,?,?)",
+                       ("game",league,season,int(count),int(source_count),json.dumps(sources)))
+            inserted+=1
     return inserted
 
 
