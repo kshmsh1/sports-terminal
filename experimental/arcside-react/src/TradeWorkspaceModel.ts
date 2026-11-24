@@ -20,7 +20,7 @@ export const nbaTeams=[
 export const canonicalTeam=(team:string)=>({BRK:'BKN',CHO:'CHA',PHO:'PHX'} as Record<string,string>)[team]??team;
 export const nameForTeam=(team:string)=>nbaTeams.find(x=>x[0]===team)?.[1]??team;
 export const sameTeam=(a:string,b:string)=>canonicalTeam(a)===canonicalTeam(b);
-const person=(name:string)=>name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+export const person=(name:string)=>name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 export interface TradeContext {
  kind:string;sourceNote:string;hashes:string[];
  restrictions:{player:string;team:string;eligibleDate:string;veto:boolean}[];
@@ -30,10 +30,14 @@ export interface TradeContext {
  cashLimit:number;
  transactions:{date:string;summary:string;teams:string[]}[];
  twoWays:{player:string;team:string;position:string;signedDate:string}[];
+ rights:{id:string;team:string;player:string;position:string;note:string}[];
+ freeAgents:{id:string;team:string;player:string;position:string;capHold:number;rights:string;minimum:number|null;maximum:number|null}[];
+ positions:Record<string,string>;
 }
 export function capTier(ledger:TeamCapLedgerRecord,fin?:TeamFinancialRecord){
  if(fin?.hardCap==='first')return '1st Apron (Hard-Cap)';
  if(fin?.hardCap==='second')return '2nd Apron (Hard-Cap)';
+ if(fin)return fin.secondApronSpace<0?'2nd Apron':fin.firstApronSpace<0?'1st Apron':fin.taxSpace<0?'Luxury Tax':fin.capSpace<0?'Over The Cap':'Cap Space';
  if(ledger.hardCap==='first')return '1st Apron (Hard-Cap)';
  if(ledger.hardCap==='second')return '2nd Apron (Hard-Cap)';
  const c=nba2026Cap(ledger.team,ledger.salaryPosition);
@@ -51,6 +55,16 @@ export function playerAsset(player:DatedContractRecord,ctx:TradeContext):TradeAs
   protected_amount:f.partial?.amount,trade_restricted_until:f.restriction?.eligibleDate,no_trade:f.restriction?.veto,
   trade_kicker:f.kicker?.status==='active'?f.kicker.percent:undefined,two_way:!!f.twoWay}};
 }
+export function twoWayAsset(p:TradeContext['twoWays'][number]):TradeAsset{
+ return {id:'two-way:'+p.team+':'+p.player.toLowerCase().replace(/[^a-z0-9]+/g,'-'),label:p.player,originTeam:canonicalTeam(p.team),type:'player',salary:0,metadata:{two_way:true,position:p.position}};
+}
+export function rightAsset(p:TradeContext['rights'][number]):TradeAsset{
+ return {id:p.id,label:p.player+' (draft rights)',originTeam:canonicalTeam(p.team),type:'draftRights',salary:0,metadata:{position:p.position,source:'User-supplied Trade Machine recording 2026-09-30'}};
+}
+export function signAndTradeAsset(p:TradeContext['freeAgents'][number],salary:number):TradeAsset|null{
+ if(p.minimum===null||p.maximum===null||!Number.isFinite(salary)||salary<p.minimum||salary>p.maximum)return null;
+ return {id:p.id,label:p.player+' (sign-and-trade)',originTeam:canonicalTeam(p.team),type:'player',salary,metadata:{sign_and_trade:true,free_agent_rights:p.rights,cap_hold:p.capHold}};
+}
 export function draftAsset(p:OriginalDraftAsset):TradeAsset{
  return {id:p.id,label:p.label,originTeam:canonicalTeam(p.team),type:'draftPick',salary:0,
  metadata:{draft_year:p.year,round:String(p.round),frozen:p.frozen||!p.tradable,stepien_safe:p.stepienSafe,swap_right:p.swapRight,
@@ -64,8 +78,10 @@ export function buildSourceScenario(teams:string[],assignments:TradeAssignment[]
   const l=ledgers.find(x=>sameTeam(x.team,team)),f=financials.find(x=>sameTeam(x.team,team)),cash=ctx.cash.find(x=>sameTeam(x.team,team));
   if(!l||!f||!cash)return null;
   const base=nba2026Cap(team,l.salaryPosition);
-  capContexts[team]=nba2026Cap(team,l.salaryPosition,{
-   hardCappedAt:l.hardCap==='first'?base.firstApron:l.hardCap==='second'?base.secondApron:null,
+  // Match the original video workflow: cap allocation for room teams; first-apron allocation otherwise.
+  const transactionSalary=f.capSpace>0?base.salaryCap-f.capSpace:base.firstApron-f.firstApronSpace;
+  capContexts[team]=nba2026Cap(team,transactionSalary,{
+   hardCappedAt:f.hardCap==='first'?base.firstApron:f.hardCap==='second'?base.secondApron:null,
    standardRosterPlayers:f.standardRoster,cashSentThisSeason:ctx.cashLimit-cash.availableToSend,cashLimitThisSeason:ctx.cashLimit});
  }
  return {id:'arcside-source-trade',name:'2026–27 trade',operatingSeason:'2026-27',teams,assignments,capContexts,asOfDateIso:date+'T00:00:00Z'};
