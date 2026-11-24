@@ -9,6 +9,7 @@ import {GlobalSearch} from './GlobalSearch';
 const HomeWorkspace=lazy(()=>import('./HomeWorkspace').then(m=>({default:m.HomeWorkspace})));
 const AdvancedStatsTable=lazy(()=>import('./AdvancedStatsTable').then(m=>({default:m.AdvancedStatsTable})));
 const Chart=lazy(()=>import('./Chart').then(m=>({default:m.Chart})));
+const CanonicalProfileStats=lazy(()=>import('./CanonicalProfileStats').then(m=>({default:m.CanonicalProfileStats})));
 const PlayerProfileTables=lazy(()=>import('./ProfileTable').then(m=>({default:m.PlayerProfileTables})));
 const ProfileSummary=lazy(()=>import('./ProfileContext').then(m=>({default:m.ProfileSummary})));
 const ProfileContracts=lazy(()=>import('./ProfileContext').then(m=>({default:m.ProfileContracts})));
@@ -101,7 +102,7 @@ export function App(){
   if(!view.path.startsWith('/player/')){setDossier(null);return;}
   const controller=new AbortController();setDossier(null);
   const key=decodeURIComponent(view.path.slice('/player/'.length));
-  getPlayerDossier(key,controller.signal).then(setDossier).catch(e=>{
+  getPlayerDossier(key,controller.signal).then(value=>{if(!controller.signal.aborted)setDossier(value)}).catch(e=>{
    if(!controller.signal.aborted)setError(String(e.message??e));
   });
   return ()=>controller.abort();
@@ -174,8 +175,8 @@ export function App(){
    <nav>{allowedRoutes.map(route=><a key={route} href={urlFor({...view,path:route})}
     className={view.path===route?'nav-link chosen':'nav-link'} aria-current={view.path===route?'page':undefined}
     onClick={e=>{e.preventDefault();navigate(route)}}>{labelFor(route)}</a>)}</nav>
-   <div className="sidebar-foot"><span className="dot"/> REACT-FIRST BETA
-    <p>Local development platform. Some workflows are still being completed.</p></div>
+   <div className="sidebar-foot"><span className="dot"/> ARCSIDE REACT
+    <p>Primary development frontend · migration validation in progress.</p></div>
   </aside>
   <div className="main-frame">
    <header className="topbar">
@@ -318,6 +319,7 @@ export function App(){
         onClick={()=>change({segment:'playoffs'})}>Playoffs</button>
        <span>{dossierSegments(dossier)[view.segment].length} original published rows</span>
       </div>
+      <CanonicalProfileStats key={view.path} dossier={dossier} playerKey={decodeURIComponent(view.path.slice('/player/'.length))} segment={view.segment} basis={view.basis} season={view.season} activeSnapshot={snapshot}/>
       <PlayerProfileTables dossier={dossier} segment={view.segment} basis={view.basis}/>
       <ProfileContracts dossier={dossier} dated={datedContracts} registry={registryContracts}
         playerKey={decodeURIComponent(view.path.slice('/player/'.length))}

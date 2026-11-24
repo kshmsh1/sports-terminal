@@ -91,9 +91,10 @@ export function Chart({rows,basis,segment='regular'}:{
  const [hover,setHover]=useState('');
  const [reset,setReset]=useState(0);
  const host=useRef<HTMLDivElement>(null),chart=useRef<echarts.ECharts|null>(null);
+ const zoomRange=useRef<{start?:number;end?:number}[]|undefined>(undefined);
  const viewport=useRef<{rows:Row[];basis:RateBasis;kind:ChartKind;x:MetricKey;y:MetricKey;
   size:MetricKey;filter:string;population:number;minGames:number;reset:number}|null>(null);
- const update=(patch:Partial<Settings>)=>setSettings(s=>({...s,...patch}));
+ const update=(patch:Partial<Settings>)=>setSettings(s=>Object.entries(patch).every(([k,v])=>s[k as keyof Settings]===v)?s:({...s,...patch}));
  useEffect(()=>{update({minGames:segment==='playoffs'?4:50,filter:''});setSearch('');},[segment]);
  useEffect(()=>{try{localStorage.setItem(settingsKey,JSON.stringify(settings));}catch{/* no storage */}},[settings]);
  const selected=useMemo(()=>selectVisualizationRows(rows,{
@@ -101,7 +102,7 @@ export function Chart({rows,basis,segment='regular'}:{
   minGames:settings.minGames,filter:settings.filter,
   population:settings.population,rankingSize:settings.rankingSize,basis
  }),[rows,settings.x,settings.y,settings.size,settings.kind,settings.minGames,
-     settings.filter,settings.population,settings.rankingSize]);
+     settings.filter,settings.population,settings.rankingSize,basis]);
  const {plotted,eligible,matching,ranked}=selected;
  const analytics=useMemo(()=>['scatter','bubble'].includes(settings.kind)?
   linearStats(plotted,settings.x,settings.y):null,
@@ -139,11 +140,13 @@ export function Chart({rows,basis,segment='regular'}:{
   // without triggering React renders on every drag/wheel frame.
   const recordViewport=()=>{
    const zoom=instance.getOption().dataZoom as {start?:number;end?:number}[]|undefined;
+   zoomRange.current=zoom?.map(z=>({start:z.start,end:z.end}));
    host.current?.setAttribute('data-viewport-range',(zoom??[]).map(z=>
     [z.start??0,z.end??100].map(n=>n.toFixed(3)).join(':')).join('|'));
   };
   instance.on('datazoom',recordViewport);
-  const ro=new ResizeObserver(()=>instance.resize());ro.observe(host.current);
+  let resizeFrame=0,lastWidth=instance.getWidth(),lastHeight=instance.getHeight();
+  const ro=new ResizeObserver(()=>{if(resizeFrame)return;resizeFrame=requestAnimationFrame(()=>{resizeFrame=0;const el=host.current;if(!el||instance.isDisposed())return;const width=el.clientWidth,height=el.clientHeight;if(width>0&&height>0&&(width!==lastWidth||height!==lastHeight)){instance.resize({width,height});lastWidth=width;lastHeight=height}})});ro.observe(host.current);
   instance.on('click',evt=>{
    const data=evt.data as {id?:string}|undefined;
    if(data?.id)update({selected:data.id});
@@ -153,7 +156,7 @@ export function Chart({rows,basis,segment='regular'}:{
    setHover(data?.name??'');
   });
   instance.on('mouseout',()=>setHover(''));
-  return ()=>{ro.disconnect();chart.current=null;viewport.current=null;instance.dispose();};
+  return ()=>{ro.disconnect();if(resizeFrame)cancelAnimationFrame(resizeFrame);chart.current=null;viewport.current=null;zoomRange.current=undefined;instance.dispose();};
  },[]);
  useEffect(()=>{
   if(!chart.current)return;
@@ -163,7 +166,7 @@ export function Chart({rows,basis,segment='regular'}:{
    previous.x===settings.x&&previous.y===settings.y&&previous.size===settings.size&&
    previous.filter===settings.filter&&previous.population===settings.population&&
    previous.minGames===settings.minGames&&previous.reset===reset;
-  const prior=preserve?chart.current.getOption().dataZoom as {start?:number;end?:number}[]|undefined:undefined;
+  const prior=preserve?zoomRange.current:undefined;
   const color=(r:Row)=>settings.colorBy==='None'?'#7db8ff':
    teamColor(settings.colorBy==='Position'?r.position:r.team);
   const xy=plotted.filter(r=>r.values[settings.x]!==null&&r.values[settings.y]!==null);
@@ -173,7 +176,7 @@ export function Chart({rows,basis,segment='regular'}:{
   // ECharts large mode preserves the 5k/25k synthetic workload without
   // rendering a DOM-sized label/mark overlay per point. Real top40 uses full fidelity.
   const largeScatter=xy.length>2000;
-  const maxBubbleSize=Math.max(1,...xy.map(r=>r.values[settings.size]??0));
+  const maxBubbleSize=xy.reduce((max,r)=>Math.max(max,r.values[settings.size]??0),1);
   const points=xy.map((r,i)=>({
    id:r.id,name:r.player,team:r.team,
    value:[r.values[settings.x],r.values[settings.y],r.values[settings.size]??0],
@@ -266,7 +269,7 @@ export function Chart({rows,basis,segment='regular'}:{
    const first=ranked.find(r=>r.id===settings.selected)??ranked[0];
    const second=ranked.find(r=>r.id===settings.radarCompare&&r.id!==first?.id);
    const source=[first,second].filter((r):r is Row=>!!r);
-   const max=keys.map(key=>Math.max(1,...eligible.map(r=>r.values[key]??0)));
+   const max=keys.map(key=>eligible.reduce((max,r)=>Math.max(max,r.values[key]??0),1));
    option={...common,legend:{show:true,top:8,textStyle:{color:'#c4d4e6'}},
     radar:{indicator:keys.map((k,i)=>({name:chartLabel(k),max:max[i]})),
      splitLine:{lineStyle:{color:'#33485f'}},axisName:{color:'#c4d4e6'}},
@@ -276,6 +279,7 @@ export function Chart({rows,basis,segment='regular'}:{
   }
   chart.current.setOption(option,true);
   const zoom=chart.current.getOption().dataZoom as {start?:number;end?:number}[]|undefined;
+  zoomRange.current=zoom?.map(z=>({start:z.start,end:z.end}));
   host.current?.setAttribute('data-viewport-range',(zoom??[]).map(z=>
    [z.start??0,z.end??100].map(n=>n.toFixed(3)).join(':')).join('|'));
   viewport.current={rows,basis,kind:settings.kind,x:settings.x,y:settings.y,size:settings.size,

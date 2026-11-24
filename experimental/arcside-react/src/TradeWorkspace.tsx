@@ -7,6 +7,7 @@ import type {TradeAsset,TradeAssignment} from './tradeEngine';
 import {TradeMachinePilot,parseTradeAmount} from './TradeMachinePilot';
 import {nbaTeams,canonicalTeam,nameForTeam,sameTeam,capTier,playerFlags,playerAsset,draftAsset,buildSourceScenario,evaluateSourceTrade,twoWayAsset,rightAsset,signAndTradeAsset,person} from './TradeWorkspaceModel';
 import type {TradeContext} from './TradeWorkspaceModel';
+import {convertLegacyTrades} from './legacyTradeMigration';
 
 type Sources={contracts:DatedContractSnapshot;ledger:TeamCapLedgerSnapshot;draft:OriginalDraftExceptions;financial:TeamFinancialReport;context:TradeContext};
 type Mode='on'|'off'|'deadline';
@@ -37,6 +38,7 @@ export function TradeWorkspace(){
  const [renounced,setRenounced]=useState<string[]>([]);
  const [mode,setMode]=useState<Mode>('on'),[position,setPosition]=useState('All'),[saved,setSaved]=useState<SavedTrade[]>(loadSaved),[signSalary,setSignSalary]=useState<Record<string,string>>({});
  const effectiveDate=mode==='deadline'?'2027-02-04':date;
+ const [importText,setImportText]=useState('');
  const [cashAmount,setCashAmount]=useState(''),[addTeam,setAddTeam]=useState(''),[notice,setNotice]=useState('');
  useEffect(()=>{
   const controller=new AbortController();setError('');setSources(null);
@@ -108,8 +110,21 @@ export function TradeWorkspace(){
    routes:assignments.map(a=>({id:a.asset.id,origin:a.asset.originTeam,destination:a.destinationTeam,salary:a.asset.salary})),tpes:{...tpes},renounced:[...renounced]};
   if(persistSaved([entry,...saved].slice(0,40)))setNotice('Trade snapshot saved to Recent Trades.');
  }
+ function importLegacy(raw:string){
+  if(!sources)return;
+  try{
+   let parsed:unknown=JSON.parse(raw);if(typeof parsed==='string')parsed=JSON.parse(parsed);
+   if(!Array.isArray(parsed)||parsed.length>100)throw Error('Expected an array of at most 100 Flutter snapshots.');
+   const library=[...sources.contracts.records.map(x=>playerAsset(x,sources.context)),...sources.draft.draftAssets.filter(x=>x.tradable&&!x.frozen).map(draftAsset),...sources.context.twoWays.map(twoWayAsset),...sources.context.rights.map(rightAsset)];
+   const result=convertLegacyTrades(parsed,library,sources.context,sources.draft.exceptions);
+   if(!result.trades.length){setNotice('No compatible snapshots imported. '+result.rejected.join(' '));return}
+   const merged=[...result.trades.filter(x=>!saved.some(s=>s.id===x.id)),...saved].slice(0,40);
+   if(persistSaved(merged))setNotice(result.trades.length+' compatible snapshot(s) processed; '+result.rejected.length+' rejected. '+result.rejected.join(' '));
+  }catch(e){setNotice('Import rejected: '+String(e instanceof Error?e.message:e))}
+ }
  function restoreTrade(entry:SavedTrade){
   if(!sources)return;
+  if(!entry||!Array.isArray(entry.teams)||!entry.teams.every(t=>typeof t==='string')||!Array.isArray(entry.routes)||!/^202[67]-\d{2}-\d{2}$/.test(entry.date)){setNotice('Invalid saved trade format.');return}
   const restoredTeams=entry.teams.map(canonicalTeam);
   if(restoredTeams.length<2||restoredTeams.length>5||new Set(restoredTeams).size!==restoredTeams.length||restoredTeams.some(t=>!nbaTeams.some(x=>x[0]===t))){setNotice('Invalid saved team selection.');return}
   const library=[...sources.contracts.records.map(x=>playerAsset(x,sources.context)),...sources.draft.draftAssets.filter(x=>x.tradable&&!x.frozen).map(draftAsset),
@@ -145,6 +160,7 @@ export function TradeWorkspace(){
   </div>
   {stage==='manual'?<TradeMachinePilot/>:error?<div className="panel trade-source-error" role="alert">{error} <button onClick={()=>setReload(x=>x+1)}>Retry source load</button></div>:!sources?<p role="status" className="loading">Loading dated NBA trade sources…</p>:<>
    {stage==='recent'&&<section className="panel trade-history"><div className="panel-title"><div><h2>Recent Trades</h2><p className="subtle">Your browser-local modeled trade snapshots.</p></div></div>
+    <details className="trade-source-detail"><summary>Import original Flutter saved trades</summary><p>Read the same-origin Flutter SharedPreferences key, or paste its exported JSON. Original browser storage is never modified. All routes are revalidated against dated sources.</p><button onClick={()=>{try{const raw=localStorage.getItem('flutter.sports_terminal.trade_machine.saved_trades.v2')??localStorage.getItem('sports_terminal.trade_machine.saved_trades.v2');if(raw)importLegacy(raw);else setNotice('No Flutter snapshots found at this browser origin; paste an exported JSON array below.')}catch{setNotice('Browser storage unavailable.')}}}>Import from browser storage</button><label>Flutter snapshot JSON<textarea aria-label="Flutter snapshot JSON" value={importText} onChange={e=>setImportText(e.target.value)} rows={4}/></label><button disabled={!importText.trim()} onClick={()=>importLegacy(importText)}>Import JSON</button></details>
     {saved.length?saved.map(entry=><article key={entry.id}><small>{entry.savedAt.slice(0,10)} · {entry.mode}</small><h3>{entry.teams.map(nameForTeam).join(' / ')}</h3><p>{entry.routes.length} routed assets</p><div className="row-wrap"><button onClick={()=>restoreTrade(entry)}>Open snapshot</button><button onClick={()=>persistSaved(saved.filter(x=>x.id!==entry.id))}>Delete snapshot</button></div></article>):<p className="trade-inner subtle">No saved trades yet. Build a trade and save a snapshot.</p>}
     {notice&&<p role="status" className="trade-inner">{notice}</p>}
     <div className="panel-title"><div><h3>Published transaction reference</h3><p className="subtle">Original user-supplied 2026 offseason records; not a live feed.</p></div></div>
@@ -219,7 +235,7 @@ export function TradeWorkspace(){
       {!!assignments.length&&<><div className="trade-inner"><div className="row-wrap trade-flow-heading"><h3>Trade flow · {assignments.length} assets</h3><button disabled={!sourceScenario} onClick={saveTrade}>Save snapshot</button></div>{teams.map(t=><article className="trade-flow-team" key={t}><h4><Badge team={t}/>{nameForTeam(t)}</h4>
        {['Outgoing','Incoming'].map(direction=><div key={direction}><small>{direction}</small>{assignments.filter(x=>direction==='Outgoing'?x.asset.originTeam===t:x.destinationTeam===t).map(x=><div className="trade-flow-row" key={x.asset.id}><span>{x.asset.label} <small>{x.asset.originTeam} → {x.destinationTeam}</small></span><strong>{x.asset.type==='draftPick'?'Pick':x.asset.type==='draftRights'?'Rights':x.asset.metadata?.two_way?'Two-way':compact(x.asset.salary)}</strong>{direction==='Outgoing'&&<button aria-label={'Remove '+x.asset.label} onClick={()=>removeRoute(x.asset.id)}>×</button>}{direction==='Incoming'&&x.asset.type==='player'&&!x.asset.metadata?.two_way&&!x.asset.metadata?.sign_and_trade&&<label className="trade-acquisition">Acquisition<select aria-label={'Acquisition for '+x.asset.label} value={tpes[x.asset.id]??''} onChange={e=>setTpes(prev=>({...prev,[x.asset.id]:e.target.value}))}><option value="">Salary matching</option>{sources.draft.exceptions.filter(v=>sameTeam(v.team,t)).map(v=><option key={v.id} value={v.id} disabled={v.available<=0||v.expires<effectiveDate}>{v.sourceTransaction} · {compact(v.available)}</option>)}</select></label>}</div>)}</div>)}
        {renounced.some(id=>sources.context.freeAgents.some(x=>x.id===id&&sameTeam(x.team,t)))&&<p className="subtle">Illustrative cap holds renounced: {money(sources.context.freeAgents.filter(x=>sameTeam(x.team,t)&&renounced.includes(x.id)).reduce((n,x)=>n+x.capHold,0))}</p>}
-       {report?.teamSummaries[t]&&<p className="subtle">Projected modeled payroll {money(report.teamSummaries[t].postTradeSalary)} · Roster {report.teamSummaries[t].projectedRosterPlayers} · Outgoing {compact(report.teamSummaries[t].outgoingSalary)} · Incoming {compact(report.teamSummaries[t].incomingSalary)} · Match limit {compact(report.teamSummaries[t].maximumIncomingSalary)}</p>}</article>)}</div>
+       {report?.teamSummaries[t]&&<p className="subtle">Projected modeled payroll {money(report.teamSummaries[t].postTradeSalary)} · Illustrative cap room {signed((sources.financial.teams.find(f=>sameTeam(f.team,t))?.capSpace??0)+sources.context.freeAgents.filter(x=>sameTeam(x.team,t)&&renounced.includes(x.id)).reduce((n,x)=>n+x.capHold,0)-(report.teamSummaries[t].postTradeSalary-(sourceScenario?.capContexts[t]?.teamSalary??report.teamSummaries[t].postTradeSalary)))} · Roster {report.teamSummaries[t].projectedRosterPlayers} · Outgoing {compact(report.teamSummaries[t].outgoingSalary)} · Incoming {compact(report.teamSummaries[t].incomingSalary)} · Match limit {compact(report.teamSummaries[t].maximumIncomingSalary)}</p>}</article>)}</div>
        {report?<div className="trade-inner trade-validation" aria-label="Modeled validation results"><h3 className={report.errorCount?'trade-negative':'trade-positive'}>{report.errorCount?'Modeled blockers found':'No modeled blocking errors'}</h3><p role="status">{report.errorCount} errors · {report.warningCount} warnings · {mode==='off'?'Restrictions bypassed · ':''}Not CBA approval</p>
         {report.findings.map((f,i)=><p key={i} className={'trade-finding '+(f.severity==='error'?'trade-negative':'')}><strong>{f.team??'Scenario'} · {f.code}</strong><br/>{f.message}</p>)}</div>:<p role="alert" className="trade-inner">Select a valid date within 2026–27 and confirm all source contexts.</p>}</>}
       {notice&&<p role="status" className="trade-inner">{notice}</p>}

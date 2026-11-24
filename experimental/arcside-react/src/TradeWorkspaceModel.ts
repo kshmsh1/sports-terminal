@@ -73,6 +73,7 @@ export function draftAsset(p:OriginalDraftAsset):TradeAsset{
 export function buildSourceScenario(teams:string[],assignments:TradeAssignment[],date:string,
  ledgers:TeamCapLedgerRecord[],financials:TeamFinancialRecord[],ctx:TradeContext):TradeScenario|null{
  if(teams.length<2||teams.length>5||new Set(teams).size!==teams.length||!/^202[67]-\d{2}-\d{2}$/.test(date)||date<'2026-07-01'||date>'2027-06-30')return null;
+ const parsedDate=new Date(date+'T00:00:00Z');if(!Number.isFinite(parsedDate.getTime())||parsedDate.toISOString().slice(0,10)!==date)return null;
  const capContexts:TradeScenario['capContexts']={};
  for(const team of teams){
   const l=ledgers.find(x=>sameTeam(x.team,team)),f=financials.find(x=>sameTeam(x.team,team)),cash=ctx.cash.find(x=>sameTeam(x.team,team));
@@ -89,6 +90,12 @@ export function buildSourceScenario(teams:string[],assignments:TradeAssignment[]
 export function evaluateSourceTrade(s:TradeScenario,ctx:TradeContext,selections:Record<string,string>,exceptions:OriginalTradeException[],date:string):TradeReport{
  const r=validateTrade(s);
  const findings=[...r.findings];
+ for(const {asset,destinationTeam} of s.assignments){
+  const meta=asset.metadata??{};
+  if(typeof meta.protected_amount==='number')findings.push({code:'PARTIAL_GUARANTEE_REVIEW',severity:'warning',team:asset.originTeam,assetId:asset.id,message:asset.label+' has a source-reported partial guarantee. Current-season matching and guaranteed salary require contract-specific review; do not use this as definitive CBA approval.'});
+  if(meta.sign_and_trade===true)findings.push({code:'SIGN_AND_TRADE_CONTRACT_REVIEW',severity:'warning',team:destinationTeam,assetId:asset.id,message:asset.label+' requires verification of contract term, guaranteed first year, BYC and free-agent eligibility; only the published salary range is modeled.'});
+ }
+
  // Per-asset receiving mechanisms, matching the video-screen workflow. A whole
  // over-capacity exception group is invalid; never silently absorb only part.
  const grouped=new Map<string,TradeAssignment[]>();

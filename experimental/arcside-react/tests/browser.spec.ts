@@ -493,7 +493,8 @@ test('box-score archive can reach records beyond the first page',async({page})=>
 });
 
 test('financial source thresholds, roster and cap allocation match the dated original record',async({page})=>{
- const res=await page.request.get('/data/phase3/2026-27-team-financials.json');
+ const res=await page.request.get('/data/phase3/2026-27-team-financials.json',{maxRetries:1});
+ expect(res.ok()).toBeTruthy();
  const data=await res.json();
  expect(data.league.salaryCap).toBe(164961000);
  expect(data.league.taxLine).toBe(200428000);
@@ -592,4 +593,16 @@ test('source-gated trade rights, sign-and-trade ranges and snapshots are availab
  await page.getByRole('button',{name:'Open snapshot'}).click();
  await expect(page.getByLabel('Trade flow')).toContainText('Justinian Jessup');
  await expect(page.getByLabel('Trade flow')).toContainText('Kyle Lowry');
+});
+
+test('profile league-table view uses exact source ID and shared rate resolver',async({page})=>{
+ await page.goto('/player/synthetic-0?season=2025-26&segment=regular&basis=perGame');
+ const table=page.getByRole('region',{name:'Canonical player season statistics'});
+ await expect(table.getByRole('row')).toHaveCount(2);
+ await expect(table).toContainText('13.8');
+ await page.getByLabel('Rate basis').selectOption('totals');
+ await expect(table).toContainText('900.0');
+ await page.getByLabel('Profile league-table coverage').selectOption('career');
+ await expect(page.getByLabel('Canonical league-table statistics')).toContainText('1 of 2 exact season matches');
+ await expect(page.getByLabel('Canonical league-table statistics')).toContainText('1 unavailable or ambiguous');
 });
