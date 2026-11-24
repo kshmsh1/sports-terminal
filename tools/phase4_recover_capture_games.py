@@ -56,6 +56,15 @@ def numeric(value):
         return None
 
 
+def minutes(value):
+    if isinstance(value, str) and ":" in value:
+        pieces = value.strip().split(":")
+        if len(pieces) == 2 and all(x.isdigit() for x in pieces) and int(pieces[1]) < 60:
+            return int(pieces[0]) + int(pieces[1]) / 60.0
+        return None
+    return numeric(value)
+
+
 def source_files(static):
     return sorted((static / "nba_com/surfaces/players_boxscores_traditional/default").glob("*/*.json"))
 
@@ -223,7 +232,7 @@ def insert(db, item):
             pid = ident(row["PLAYER_ID"])
             matches = item["player_keys"].get(pid, set())
             player_key = next(iter(matches)) if len(matches)==1 else None
-            measures = [numeric(row.get(k)) for k in ("MIN","PTS","REB","AST","STL","BLK","TOV","PF")]
+            measures = [minutes(row.get("MIN")), *(numeric(row.get(k)) for k in ("PTS","REB","AST","STL","BLK","TOV","PF"))]
             fgm, fga, fg3m, fta = (numeric(row.get(x)) for x in ("FGM","FGA","FG3M","FTA"))
             ts = measures[1] / (2 * (fga + 0.44 * fta)) if None not in (measures[1],fga,fta) and fga+0.44*fta>0 else None
             efg = (fgm + 0.5 * fg3m) / fga if None not in (fgm,fg3m,fga) and fga>0 else None
