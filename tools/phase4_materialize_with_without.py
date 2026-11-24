@@ -349,7 +349,8 @@ def iter_game_events(db,table,catalog):
     # run streams the source once. SQLite supports >=999 bind parameters;
     # if the target is larger, use the full scan rather than repeated scans.
     placeholders=",".join("?" for _ in ids)
-    bounded=len(ids)<=900
+    max_bound=db.getlimit(sqlite3.SQLITE_LIMIT_VARIABLE_NUMBER) if hasattr(db,"getlimit") else 999
+    bounded=len(ids)<=min(max_bound,20000)
     query=(f"SELECT * FROM {table} WHERE game_id IN ({placeholders}) ORDER BY game_id,eventnum"
            if bounded else f"SELECT * FROM {table} ORDER BY game_id,eventnum")
     for row in db.execute(query,ids if bounded else ()):
