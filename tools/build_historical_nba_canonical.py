@@ -1581,6 +1581,14 @@ def main() -> int:
         player_seasons = build_player_seasons(db, policy, player_ids, player_names, team_ids, team_abbrs)
         team_seasons = build_team_seasons(db, policy, team_ids, team_abbrs)
         games, team_games = build_games(db, policy, team_ids, team_abbrs)
+        # Phase 4A: captured NBA.com logs can contain entire season segments
+        # absent from the Wyatt source. Recover only source-qualified games
+        # before Gonzalo date/game matching; retain the original on rebuild.
+        from phase4_recover_capture_games import recover_capture_games, STATIC
+        capture_recovery = recover_capture_games(db, STATIC, apply=True)
+        recovered_games = capture_recovery["counts"].get("inserted_games", 0)
+        games += recovered_games
+        team_games += 2 * recovered_games
         pbp_view = create_play_by_play_view(db)
         player_games = 0 if args.skip_player_games else build_player_games(
             db, player_ids, player_names, team_ids, team_abbrs, policy
@@ -1641,6 +1649,7 @@ def main() -> int:
             "fieldProvenance": provenance,
             "coverageRows": coverage_rows,
             "playByPlayView": pbp_view,
+            "nbaComCaptureRecovery": capture_recovery,
         }
         build_id = datetime.now(timezone.utc).strftime("canon-%Y%m%dT%H%M%S%fZ")
         db.execute("INSERT INTO canon_build_manifest VALUES (?,?,?,?,?,?,?,?)", (build_id, str(policy.get("canonicalSchemaVersion", "1")), now_iso(), int(source_summary[1]), int(source_summary[2]), int(source_summary[0]), json.dumps(counts, sort_keys=True), json.dumps([])))
