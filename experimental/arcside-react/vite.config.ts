@@ -173,10 +173,45 @@ const originalDraftAndExceptions=()=>{
   draftAssets:[...first,...second],exceptions,
   caveat:'Dated Flutter source interests, NOT guaranteed pick ownership or current tradeability. Protections, restrictions and exception eligibility require verification.'});
 };
+// Export the dated original contract flags and cash ledger, preserving source names.
+const originalTradeContext=()=>{
+ const read=(name:string)=>readFileSync(path.resolve(cwd,'../../lib/services/'+name+'.dart'),'utf8');
+ const status=read('nba_contract_status_reference_2026'),kickers=read('nba_trade_kicker_reference_2026'),
+  league=read('nba_league_environment_2026'),history=read('nba_transaction_history_2026'),
+  twoWay=read('nba_two_way_contract_reference_2026');
+ const field=(row:string,key:string)=>row.match(new RegExp('\\b'+key+":\\s*'([^']*)'"))?.[1]??null;
+ const number=(row:string,key:string)=>{const n=row.match(new RegExp('\\b'+key+':\\s*(\\d+(?:\\.\\d+)?)'))?.[1];return n===undefined?null:Number(n)};
+ const restrictions=[...status.matchAll(/NbaTradeEligibilityRestriction\(([\s\S]*?)\)/g)].map(x=>x[1]).filter(x=>field(x,'player')!==null).map(x=>({
+  player:field(x,'player'),team:field(x,'team'),eligibleDate:field(x,'eligibleDate'),veto:/hasTradeVeto:\s*true/.test(x)}));
+ const tradeKickers=[...kickers.matchAll(/NbaTradeKickerRecord\(([\s\S]*?)\)/g)].map(x=>x[1]).filter(x=>field(x,'player')!==null).map(x=>({
+  player:field(x,'player'),team:field(x,'team'),percent:number(x,'percent'),status:x.match(/status:\s*NbaTradeKickerStatus\.(\w+)/)?.[1]??null}));
+ const partialBlock=status.match(/partiallyGuaranteed\s*=\s*\{([\s\S]*?)\};/)?.[1]??'';
+ const partial=[...partialBlock.matchAll(/'([^']+)'\s*:\s*(\d+)/g)].map(x=>({player:x[1],amount:Number(x[2])}));
+ const cash=[...league.matchAll(/NbaCashTradeAvailability\(([\s\S]*?)\)/g)].map(x=>x[1]).filter(x=>field(x,'team')!==null).map(x=>({
+  team:field(x,'team'),availableToSend:number(x,'availableToSend'),availableToReceive:number(x,'availableToReceive'),restricted:/sendRestrictedAboveSecondApron:\s*true/.test(x)}));
+ const cashLimit=Number(league.match(/static const double tradeCashLimit\s*=\s*(\d+);/)?.[1]);
+ const transactions=[...history.matchAll(/NbaTransactionEvent\(([\s\S]*?)\),/g)].map(x=>x[1]).filter(x=>field(x,'date')!==null).map(x=>({
+  date:field(x,'date'),summary:field(x,'summary'),teams:[...(x.match(/teams:\s*\[([^\]]*)\]/)?.[1]??'').matchAll(/'([^']+)'/g)].map(y=>y[1])}));
+ const twoWays=[...twoWay.matchAll(/NbaTwoWayContractRecord\(([\s\S]*?)\)/g)].map(x=>x[1]).filter(x=>field(x,'player')!==null).map(x=>({
+  player:field(x,'player'),team:field(x,'team'),position:field(x,'position'),signedDate:field(x,'signedDate')}));
+ if(restrictions.length<10||tradeKickers.length<30||cash.length!==30||!Number.isFinite(cashLimit)||twoWays.length<50||transactions.length<10)
+  throw Error('Original dated trade context incomplete; do not substitute fixtures');
+ return JSON.stringify({kind:'ARCSIDE_DATED_TRADE_CONTEXT_V1',sourceNote:'Original user-supplied 2026–27 reference records; source dates differ.',
+  hashes:[status,kickers,league,history,twoWay].map(x=>createHash('sha256').update(x).digest('hex')),
+  restrictions,tradeKickers,partial,cash,cashLimit,transactions,twoWays});
+};
+
 const assets = (server: {middlewares: {use: (prefix: string, middleware: any) => void}}) => {
   // Serve the SAME local corpus and ORIGINAL Labs, not demo copies or remote API data.
   server.middlewares.use('/data/nba_static', sirv(path.join(repoWeb, 'data/nba_static'), { dev: true, etag: true }));
   server.middlewares.use('/labs', sirv(path.join(repoWeb, 'labs'), { dev: true, etag: true, single: false }));
+  server.middlewares.use('/data/phase3/2026-27-trade-context.json',(
+   req:IncomingMessage,res:ServerResponse,next:()=>void)=>{
+    if(req.method!=='GET'&&req.method!=='HEAD')return next();
+    res.setHeader('content-type','application/json; charset=utf-8');
+    res.setHeader('cache-control','no-store');
+    res.end(req.method==='HEAD'?'':originalTradeContext());
+  });
   server.middlewares.use('/data/phase3/2026-27-team-financials.json',(
    req:IncomingMessage,res:ServerResponse,next:()=>void)=>{
     if(req.method!=='GET'&&req.method!=='HEAD')return next();
@@ -210,6 +245,7 @@ const assets = (server: {middlewares: {use: (prefix: string, middleware: any) =>
 export default defineConfig({
   plugins: [react(),
     {name:'arcside-2026-27-dated-contract-seed',generateBundle(){
+      this.emitFile({type:'asset',fileName:'data/phase3/2026-27-trade-context.json',source:originalTradeContext()});
       this.emitFile({type:'asset',fileName:'data/phase3/2026-27-team-financials.json',
         source:originalTeamFinancialSeed()});
       this.emitFile({type:'asset',fileName:'data/phase3/2026-27-draft-exceptions.json',
