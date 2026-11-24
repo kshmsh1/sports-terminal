@@ -31,21 +31,49 @@ async def command(args: list[str], cwd: Path, timeout: float = 90, *, env: dict 
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         env=env, start_new_session=(os.name == "posix"),
     )
-    if on_start:
-        on_start(proc)
+    async def capture(stream: asyncio.StreamReader) -> tuple[bytes, bool]:
+        # Drain both pipes concurrently but never accumulate unbounded child output.
+        result = bytearray()
+        truncated = False
+        while chunk := await stream.read(65536):
+            remaining = MAX_OUTPUT - len(result)
+            if len(chunk) > remaining:
+                truncated = True
+            if remaining > 0:
+                result.extend(chunk[:remaining])
+        return bytes(result), truncated
+
+    async def send_input() -> None:
+        if proc.stdin is None:
+            return
+        try:
+            if stdin:
+                proc.stdin.write(stdin)
+                await proc.stdin.drain()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        finally:
+            proc.stdin.close()
+
+    async def collect():
+        assert proc.stdout is not None and proc.stderr is not None
+        return await asyncio.gather(capture(proc.stdout), capture(proc.stderr), send_input(), proc.wait())
+
     try:
-        out, err = await asyncio.wait_for(proc.communicate(stdin), timeout=timeout)
+        if on_start:
+            on_start(proc)
+        (out, out_truncated), (err, err_truncated), _, _ = await asyncio.wait_for(collect(), timeout=timeout)
     except asyncio.TimeoutError:
         await terminate(proc)
         return {"returncode": 124, "stdout": "", "stderr": f"Process timed out after {timeout}s",
                 "timed_out": True}
-    except asyncio.CancelledError:
+    except BaseException:
         await terminate(proc)
         raise
     return {"returncode": proc.returncode,
-            "stdout": out[:MAX_OUTPUT].decode("utf-8", "replace"),
-            "stderr": err[:MAX_OUTPUT].decode("utf-8", "replace"),
-            "output_truncated": len(out) > MAX_OUTPUT or len(err) > MAX_OUTPUT}
+            "stdout": out.decode("utf-8", "replace"),
+            "stderr": err.decode("utf-8", "replace"),
+            "output_truncated": out_truncated or err_truncated}
 
 
 def interpreter_for(root: Path, name: str = "default") -> Path:

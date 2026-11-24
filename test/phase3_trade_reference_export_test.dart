@@ -5,6 +5,13 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sports_terminal/services/trade_machine_engine.dart';
+import 'package:sports_terminal/services/nba_trade_contract_repository.dart';
+import 'package:sports_terminal/services/nba_team_financial_reference_2026.dart';
+import 'package:sports_terminal/services/nba_league_environment_2026.dart';
+import 'package:sports_terminal/services/nba_contract_status_reference_2026.dart';
+import 'package:sports_terminal/services/nba_trade_kicker_reference_2026.dart';
+import 'package:sports_terminal/services/nba_two_way_contract_reference_2026.dart';
+import 'package:sports_terminal/services/nba_complete_draft_asset_repository.dart';
 
 Object? finite(double v) => v.isFinite ? v : (v.isInfinite ? 'INFINITY' : 'NAN');
 
@@ -286,5 +293,155 @@ void main() {
     output.parent.createSync(recursive: true);
     output.writeAsStringSync('${const JsonEncoder.withIndent('  ').convert(result)}\n');
     print('ARCSIDE_ORIGINAL_DART_TRADE_REFERENCE: ${output.path}');
+  });
+
+  test('export source-backed 30-team trade engine reports', () async {
+    const engine = TradeMachineEngine();
+    final contracts = await const NbaTradeContractRepository().load();
+    String canonical(String team) => switch (team) {
+      'BRK' => 'BKN', 'CHO' => 'CHA', 'PHO' => 'PHX', _ => team,
+    };
+    final finances = {
+      for (final row in NbaTeamFinancialReference202627.teams.values)
+        canonical(row.team): row,
+    };
+    final cash = {
+      for (final row in NbaCashTradeReference202627.teams.values)
+        canonical(row.team): row,
+    };
+    final teams = finances.keys.toList()..sort();
+    expect(teams.length, 30);
+    final rosters = {
+      for (final team in teams) team: contracts.records
+        .where((p) => canonical(p.team) == team && p.salaryFor('2026-27') > 0)
+        .toList()..sort((a,b) => b.salaryFor('2026-27').compareTo(a.salaryFor('2026-27'))),
+    };
+    expect(rosters.values.every((r) => r.length >= 2), true);
+    TeamCapContext cap(String team) {
+      final f = finances[team]!;
+      return TeamCapContext.nba2026_27(
+        team: team, teamSalary: f.transactionSalary,
+        hardCappedAt: switch(f.hardCap) {
+          'first' => NbaLeagueEnvironment202627.firstApron,
+          'second' => NbaLeagueEnvironment202627.secondApron,
+          _ => null,
+        },
+        standardRosterPlayers: f.standardRoster,
+        cashSentThisSeason: NbaCashTradeReference202627.limit - cash[team]!.availableToSend,
+        cashLimitThisSeason: NbaCashTradeReference202627.limit,
+      );
+    }
+    TradeAsset asset(NbaTradeContract p) {
+      final restriction = NbaContractStatusReference202627.january15
+        .where((r) => r.player == p.player && canonical(r.team) == canonical(p.team)).firstOrNull;
+      final kicker = NbaTradeKickerReference202627.records
+        .where((r) => r.player == p.player && canonical(r.team) == canonical(p.team) && r.affects202627).firstOrNull;
+      final twoWay = NbaTwoWayContractReference202627.records
+        .any((r) => r.player == p.player && canonical(r.team) == canonical(p.team));
+      return TradeAsset(id: p.id, type: TradeAssetType.player,
+        label: p.player, originTeam: canonical(p.team), salary: p.salaryFor('2026-27'),
+        metadata: {
+          'guaranteed_amount': p.guaranteed,
+          if (restriction != null) 'trade_restricted_until': restriction.eligibleDate,
+          'no_trade': restriction?.hasTradeVeto == true,
+          if (kicker != null) 'trade_kicker': kicker.percent,
+          'two_way': twoWay,
+        });
+    }
+    Map<String,dynamic> contextJson(TeamCapContext c) => {
+      'team':c.team,'teamSalary':c.teamSalary,'salaryCap':c.salaryCap,
+      'taxLine':c.taxLine,'firstApron':c.firstApron,'secondApron':c.secondApron,
+      'hardCappedAt':c.hardCappedAt,'standardRosterPlayers':c.standardRosterPlayers,
+      'minimumStandardRosterPlayers':c.minimumStandardRosterPlayers,
+      'cashSentThisSeason':c.cashSentThisSeason,'cashLimitThisSeason':c.cashLimitThisSeason,
+    };
+    final cases = <String,dynamic>{};
+    void add(String id,List<String> participants,List<TradeAssignment> routes,
+      {String date = '2026-09-30'}) {
+      final scenario = TradeScenario(id:id,name:id,operatingSeason:'2026-27',
+        teams:participants,assignments:routes,
+        capContexts:{for(final team in participants) team:cap(team)},
+        asOfDateIso:'${date}T00:00:00Z');
+      cases[id] = {
+        'input': {
+          'id':id,'name':id,'operatingSeason':scenario.operatingSeason,
+          'teams':participants,'asOfDateIso':scenario.asOfDateIso,
+          'capContexts':{for(final item in scenario.capContexts.entries) item.key:contextJson(item.value)},
+          'assignments':[
+            for(final route in routes) {
+              'asset': {'id':route.asset.id,'label':route.asset.label,
+                'type':route.asset.type.name,'originTeam':route.asset.originTeam,
+                'salary':route.asset.salary,'metadata':route.asset.metadata},
+              'destinationTeam':route.destinationTeam,
+            },
+          ],
+        },
+        'reference':reportJson(engine.validate(scenario)),
+      };
+    }
+    for (var i=0;i<teams.length;i++) {
+      final a=teams[i];
+      for (var j=i+1;j<teams.length;j++) {
+        final b=teams[j];
+        add('pair-$a-$b',[a,b],[
+          TradeAssignment(asset:asset(rosters[a]!.first),destinationTeam:b),
+          TradeAssignment(asset:asset(rosters[b]!.first),destinationTeam:a),
+        ]);
+      }
+      final b=teams[(i+1)%teams.length];
+      add('aggregate-$a-$b',[a,b],[
+        TradeAssignment(asset:asset(rosters[a]![0]),destinationTeam:b),
+        TradeAssignment(asset:asset(rosters[a]![1]),destinationTeam:b),
+        TradeAssignment(asset:asset(rosters[b]![0]),destinationTeam:a),
+      ]);
+      for(final excess in [0.0,1.0]) {
+        final amount=cash[a]!.availableToSend+excess;
+        add('cash-$a-${excess==0?'limit':'above'}',[a,b],[
+          TradeAssignment(asset:TradeAsset(id:'cash:$a',type:TradeAssetType.cash,
+            label:'Cash considerations',originTeam:a,metadata:{'amount':amount}),
+            destinationTeam:b),
+        ]);
+      }
+    }
+    var restrictedCount=0;
+    for(final restriction in NbaContractStatusReference202627.january15) {
+      final a=canonical(restriction.team);
+      final player=rosters[a]!.where((p)=>p.player==restriction.player).firstOrNull;
+      if(player==null)continue;
+      restrictedCount++;
+      final b=teams.firstWhere((t)=>t!=a);
+      final eligible=DateTime.parse(restriction.eligibleDate);
+      final prior=eligible.subtract(const Duration(days:1)).toIso8601String().substring(0,10);
+      for(final date in [prior,restriction.eligibleDate]) {
+        add('eligibility-${player.id}-$date',[a,b],[
+          TradeAssignment(asset:asset(player),destinationTeam:b),
+        ],date:date);
+      }
+    }
+    expect(restrictedCount,greaterThanOrEqualTo(10));
+    for(final p in const NbaCompleteDraftAssetRepository().all()) {
+      final a=canonical(p.team);
+      if(!finances.containsKey(a))continue;
+      final b=teams.firstWhere((t)=>t!=a);
+      add('draft-${p.id}',[a,b],[
+        TradeAssignment(asset:TradeAsset(id:p.id,type:TradeAssetType.draftPick,
+          label:p.label,originTeam:a,metadata:{
+            'draft_year':p.year,'round':'${p.round}',
+            'frozen':p.frozen||!p.tradable,'swap_right':p.swapRight,
+            'stepien_safe':p.stepienSafe,'protection':p.protection??'',
+            'conveyance_uncertain':p.conditional,
+          }),destinationTeam:b),
+      ]);
+    }
+    expect(cases.keys.where((key)=>key.startsWith('pair-')).length,435);
+    expect(cases.length,greaterThan(1000));
+    final output=File('experimental/arcside-react/evidence/trade/dart-source-trade-reference.json');
+    output.parent.createSync(recursive:true);
+    output.writeAsStringSync(jsonEncode({
+      'kind':'ARCSIDE_DATED_DART_TRADE_REFERENCE_V1',
+      'scope':'Original dated salary, financial, cash, eligibility and draft records; base engine only.',
+      'salarySourceAsOf':contracts.asOf,'teamCount':teams.length,'cases':cases,
+    }));
+    print('ARCSIDE_DATED_SOURCE_TRADE_CASES: ${cases.length}');
   });
 }
