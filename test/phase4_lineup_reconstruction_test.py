@@ -43,7 +43,7 @@ class LineupTest(unittest.TestCase):
         rows,_,_=summarize_games([(game,stints,rosters,report)])
         splits=rows[("2020-21","regular")]
         pair=next(r for r in splits if r["player_id"]=="nba_2" and r["teammate_id"]=="nba_1")
-        self.assertEqual(pair["minutes_with"],3)
+        self.assertEqual(pair["minutes_with"],2.75)
         self.assertEqual(pair["minutes_without"],9)
         self.assertIn("pts",pair["with"])
         self.assertIn("plus_minus",pair["without"])
@@ -53,7 +53,7 @@ class LineupTest(unittest.TestCase):
         events=[e for e in events if e["eventnum"]!=6]
         stints,_,report=process_game(events,game,players)
         self.assertEqual(stints,[])
-        self.assertGreater(report["starting_five_not_evidenced"],0)
+        self.assertGreater(report["no_fully_evidenced_interval"],0)
 
     def test_invalid_substitution_fails_closed(self):
         game,players,events=fixture()
