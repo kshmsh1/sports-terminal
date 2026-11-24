@@ -182,6 +182,7 @@ test('studio uses source-backed chart settings, multiple visualizations and loca
 
 test('Trade Machine pilot validates an editable modeled scenario without implying NBA execution',async({page})=>{
  await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:'Reset example'}).click();
  await expect(page.getByRole('heading',{name:/Trade Machine/})).toBeVisible();
  await expect(page.getByRole('status').filter({hasText:'No modeled blocking errors'})).toBeVisible();
  await page.getByRole('button',{name:'Show modeled validation details'}).click();
@@ -195,6 +196,7 @@ test('Trade Machine pilot validates an editable modeled scenario without implyin
 
 test('multi-team hypothetical trade editor never treats blank payroll as zero',async({page})=>{
  await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:'Reset example'}).click();
  await page.getByRole('button',{name:'Add participating team (2–5)'}).click();
  await expect(page.getByLabel('Trade team 3',{exact:true})).toHaveValue('CCC');
  await expect(page.getByRole('row').filter({hasText:'CCC'})).toBeVisible();
@@ -403,23 +405,105 @@ test('Trade Machine imports canonical dated first/second-round interests and TPE
  await expect(page.getByLabel('Source draft interest').locator('option[value="BOS-2029-1-OUT"]')).toHaveAttribute('disabled','');
  await page.getByLabel('Source draft interest').selectOption('BOS-2027-1');
  await page.getByLabel('Source asset receiving team').selectOption('PHI');
+ await page.getByRole('button',{name:'Apply original team cap ledgers to participating teams'}).click();
  await page.getByRole('button',{name:'Add source draft interest'}).click();
- await expect(page.getByLabel('Asset 3 ID')).toHaveValue('BOS-2027-1');
+ await expect(page.getByLabel('Asset 1 ID')).toHaveValue('BOS-2027-1');
  const tpe=payload.exceptions.find((x:{id:string})=>x.id==='BOS-simons-2027');
  expect(tpe?.available).toBeGreaterThan(0);
  await page.getByLabel('TPE receiving team').selectOption('BOS');
  await page.getByLabel('Source trade exception').selectOption('BOS-simons-2027');
  await page.getByRole('button',{name:'Use TPE for receiving team'}).click();
  await expect(page.getByText(/BOS models acquisition with/)).toBeVisible();
- await expect(page.getByLabel('Asset 4 ID')).toHaveCount(0);
+ await expect(page.getByLabel('Asset 2 ID')).toHaveCount(0);
  await page.getByRole('button',{name:'Show modeled validation details'}).click();
  await expect(page.getByLabel('CBA findings')).toContainText('TPE_UNUSED');
 });
 
 test('manual asset routing refuses to transfer TPE or signing exceptions',async({page})=>{
  await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:'Reset example'}).click();
  await page.getByLabel('Asset 1 type').selectOption('tradeException');
  await expect(page.getByRole('alert').filter({hasText:'TPEs and signing exceptions are not transferable'})).toBeVisible();
  await page.getByLabel('Asset 1 type').selectOption('signingException');
  await expect(page.getByRole('alert').filter({hasText:'TPEs and signing exceptions are not transferable'})).toBeVisible();
+});
+
+test('React-first trade workspace starts empty and examples remain opt-in',async({page})=>{
+ await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByLabel('Trade first team')).toHaveValue('');
+ await expect(page.getByLabel('Asset 1 ID')).toHaveCount(0);
+ await expect(page.getByText('No assets assigned.',{exact:false})).toBeVisible();
+ await page.getByRole('button',{name:'Reset example'}).click();
+ await expect(page.getByLabel('Asset 1 ID')).toHaveValue('a');
+ await expect(page.getByText('Hypothetical example · illustrative teams and salaries, not NBA records.')).toBeVisible();
+ await page.getByRole('button',{name:'New trade',exact:true}).click();
+ await expect(page.getByLabel('Asset 1 ID')).toHaveCount(0);
+});
+test('financial table does not inherit truncated player-grid columns',async({page})=>{
+ await page.goto('/financials?season=2025-26&segment=regular&basis=perGame');
+ const table=page.getByRole('region',{name:'NBA team financial table'});
+ await expect(table.getByRole('button',{name:'ATL',exact:true})).toBeVisible();
+ const clipped=await table.locator('th,td').evaluateAll(cells=>cells.filter(e=>e.scrollWidth>e.clientWidth+1).map(e=>e.textContent));
+ expect(clipped).toEqual([]);
+});
+test('with/without table uses readable column widths and content-driven height',async({page})=>{
+ await page.goto('/with-without?season=2025-26&segment=regular&basis=perGame');
+ await page.getByLabel('With/without team').selectOption('CHI');
+ await page.getByLabel('With/without player A').selectOption('synthetic-0');
+ const table=page.getByRole('region',{name:'Synthetic Player 0 published splits'});
+ await expect(table.locator('thead th[scope=col]').filter({hasText:/^With teammate$/})).toBeVisible();
+ const clipped=await table.locator('th,td').evaluateAll(cells=>cells.filter(e=>e.scrollWidth>e.clientWidth+1).map(e=>e.textContent));
+ expect(clipped).toEqual([]);
+});
+
+test('comparison search and stored rate basis work after resetting a preset',async({page})=>{
+ await page.goto('/player-compare?season=2025-26&segment=regular&basis=perGame');
+ await page.getByLabel('Search comparison player 1').fill('Synthetic Player 0');
+ await expect(page.getByLabel('Compare player 1',{exact:true}).locator('option')).toHaveCount(2);
+ await page.getByLabel('Compare player 1',{exact:true}).selectOption('synthetic-0');
+ await page.getByLabel('Compare player 2',{exact:true}).selectOption('synthetic-2');
+ await page.getByLabel('Rate basis').selectOption('per36');
+ await page.getByLabel('Comparison preset name').fill('Per 36 comparison');
+ await page.getByRole('button',{name:'Save local preset'}).click();
+ await page.getByRole('button',{name:'Reset comparison'}).click();
+ await page.getByLabel('Rate basis').selectOption('perGame');
+ await page.getByLabel('Saved comparison').selectOption('Per 36 comparison');
+ await expect(page.getByLabel('Rate basis')).toHaveValue('per36');
+ await expect(page.getByLabel('Compare player 1',{exact:true})).toHaveValue('synthetic-0');
+});
+test('box-score archive can reach records beyond the first page',async({page})=>{
+ await page.route('**/data/nba_static/games/index.json',route=>route.fulfill({
+  status:200,contentType:'application/json',body:JSON.stringify(Array.from({length:51},(_,i)=>({
+   game_key:'fixture-game-'+i,season_id:'2025-26',season_type:'regular',
+   game_date:'2025-12-01',away_team_abbreviation:'BOS',home_team_abbreviation:'CHI',
+   away_score:i+1,home_score:100,box_score_available:false
+  })))
+ }));
+ await page.goto('/box-scores?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByText('Page 1 of 2',{exact:false})).toBeVisible();
+ await page.getByRole('button',{name:'Next page'}).click();
+ await expect(page.getByRole('region',{name:'Historical games'}).getByRole('button',{name:/BOS 51 @ CHI 100/})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Next page'})).toBeDisabled();
+});
+
+test('financial source thresholds, roster and cap allocation match the dated original record',async({page})=>{
+ const res=await page.request.get('/data/phase3/2026-27-team-financials.json');
+ const data=await res.json();
+ expect(data.league.salaryCap).toBe(164961000);
+ expect(data.league.taxLine).toBe(200428000);
+ expect(data.league.firstApron).toBe(209015000);
+ expect(data.league.secondApron).toBe(221686000);
+ expect(data.leagueSourceSha256).toMatch(/^[a-f0-9]{64}$/);
+ const atl=data.teams.find((r:{team:string})=>r.team==='ATL');
+ await page.goto('/financials?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.locator('.financials-workspace thead th[scope=col]').filter({hasText:/^Hard cap$/})).toBeVisible();
+ await page.getByLabel('Find financial team').fill('ATL');
+ const table=page.getByRole('region',{name:'NBA team financial table'});
+ await expect(table.getByRole('row')).toHaveCount(2);
+ await expect(table).toContainText(String(atl.standardRoster)+' + '+String(atl.twoWayRoster)+' two-way');
+ await table.getByRole('button',{name:'ATL',exact:true}).click();
+ const inspector=page.getByLabel('Financial team inspector');
+ await expect(inspector).toContainText('$'+(data.league.salaryCap-atl.capSpace).toLocaleString('en-US'));
+ await inspector.getByRole('button',{name:'Close details'}).click();
+ await expect(inspector).toContainText('Select a team');
 });

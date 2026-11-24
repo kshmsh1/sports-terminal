@@ -240,3 +240,86 @@ h2{font-size:21px;letter-spacing:-.4px;margin:0 0 7px}h3{font-size:15px}.subtle{
 .franchise-list .selected{border-color:var(--accent)}
 .franchise-inspector{align-self:start}
 @media(max-width:840px){.team-detail-pair,.franchise-layout{grid-template-columns:1fr}}
+
+
+/* React-first workspaces: scoped layout fixes, not the virtualized player grid.
+   Keep intrinsic table sizing so labels and monetary values are never elided. */
+.comparison-workspace .comparison-slots,.comparison-workspace .comparison-actions,
+.comparison-workspace .comparison-standings,.box-workspace .box-layout,
+.financials-workspace .financial-layout,.withwithout-workspace .withwithout-grids,
+.withwithout-workspace .comparison-actions{margin-inline:24px}
+.comparison-slot{background:var(--field)}
+.comparison-workspace .comparison-actions{margin-block:12px}
+.comparison-workspace .comparison-presets input{width:min(100%,240px);min-width:180px}
+.comparison-workspace .table-scroll,.financials-workspace .table-scroll,
+.withwithout-workspace .table-scroll,.trade-pilot .table-scroll{height:auto;max-height:544px;min-width:0}
+.comparison-workspace .stats-table,.financials-workspace .stats-table,
+.withwithout-workspace .stats-table,.trade-pilot .stats-table{
+ table-layout:auto;width:max-content;min-width:100%}
+.comparison-workspace .stats-table :is(th,td),.financials-workspace .stats-table :is(th,td),
+.withwithout-workspace .stats-table :is(th,td),.trade-pilot .stats-table :is(th,td){
+ width:auto;min-width:105px;padding:9px 12px;overflow:visible;text-overflow:clip;
+ white-space:nowrap;position:static;text-align:right}
+.comparison-workspace .stats-table thead th,.financials-workspace .stats-table thead th,
+.withwithout-workspace .stats-table thead th,.trade-pilot .stats-table thead th{
+ position:sticky;top:0;z-index:3;background:var(--panel-light)}
+.comparison-workspace .stats-table :is(th,td):first-child,
+.financials-workspace .stats-table :is(th,td):first-child,
+.withwithout-workspace .stats-table :is(th,td):first-child,
+.trade-pilot .stats-table :is(th,td):first-child{
+ text-align:left;position:sticky;left:0;z-index:2;background:var(--panel)}
+.comparison-workspace .stats-table thead th:first-child,.financials-workspace .stats-table thead th:first-child,
+.withwithout-workspace .stats-table thead th:first-child,.trade-pilot .stats-table thead th:first-child{
+ z-index:4;background:var(--panel-light)}
+.financials-workspace .stats-table :is(th,td):nth-child(2){min-width:76px}
+.financials-workspace .stats-table :is(th,td):nth-child(n+3){min-width:132px}
+.financials-workspace>.subtle,.withwithout-workspace>.subtle,.withwithout-workspace>[role=alert]{padding-inline:24px}
+.financials-workspace .financial-layout{grid-template-columns:minmax(0,1fr);margin-bottom:16px}
+.financial-inspector .financial-facts{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.financials-workspace .selected-financial td{background:var(--accent-bg)}
+.withwithout-grids{align-items:start}
+.withwithout-player .stats-table{min-width:100%;width:max-content}
+.withwithout-player .stats-table :is(th,td):first-child{min-width:88px}
+.withwithout-player .stats-table :is(th,td):nth-child(n+2){min-width:124px}
+.withwithout-player .stats-table th[scope=row]{color:var(--text);font-weight:600}
+.withwithout-player h3{margin-top:0}
+.box-workspace .box-game{display:grid;grid-template-columns:1fr;justify-items:start;
+ flex-shrink:0;gap:5px;padding:10px 12px;white-space:normal;text-align:left}
+.box-workspace .box-game small,.box-workspace .box-game strong{display:block;line-height:1.35}
+.box-workspace .box-game.selected{background:var(--accent-bg)}
+.box-workspace .box-index{min-width:0}
+.box-workspace .box-inspector{align-self:start}
+.box-pagination{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 24px;color:var(--sub);font-size:12px}
+.box-pagination button:disabled{opacity:.45;cursor:default}
+.trade-pilot>.trade-grid,.trade-pilot>.trade-actions,.trade-pilot>.trade-assets,
+.trade-pilot>.trade-results,.trade-pilot>h3,.trade-pilot>.trade-published-assets,
+.trade-pilot>.trade-start,.trade-pilot>[role=alert],.trade-pilot>.trade-empty{margin-inline:24px}
+.trade-pilot>.trade-grid{margin-top:20px;grid-template-columns:repeat(auto-fit,minmax(145px,1fr))}
+.trade-pilot .trade-published-assets{border:1px solid var(--line);border-radius:10px;padding:14px;margin-block:12px;min-width:0}
+.trade-pilot .trade-published-assets .trade-grid{align-items:end;margin-top:10px}
+.trade-pilot .trade-published-assets legend{font-weight:650;padding:0 5px}
+.trade-pilot .trade-start{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}
+.trade-pilot .trade-start p{flex:1;min-width:220px}
+.trade-pilot .trade-actions button:disabled,.trade-pilot .trade-published-assets button:disabled{opacity:.45;cursor:default}
+.trade-pilot .trade-asset textarea{font-family:ui-monospace,monospace}
+@media(max-width:1150px){.withwithout-grids{grid-template-columns:1fr}}
+@media(max-width:690px){.comparison-workspace .comparison-slots,.comparison-workspace .comparison-actions,
+.comparison-workspace .comparison-standings,.box-workspace .box-layout,.financials-workspace .financial-layout,
+.withwithout-workspace .withwithout-grids,.withwithout-workspace .comparison-actions,
+.trade-pilot>.trade-grid,.trade-pilot>.trade-actions,.trade-pilot>.trade-assets,
+.trade-pilot>.trade-results,.trade-pilot>h3,.trade-pilot>.trade-published-assets,
+.trade-pilot>.trade-start,.trade-pilot>[role=alert],.trade-pilot>.trade-empty{margin-inline:12px}}
+
+.comparison-slot input{width:100%;min-width:0}.comparison-slot .row-wrap{align-items:center;justify-content:space-between}
+
+
+.financial-thresholds{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;padding:16px 24px}
+.financial-thresholds>div{display:grid;gap:7px;background:var(--field);border:1px solid var(--line);border-radius:9px;padding:12px;min-width:0}
+.financial-thresholds span{color:var(--sub);font-size:11px}
+.financial-thresholds strong{font-size:15px;font-variant-numeric:tabular-nums}
+.financial-inspector-heading{align-items:center;justify-content:space-between}
+.financial-inspector-heading h3{margin:0}
+.financials-workspace .stats-table td.money-positive{color:#66cba1}
+.financials-workspace .stats-table td.money-negative{color:#ff8794}
+:root[data-theme=light] .financials-workspace .stats-table td.money-positive{color:#16754a}
+:root[data-theme=light] .financials-workspace .stats-table td.money-negative{color:#af3445}

@@ -39,6 +39,14 @@ const originalFlutterContractSeed = () => {
 // Export the original team financial snapshot exactly from the Dart reference,
 // never a second hand-maintained set of NBA cap values.
 const originalTeamFinancialSeed=()=>{
+ const leagueSource=readFileSync(path.resolve(cwd,'../../lib/services/nba_league_environment_2026.dart'),'utf8');
+ const leagueNumber=(key:string)=>{
+  const match=leagueSource.match(new RegExp('static const double '+key+'\\s*=\\s*(\\d+(?:\\.\\d+)?)\\s*;'));
+  if(!match)throw Error('Missing original NBA league financial threshold '+key);
+  return Number(match[1]);
+ };
+ const league={salaryCap:leagueNumber('salaryCap'),taxLine:leagueNumber('luxuryTax'),
+  firstApron:leagueNumber('firstApron'),secondApron:leagueNumber('secondApron')};
  const source=readFileSync(path.resolve(cwd,'../../lib/services/nba_team_financial_reference_2026.dart'),'utf8');
  const rows=[...source.matchAll(/'([A-Z]{3})':\s*NbaTeamFinancialSnapshot\(([^\n]+)\)/g)].map((match)=>{
   const team=match[1],body=match[2];
@@ -59,7 +67,7 @@ const originalTeamFinancialSeed=()=>{
   throw Error('Original 2026–27 team financial data parsing failed: expected 30 verified teams.');
  return JSON.stringify({kind:'ARCSIDE_ORIGINAL_FLUTTER_TEAM_FINANCIALS_2026_27_V1',
   sourceAsOf:'2026-10-05',source:'User-supplied 2026–27 NBA Team Summary screenshots',
-  dartSourceSha256:createHash('sha256').update(source).digest('hex'),teams:rows});
+  dartSourceSha256:createHash('sha256').update(source).digest('hex'),leagueSourceSha256:createHash('sha256').update(leagueSource).digest('hex'),league,teams:rows});
 };
 // Single source of truth: extract the 30 original Dart team cap ledgers.
 // Never reinterpret a sum of salaries as the team's full cap ledger.

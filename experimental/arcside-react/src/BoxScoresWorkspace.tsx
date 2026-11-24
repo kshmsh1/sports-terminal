@@ -20,6 +20,8 @@ export function BoxScoresWorkspace({onPlayer}:{onPlayer?:(id:string)=>void}){
  const [error,setError]=useState('');
  const [year,setYear]=useState('All'),[type,setType]=useState('All'),[query,setQuery]=useState('');
  const [selected,setSelected]=useState<JsonRow|null>(null);
+ const [page,setPage]=useState(0);
+ const pageSize=50;
  const [detail,setDetail]=useState<JsonRow|null>(null),[detailLoading,setDetailLoading]=useState(false);
  const [detailError,setDetailError]=useState('');
  const [selectedTeam,setSelectedTeam]=useState<string>('');
@@ -32,16 +34,20 @@ export function BoxScoresWorkspace({onPlayer}:{onPlayer?:(id:string)=>void}){
  },[]);
  useEffect(()=>{if(!selected){setDetail(null);return}
   const controller=new AbortController();setDetail(null);setDetailError('');setDetailLoading(true);
-  getGameDetail(selected,controller.signal).then(setDetail).catch(e=>{
+  getGameDetail(selected,controller.signal).then(value=>{if(!controller.signal.aborted)setDetail(value)}).catch(e=>{
    if(!controller.signal.aborted)setDetailError(String(e.message??e))
   }).finally(()=>{if(!controller.signal.aborted)setDetailLoading(false)});
   return ()=>controller.abort();
  },[selected]);
- const seasons=[...new Set(games.map(g=>val(g,'season_id','')).filter(Boolean))].sort().reverse();
+ const seasons=useMemo(()=>[...new Set(games.map(g=>val(g,'season_id','')).filter(Boolean))].sort().reverse(),[games]);
+ const coverage=useMemo(()=>{const dates=games.map(g=>val(g,'game_date','').split(/[T ]/)[0]).filter(date=>/^\d{4}-\d{2}-\d{2}$/.test(date)).sort();return dates.length?{earliest:dates[0],latest:dates[dates.length-1]}:null},[games]);
  const filtered=useMemo(()=>games.filter(g=>(year==='All'||val(g,'season_id')===year)&&
   (type==='All'||segment(g)===type)&&
   [val(g,'game_date'),team(g,true),team(g,false),val(g,'game_key')].join(' ').toLowerCase().includes(query.trim().toLowerCase())),
  [games,year,type,query]);
+ const pages=Math.max(1,Math.ceil(filtered.length/pageSize));
+ const currentPage=Math.min(page,pages-1);
+ useEffect(()=>{setPage(0);setSelected(null);setPlayer(null)},[year,type,query]);
  const away=selected?team(selected,true):'',home=selected?team(selected,false):'';
  const side=selectedTeam===home?home:away;
  const rawPlayers=asRows(detail?.player_box_scores);
@@ -49,22 +55,22 @@ export function BoxScoresWorkspace({onPlayer}:{onPlayer?:(id:string)=>void}){
   .sort((a,b)=>(num(b,'pts')??-1)-(num(a,'pts')??-1));
  return <section className="panel box-workspace" aria-label="Historical NBA box scores">
   <div className="panel-title"><div><p className="eyebrow">NBA / ORIGINAL HISTORICAL ARCHIVE</p><h2>Box Scores</h2>
-   <p className="subtle">Select games by date and open published box-score files. Absent player statistics are not inferred.</p></div></div>
+   <p className="subtle">Browse published games and inspect available box scores. Absent player statistics are not inferred.</p>{coverage&&<p className="subtle">Archive dates: {coverage.earliest} – {coverage.latest} · {games.length.toLocaleString()} published game records · {seasons.length} seasons in index</p>}</div></div>
   <div className="toolbar"><label>Season<select aria-label="Box score season" value={year} onChange={e=>setYear(e.target.value)}><option>All</option>{seasons.map(s=><option key={s}>{s}</option>)}</select></label>
    <label>Season type<select aria-label="Box score segment" value={type} onChange={e=>setType(e.target.value)}><option>All</option><option value="regular">Regular season</option><option value="playoffs">Playoffs</option></select></label>
    <label>Search games<input aria-label="Search historical games" placeholder="Team, date, game ID" value={query} onChange={e=>setQuery(e.target.value)}/></label></div>
   {error&&<p role="alert">{error}</p>}{loading&&<p role="status">Loading published game index…</p>}
   <div className="box-layout"><div className="box-index" role="region" aria-label="Historical games" tabIndex={0}>
    <p className="subtle">{filtered.length.toLocaleString()} published games</p>
-   {filtered.slice(0,300).map((g,i)=>{const key=val(g,'game_key',String(i));
+   {filtered.slice(currentPage*pageSize,(currentPage+1)*pageSize).map((g,i)=>{const key=val(g,'game_key',String(i));
     return <button className={selected===g?'box-game selected':''} aria-pressed={selected===g}
      key={key+':'+i} onClick={()=>{setSelected(g);setSelectedTeam(team(g,true));setPlayer(null)}}>
-     <small>{val(g,'game_date')} · {segment(g)==='playoffs'?'PLAYOFFS':'REGULAR'}</small>
+     <small>{val(g,'game_date').split(/[T ]/)[0]} · {segment(g)==='playoffs'?'Playoffs':'Regular season'}</small>
      <strong>{team(g,true)} {val(g,'away_score')} @ {team(g,false)} {val(g,'home_score')}</strong>
      <small>{g.box_score_available===true?'Box score published':'Box score may be unavailable'}</small>
     </button>;
    })}
-   {filtered.length>300&&<p className="subtle">Showing the first 300 matching games. Narrow the date, season, or team to locate older games.</p>}
+   {!filtered.length&&<p className="subtle">No matching published games.</p>}
   </div>
   <div className="box-inspector" aria-label="Game box-score inspector">
    {!selected?<p className="empty">Choose a historical game to inspect its published box score.</p>:<>
@@ -92,6 +98,7 @@ export function BoxScoresWorkspace({onPlayer}:{onPlayer?:(id:string)=>void}){
     </>}
    </>}
   </div></div>
+  <div className="box-pagination" aria-label="Historical game pages"><button disabled={currentPage===0} onClick={()=>setPage(currentPage-1)}>Previous page</button><span>{filtered.length?currentPage*pageSize+1:0}–{Math.min((currentPage+1)*pageSize,filtered.length)} of {filtered.length.toLocaleString()} · Page {currentPage+1} of {pages}</span><button disabled={currentPage>=pages-1} onClick={()=>setPage(currentPage+1)}>Next page</button></div>
   <p className="table-note">All displayed games and player lines are read from the original immutable NBA v5 index and per-game detail files. No synthetic game scores are used.</p>
  </section>;
 }

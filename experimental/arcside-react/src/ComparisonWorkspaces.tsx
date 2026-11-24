@@ -35,20 +35,20 @@ export function buildTeamRows(snapshot:SeasonSnapshot):TeamRow[]{
  return [...records].map(([key,record])=>{
   const logs=logsBy.get(key)??[],meta=teamMeta.get(key)??{};
   const games=recordNum(record,'games','gp');
-  const complete=games!==null&&games>0&&logs.length>=games;
+  const complete=games!==null&&games>0&&logs.length===games;
   const winsLog=logs.filter(r=>text(r,['result']).toUpperCase().startsWith('W')).length;
   const lossesLog=logs.filter(r=>text(r,['result']).toUpperCase().startsWith('L')).length;
-  const wins=recordNum(record,'wins')??(complete&&winsLog+lossesLog>0?winsLog:null);
-  const losses=recordNum(record,'losses')??(complete&&winsLog+lossesLog>0?lossesLog:null);
+  const wins=recordNum(record,'wins')??(complete&&winsLog+lossesLog===games?winsLog:null);
+  const losses=recordNum(record,'losses')??(complete&&winsLog+lossesLog===games?lossesLog:null);
   const totals:Record<string,number>={};
-  const covered=new Set<string>();
+  const covered=new Map<string,number>();
   for(const log of logs)for(const field of logsFields){
-   const v=num(log[field]);if(v!==null){totals[field]=(totals[field]??0)+v;covered.add(field)}
+   const v=num(log[field]);if(v!==null){totals[field]=(totals[field]??0)+v;covered.set(field,(covered.get(field)??0)+1)}
   }
-  const observed=(field:string)=>complete&&covered.has(field)?totals[field]:null;
+  const observed=(field:string)=>complete&&covered.get(field)===games?totals[field]:null;
   const pts=recordNum(record,'points')??observed('points');
   const opp=recordNum(record,'opponent_points')??observed('opponent_points');
-  const shot=(field:string)=>complete&&covered.has(field)?totals[field]:null;
+  const shot=(field:string)=>complete&&covered.get(field)===games?totals[field]:null;
   const fgM=shot('field_goals_made'),fgA=shot('field_goal_attempts');
   const threeM=shot('three_pointers_made'),threeA=shot('three_point_attempts');
   const ftM=shot('free_throws_made'),ftA=shot('free_throw_attempts');
@@ -79,15 +79,17 @@ export function leaderIndices(values:(number|null)[],higher=true){
 type Slot={id:number;season:string;selected:string};
 let nextSlotId=1;
 const seed=(season:string):Slot[]=>[{id:nextSlotId++,season,selected:''},{id:nextSlotId++,season,selected:''}];
-export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,onPlayer}:{
+export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,onPlayer,onContext}:{
  kind:'player'|'team';seasons:Season[];season:string;segment:SeasonType;basis:RateBasis;
- snapshot:SeasonSnapshot|null;onPlayer?:(id:string)=>void
+ snapshot:SeasonSnapshot|null;onPlayer?:(id:string)=>void;
+ onContext?:(context:{segment:SeasonType;basis:RateBasis})=>void
 }){
  const [slots,setSlots]=useState<Slot[]>(()=>seed(season));
  // Historical comparisons may intentionally compare different seasons. The
  // global season is an initial default; changing a slot must not be overridden.
  const [localSnapshots,setLocalSnapshots]=useState<Record<string,SeasonSnapshot>>({});
  const [error,setError]=useState('');
+ const [slotQueries,setSlotQueries]=useState<Record<number,string>>({});
  const [group,setGroup]=useState('Basic');
  const [metricSet,setMetricSet]=useState<string[]>([]);
  const [savedName,setSavedName]=useState(''),[savedVersion,setSavedVersion]=useState(0);
@@ -109,20 +111,21 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
  useEffect(()=>{
   const missing=[...new Set(slots.map(s=>s.season).filter(Boolean))].filter(s=>!(s===snapshot?.season_id&&snapshot?.season_type===segment)).filter(s=>!localSnapshots[segment+':'+s]);
   if(!missing.length)return;
+  setError('');
   const controller=new AbortController();let alive=true;
   Promise.all(missing.map(s=>getSeason(s,segment,controller.signal).then(data=>[segment+':'+s,data] as const)))
    .then(entries=>{if(alive)setLocalSnapshots(prev=>({...prev,...Object.fromEntries(entries)}))})
    .catch(e=>{if(alive&&!controller.signal.aborted)setError(String(e.message??e))});
   return ()=>{alive=false;controller.abort()};
  },[slots,segment,snapshot,localSnapshots]);
- useEffect(()=>{setMetricSet([])},[segment,kind]);
+ useEffect(()=>{setMetricSet([]);setSlotQueries({})},[kind]);
  const candidates=useMemo(()=>{
   const m=new Map<string,{id:string;label:string;player?:Row;team?:TeamRow}[]>();
   for(const s of slots.map(x=>x.season).filter(Boolean)){
    if(m.has(s))continue;
    const snap=s===snapshot?.season_id&&snapshot.season_type===segment?snapshot:localSnapshots[segment+':'+s];
    if(!snap){m.set(s,[]);continue}
-   m.set(s,kind==='player'?buildRows(snap,basis).map(row=>({id:row.id,label:row.player,player:row})):
+   m.set(s,kind==='player'?buildRows(snap,basis).map(row=>({id:row.id,label:row.player,player:row})).sort((a,b)=>a.label.localeCompare(b.label)):
     buildTeamRows(snap).map(team=>({id:team.key,label:team.name,team})));
   }
   return m;
@@ -150,8 +153,15 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
    typeof v.season==='string'&&typeof v.selected==='string').map(v=>{
     const row=v as Slot;return {id:nextSlotId++,season:row.season,selected:row.selected};
    });
-  if(restored.length>=2){setSlots(restored);setGroup(typeof data.group==='string'?data.group:'Basic');
-   setMetricSet(Array.isArray(data.metricSet)?data.metricSet.filter(x=>typeof x==='string'):[])}
+  if(restored.length===data.slots.length){
+   const restoredSegment=data.segment==='playoffs'?'playoffs':'regular';
+   const permittedBases:RateBasis[]=['perGame','per36','per48','per75','per100','totals'];
+   const restoredBasis=permittedBases.includes(data.basis as RateBasis)?data.basis as RateBasis:basis;
+   const permittedMetrics=new Set<string>(kind==='player'?metrics.map(m=>m.key):teamCompareKeys);
+   setSlots(restored);setSlotQueries({});setGroup(typeof data.group==='string'&&data.group in groups?data.group:'Basic');
+   setMetricSet(Array.isArray(data.metricSet)?data.metricSet.filter((x):x is string=>typeof x==='string'&&permittedMetrics.has(x)):[]);
+   onContext?.({segment:restoredSegment,basis:restoredBasis});
+  }
  };
  const label=(metric:string)=>kind==='player'?metrics.find(m=>m.key===metric)?.label??metric:
   ({games:'GP',wins:'W',losses:'L',win_pct:'W%',ppg:'PPG',opp_ppg:'OPP PPG',point_diff:'DIFF',
@@ -174,17 +184,21 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
   <div className="panel-title"><div><p className="eyebrow">NBA / CANONICAL SEASON SHARDS</p>
    <h2>{kind==='player'?'Player Comparison':'Team Comparison'}</h2>
    <p className="subtle">Two to five {kind==='player'?'players':'teams'} · distinct historical seasons · {segment} · {basis}. Missing source values remain unavailable.</p></div>
-   <button onClick={()=>setSlots(seed(season))}>Reset comparison</button></div>
+   <button onClick={()=>{setSlots(seed(season));setSlotQueries({});setGroup('Basic');setMetricSet([]);setError('')}}>Reset comparison</button></div>
   <div className="comparison-slots">{slots.map((slot,index)=>{
    const options=candidates.get(slot.season)??[],used=new Set(slots.filter(x=>x.id!==slot.id&&x.season===slot.season).map(x=>x.selected));
+   const q=(slotQueries[slot.id]??'').trim().toLowerCase();
+   const choices=options.filter(o=>o.id===slot.selected||(!used.has(o.id)&&(!q||[o.label,o.player?.team,o.team?.abbreviation].join(' ').toLowerCase().includes(q))));
    return <div className="comparison-slot" key={slot.id}>
     <div className="row-wrap"><strong>{kind==='player'?'Player':'Team'} {index+1}</strong>
      {slots.length>2&&<button aria-label={'Remove comparison slot '+(index+1)} onClick={()=>setSlots(prev=>prev.filter(x=>x.id!==slot.id))}>Remove</button>}</div>
-    <label>Season<select aria-label={'Compare '+(kind==='player'?'player':'team')+' season '+(index+1)} value={slot.season} onChange={e=>update(slot.id,{season:e.target.value,selected:''})}>
+    <label>Season<select aria-label={'Compare '+(kind==='player'?'player':'team')+' season '+(index+1)} value={slot.season} onChange={e=>{update(slot.id,{season:e.target.value,selected:''});setSlotQueries(prev=>({...prev,[slot.id]:''}))}}>
      {seasons.map(s=><option key={s.season_id} value={s.season_id}>{s.label??s.season_id}</option>)}</select></label>
+    <label>Search {kind==='player'?'players':'teams'}<input aria-label={'Search comparison '+kind+' '+(index+1)} placeholder={kind==='player'?'Name or team':'Team name or abbreviation'} value={slotQueries[slot.id]??''} onChange={e=>setSlotQueries(prev=>({...prev,[slot.id]:e.target.value}))}/></label>
     <label>{kind==='player'?'Player':'Team'}<select aria-label={'Compare '+(kind==='player'?'player':'team')+' '+(index+1)} value={slot.selected} onChange={e=>update(slot.id,{selected:e.target.value})}>
      <option value="">Choose {kind==='player'?'player':'team'}</option>
-     {options.filter(o=>o.id===slot.selected||!used.has(o.id)).map(o=><option key={o.id} value={o.id}>{o.label}</option>)}</select></label>
+     {choices.map(o=><option key={o.id} value={o.id}>{o.label}{kind==='player'&&o.player?.team?' · '+o.player.team:''}</option>)}</select></label>
+    {!choices.length&&<p className="subtle">{q?'No matching selections.':'Waiting for published season data or no eligible records.'}</p>}
     {selected[index]&&<p className="subtle">{slot.season} · {kind==='player'?selected[index]?.player?.team:selected[index]?.team?.abbreviation}</p>}
    </div>;
   })}</div>
@@ -220,6 +234,6 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
    {tally.filter(x=>selected[x.i]).sort((a,b)=>b.wins-a.wins||b.ties-a.ties).map(r=><p key={r.i}><strong>{selected[r.i]?.label}</strong> · {r.wins} outright leads · {r.ties} shared leads
     {kind==='player'&&onPlayer&&selected[r.i]?.player&&<button onClick={()=>onPlayer(selected[r.i]!.id)}>Player profile</button>}</p>)}
   </div>}
-  <p className="table-note">Source contract: {kind==='player'?'same canonical player-season rows as Stats; rate transformations reused':'team records, standings or sufficiently complete game logs only'}. Missing data never represents zero. This pilot does not yet reproduce all Flutter presets or customization interactions.</p>
+  <p className="table-note">Source: {kind==='player'?'canonical player-season rows with Stats rate transformations':'canonical team records and complete per-field game logs'}. Missing data is not zero.</p>
  </section>;
 }

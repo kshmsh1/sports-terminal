@@ -32,6 +32,15 @@ describe('original Flutter team comparison source contract',()=>{
   expect(missing.values.fg_pct).toBeUndefined();
   expect(missing.values.ppg).toBeUndefined();
  });
+ it('never treats a partially populated field as a complete season total',()=>{
+  const snapshot=base({team_records:[{team_id:'AAA',games:2}],
+   team_game_logs:[{team_id:'AAA',result:'W',points:100,field_goals_made:40,field_goal_attempts:80},
+    {team_id:'AAA',points:102,field_goal_attempts:80}]});
+  const found=buildTeamRows(snapshot)[0];
+  expect(found.values.ppg).toBe(101);
+  expect(found.values.fg_pct).toBeUndefined();
+  expect(found.values.wins).toBeUndefined();
+ });
  it('winners require two observed values, and ties are shared',()=>{
   expect(leaderIndices([null,5])).toEqual([]);
   expect(leaderIndices([5,5,1])).toEqual([0,1]);
