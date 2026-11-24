@@ -1,6 +1,6 @@
 // Operator-led final visual/functional comparison, not an automatic GO.
 import {chromium} from '@playwright/test';
-import {readFile,mkdir,writeFile} from 'node:fs/promises';
+import {readFile,mkdir,writeFile,rename} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {createInterface} from 'node:readline/promises';
 import path from 'node:path';
@@ -34,8 +34,37 @@ try{
  console.log('IMPORTANT: Flutter cannot be navigated by assumed DOM selectors. Navigate it manually in the left tab.');
  console.log('Review actual layout AND full task/functionality in BOTH tabs. Missing features are FAIL or BLOCKED, never silently waived.');
  await mkdir(path.join(root,'screenshots'),{recursive:true});
- for(const module of finalModules){
-  const file=path.join(root,'final-visual-checkpoint.json');
+ const file=path.join(root,'final-visual-checkpoint.json');
+ let saved=null;
+ try{saved=JSON.parse(await readFile(file,'utf8'));}
+ catch(e){if(e.code!=='ENOENT')throw e;}
+ if(saved){
+  if(saved.kind!=='ARCSIDE_PHASE3_FINAL_REVIEW_CHECKPOINT_V1'||
+     saved.sourceManifestSha256!==sourceHash||!Array.isArray(saved.checks)||
+     saved.checks.length>finalModules.length)
+   throw Error('Existing checkpoint is incompatible; keep it for investigation, do not overwrite.');
+  for(const [index,entry] of saved.checks.entries()){
+   if(entry.id!==finalModules[index].id||!['PASS','FAIL','BLOCKED'].includes(entry.status)||
+      typeof entry.details!=='string'||entry.details.trim().length<15)
+    throw Error('Invalid checkpoint module '+index);
+   for(const app of ['Flutter','React']){
+    const name='screenshots/'+entry.id+'-'+app.toLowerCase()+'.png';
+    if(entry.screenshots?.[app]!==name||
+       sha(await readFile(path.join(root,name)))!==entry[app.toLowerCase()+'ScreenshotSha256'])
+     throw Error('Screenshot checksum mismatch: '+name);
+   }
+  }
+  if(saved.checks.length){
+   const choice=(await rl.question('Restore '+saved.checks.length+
+    '/15 saved review modules? Enter RESUME (or STOP to retain checkpoint): ')).trim().toUpperCase();
+   if(choice!=='RESUME')throw Error('OPERATOR_PAUSE');
+   checks.push(...saved.checks);
+   issues.push(...checks.filter(x=>x.status!=='PASS').map(({id,status,details})=>({id,status,details})));
+   console.log('Resumed at '+(finalModules[checks.length]?.title??'finished')+
+    ' using original verified screenshots and notes.');
+  }
+ }
+ for(const module of finalModules.slice(checks.length)){
   console.log('\n=== '+module.title+' ===\n'+module.task);
   if(module.route){
    await pages.React.goto(host.React+module.route+'?season=2025-26&segment=regular&basis=perGame',
@@ -83,8 +112,10 @@ try{
    screenshots:{Flutter:screenshots.Flutter.path,React:screenshots.React.path}};
   checks.push(entry);
   if(result!=='PASS')issues.push({id:module.id,status:result,details});
-  await writeFile(file,JSON.stringify({kind:'ARCSIDE_PHASE3_FINAL_REVIEW_CHECKPOINT_V1',
-   sourceManifestSha256:sourceHash,checks,issues,reviewComplete:false},null,2)+'\n');
+  await writeFile(file+'.tmp',JSON.stringify({kind:'ARCSIDE_PHASE3_FINAL_REVIEW_CHECKPOINT_V1',
+   sourceManifestSha256:sourceHash,checks,issues,
+   reviewComplete:checks.length===finalModules.length},null,2)+'\n');
+  await rename(file+'.tmp',file);
   console.log(module.title+': '+result+' · screenshots recorded; '+checks.length+'/'+finalModules.length+' reviewed');
  }
 }catch(error){
