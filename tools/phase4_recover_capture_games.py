@@ -322,7 +322,10 @@ def main():
                 db.execute("BEGIN")
             report=recover_capture_games(db,args.static,apply=args.apply)
             if args.apply:
-                from tools.build_historical_nba_canonical import build_coverage, update_league_bounds
+                try:
+                    from tools.build_historical_nba_canonical import build_coverage, update_league_bounds
+                except ModuleNotFoundError:
+                    from build_historical_nba_canonical import build_coverage, update_league_bounds
                 build_coverage(db)
                 update_league_bounds(db)
                 db.commit()
