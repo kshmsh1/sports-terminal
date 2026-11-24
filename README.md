@@ -7,7 +7,7 @@ Arcside is a multi-sport web product with an NBA-first data platform. After logi
 
 ## NBA website
 
-The normal NBA customer experience includes:
+The original Flutter NBA experience includes the modules listed below. The new React-first development shell currently exposes source-backed pilot implementations of many of them, not yet feature-complete replacements:
 
 - NBA Home with season switching, player search, league leaders and team cards;
 - Stats with the original sortable player statistics table;
@@ -29,7 +29,7 @@ The primary historical path is:
 nba_history.sqlite
   -> static compiler
   -> web/data/nba_static/*
-  -> Flutter website
+  -> React-first web shell (Flutter reference retained)
 ```
 
 `WebsiteNbaStaticRepository` reads same-origin static JSON. The compatibility class `WebsiteNbaApiService` delegates to that static repository; it is not a historical HTTP API transport.
@@ -50,7 +50,7 @@ in standalone preview mode:
 bash scripts/launch_arcside.sh --labs
 ```
 
-For the full Arcside Flutter website (requires your existing
+For the React-first Arcside development website (requires your existing
 `data/warehouse/nba_history.sqlite` and a Flutter SDK):
 
 ```bash
@@ -67,11 +67,25 @@ See [Labs launch, collaboration and compatibility guide](docs/arcside_labs_colla
 
 ## Local launch
 
-Use the repository launcher so the static NBA corpus exists before Flutter starts:
+Use the repository launcher so the canonical NBA static corpus exists before the React-first frontend starts:
 
 ```bash
 bash scripts/open_terminal.sh
 ```
+
+The default `open_terminal.sh` frontend is now **React/Vite**, retaining the same verified local NBA v5 source data. The original Flutter website remains available, unchanged, as a one-command fallback:
+
+```bash
+bash scripts/open_terminal.sh --flutter
+```
+
+For fast day-to-day access when the original NBA v5 data and dependencies are already present:
+
+```bash
+bash scripts/launch_arcside.sh --platform --fast
+```
+
+This is a **React-first developer beta**, not a declaration that full trade-CBA, player profiles, Labs native security, physical accessibility, and GPU/long-tail latency are certified. No production deployment is switched by the local launch preference. See [React-first beta migration and rollback](docs/architecture/react_first_beta_migration_2026_11_23.md).
 
 Force a static rebuild:
 

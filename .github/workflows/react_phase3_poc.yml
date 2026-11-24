@@ -4,6 +4,7 @@ on:
     paths:
       - 'experimental/arcside-react/**'
       - 'scripts/phase3_release_compare.sh'
+      - 'scripts/open_terminal.sh'
       - 'test/phase3_advanced_acceptance_export_test.dart'
       - 'web/labs/arcside_context_bridge.mjs'
       - 'web/labs/python/index.html'
@@ -75,6 +76,7 @@ jobs:
           node --check scripts/phase3_paired_frame_memory.mjs
           node --check scripts/phase3_bundle_gate.mjs
           node scripts/phase3_readiness_audit.mjs
+          bash -n ../../scripts/open_terminal.sh
           bash -n ../../scripts/phase3_release_compare.sh
           bash -n ../../scripts/phase3_full_automated_acceptance.sh
           node scripts/phase3_decision.mjs

@@ -1,7 +1,15 @@
 # Arcside Phase 3 — React/Vite controlled prototype
 
-**This is an experimental UI alongside Flutter, not a migration or production replacement.**
+**React is the preferred local development frontend in the migration branch, while original Flutter remains fully available as a reversible reference. This is not a production certification or deployment switch.**
 The branch is stacked on Phase 2 (PR #88), Phase 1 (PR #87) and Labs PR #86. PR #81's player-profile parity changes remain a separate dependency.
+
+## React-first local beta (reversible)
+
+From the repository root, `bash scripts/open_terminal.sh` compiles or verifies the original published data and starts React. For quick boot from an existing source-backed v5 corpus with installed dependencies, use `bash scripts/launch_arcside.sh --platform --fast`.
+
+To revert to the original Flutter UI at any time, use `bash scripts/open_terminal.sh --flutter` or `bash scripts/launch_arcside.sh --flutter --fast`. Do not delete Flutter, the original local warehouse, or any generated data. The React implementation is still incomplete on multiple original modules, including exhaustive Trade Machine/CBA and player dossier parity.
+
+Full architecture notes, known performance failures, remaining certification and rollback: `docs/architecture/react_first_beta_migration_2026_11_23.md`.
 
 ## Launch without rebuilding on every preview
 
