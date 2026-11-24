@@ -1,0 +1,431 @@
+"""Phase 4B: conservative NBA with/without pair-split materializer.
+
+Uses the actual Wyatt event-level play-by-play table. An entire period is
+accepted only when both starting fives are evidenced before the first
+substitution (including its outgoing players) and every ensuing substitution
+is coherent. Unknown lineups, unresolved identities, clock errors, and missing
+scoreboards never become inferred statistics.
+
+Outputs source-verified *coverage*, not necessarily complete-season splits.
+No NBA.com requests or synthetic production rows.
+"""
+from __future__ import annotations
+
+import argparse
+import collections
+import datetime as dt
+import json
+import os
+import re
+import sqlite3
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_DB = ROOT / "data/warehouse/nba_history.sqlite"
+DEFAULT_STATIC = ROOT / "web/data/nba_static"
+DEFAULT_EVIDENCE = ROOT / "experimental/arcside-react/evidence/coverage/phase4b-lineups.json"
+CONTRACT = "arcside-phase4b-verified-pbp-pair-splits-v1"
+
+
+def ident(v):
+    s = str(v or "").strip()
+    return (s.lstrip("0") or "0") if s.isdigit() else ""
+
+
+def num(v):
+    try:
+        x = float(v)
+        return x if x == x else None
+    except (ValueError, TypeError):
+        return None
+
+
+def field(row, key):
+    if key in row:
+        return row[key]
+    return row.get(key.upper())
+
+
+def clock_seconds(raw):
+    m = re.fullmatch(r"\s*(\d{1,2}):(\d{2})(?:\.\d+)?\s*", str(raw or ""))
+    if not m or int(m.group(2)) >= 60:
+        return None
+    return int(m.group(1))*60+int(m.group(2))
+
+
+def score_tuple(raw):
+    m = re.fullmatch(r"\s*(\d+)\s*-\s*(\d+)\s*", str(raw or ""))
+    return (int(m.group(1)),int(m.group(2))) if m else None
+
+
+def event_type(e):
+    v = field(e, "eventmsgtype")
+    try:
+        return int(v)
+    except (ValueError, TypeError):
+        return -1
+
+
+def participant(e, n, sides, player_keys):
+    player_id = ident(field(e, f"player{n}_id"))
+    team_id = ident(field(e, f"player{n}_team_id"))
+    if not player_id or player_id == "0":
+        return None
+    if team_id not in sides:
+        return None
+    player_key = player_keys.get(player_id)
+    return (sides[team_id],player_key) if player_key else None
+
+
+def starter_fives(events, sides, player_keys):
+    """Five directly observed players on each team before its first substitution.
+
+    This is deliberately stricter than assuming the first five box-score rows
+    started. An outgoing player on the first substitution was on court.
+    """
+    observed = {"home":set(),"away":set()}
+    first_swap = next((i for i,e in enumerate(events) if event_type(e)==8),len(events))
+    first_clock = clock_seconds(field(events[first_swap],"pctimestring")) if first_swap<len(events) else None
+    initial = list(events[:first_swap])
+    if first_swap<len(events):
+        initial.append(events[first_swap])
+        # Multiple swaps at that same time all supply on-court outgoing players.
+        for e in events[first_swap+1:]:
+            if event_type(e)==8 and clock_seconds(field(e,"pctimestring"))==first_clock:
+                initial.append(e)
+            elif clock_seconds(field(e,"pctimestring")) != first_clock:
+                break
+    for e in initial:
+        for n in (1,) if event_type(e)==8 else (1,2,3):
+            part=participant(e,n,sides,player_keys)
+            if part:
+                observed[part[0]].add(part[1])
+    if any(len(s)!=5 for s in observed.values()):
+        return None,"starting_five_not_evidenced"
+    return observed,None
+
+
+def scoreboard_is_valid(events, away_final, home_final):
+    if away_final is None or home_final is None:
+        return False
+    previous=(0,0)
+    saw=False
+    for e in events:
+        score=score_tuple(field(e,"score"))
+        if score is None:
+            continue
+        da,dh=score[0]-previous[0],score[1]-previous[1]
+        if da<0 or dh<0 or da>4 or dh>4 or (da and dh):
+            return False
+        previous=score
+        saw=True
+    return saw and previous==(away_final,home_final)
+
+
+def process_game(events, game, player_keys):
+    """Return verified stints and separately attributable scoring events."""
+    home_id=ident(game["home_nba_id"])
+    away_id=ident(game["away_nba_id"])
+    if not home_id or not away_id or home_id==away_id:
+        return [],{},{"team_identity_unavailable":1}
+    sides={home_id:"home",away_id:"away"}
+    events=sorted(events,key=lambda e: int(field(e,"eventnum") or -1))
+    if len({field(e,"eventnum") for e in events})!=len(events):
+        return [],{},{"duplicate_event_number":1}
+    periods=collections.defaultdict(list)
+    rosters={"home":set(),"away":set()}
+    for e in events:
+        try:
+            period=int(field(e,"period"))
+        except (ValueError,TypeError):
+            continue
+        if period<1 or period>15:
+            continue
+        periods[period].append(e)
+        for n in (1,2,3):
+            part=participant(e,n,sides,player_keys)
+            if part:
+                rosters[part[0]].add(part[1])
+    if not periods:
+        return [],{},{"no_periods":1}
+    if 1 not in periods:
+        return [],{},{"period_one_missing":1}
+    score_ok=scoreboard_is_valid(events,num(game.get("away_score")),num(game.get("home_score")))
+    # A stint stores current five on each side, clock duration and observed points.
+    stints=[]
+    reasons=collections.Counter()
+    previous_score=(0,0)
+    for period, pevents in sorted(periods.items()):
+        duration=720 if period<=4 else 300
+        clocks=[clock_seconds(field(e,"pctimestring")) for e in pevents]
+        if any(t is None or t>duration for t in clocks) or any(a<b for a,b in zip(clocks,clocks[1:])):
+            reasons["invalid_period_clock"]+=1
+            for e in pevents:
+                score=score_tuple(field(e,"score"))
+                if score is not None: previous_score=score
+            continue
+        starters,reason=starter_fives(pevents,sides,player_keys)
+        if reason:
+            reasons[reason]+=1
+            for e in pevents:
+                score=score_tuple(field(e,"score"))
+                if score is not None: previous_score=score
+            continue
+        on={side:set(starters[side]) for side in ("home","away")}
+        local=[]
+        t_prev=duration
+        valid=True
+        for e,t in zip(pevents,clocks):
+            if t<t_prev:
+                local.append({"seconds":t_prev-t,"home":frozenset(on["home"]),
+                              "away":frozenset(on["away"]),"points":(0,0)})
+                t_prev=t
+            value=score_tuple(field(e,"score"))
+            if value is not None:
+                diff=(value[0]-previous_score[0],value[1]-previous_score[1])
+                if score_ok and (diff[0]>0 or diff[1]>0):
+                    # Points at this event go to the lineup on court immediately
+                    # before this event, not to the post-substitution lineup.
+                    local.append({"seconds":0,"home":frozenset(on["home"]),
+                                  "away":frozenset(on["away"]),"points":diff})
+                previous_score=value
+            if event_type(e)==8:
+                outgoing=participant(e,1,sides,player_keys)
+                incoming=participant(e,2,sides,player_keys)
+                if (not outgoing or not incoming or outgoing[0]!=incoming[0]
+                        or outgoing[1] not in on[outgoing[0]]
+                        or incoming[1] in on[outgoing[0]]):
+                    valid=False
+                    reasons["invalid_substitution"]+=1
+                    break
+                on[outgoing[0]].remove(outgoing[1])
+                on[outgoing[0]].add(incoming[1])
+            else:
+                for n in (1,2,3):
+                    part=participant(e,n,sides,player_keys)
+                    if part and part[1] not in on[part[0]]:
+                        valid=False
+                        reasons["participant_not_on_court"]+=1
+                        break
+                if not valid:break
+        if valid and all(len(on[side])==5 for side in on):
+            if t_prev>0:
+                local.append({"seconds":t_prev,"home":frozenset(on["home"]),
+                              "away":frozenset(on["away"]),"points":(0,0)})
+            if sum(x["seconds"] for x in local)!=duration:
+                reasons["period_duration_not_conserved"]+=1
+                continue
+            stints.extend(local)
+            reasons["periods_verified"]+=1
+        else:
+            reasons["periods_rejected"]+=1
+            # Advance scoreboard through rejected-period tail for later periods.
+            for e in pevents:
+                score=score_tuple(field(e,"score"))
+                if score is not None: previous_score=score
+    return stints,rosters,dict(reasons)|{"score_verified":int(score_ok)}
+
+
+def summarize_games(games):
+    """Aggregate only observed, time-conserved stints for two rostered players."""
+    totals=collections.defaultdict(lambda:{"with":[0.0,0.0,0.0],
+                                           "without":[0.0,0.0,0.0]})
+    seen_games=collections.Counter()
+    verified=collections.Counter()
+    for game,stints,rosters,reasons in games:
+        scope=(game["season"],game["segment"])
+        seen_games[scope]+=1
+        verified[scope]+=reasons.get("periods_verified",0)
+        if not stints:continue
+        for side in ("home","away"):
+            roster=sorted(rosters.get(side,set()))
+            team=game[side+"_abbr"]
+            if not team:continue
+            for stint in stints:
+                active=stint[side]
+                seconds=stint["seconds"]
+                points=stint["points"]
+                for a in active:
+                    for b in roster:
+                        if b==a:continue
+                        slot="with" if b in active else "without"
+                        agg=totals[(scope,team,a,b)][slot]
+                        agg[0]+=seconds
+                        if reasons.get("score_verified"):
+                            mine=points[1] if side=="home" else points[0]
+                            other=points[0] if side=="home" else points[1]
+                            agg[1]+=mine
+                            agg[2]+=mine-other
+    result=collections.defaultdict(list)
+    for (scope,team,a,b),slots in totals.items():
+        w=slots["with"];n=slots["without"]
+        if w[0]<=0 and n[0]<=0:continue
+        def metrics(vals):
+            seconds=vals[0]
+            return {"pts":round(vals[1]*2160/seconds,3),
+                    "plus_minus":round(vals[2]*2160/seconds,3)} if seconds>0 else {}
+        # Scoring values are suppressed whenever *any* contributing game's
+        # scoreboard could not be checked. Never silently average partial stats.
+        result[scope].append({
+            "team":team,"player_id":a,"teammate_id":b,
+            "minutes_with":round(w[0]/60,3),"minutes_without":round(n[0]/60,3),
+            "with":metrics(w),"without":metrics(n),
+        })
+    return result,seen_games,verified
+
+
+def load_game_catalog(db, season=None):
+    where=" WHERE g.league_id='NBA' AND g.season_type IN ('regular','playoffs')"
+    params=[]
+    if season:
+        where+=" AND g.season_id=?"
+        params.append(season)
+    catalog={}
+    query=("SELECT g.game_key,g.nba_game_id,g.season_id AS season,g.season_type AS segment,"
+           "g.home_score,g.away_score,ht.nba_team_id AS home_nba_id,"
+           "at.nba_team_id AS away_nba_id,ht.abbreviation AS home_abbr,"
+           "at.abbreviation AS away_abbr "
+           "FROM canon_dim_game g "
+           "LEFT JOIN canon_dim_team ht ON ht.team_key=g.home_team_key "
+           "LEFT JOIN canon_dim_team at ON at.team_key=g.away_team_key"+where)
+    for row in db.execute(query,params):
+        entry=dict(row)
+        token=ident(entry["nba_game_id"])
+        if token:
+            if token in catalog:
+                raise ValueError("Ambiguous canonical NBA game ID: "+token)
+            catalog[token]=entry
+    return catalog
+
+
+def player_identity_catalog(db):
+    mapping=collections.defaultdict(set)
+    for key,nba in db.execute("SELECT player_key,nba_id FROM canon_dim_player"):
+        if ident(nba):mapping[ident(nba)].add(str(key))
+    if db.execute("SELECT 1 FROM sqlite_master WHERE name='canon_player_source_xref'").fetchone():
+        for source_id,key in db.execute(
+            "SELECT source_id,player_key FROM canon_player_source_xref "
+            "WHERE source_key='wyatt_nbadb' AND source_id<>''"
+        ):
+            if ident(source_id):mapping[ident(source_id)].add(str(key))
+    return {k:next(iter(v)) for k,v in mapping.items() if len(v)==1}
+
+
+def source_pbp_table(db):
+    row=db.execute(
+        "SELECT warehouse_table FROM historical_table_inventory "
+        "WHERE source_key='wyatt_nbadb' AND source_table='play_by_play' LIMIT 1"
+    ).fetchone()
+    if not row:
+        raise ValueError("Wyatt event-level play_by_play table not registered")
+    name=str(row[0])
+    if not re.fullmatch(r"[a-zA-Z0-9_]+",name):
+        raise ValueError("Unsafe play-by-play table name")
+    columns={x[1].lower() for x in db.execute(f"PRAGMA table_info({name})")}
+    needed={"game_id","eventnum","eventmsgtype","period","pctimestring","score",
+            "player1_id","player2_id","player1_team_id","player2_team_id"}
+    if not needed.issubset(columns):
+        raise ValueError("Missing event-level PBP identity/substitution columns: "+repr(sorted(needed-columns)))
+    return name
+
+
+def iter_game_events(db,table,catalog):
+    """Stream in game/event order. Never load the entire multi-million-event PBP."""
+    current_id=None;current_rows=[]
+    # One indexed or external-sort scan, not 160 table scans.
+    query=f"SELECT * FROM {table} ORDER BY game_id,eventnum"
+    for row in db.execute(query):
+        raw=dict(row)
+        token=ident(field(raw,"game_id"))
+        if token!=current_id:
+            if current_id in catalog and current_rows:
+                yield catalog[current_id],current_rows
+            current_id=token;current_rows=[]
+        if token in catalog:
+            current_rows.append(raw)
+    if current_id in catalog and current_rows:
+        yield catalog[current_id],current_rows
+
+
+def build(db,*,season=None):
+    db.row_factory=sqlite3.Row
+    catalog=load_game_catalog(db,season)
+    players=player_identity_catalog(db)
+    table=source_pbp_table(db)
+    games=[]
+    total=collections.Counter()
+    for game,events in iter_game_events(db,table,catalog):
+        stints,rosters,reasons=process_game(events,game,players)
+        scope=(game["season"],game["segment"])
+        total[scope,"source_games"]+=1
+        total[scope,"accepted_periods"]+=reasons.get("periods_verified",0)
+        total[scope,"verified_seconds"]+=sum(s["seconds"] for s in stints)
+        if stints:total[scope,"games_with_stints"]+=1
+        if reasons.get("score_verified"):total[scope,"score_verified_games"]+=1
+        for reason,value in reasons.items():
+            if reason not in ("periods_verified","score_verified"):
+                total[scope,"rejection_"+reason]+=value
+        games.append((game,stints,rosters,reasons))
+    rows,_,_=summarize_games(games)
+    coverage={}
+    scopes={ (g["season"],g["segment"]) for g in catalog.values()}
+    for scope in sorted(scopes):
+        counts={metric:n for (sc,metric),n in total.items() if sc==scope}
+        counts["canonical_games"]=sum((g["season"],g["segment"])==scope for g in catalog.values())
+        counts["published_pair_rows"]=len(rows.get(scope,[]))
+        coverage[scope]=counts
+    return rows,coverage
+
+
+def atomic_json(path,payload):
+    path.parent.mkdir(parents=True,exist_ok=True)
+    temp=path.with_suffix(".phase4b.tmp")
+    temp.write_text(json.dumps(payload,ensure_ascii=False,separators=(",",":")),encoding="utf-8")
+    temp.replace(path)
+
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--database",type=Path,default=Path(os.environ.get("SPORTS_TERMINAL_NBA_HISTORY_DB",DEFAULT_DB)))
+    p.add_argument("--static",type=Path,default=DEFAULT_STATIC)
+    p.add_argument("--season",help="Restrict to one season (e.g. 2018-19). Omit for all")
+    p.add_argument("--report",type=Path,default=DEFAULT_EVIDENCE)
+    p.add_argument("--publish",action="store_true",help="Publish source-verified split files; default report only")
+    args=p.parse_args()
+    if args.season and not re.fullmatch(r"\d{4}-\d\d",args.season):
+        p.error("Invalid season")
+    if not args.database.is_file():
+        p.error("Canonical database not found")
+    with sqlite3.connect(args.database.resolve().as_uri()+"?mode=ro",uri=True) as db:
+        db.execute("PRAGMA query_only=ON")
+        rows,coverage=build(db,season=args.season)
+    reports=[]
+    for scope,stats in coverage.items():
+        season,segment=scope
+        payload={"contract":CONTRACT,"source":"wyatt_nbadb/play_by_play (verified stints)",
+                 "season":season,"segment":segment,"available":bool(rows.get(scope)),
+                 "units":"team_on_court_per36","coverage":stats,
+                 "rows":sorted(rows.get(scope,[]),key=lambda r:(r["team"],r["player_id"],r["teammate_id"])),
+                 "message":"Partial coverage: only fully reconstructed periods are represented."}
+        destination=args.static/"lineups"/season/segment/"with_without.json"
+        if args.publish and payload["rows"]:
+            if destination.exists():
+                previous=json.loads(destination.read_text(encoding="utf-8"))
+                if previous.get("contract") != CONTRACT:
+                    raise ValueError("Refusing to overwrite non-Phase4B lineup data: "+str(destination))
+            atomic_json(destination,payload)
+        reports.append({"season":season,"segment":segment,**stats,
+                        "published":bool(args.publish and payload["rows"])})
+    report={"contract":CONTRACT,"published":bool(args.publish),
+            "scopes":reports,"source":"existing Wyatt event-level PBP",
+            "caveat":"Only reconstructable periods. Empty/missing split values are not estimated. On-court team scoring is per 36 verified minutes."}
+    args.report.parent.mkdir(parents=True,exist_ok=True)
+    atomic_json(args.report,report)
+    print(json.dumps({"scopes":len(reports),"scopes_with_pairs":sum(x["published_pair_rows"]>0 for x in reports),
+                      "files_written":sum(x["published"] for x in reports),
+                      "verified_periods":sum(x.get("accepted_periods",0) for x in reports),
+                      "report":str(args.report)},indent=2))
+
+
+if __name__=="__main__":
+    main()
