@@ -407,3 +407,23 @@ h2{font-size:21px;letter-spacing:-.4px;margin:0 0 7px}h3{font-size:15px}.subtle{
 @media(max-width:1250px){.trade-team-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.trade-builder-grid{grid-template-columns:1fr}.trade-fin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:740px){.trade-team-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.trade-team-selection{padding:12px}.trade-selection-count{margin-left:0}.trade-team-card{gap:5px}.trade-fin-card strong{font-size:14px}}
 @media(max-width:440px){.trade-team-grid,.trade-fin-grid{grid-template-columns:1fr}}
+
+.trade-product-heading{font-size:18px;margin:0 0 12px}
+.global-search{position:relative;min-width:0}
+.global-search>input{width:240px;max-width:28vw;min-width:0}
+.global-search-results{position:absolute;top:calc(100% + 8px);right:0;z-index:30;width:min(380px,85vw);max-height:480px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;box-shadow:0 10px 30px #0003}
+.global-search-results>button{display:grid;gap:5px;text-align:left;width:100%;margin:5px 0;background:var(--field)}
+.global-search-results small{color:var(--sub);font-size:11px}
+.global-search-heading{justify-content:space-between;align-items:center;margin-bottom:8px}
+.home-shortcuts{display:flex;flex-wrap:wrap;gap:9px;padding:18px}
+.home-leaders{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.home-leader-card{padding:14px;margin:0}
+.home-leader-card h4{display:flex;align-items:center;justify-content:space-between;margin:0 0 12px}
+.home-leader-card h4 small,.home-leader-row small{color:var(--sub)}
+.home-leader-row{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12px}
+.home-leader-row button{white-space:normal}
+.home-teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.home-teams button{display:grid;gap:8px;text-align:left}
+.home-teams small{color:var(--sub)}
+.home-error{padding:18px}
+@media(max-width:690px){.topbar{flex-wrap:wrap}.global-search>input{width:190px;max-width:65vw}.global-search-results{right:auto;left:0}.home-leaders{grid-template-columns:1fr}}

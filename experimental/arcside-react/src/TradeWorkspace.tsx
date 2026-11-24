@@ -88,6 +88,7 @@ export function TradeWorkspace(){
    <button className="trade-route-button" disabled={blocked||!canRoute(asset)} onClick={()=>route(asset)} aria-label={'Route '+asset.label}>{blocked?'Restricted':'→ Route'}</button>;
  };
  return <section className="trade-workspace" aria-label="NBA Trade Machine">
+  {stage!=='manual'&&<h2 className="trade-product-heading">Trade Machine</h2>}
   <div className="trade-product-nav" role="group" aria-label="Trade views">
    <button className={stage==='pick'||stage==='build'?'selected':''} aria-pressed={stage==='pick'||stage==='build'} onClick={()=>setStage(active&&teams.includes(active)?'build':'pick')}>Build a Trade</button>
    <button className={stage==='recent'?'selected':''} aria-pressed={stage==='recent'} onClick={()=>setStage('recent')}>Recent Trades</button>
@@ -143,8 +144,8 @@ export function TradeWorkspace(){
       {tab==='Draft picks'&&<div className="trade-draft-list">{picks.filter(p=>filtered(p.label+' '+p.description,p.id)).map(p=><article key={p.id} className={!p.tradable||p.frozen?'trade-restricted':''}><div><strong>{p.year}, Round {p.round}: {p.label}</strong><p>{p.description}</p><div className="trade-flags">{p.conditional&&<small>Conditional</small>}{p.swapRight&&<small>Swap</small>}{p.protection&&<small>{p.protection}</small>}</div></div>{routeButton(draftAsset(p),!p.tradable||p.frozen)}</article>)}
        {!picks.some(p=>filtered(p.label+' '+p.description,p.id))&&<p className="empty">No matching published draft interests.</p>}</div>}
       {tab==='Cash'&&<div className="trade-inner"><h3>Cash considerations</h3><p>Available to send: {money(cash?.availableToSend)} · Available to receive: {money(cash?.availableToReceive)}</p>
-       <label>Cash amount ($)<input aria-label="Cash amount" inputMode="decimal" value={cashAmount} onChange={e=>setCashAmount(e.target.value)}/></label><button disabled={!cash||!!cash.restricted||assignments.some(x=>x.asset.id==='cash:'+active)} onClick={addCash}>Route cash</button>
-       {cash?.restricted&&<p className="trade-negative">Source reports a cash-sending restriction.</p>}</div>}
+       <label>Cash amount ($)<input aria-label="Cash amount" inputMode="decimal" value={cashAmount} onChange={e=>setCashAmount(e.target.value)}/></label><button disabled={!cash||assignments.some(x=>x.asset.id==='cash:'+active)} onClick={addCash}>Route cash</button>
+       {cash?.restricted&&<p className="trade-negative">Source reports a second-apron cash-sending restriction; modeled checks apply.</p>}</div>}
       {tab==='Exceptions'&&<div className="trade-inner"><h3>Receiving-team traded-player exceptions</h3><p className="subtle">A TPE is used by the acquiring team, not transferred as an asset.</p><label>Use exception for {active}<select aria-label={'TPE for '+active} value={tpes[active]??''} onChange={e=>setTpes(prev=>({...prev,[active]:e.target.value}))}><option value="">No exception selected</option>{activeTpes.map(t=><option key={t.id} value={t.id} disabled={t.available<=0||t.expires<date}>{t.sourceTransaction} · {money(t.available)} · {t.expires}</option>)}</select></label></div>}
       {tab==='Draft rights'&&<p className="empty">Separate unsigned-player draft-rights records are not verified in this source. Future pick and swap interests are in Draft picks.</p>}
       {tab==='Free agents'&&<p className="empty">No verified free-agent rights and sign-and-trade source for this workflow. Do not infer eligibility from missing salary records.</p>}

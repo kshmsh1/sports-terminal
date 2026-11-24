@@ -26,6 +26,7 @@ export async function mockStatic(page:Page,count=150){
     teams:[{team_id:'CHI',team_name:'Chicago',abbreviation:'CHI'},{team_id:'BOS',team_name:'Boston',abbreviation:'BOS'}]},
    'seasons/2025-26/playoffs.json':{season_id:'2025-26',season_type:'playoffs',
     players:[],player_season_totals:[{...makeRows(1)[0],season_type:'playoffs',games:6}]},
+   'dashboard/2025-26.json':{season_id:'2025-26',leaders:{points:[{rank:1,player_id:'synthetic-0',player_name:'Synthetic Player 0',value:25}]},team_leaders:{points:[{rank:1,team_key:'team-chi',team_name:'Chicago',value:105}]},teams:[{team_key:'team-chi',team_name:'Chicago',abbreviation:'CHI'}],recent_games:[]},
    'games/index.json':[
     {game_key:'synthetic-game-001',season_id:'2025-26',season_type:'regular',
      game_date:'2025-12-01',away_team_abbreviation:'BOS',home_team_abbreviation:'CHI',
@@ -52,7 +53,7 @@ export async function mockStatic(page:Page,count=150){
     recent_games:[{game_key:'synthetic-game-001',game_date:'2025-12-01',away_team_abbreviation:'BOS',home_team_abbreviation:'CHI'}],
     injuries_2026_27:[],transactions_2026_27:[]},
    'games/synthetic-game-001-pbp.json':{rows:[{period:1,clock:'10:10',description:'Synthetic opening shot'}]},
-   'players/index.json':[{player_key:'synthetic-0',player_id:'synthetic-0',file:'players/synthetic-0.json'}],
+   'players/index.json':[{canonical_name:'Synthetic Player 0',player_key:'synthetic-0',player_id:'synthetic-0',file:'players/synthetic-0.json'}],
    'players/synthetic-0.json':{profile:{canonical_name:'Synthetic Player 0',positions:'SF',
      birth_date:'2000-01-01',draft_year:2018},
     regular_seasons:[

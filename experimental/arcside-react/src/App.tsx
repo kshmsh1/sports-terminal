@@ -5,6 +5,8 @@ import type {MetricKey,Row} from './engine';
 import {advancedKeys,bases,buildRows,formatMetric,metrics,overviewKeys,sortRows,stintRows} from './engine';
 
 import {dossierName,dossierSegments} from './ProfileDossier';
+import {GlobalSearch} from './GlobalSearch';
+const HomeWorkspace=lazy(()=>import('./HomeWorkspace').then(m=>({default:m.HomeWorkspace})));
 const AdvancedStatsTable=lazy(()=>import('./AdvancedStatsTable').then(m=>({default:m.AdvancedStatsTable})));
 const Chart=lazy(()=>import('./Chart').then(m=>({default:m.Chart})));
 const PlayerProfileTables=lazy(()=>import('./ProfileTable').then(m=>({default:m.PlayerProfileTables})));
@@ -37,9 +39,9 @@ function urlFor(v:ViewState):string {
 }
 const qualify=(r:Row,segment:SeasonType)=> (r.values.gp??0)>=(segment==='regular'?50:4);
 const metricLabel=(m:MetricKey)=>metrics.find(x=>x.key===m)?.label??m;
-const allowedRoutes=['/stats','/advanced','/visualizations','/trade','/player-compare','/team-compare','/box-scores','/financials','/with-without','/teams','/games','/franchise-history','/workspaces/python','/workspaces/sheets'];
+const allowedRoutes=['/home','/stats','/advanced','/visualizations','/trade','/player-compare','/team-compare','/box-scores','/financials','/with-without','/teams','/games','/franchise-history','/workspaces/python','/workspaces/sheets'];
 function labelFor(route:string):string {
- return ({'/stats':'Stats','/advanced':'Advanced Stats','/visualizations':'Visualizations',
+ return ({'/home':'NBA Home','/stats':'Stats','/advanced':'Advanced Stats','/visualizations':'Visualizations',
  '/trade':'Trade Machine',
  '/player-compare':'Player Compare','/team-compare':'Team Compare',
  '/box-scores':'Box Scores','/financials':'Financials','/with-without':'With/Without',
@@ -180,6 +182,7 @@ export function App(){
     <div><div className="crumb">NBA / {labelFor(view.path)}</div>
      <div className="top-title">{labelFor(view.path)}</div></div>
     <div className="top-actions">
+     <GlobalSearch onNavigate={navigate}/>
      <span className="manifest-pill">{manifest?'NBA STATIC v'+manifest.static_schema_version:'SOURCE UNVERIFIED'}</span>
      <button onClick={()=>setTheme(x=>x==='dark'?'light':'dark')}
       aria-label={'Switch to '+(theme==='dark'?'light':'dark')+' theme'}>{theme==='dark'?'Light mode':'Dark mode'}</button>
@@ -189,12 +192,12 @@ export function App(){
     {!["/trade","/financials","/box-scores"].includes(view.path)&&<div className="workbench-controls">
      <label>Season<select value={view.season} onChange={e=>change({season:e.target.value})}
       disabled={!seasons.length}>{seasons.map(s=><option key={s.season_id} value={s.season_id}>{s.label??s.season_id}</option>)}</select></label>
-     <fieldset className="segment-controls"><legend>Season type</legend>
+     {view.path!=='/home'&&<fieldset className="segment-controls"><legend>Season type</legend>
       <button className={view.segment==='regular'?'selected':''} aria-pressed={view.segment==='regular'}
        onClick={()=>change({segment:'regular'})}>Regular season</button>
       <button className={view.segment==='playoffs'?'selected':''} aria-pressed={view.segment==='playoffs'}
-       onClick={()=>change({segment:'playoffs'})}>Playoffs</button></fieldset>
-     {view.path!=='/team-compare'&&<label>Rate basis<select value={view.basis} onChange={e=>change({basis:e.target.value as RateBasis})}>
+       onClick={()=>change({segment:'playoffs'})}>Playoffs</button></fieldset>}
+     {view.path!=='/team-compare'&&view.path!=='/home'&&<label>Rate basis<select value={view.basis} onChange={e=>change({basis:e.target.value as RateBasis})}>
        {bases.map(b=><option value={b.value} key={b.value}>{b.label}</option>)}</select></label>}
      <span className="workbench-caption">Season context</span>
     </div>}
@@ -204,6 +207,7 @@ export function App(){
     {!allowedRoutes.includes(view.path)&&!view.path.startsWith('/player/')&&!view.path.startsWith('/team/')&&!view.path.startsWith('/game/')&&
      <div className="panel"><h2>Route not found</h2><button onClick={()=>navigate('/stats')}>Return to Stats</button></div>}
     <Suspense fallback={<p role="status" className="loading">Loading selected Arcside workspace…</p>}>
+    {view.path==='/home'&&<HomeWorkspace season={view.season} onNavigate={navigate}/>}
     {view.path==='/advanced'&&<AdvancedStatsTable rows={rows}
       basis={view.basis} segment={view.segment} season={view.season}
       onPlayer={id=>navigate('/player/'+encodeURIComponent(id))}/>}

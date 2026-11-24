@@ -182,6 +182,7 @@ test('studio uses source-backed chart settings, multiple visualizations and loca
 
 test('Trade Machine pilot validates an editable modeled scenario without implying NBA execution',async({page})=>{
  await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:'Advanced scenario editor'}).click();
  await page.getByRole('button',{name:'Reset example'}).click();
  await expect(page.getByRole('heading',{name:/Trade Machine/})).toBeVisible();
  await expect(page.getByRole('status').filter({hasText:'No modeled blocking errors'})).toBeVisible();
@@ -196,6 +197,7 @@ test('Trade Machine pilot validates an editable modeled scenario without implyin
 
 test('multi-team hypothetical trade editor never treats blank payroll as zero',async({page})=>{
  await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:'Advanced scenario editor'}).click();
  await page.getByRole('button',{name:'Reset example'}).click();
  await page.getByRole('button',{name:'Add participating team (2–5)'}).click();
  await expect(page.getByLabel('Trade team 3',{exact:true})).toHaveValue('CCC');
@@ -369,6 +371,7 @@ test('franchise history preserves Flutter planned-only scope and published ident
 
 test('Trade Machine imports only exact original Flutter cap ledger for selected teams',async({page})=>{
  await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:'Advanced scenario editor'}).click();
  const res=await page.request.get('/data/phase3/2026-27-team-cap-ledger.json');
  expect(res.status()).toBe(200);
  const ledger=await res.json();
@@ -390,6 +393,7 @@ test('Trade Machine imports only exact original Flutter cap ledger for selected 
 
 test('Trade Machine imports canonical dated first/second-round interests and TPE with restrictions',async({page})=>{
  await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:'Advanced scenario editor'}).click();
  const response=await page.request.get('/data/phase3/2026-27-draft-exceptions.json');
  expect(response.status()).toBe(200);
  const payload=await response.json();
@@ -421,6 +425,7 @@ test('Trade Machine imports canonical dated first/second-round interests and TPE
 
 test('manual asset routing refuses to transfer TPE or signing exceptions',async({page})=>{
  await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:'Advanced scenario editor'}).click();
  await page.getByRole('button',{name:'Reset example'}).click();
  await page.getByLabel('Asset 1 type').selectOption('tradeException');
  await expect(page.getByRole('alert').filter({hasText:'TPEs and signing exceptions are not transferable'})).toBeVisible();
@@ -430,6 +435,7 @@ test('manual asset routing refuses to transfer TPE or signing exceptions',async(
 
 test('React-first trade workspace starts empty and examples remain opt-in',async({page})=>{
  await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:'Advanced scenario editor'}).click();
  await expect(page.getByLabel('Trade first team')).toHaveValue('');
  await expect(page.getByLabel('Asset 1 ID')).toHaveCount(0);
  await expect(page.getByText('No assets assigned.',{exact:false})).toBeVisible();
@@ -506,4 +512,60 @@ test('financial source thresholds, roster and cap allocation match the dated ori
  await expect(inspector).toContainText('$'+(data.league.salaryCap-atl.capSpace).toLocaleString('en-US'));
  await inspector.getByRole('button',{name:'Close details'}).click();
  await expect(inspector).toContainText('Select a team');
+});
+
+test('product Trade Machine selects real teams, routes players and picks, and explains dated restrictions',async({page})=>{
+ await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.locator('.trade-team-card')).toHaveCount(30);
+ await page.getByRole('button',{name:'East',exact:true}).click();
+ await expect(page.locator('.trade-team-card')).toHaveCount(15);
+ await page.getByRole('button',{name:'New York Knicks',exact:true}).click();
+ await page.getByRole('button',{name:'West',exact:true}).click();
+ await page.getByRole('button',{name:'Houston Rockets',exact:true}).click();
+ await page.getByRole('button',{name:'→ Build a Trade',exact:true}).click();
+ await page.getByRole('group',{name:'Participating teams'}).getByRole('button',{name:'HOU',exact:true}).click();
+ await expect(page.getByText('Viewing Houston Rockets')).toBeVisible();
+ await page.getByLabel('Search trade assets').fill('Tari Eason');
+ await expect(page.getByRole('button',{name:'Route Tari Eason',exact:true})).toBeDisabled();
+ await page.getByLabel('Search trade assets').fill('Kevin Durant');
+ await page.getByRole('button',{name:'Route Kevin Durant',exact:true}).click();
+ await expect(page.getByLabel('Trade destination')).toHaveValue('NYK');
+ await page.getByRole('button',{name:'Confirm route'}).click();
+ await expect(page.getByLabel('Trade flow')).toContainText('Kevin Durant');
+ await expect(page.getByLabel('Modeled validation results')).toContainText('TRADE_BONUS');
+ await page.getByRole('button',{name:/^Draft picks/}).click();
+ const available=page.locator('.trade-draft-list button:not([disabled])').first();
+ await available.click();
+ await page.getByRole('button',{name:'Confirm route'}).click();
+ await expect(page.getByLabel('Trade flow')).toContainText('2 assets');
+ await page.getByRole('button',{name:'Reset routes'}).click();
+ await expect(page.getByText('Start building the trade')).toBeVisible();
+});
+test('product Trade Machine uses source context and normalizes Brooklyn, Charlotte and Phoenix',async({page})=>{
+ const res=await page.request.get('/data/phase3/2026-27-trade-context.json');
+ const context=await res.json();
+ expect(context.kind).toBe('ARCSIDE_DATED_TRADE_CONTEXT_V1');
+ expect(context.cash).toHaveLength(30);
+ expect(context.restrictions.find((r:{player:string})=>r.player==='Tari Eason').eligibleDate).toBe('2027-01-15');
+ expect(context.hashes.every((h:string)=>/^[0-9a-f]{64}$/.test(h))).toBe(true);
+ await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:'Brooklyn Nets',exact:true}).click();
+ await page.getByRole('button',{name:'Charlotte Hornets',exact:true}).click();
+ await page.getByRole('button',{name:'Phoenix Suns',exact:true}).click();
+ await page.getByRole('button',{name:'→ Build a Trade',exact:true}).click();
+ await expect(page.locator('.trade-roster tbody tr').first()).toBeVisible();
+ await page.getByRole('group',{name:'Participating teams'}).getByRole('button',{name:'CHA',exact:true}).click();
+ await expect(page.locator('.trade-roster tbody tr').first()).toBeVisible();
+ await page.getByRole('group',{name:'Participating teams'}).getByRole('button',{name:'PHX',exact:true}).click();
+ await expect(page.locator('.trade-roster tbody tr').first()).toBeVisible();
+});
+
+test('NBA Home reads published dashboard and global search opens a canonical historical player',async({page})=>{
+ await page.goto('/home?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByRole('heading',{name:'NBA Dashboard'})).toBeVisible();
+ await expect(page.getByLabel('NBA Home')).toContainText('Synthetic Player 0');
+ await page.getByLabel('Search players and teams').fill('Synthetic Player 0');
+ await page.getByRole('region',{name:'Global search results'}).getByRole('button',{name:/Synthetic Player 0/}).click();
+ await expect(page).toHaveURL(/\/player\/synthetic-0/);
+ await expect(page.getByRole('heading',{name:'Synthetic Player 0',exact:true})).toBeVisible();
 });
