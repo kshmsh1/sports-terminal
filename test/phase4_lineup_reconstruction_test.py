@@ -48,6 +48,21 @@ class LineupTest(unittest.TestCase):
         self.assertIn("pts",pair["with"])
         self.assertIn("plus_minus",pair["without"])
 
+    def test_late_lineup_evidence_counts_only_later_minutes(self):
+        game,players,events=fixture()
+        for e in events:
+            if e["eventnum"]==6:
+                e["pctimestring"]="10:30"
+        stints,rosters,report=process_game(events,game,players)
+        self.assertEqual(report["periods_verified"],1)
+        self.assertEqual(report["partially_observed_periods"],1)
+        self.assertEqual(sum(s["seconds"] for s in stints),630)
+        rows,_,_=summarize_games([(game,stints,rosters,report)])
+        pair=next(r for r in rows[("2020-21","regular")]
+                  if r["player_id"]=="nba_2" and r["teammate_id"]=="nba_1")
+        self.assertEqual(pair["minutes_with"],1.5)
+        self.assertEqual(pair["minutes_without"],9)
+
     def test_missing_starting_five_is_rejected(self):
         game,players,events=fixture()
         events=[e for e in events if e["eventnum"]!=6]
