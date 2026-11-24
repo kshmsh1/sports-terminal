@@ -24,7 +24,7 @@ The owner's six Nov 24 screenshots showed Trade Machine, Player Compare, Team Co
 ## Closeout fixes
 
 - React-first beta wording replaces stale Phase 3 experiment wording; incomplete transaction validation remains clearly labeled. Hide irrelevant common season/rate controls on dated finance and trade and the independent historical box-score archive.
-- Financial, comparison, lineup and modeled trade tables use workspace-specific intrinsic widths, full visible cell values, local horizontal overflow, and content-height containers. Stats/Advanced virtual row semantics are unchanged.
+- Financial, comparison, lineup and modeled trade tables use workspace-specific intrinsic widths, full visible cell values, local horizontal overflow, and content-height containers. Financials restores the original league thresholds from Dart, standard plus two-way roster count, hard-cap status, inspector cap allocation, and closing/filtering details. Stats/Advanced virtual row semantics are unchanged.
 - Trade Machine opens a clean scenario with source team suggestions, dated cap import, explicitly optional illustrative example, no default fake transaction, and duplicate source-selection/stale team-selection safeguards.
 - Player/Team Compare adds searchable source-backed candidate lists; restores saved segment/rate settings; team comparisons do not advertise an unsupported global player rate basis. Field-level completeness prevents partial game-log sums from becoming season totals.
 - Box Scores separates date, matchup and publication state; pages through the whole index; explicitly shows indexed date range. No inferred later-season game data.

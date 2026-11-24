@@ -483,3 +483,25 @@ test('box-score archive can reach records beyond the first page',async({page})=>
  await expect(page.getByRole('region',{name:'Historical games'}).getByRole('button',{name:/BOS 51 @ CHI 100/})).toBeVisible();
  await expect(page.getByRole('button',{name:'Next page'})).toBeDisabled();
 });
+
+test('financial source thresholds, roster and cap allocation match the dated original record',async({page})=>{
+ const res=await page.request.get('/data/phase3/2026-27-team-financials.json');
+ const data=await res.json();
+ expect(data.league.salaryCap).toBe(164961000);
+ expect(data.league.taxLine).toBe(200428000);
+ expect(data.league.firstApron).toBe(209015000);
+ expect(data.league.secondApron).toBe(221686000);
+ expect(data.leagueSourceSha256).toMatch(/^[a-f0-9]{64}$/);
+ const atl=data.teams.find((r:{team:string})=>r.team==='ATL');
+ await page.goto('/financials?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByRole('columnheader',{name:'Hard cap'})).toBeVisible();
+ await page.getByLabel('Find financial team').fill('ATL');
+ const table=page.getByRole('region',{name:'NBA team financial table'});
+ await expect(table.getByRole('row')).toHaveCount(2);
+ await expect(table).toContainText(String(atl.standardRoster)+' + '+String(atl.twoWayRoster)+' two-way');
+ await table.getByRole('button',{name:'ATL',exact:true}).click();
+ const inspector=page.getByLabel('Financial team inspector');
+ await expect(inspector).toContainText('$'+(data.league.salaryCap-atl.capSpace).toLocaleString('en-US'));
+ await inspector.getByRole('button',{name:'Close details'}).click();
+ await expect(inspector).toContainText('Select a team');
+});

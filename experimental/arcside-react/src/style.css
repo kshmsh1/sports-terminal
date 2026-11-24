@@ -311,3 +311,15 @@ h2{font-size:21px;letter-spacing:-.4px;margin:0 0 7px}h3{font-size:15px}.subtle{
 .trade-pilot>.trade-start,.trade-pilot>[role=alert],.trade-pilot>.trade-empty{margin-inline:12px}}
 
 .comparison-slot input{width:100%;min-width:0}.comparison-slot .row-wrap{align-items:center;justify-content:space-between}
+
+
+.financial-thresholds{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;padding:16px 24px}
+.financial-thresholds>div{display:grid;gap:7px;background:var(--field);border:1px solid var(--line);border-radius:9px;padding:12px;min-width:0}
+.financial-thresholds span{color:var(--sub);font-size:11px}
+.financial-thresholds strong{font-size:15px;font-variant-numeric:tabular-nums}
+.financial-inspector-heading{align-items:center;justify-content:space-between}
+.financial-inspector-heading h3{margin:0}
+.financials-workspace .stats-table td.money-positive{color:#66cba1}
+.financials-workspace .stats-table td.money-negative{color:#ff8794}
+:root[data-theme=light] .financials-workspace .stats-table td.money-positive{color:#16754a}
+:root[data-theme=light] .financials-workspace .stats-table td.money-negative{color:#af3445}

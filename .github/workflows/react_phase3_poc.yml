@@ -73,6 +73,7 @@ jobs:
           node --check scripts/phase3_react_chart_diagnostic.mjs
           node --check scripts/phase3_final_review_manifest.mjs
           node --check scripts/phase3_final_visual_review.mjs
+          node --check scripts/phase4_source_coverage.mjs
           node --check scripts/phase3_paired_frame_memory.mjs
           node --check scripts/phase3_bundle_gate.mjs
           node scripts/phase3_readiness_audit.mjs
