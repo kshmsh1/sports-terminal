@@ -180,6 +180,7 @@ export interface WithWithoutRow {
 }
 export interface WithWithoutData {
  available:boolean;source:string;rows:WithWithoutRow[];message:string;
+ units?:string;coverage?:{canonical_games?:number;source_games?:number;games_with_stints?:number;accepted_periods?:number;verified_seconds?:number;score_verified_games?:number};
 }
 const asNullableNumber=(value:unknown):number|null=>{
  if(typeof value==='number'&&Number.isFinite(value))return value;
@@ -202,7 +203,12 @@ export async function getWithWithout(season:string,segment:SeasonType,signal?:Ab
    minutes_with:asNullableNumber(row.minutes_with),minutes_without:asNullableNumber(row.minutes_without),
    with:statMap(row.with),without:statMap(row.without)};
  });
+ const cover=raw.coverage&&typeof raw.coverage==='object'&&!Array.isArray(raw.coverage)?raw.coverage:{};
+ const numberField=(name:string)=>asNullableNumber((cover as Record<string,unknown>)[name])??undefined;
  return {available:records.length>0,source:String(raw.source??''),rows:records,
+  units:String(raw.units??''),coverage:{canonical_games:numberField('canonical_games'),source_games:numberField('source_games'),
+   games_with_stints:numberField('games_with_stints'),accepted_periods:numberField('accepted_periods'),
+   verified_seconds:numberField('verified_seconds'),score_verified_games:numberField('score_verified_games')},
   message:records.length?'':'The lineup split file is present but contains no player-pair rows.'};
 }
 
