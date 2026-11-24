@@ -56,6 +56,7 @@ export function App(){
  const [manifest,setManifest]=useState<Manifest|null>(null);
  const [seasons,setSeasons]=useState<Season[]>([]);
  const [snapshot,setSnapshot]=useState<SeasonSnapshot|null>(null);
+ const needsShard=['/stats','/advanced','/visualizations','/player-compare','/team-compare','/with-without'].includes(view.path)||view.path.startsWith('/team/');
  const [error,setError]=useState('');
  const [loading,setLoading]=useState(true);
  const [search,setSearch]=useState('');
@@ -91,13 +92,13 @@ export function App(){
   return ()=>controller.abort();
  },[]);
  useEffect(()=>{
-  if(!view.season||!manifest)return;
+  if(!needsShard||!view.season||!manifest){setSnapshot(null);return;}
   const controller=new AbortController();setSnapshot(null);setError('');setLoading(true);
   getSeason(view.season,view.segment,controller.signal).then(value=>{if(!controller.signal.aborted)setSnapshot(value)}).catch(e=>{
    if(!controller.signal.aborted)setError(String(e.message??e));
   }).finally(()=>{if(!controller.signal.aborted)setLoading(false)});
   return ()=>controller.abort();
- },[view.season,view.segment,manifest]);
+ },[view.season,view.segment,manifest,needsShard]);
  useEffect(()=>{
   if(!view.path.startsWith('/player/')){setDossier(null);return;}
   const controller=new AbortController();setDossier(null);
@@ -129,15 +130,16 @@ export function App(){
   if(push)history.pushState({},'',u);else history.replaceState({},'',u);
   setView(next);
  }
- function navigate(path:string){change({path},true);window.scrollTo({top:0})}
- const rows=useMemo(()=>snapshot?buildRows(snapshot,view.basis):[],[snapshot,view.basis]);
+ function navigate(path:string){setError('');change({path},true);window.scrollTo({top:0})}
+ const rowsNeeded=['/stats','/advanced','/visualizations','/with-without'].includes(view.path);
+ const rows=useMemo(()=>rowsNeeded&&snapshot?buildRows(snapshot,view.basis):[],[snapshot,view.basis,rowsNeeded]);
  const teams=useMemo(()=>['All',...new Set(rows.flatMap(r=>r.team.split(/[,/ ]+/).filter(x=>/^[A-Z]{2,4}$/.test(x))))].sort(),[rows]);
  const positions=['All','PG','SG','SF','PF','C','G','F'];
- const filtered=useMemo(()=>sortRows(rows.filter(r=>{
+ const filtered=useMemo(()=>view.path==='/stats'?sortRows(rows.filter(r=>{
   const matches=(r.player+' '+r.team+' '+r.position).toLowerCase().includes(search.toLowerCase().trim());
   return matches&&(team==='All'||r.team.split(/[,/ ]+/).includes(team))&&
    (position==='All'||r.position===position)&&(!qualified||qualify(r,view.segment));
- }),sort,descending),[rows,search,team,position,qualified,view.segment,sort,descending]);
+ }),sort,descending):[],[rows,search,team,position,qualified,view.segment,view.path,sort,descending]);
  const visible=useMemo(()=>{
   const list:{row:Row;stint:boolean;parent:string}[]=[];
   for(const row of filtered){
@@ -319,7 +321,7 @@ export function App(){
         onClick={()=>change({segment:'playoffs'})}>Playoffs</button>
        <span>{dossierSegments(dossier)[view.segment].length} original published rows</span>
       </div>
-      <CanonicalProfileStats key={view.path} dossier={dossier} playerKey={decodeURIComponent(view.path.slice('/player/'.length))} segment={view.segment} basis={view.basis} season={view.season} activeSnapshot={snapshot}/>
+      <CanonicalProfileStats key={view.path} dossier={dossier} playerKey={String((dossier.profile as JsonRow|undefined)?.player_key??decodeURIComponent(view.path.slice('/player/'.length)))} segment={view.segment} basis={view.basis} season={view.season} activeSnapshot={snapshot}/>
       <PlayerProfileTables dossier={dossier} segment={view.segment} basis={view.basis}/>
       <ProfileContracts dossier={dossier} dated={datedContracts} registry={registryContracts}
         playerKey={decodeURIComponent(view.path.slice('/player/'.length))}

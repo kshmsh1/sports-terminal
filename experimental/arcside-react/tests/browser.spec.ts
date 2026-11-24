@@ -606,3 +606,18 @@ test('profile league-table view uses exact source ID and shared rate resolver',a
  await expect(page.getByLabel('Canonical league-table statistics')).toContainText('1 of 2 exact season matches');
  await expect(page.getByLabel('Canonical league-table statistics')).toContainText('1 unavailable or ambiguous');
 });
+
+test('legacy Flutter snapshots restore original asset IDs and reject unknown rights',async({page})=>{
+ await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:/^Recent Trades/}).click();
+ await page.getByText('Import original Flutter saved trades',{exact:true}).click();
+ await page.getByLabel('Flutter snapshot JSON').fill(JSON.stringify([
+  {id:'legacy-a',saved_at_iso:'2026-09-30T14:00:00Z',teams:['BOS','PHI'],routes:{'draft-right:BOS:justinian-jessup':'PHI'},restriction_mode:'deadline'},
+  {id:'legacy-b',saved_at_iso:'2026-09-30T14:00:00Z',teams:['BOS','PHI'],routes:{'invented-right':'PHI'},restriction_mode:'on'}
+ ]));
+ await page.getByRole('button',{name:'Import JSON',exact:true}).click();
+ await expect(page.getByText(/1 compatible snapshot\(s\) processed; 1 rejected/)).toBeVisible();
+ await page.getByRole('button',{name:'Open snapshot'}).click();
+ await expect(page.getByLabel('Trade flow')).toContainText('Justinian Jessup');
+ await expect(page.getByRole('button',{name:'Deadline · Trade mode'})).toHaveAttribute('aria-pressed','true');
+});

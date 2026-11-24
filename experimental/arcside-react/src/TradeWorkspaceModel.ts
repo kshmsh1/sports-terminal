@@ -126,7 +126,7 @@ export function evaluateSourceTrade(s:TradeScenario,ctx:TradeContext,selections:
  for(const team of s.teams){
   const cash=ctx.cash.find(x=>sameTeam(x.team,team));
   if(!cash)continue;
-  const received=s.assignments.filter(x=>x.destinationTeam===team&&x.asset.type==='cash').reduce((n,x)=>n+x.asset.salary,0);
+  const received=s.assignments.filter(x=>x.destinationTeam===team&&x.asset.type==='cash').reduce((n,x)=>n+(typeof x.asset.metadata?.amount==='number'?x.asset.metadata.amount:x.asset.salary),0);
   if(received>cash.availableToReceive)findings.push({code:'CASH_RECEIVE_LIMIT',message:team+' exceeds the dated cash-receipt availability.',severity:'error',team});
   if(cash.restricted&&r.teamSummaries[team]?.cashSent>0&&(s.capContexts[team].teamSalary>s.capContexts[team].secondApron||r.teamSummaries[team].postTradeSalary>s.capContexts[team].secondApron))findings.push({code:'SOURCE_CASH_RESTRICTED',message:team+' has a source-reported cash-sending restriction.',severity:'error',team});
  }

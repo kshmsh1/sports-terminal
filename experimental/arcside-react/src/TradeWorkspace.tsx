@@ -33,7 +33,7 @@ export function TradeWorkspace(){
  const [teams,setTeams]=useState<string[]>([]),[active,setActive]=useState(''),[stage,setStage]=useState<'pick'|'build'|'recent'|'manual'>('pick');
  const [conference,setConference]=useState('All teams'),[tab,setTab]=useState<AssetTab>('Active roster');
  const [query,setQuery]=useState(''),[routedOnly,setRoutedOnly]=useState(false);
- const [date,setDate]=useState('2026-11-24'),[assignments,setAssignments]=useState<TradeAssignment[]>([]);
+ const [date,setDate]=useState('2026-09-30'),[assignments,setAssignments]=useState<TradeAssignment[]>([]);
  const [tpes,setTpes]=useState<Record<string,string>>({}),[pending,setPending]=useState<TradeAsset|null>(null),[destination,setDestination]=useState('');
  const [renounced,setRenounced]=useState<string[]>([]);
  const [mode,setMode]=useState<Mode>('on'),[position,setPosition]=useState('All'),[saved,setSaved]=useState<SavedTrade[]>(loadSaved),[signSalary,setSignSalary]=useState<Record<string,string>>({});

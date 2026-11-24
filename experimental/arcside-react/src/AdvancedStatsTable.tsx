@@ -214,7 +214,7 @@ export function AdvancedStatsTable({rows,basis,segment,season,onPlayer}:Props){
      <span className="advanced-column-heading">{advancedChildren(group,k).length>0&&<button aria-label={'Expand '+m.label} aria-expanded={expandedMetrics.has(k)}
       onClick={()=>setExpandedMetrics(p=>{const n=new Set(p);if(n.has(k))n.delete(k);else n.add(k);return n})}>{expandedMetrics.has(k)?'▾':'▸'}</button>}
       <button className="sort-button" aria-label={'Sort by '+advancedLabel(k,basis,group)} title={m.description}
-       onClick={()=>{setDescending(prev=>sort===k?!prev:true);setSort(k)}}>{advancedLabel(k,basis)} {sort===k?(descending?'↓':'↑'):''}</button></span></th>})}
+       onClick={()=>{setDescending(prev=>sort===k?!prev:true);setSort(k)}}>{advancedLabel(k,basis,group)} {sort===k?(descending?'↓':'↑'):''}</button></span></th>})}
    </tr></thead><tbody>
     {paged.flatMap(r=>{
      const children=expandedPlayers.has(r.id)?stintRows(r,basis):[];
