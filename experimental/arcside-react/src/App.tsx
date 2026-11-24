@@ -12,7 +12,7 @@ const ProfileSummary=lazy(()=>import('./ProfileContext').then(m=>({default:m.Pro
 const ProfileContracts=lazy(()=>import('./ProfileContext').then(m=>({default:m.ProfileContracts})));
 const ProfileHonors=lazy(()=>import('./ProfileContext').then(m=>({default:m.ProfileHonors})));
 const ProfileSourceContext=lazy(()=>import('./ProfileContext').then(m=>({default:m.ProfileSourceContext})));
-const TradeMachinePilot=lazy(()=>import('./TradeMachinePilot').then(m=>({default:m.TradeMachinePilot})));
+const TradeWorkspace=lazy(()=>import('./TradeWorkspace').then(m=>({default:m.TradeWorkspace})));
 const ComparisonWorkspace=lazy(()=>import('./ComparisonWorkspaces').then(m=>({default:m.ComparisonWorkspace})));
 const BoxScoresWorkspace=lazy(()=>import('./BoxScoresWorkspace').then(m=>({default:m.BoxScoresWorkspace})));
 const FinancialsWorkspace=lazy(()=>import('./FinancialsWorkspace').then(m=>({default:m.FinancialsWorkspace})));
@@ -256,7 +256,7 @@ export function App(){
       Source-verified team stints only. Scroll inside the table to inspect additional rows.</p>
     </section>}
     {view.path==='/visualizations'&&<Chart rows={rows} basis={view.basis} segment={view.segment}/>}
-     {view.path==='/trade'&&<TradeMachinePilot/>}
+     {view.path==='/trade'&&<TradeWorkspace/>}
     {view.path==='/player-compare'&&<ComparisonWorkspace key="player-comparison" kind="player" seasons={seasons}
      onContext={context=>change(context)}
      season={view.season} segment={view.segment} basis={view.basis} snapshot={snapshot}
