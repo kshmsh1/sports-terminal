@@ -1,10 +1,9 @@
 """Phase 4B: conservative NBA with/without pair-split materializer.
 
-Uses the actual Wyatt event-level play-by-play table. An entire period is
-accepted only when both starting fives are evidenced before the first
-substitution (including its outgoing players) and every ensuing substitution
-is coherent. Unknown lineups, unresolved identities, clock errors, and missing
-scoreboards never become inferred statistics.
+Uses the actual Wyatt event-level play-by-play table. Time intervals are
+accepted only after all ten on-court players are evidenced by observed events
+and coherent substitutions. Earlier uncertain minutes are excluded; a later
+contradiction rejects the affected period. No missing statistics are imputed.
 
 Outputs source-verified *coverage*, not necessarily complete-season splits.
 No NBA.com requests or synthetic production rows.
@@ -123,13 +122,22 @@ def scoreboard_is_valid(events, away_final, home_final):
 
 
 def process_game(events, game, player_keys):
-    """Return verified stints and separately attributable scoring events."""
+    """Extract only stints for which both on-court fives are directly known.
+
+    Recognition may occur after period start. Substitution OUT is evidence
+    that the outgoing player was on court, but never authorizes retroactively
+    counting an unknown interval. An unexpected eleventh player after both
+    sides are known invalidates that period.
+    """
     home_id=ident(game["home_nba_id"])
     away_id=ident(game["away_nba_id"])
     if not home_id or not away_id or home_id==away_id:
         return [],{},{"team_identity_unavailable":1}
     sides={home_id:"home",away_id:"away"}
-    events=sorted(events,key=lambda e: int(field(e,"eventnum") or -1))
+    try:
+        events=sorted(events,key=lambda e:int(field(e,"eventnum")))
+    except (ValueError,TypeError):
+        return [],{},{"invalid_event_number":1}
     if len({field(e,"eventnum") for e in events})!=len(events):
         return [],{},{"duplicate_event_number":1}
     periods=collections.defaultdict(list)
@@ -151,7 +159,6 @@ def process_game(events, game, player_keys):
     if 1 not in periods:
         return [],{},{"period_one_missing":1}
     score_ok=scoreboard_is_valid(events,num(game.get("away_score")),num(game.get("home_score")))
-    # A stint stores current five on each side, clock duration and observed points.
     stints=[]
     reasons=collections.Counter()
     previous_score=(0,0)
@@ -162,30 +169,22 @@ def process_game(events, game, player_keys):
             reasons["invalid_period_clock"]+=1
             for e in pevents:
                 score=score_tuple(field(e,"score"))
-                if score is not None: previous_score=score
+                if score is not None:previous_score=score
             continue
-        starters,reason=starter_fives(pevents,sides,player_keys)
-        if reason:
-            reasons[reason]+=1
-            for e in pevents:
-                score=score_tuple(field(e,"score"))
-                if score is not None: previous_score=score
-            continue
-        on={side:set(starters[side]) for side in ("home","away")}
+        on={"home":set(),"away":set()}
         local=[]
         t_prev=duration
         valid=True
         for e,t in zip(pevents,clocks):
-            if t<t_prev:
+            fully_known=all(len(on[side])==5 for side in on)
+            if fully_known and t<t_prev:
                 local.append({"seconds":t_prev-t,"home":frozenset(on["home"]),
                               "away":frozenset(on["away"]),"points":(0,0)})
-                t_prev=t
+            t_prev=t
             value=score_tuple(field(e,"score"))
             if value is not None:
                 diff=(value[0]-previous_score[0],value[1]-previous_score[1])
-                if score_ok and (diff[0]>0 or diff[1]>0):
-                    # Points at this event go to the lineup on court immediately
-                    # before this event, not to the post-substitution lineup.
+                if score_ok and fully_known and (diff[0]>0 or diff[1]>0):
                     local.append({"seconds":0,"home":frozenset(on["home"]),
                                   "away":frozenset(on["away"]),"points":diff})
                 previous_score=value
@@ -193,36 +192,43 @@ def process_game(events, game, player_keys):
                 outgoing=participant(e,1,sides,player_keys)
                 incoming=participant(e,2,sides,player_keys)
                 if (not outgoing or not incoming or outgoing[0]!=incoming[0]
-                        or outgoing[1] not in on[outgoing[0]]
-                        or incoming[1] in on[outgoing[0]]):
+                        or incoming[1] in on[outgoing[0]]
+                        or (len(on[outgoing[0]])==5 and outgoing[1] not in on[outgoing[0]])):
                     valid=False
                     reasons["invalid_substitution"]+=1
                     break
-                on[outgoing[0]].remove(outgoing[1])
+                on[outgoing[0]].discard(outgoing[1])
                 on[outgoing[0]].add(incoming[1])
             else:
                 for n in (1,2,3):
                     part=participant(e,n,sides,player_keys)
                     if part and part[1] not in on[part[0]]:
-                        valid=False
-                        reasons["participant_not_on_court"]+=1
-                        break
+                        if len(on[part[0]])==5:
+                            valid=False
+                            reasons["participant_not_on_court"]+=1
+                            break
+                        on[part[0]].add(part[1])
                 if not valid:break
-        if valid and all(len(on[side])==5 for side in on):
-            if t_prev>0:
+        if valid:
+            if all(len(on[side])==5 for side in on) and t_prev>0:
                 local.append({"seconds":t_prev,"home":frozenset(on["home"]),
                               "away":frozenset(on["away"]),"points":(0,0)})
-            if sum(x["seconds"] for x in local)!=duration:
+            verified_seconds=sum(x["seconds"] for x in local)
+            if verified_seconds>duration:
                 reasons["period_duration_not_conserved"]+=1
                 continue
-            stints.extend(local)
-            reasons["periods_verified"]+=1
+            if verified_seconds>0:
+                stints.extend(local)
+                reasons["periods_verified"]+=1
+                if verified_seconds<duration:
+                    reasons["partially_observed_periods"]+=1
+            else:
+                reasons["no_fully_evidenced_interval"]+=1
         else:
             reasons["periods_rejected"]+=1
-            # Advance scoreboard through rejected-period tail for later periods.
             for e in pevents:
                 score=score_tuple(field(e,"score"))
-                if score is not None: previous_score=score
+                if score is not None:previous_score=score
     return stints,rosters,dict(reasons)|{"score_verified":int(score_ok)}
 
 
