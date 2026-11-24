@@ -7,16 +7,17 @@ umask 077
 MODE=auto; OPEN_BROWSER=1; SKIP_INSTALL=0; SCIENCE=0; FAST=0
 for arg in "$@"; do
   case "$arg" in
-    --platform) MODE=platform ;;
+    --platform|--react) MODE=react ;;
+    --flutter|--legacy-flutter) MODE=flutter ;;
     --labs) MODE=labs ;;
     --no-browser) OPEN_BROWSER=0 ;;
     --skip-install) SKIP_INSTALL=1 ;;
     --fast) FAST=1; SKIP_INSTALL=1 ;;
     --science) SCIENCE=1 ;;
     -h|--help)
-      echo "Usage: bash scripts/launch_arcside.sh [--platform|--labs] [--no-browser] [--skip-install] [--science] [--fast]"
-      echo "Default: full Flutter platform if NBA history is present, otherwise standalone Labs preview."
-      echo "--fast reuses installed Python dependencies and prebuilt NBA static files; starts full Flutter directly."
+      echo "Usage: bash scripts/launch_arcside.sh [--platform|--react|--flutter|--labs] [--no-browser] [--skip-install] [--science] [--fast]"
+      echo "Default: React-first platform on original published NBA data; Flutter remains available with --flutter."
+      echo "--fast reuses installed Python dependencies and prebuilt NBA static files; starts React promptly."
       echo "ARCSIDE_PYTHON_WORKSPACE can override the directory trusted by the local Python companion."
       exit 0 ;;
     *) echo "Unknown argument: $arg" >&2;exit 2 ;;
@@ -54,16 +55,17 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 if [[ "$MODE" == auto ]]; then
-  if [[ -s "$ROOT/data/warehouse/nba_history.sqlite" ]] ||
+  if [[ -s "$ROOT/web/data/nba_static/manifest.json" ]] ||
+     [[ -s "$ROOT/data/warehouse/nba_history.sqlite" ]] ||
      [[ -s "$ROOT/nba_history.sqlite" ]] ||
      [[ -s "$(dirname "$ROOT")/data/warehouse/nba_history.sqlite" ]] ||
      [[ -s "$(dirname "$ROOT")/nba_history.sqlite" ]] ||
      [[ -s "${SPORTS_TERMINAL_NBA_HISTORY_DB:-/dev/null}" ]]; then
-    MODE=platform
+    MODE=react
   else
     MODE=labs
     echo "NBA historical warehouse not found; opening standalone Labs preview."
-    echo "Use --platform after your NBA historical warehouse is available."
+    echo "Use --platform after generating your original NBA static v5 corpus."
   fi
 fi
 "$LAB_PY" -m arcside_collab --db "$RUNTIME/collaboration.sqlite" \
@@ -116,19 +118,47 @@ if [[ "$MODE" == labs ]]; then
     fi
   fi
   wait "$web_pid"
-else
+elif [[ "$MODE" == flutter ]]; then
   if ! command -v flutter >/dev/null 2>&1; then
-    echo "Flutter missing from PATH. Use --labs to preview workspaces." >&2;exit 1
+    echo "Flutter missing from PATH. Install Flutter or use --platform for React." >&2;exit 1
   fi
-  echo "Launching Arcside Flutter at http://127.0.0.1:8765 ..."
+  echo "Launching Arcside original Flutter reference at http://127.0.0.1:8765 ..."
   if [[ "$FAST" == 1 ]]; then
-    if [[ ! -s "$ROOT/web/data/nba_static/manifest.json" ]]; then
-      echo "Prebuilt NBA data not found; run normal --platform once before using --fast." >&2
-      exit 1
-    fi
-    echo "Fast mode: reusing existing NBA static data, Python environment and Flutter dependencies."
+    [[ -s "$ROOT/web/data/nba_static/manifest.json" ]] ||
+      { echo 'Original NBA static v5 corpus missing.' >&2;exit 1; }
     flutter run -d chrome --web-port 8765 --web-hostname 127.0.0.1
   else
     bash "$ROOT/scripts/open_terminal.sh" --web-port 8765
   fi
+else
+  [[ -s "$ROOT/web/data/nba_static/manifest.json" && -s "$ROOT/web/data/nba_static/seasons.json" ]] ||
+    { echo 'Original NBA static v5 corpus missing. Use Flutter reference to rebuild it first.' >&2;exit 1; }
+  command -v node >/dev/null 2>&1 ||
+    { echo 'Node.js required for the React platform.' >&2;exit 1; }
+  [[ -f "$ROOT/experimental/arcside-react/node_modules/vite/bin/vite.js" ]] ||
+    { echo 'Run (cd experimental/arcside-react && npm ci) once before launching React.' >&2;exit 1; }
+  echo "Launching React-first Arcside at http://127.0.0.1:8765/stats ..."
+  echo "Flutter is available with bash scripts/launch_arcside.sh --flutter --fast."
+  (
+    cd "$ROOT/experimental/arcside-react"
+    exec node node_modules/vite/bin/vite.js dev --host 127.0.0.1 --port 8765 --strictPort
+  ) >"$RUNTIME/react.log" 2>&1 &
+  web_pid=$!
+  READY=0
+  for i in $(seq 1 60);do
+    if curl -fsS --max-time 1 http://127.0.0.1:8765/data/nba_static/manifest.json >/dev/null 2>&1;then READY=1;break;fi
+    if ! kill -0 "$web_pid" 2>/dev/null;then break;fi
+    sleep .25
+  done
+  if [[ "$READY" != 1 ]];then
+    echo 'React frontend failed; inspect local Vite log:' >&2
+    tail -n 80 "$RUNTIME/react.log" >&2 || true
+    exit 1
+  fi
+  if [[ "$OPEN_BROWSER" == 1 ]];then
+    if command -v open >/dev/null 2>&1;then open http://127.0.0.1:8765/stats || true
+    elif command -v xdg-open >/dev/null 2>&1;then xdg-open http://127.0.0.1:8765/stats >/dev/null 2>&1 || true
+    fi
+  fi
+  wait "$web_pid"
 fi
