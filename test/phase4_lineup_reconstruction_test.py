@@ -57,7 +57,7 @@ class LineupTest(unittest.TestCase):
 
     def test_invalid_substitution_fails_closed(self):
         game,players,events=fixture()
-        events[7]["player1_id"]="11"
+        events[7]["player2_id"]="3"
         stints,_,report=process_game(events,game,players)
         self.assertEqual(stints,[])
         self.assertEqual(report["invalid_substitution"],1)
