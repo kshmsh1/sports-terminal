@@ -229,7 +229,7 @@ def process_game(events, game, player_keys):
 def summarize_games(games):
     """Aggregate only observed, time-conserved stints for two rostered players."""
     totals=collections.defaultdict(lambda:{"with":[0.0,0.0,0.0],
-                                           "without":[0.0,0.0,0.0]})
+                                           "without":[0.0,0.0,0.0],"score_certified":True})
     seen_games=collections.Counter()
     verified=collections.Counter()
     for game,stints,rosters,reasons in games:
@@ -249,7 +249,10 @@ def summarize_games(games):
                     for b in roster:
                         if b==a:continue
                         slot="with" if b in active else "without"
-                        agg=totals[(scope,team,a,b)][slot]
+                        pair=totals[(scope,team,a,b)]
+                        if not reasons.get("score_verified"):
+                            pair["score_certified"]=False
+                        agg=pair[slot]
                         agg[0]+=seconds
                         if reasons.get("score_verified"):
                             mine=points[1] if side=="home" else points[0]
@@ -263,7 +266,7 @@ def summarize_games(games):
         def metrics(vals):
             seconds=vals[0]
             return {"pts":round(vals[1]*2160/seconds,3),
-                    "plus_minus":round(vals[2]*2160/seconds,3)} if seconds>0 else {}
+                    "plus_minus":round(vals[2]*2160/seconds,3)} if seconds>0 and slots["score_certified"] else {}
         # Scoring values are suppressed whenever *any* contributing game's
         # scoreboard could not be checked. Never silently average partial stats.
         result[scope].append({
@@ -333,8 +336,17 @@ def iter_game_events(db,table,catalog):
     """Stream in game/event order. Never load the entire multi-million-event PBP."""
     current_id=None;current_rows=[]
     # One indexed or external-sort scan, not 160 table scans.
-    query=f"SELECT * FROM {table} ORDER BY game_id,eventnum"
-    for row in db.execute(query):
+    ids=[str(g["nba_game_id"]) for g in catalog.values() if g["nba_game_id"]]
+    if not ids:
+        return
+    # A season-sized run scans only its target NBA game IDs; an all-season
+    # run streams the source once. SQLite supports >=999 bind parameters;
+    # if the target is larger, use the full scan rather than repeated scans.
+    placeholders=",".join("?" for _ in ids)
+    bounded=len(ids)<=900
+    query=(f"SELECT * FROM {table} WHERE game_id IN ({placeholders}) ORDER BY game_id,eventnum"
+           if bounded else f"SELECT * FROM {table} ORDER BY game_id,eventnum")
+    for row in db.execute(query,ids if bounded else ()):
         raw=dict(row)
         token=ident(field(raw,"game_id"))
         if token!=current_id:
