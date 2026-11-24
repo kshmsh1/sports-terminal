@@ -194,8 +194,8 @@ export function App(){
        onClick={()=>change({segment:'regular'})}>Regular season</button>
       <button className={view.segment==='playoffs'?'selected':''} aria-pressed={view.segment==='playoffs'}
        onClick={()=>change({segment:'playoffs'})}>Playoffs</button></fieldset>
-     <label>Rate basis<select value={view.basis} onChange={e=>change({basis:e.target.value as RateBasis})}>
-       {bases.map(b=><option value={b.value} key={b.value}>{b.label}</option>)}</select></label>
+     {view.path!=='/team-compare'&&<label>Rate basis<select value={view.basis} onChange={e=>change({basis:e.target.value as RateBasis})}>
+       {bases.map(b=><option value={b.value} key={b.value}>{b.label}</option>)}</select></label>}
      <span className="workbench-caption">Season context</span>
     </div>}
     {error&&<div className="warning" role="alert"><strong>Data or integration gate not met.</strong> {error}
@@ -257,10 +257,12 @@ export function App(){
     </section>}
     {view.path==='/visualizations'&&<Chart rows={rows} basis={view.basis} segment={view.segment}/>}
      {view.path==='/trade'&&<TradeMachinePilot/>}
-    {view.path==='/player-compare'&&<ComparisonWorkspace kind="player" seasons={seasons}
+    {view.path==='/player-compare'&&<ComparisonWorkspace key="player-comparison" kind="player" seasons={seasons}
+     onContext={context=>change(context)}
      season={view.season} segment={view.segment} basis={view.basis} snapshot={snapshot}
      onPlayer={id=>navigate('/player/'+encodeURIComponent(id))}/>}
-    {view.path==='/team-compare'&&<ComparisonWorkspace kind="team" seasons={seasons}
+    {view.path==='/team-compare'&&<ComparisonWorkspace key="team-comparison" kind="team" seasons={seasons}
+     onContext={context=>change(context)}
      season={view.season} segment={view.segment} basis={view.basis} snapshot={snapshot}/>}
     {view.path==='/box-scores'&&<BoxScoresWorkspace onPlayer={id=>navigate('/player/'+encodeURIComponent(id))}/>}
     {view.path==='/financials'&&<FinancialsWorkspace/>}

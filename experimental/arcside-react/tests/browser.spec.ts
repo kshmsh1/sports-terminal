@@ -453,3 +453,33 @@ test('with/without table uses readable column widths and content-driven height',
  const clipped=await table.locator('th,td').evaluateAll(cells=>cells.filter(e=>e.scrollWidth>e.clientWidth+1).map(e=>e.textContent));
  expect(clipped).toEqual([]);
 });
+
+test('comparison search and stored rate basis work after resetting a preset',async({page})=>{
+ await page.goto('/player-compare?season=2025-26&segment=regular&basis=perGame');
+ await page.getByLabel('Search comparison player 1').fill('Synthetic Player 0');
+ await expect(page.getByLabel('Compare player 1',{exact:true}).locator('option')).toHaveCount(2);
+ await page.getByLabel('Compare player 1',{exact:true}).selectOption('synthetic-0');
+ await page.getByLabel('Compare player 2',{exact:true}).selectOption('synthetic-2');
+ await page.getByLabel('Rate basis').selectOption('per36');
+ await page.getByLabel('Comparison preset name').fill('Per 36 comparison');
+ await page.getByRole('button',{name:'Save local preset'}).click();
+ await page.getByRole('button',{name:'Reset comparison'}).click();
+ await page.getByLabel('Rate basis').selectOption('perGame');
+ await page.getByLabel('Saved comparison').selectOption('Per 36 comparison');
+ await expect(page.getByLabel('Rate basis')).toHaveValue('per36');
+ await expect(page.getByLabel('Compare player 1',{exact:true})).toHaveValue('synthetic-0');
+});
+test('box-score archive can reach records beyond the first page',async({page})=>{
+ await page.route('**/data/nba_static/games/index.json',route=>route.fulfill({
+  status:200,contentType:'application/json',body:JSON.stringify(Array.from({length:51},(_,i)=>({
+   game_key:'fixture-game-'+i,season_id:'2025-26',season_type:'regular',
+   game_date:'2025-12-01',away_team_abbreviation:'BOS',home_team_abbreviation:'CHI',
+   away_score:i+1,home_score:100,box_score_available:false
+  })))
+ }));
+ await page.goto('/box-scores?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByText('Page 1 of 2',{exact:false})).toBeVisible();
+ await page.getByRole('button',{name:'Next page'}).click();
+ await expect(page.getByRole('region',{name:'Historical games'}).getByRole('button',{name:/BOS 51 @ CHI 100/})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Next page'})).toBeDisabled();
+});

@@ -80,6 +80,7 @@ export function TradeMachinePilot(){
  const [usingOriginalLedger,setUsingOriginalLedger]=useState(false);
  const [allTeamSource,setAllTeamSource]=useState(''),[allTeamDestination,setAllTeamDestination]=useState('');
  const [allTeamPlayer,setAllTeamPlayer]=useState('');
+ useEffect(()=>{setPickFirst('');setPickSecond('');setSourceDraftId('');setSourceTpeId('');setAllTeamPlayer('');setAllTeamSource('');setAllTeamDestination('');setSourceAssetDestination('');setTpeTeam('');setSelectedTpeByTeam({})},[teamA,teamB,extraTeams.map(t=>t.name).join('|')]);
  useEffect(()=>{const controller=new AbortController();
   getDatedContracts(controller.signal).then(setPublishedContracts)
    .catch(e=>{if(!controller.signal.aborted)setPublishedError(String(e.message??e))});
@@ -196,7 +197,7 @@ export function TradeMachinePilot(){
    Add participating team (2–5)</button></div>
   <fieldset className="trade-published-assets"><legend>Original Flutter 2026–27 team-cap reference</legend>
    <p className="subtle">Reference contains {capLedger?.teams.length??0} source-backed cap/salary ledgers; not a live clearing feed. Payroll uses Flutter Trade Machine's salary-position total, distinct from cap ledger total. Source SHA: {capLedger?.dartSalarySourceSha256.slice(0,12)??'unavailable'}.</p>
-   <button disabled={!capLedger} onClick={applyOriginalLedger}>Apply original team cap ledgers to participating teams</button>
+   <button disabled={!capLedger||participating.some(team=>!capLedger.teams.some(row=>row.team===team))||new Set(participating).size!==participating.length} onClick={applyOriginalLedger}>Apply original team cap ledgers to participating teams</button>
    {usingOriginalLedger&&<p role="status">Using original Flutter dated cap ledgers and hard-cap designations. Manual payroll edits switch back to hypothetical modeling.</p>}
    {capError&&<p role="alert">Original cap reference: {capError}</p>}
   </fieldset>

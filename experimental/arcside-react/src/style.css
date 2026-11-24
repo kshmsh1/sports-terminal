@@ -309,3 +309,5 @@ h2{font-size:21px;letter-spacing:-.4px;margin:0 0 7px}h3{font-size:15px}.subtle{
 .trade-pilot>.trade-grid,.trade-pilot>.trade-actions,.trade-pilot>.trade-assets,
 .trade-pilot>.trade-results,.trade-pilot>h3,.trade-pilot>.trade-published-assets,
 .trade-pilot>.trade-start,.trade-pilot>[role=alert],.trade-pilot>.trade-empty{margin-inline:12px}}
+
+.comparison-slot input{width:100%;min-width:0}.comparison-slot .row-wrap{align-items:center;justify-content:space-between}
