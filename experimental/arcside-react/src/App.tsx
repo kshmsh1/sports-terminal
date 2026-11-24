@@ -90,7 +90,7 @@ export function App(){
  useEffect(()=>{
   if(!view.season||!manifest)return;
   const controller=new AbortController();setSnapshot(null);setError('');setLoading(true);
-  getSeason(view.season,view.segment,controller.signal).then(setSnapshot).catch(e=>{
+  getSeason(view.season,view.segment,controller.signal).then(value=>{if(!controller.signal.aborted)setSnapshot(value)}).catch(e=>{
    if(!controller.signal.aborted)setError(String(e.message??e));
   }).finally(()=>{if(!controller.signal.aborted)setLoading(false)});
   return ()=>controller.abort();
@@ -172,8 +172,8 @@ export function App(){
    <nav>{allowedRoutes.map(route=><a key={route} href={urlFor({...view,path:route})}
     className={view.path===route?'nav-link chosen':'nav-link'} aria-current={view.path===route?'page':undefined}
     onClick={e=>{e.preventDefault();navigate(route)}}>{labelFor(route)}</a>)}</nav>
-   <div className="sidebar-foot"><span className="dot"/> PHASE 3 / EXPERIMENT
-    <p>Flutter remains the reference implementation. Not a production release.</p></div>
+   <div className="sidebar-foot"><span className="dot"/> REACT-FIRST BETA
+    <p>Local development platform. Some workflows are still being completed.</p></div>
   </aside>
   <div className="main-frame">
    <header className="topbar">
@@ -186,7 +186,7 @@ export function App(){
     </div>
    </header>
    <main id="main" className="main-content">
-    <div className="workbench-controls">
+    {!["/trade","/financials","/box-scores"].includes(view.path)&&<div className="workbench-controls">
      <label>Season<select value={view.season} onChange={e=>change({season:e.target.value})}
       disabled={!seasons.length}>{seasons.map(s=><option key={s.season_id} value={s.season_id}>{s.label??s.season_id}</option>)}</select></label>
      <fieldset className="segment-controls"><legend>Season type</legend>
@@ -196,8 +196,8 @@ export function App(){
        onClick={()=>change({segment:'playoffs'})}>Playoffs</button></fieldset>
      <label>Rate basis<select value={view.basis} onChange={e=>change({basis:e.target.value as RateBasis})}>
        {bases.map(b=><option value={b.value} key={b.value}>{b.label}</option>)}</select></label>
-     <span className="workbench-caption">One season · one source contract · shared context</span>
-    </div>
+     <span className="workbench-caption">Season context</span>
+    </div>}
     {error&&<div className="warning" role="alert"><strong>Data or integration gate not met.</strong> {error}
       <p>No historical values have been invented or substituted. Generate the canonical static corpus and reload.</p></div>}
     {loading&&<p role="status" className="loading">Loading verified NBA static data…</p>}
@@ -321,7 +321,7 @@ export function App(){
      </div>}
     </section>}
     </Suspense>
-     <footer className="footer">Arcside experimental React workbench · Read-only, static-first · Existing Flutter shell unchanged</footer>
+     <footer className="footer">Arcside · Source-backed NBA research · Local development beta</footer>
    </main>
   </div>
  </div>;

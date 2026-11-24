@@ -182,6 +182,7 @@ test('studio uses source-backed chart settings, multiple visualizations and loca
 
 test('Trade Machine pilot validates an editable modeled scenario without implying NBA execution',async({page})=>{
  await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:'Reset example'}).click();
  await expect(page.getByRole('heading',{name:/Trade Machine/})).toBeVisible();
  await expect(page.getByRole('status').filter({hasText:'No modeled blocking errors'})).toBeVisible();
  await page.getByRole('button',{name:'Show modeled validation details'}).click();
@@ -195,6 +196,7 @@ test('Trade Machine pilot validates an editable modeled scenario without implyin
 
 test('multi-team hypothetical trade editor never treats blank payroll as zero',async({page})=>{
  await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:'Reset example'}).click();
  await page.getByRole('button',{name:'Add participating team (2–5)'}).click();
  await expect(page.getByLabel('Trade team 3',{exact:true})).toHaveValue('CCC');
  await expect(page.getByRole('row').filter({hasText:'CCC'})).toBeVisible();
@@ -403,23 +405,51 @@ test('Trade Machine imports canonical dated first/second-round interests and TPE
  await expect(page.getByLabel('Source draft interest').locator('option[value="BOS-2029-1-OUT"]')).toHaveAttribute('disabled','');
  await page.getByLabel('Source draft interest').selectOption('BOS-2027-1');
  await page.getByLabel('Source asset receiving team').selectOption('PHI');
+ await page.getByRole('button',{name:'Apply original team cap ledgers to participating teams'}).click();
  await page.getByRole('button',{name:'Add source draft interest'}).click();
- await expect(page.getByLabel('Asset 3 ID')).toHaveValue('BOS-2027-1');
+ await expect(page.getByLabel('Asset 1 ID')).toHaveValue('BOS-2027-1');
  const tpe=payload.exceptions.find((x:{id:string})=>x.id==='BOS-simons-2027');
  expect(tpe?.available).toBeGreaterThan(0);
  await page.getByLabel('TPE receiving team').selectOption('BOS');
  await page.getByLabel('Source trade exception').selectOption('BOS-simons-2027');
  await page.getByRole('button',{name:'Use TPE for receiving team'}).click();
  await expect(page.getByText(/BOS models acquisition with/)).toBeVisible();
- await expect(page.getByLabel('Asset 4 ID')).toHaveCount(0);
+ await expect(page.getByLabel('Asset 2 ID')).toHaveCount(0);
  await page.getByRole('button',{name:'Show modeled validation details'}).click();
  await expect(page.getByLabel('CBA findings')).toContainText('TPE_UNUSED');
 });
 
 test('manual asset routing refuses to transfer TPE or signing exceptions',async({page})=>{
  await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:'Reset example'}).click();
  await page.getByLabel('Asset 1 type').selectOption('tradeException');
  await expect(page.getByRole('alert').filter({hasText:'TPEs and signing exceptions are not transferable'})).toBeVisible();
  await page.getByLabel('Asset 1 type').selectOption('signingException');
  await expect(page.getByRole('alert').filter({hasText:'TPEs and signing exceptions are not transferable'})).toBeVisible();
+});
+
+test('React-first trade workspace starts empty and examples remain opt-in',async({page})=>{
+ await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await expect(page.getByLabel('Trade first team')).toHaveValue('');
+ await expect(page.getByLabel('Asset 1 ID')).toHaveCount(0);
+ await expect(page.getByText('No assets assigned.',{exact:false})).toBeVisible();
+ await page.getByRole('button',{name:'Reset example'}).click();
+ await expect(page.getByLabel('Asset 1 ID')).toHaveValue('a');
+ await expect(page.getByText('Hypothetical example · illustrative teams and salaries, not NBA records.')).toBeVisible();
+ await page.getByRole('button',{name:'New trade',exact:true}).click();
+ await expect(page.getByLabel('Asset 1 ID')).toHaveCount(0);
+});
+test('financial table does not inherit truncated player-grid columns',async({page})=>{
+ await page.goto('/financials?season=2025-26&segment=regular&basis=perGame');
+ const table=page.getByRole('region',{name:'NBA team financial table'});
+ await expect(table.getByRole('button',{name:'ATL',exact:true})).toBeVisible();
+ const clipped=await table.locator('th,td').evaluateAll(cells=>cells.filter(e=>e.scrollWidth>e.clientWidth+1).map(e=>e.textContent));
+ expect(clipped).toEqual([]);
+});
+test('with/without table uses readable column widths and content-driven height',async({page})=>{
+ await page.goto('/with-without?season=2025-26&segment=regular&basis=perGame');
+ const table=page.getByRole('region',{name:'Synthetic Player 0 published splits'});
+ await expect(table.getByRole('columnheader',{name:'With teammate',exact:true})).toBeVisible();
+ const clipped=await table.locator('th,td').evaluateAll(cells=>cells.filter(e=>e.scrollWidth>e.clientWidth+1).map(e=>e.textContent));
+ expect(clipped).toEqual([]);
 });

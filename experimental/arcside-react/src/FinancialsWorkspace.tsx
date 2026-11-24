@@ -19,12 +19,12 @@ export function FinancialsWorkspace(){
  const rows=useMemo(()=>[...(report?.teams??[])].sort((a,b)=>a.team.localeCompare(b.team)),[report]);
  const team=rows.find(r=>r.team===selected)??null;
  return <section className="panel financials-workspace" aria-label="NBA team financials">
-  <div className="panel-title"><div><p className="eyebrow">NBA / ORIGINAL FLUTTER FINANCIAL REFERENCE</p>
+  <div className="panel-title"><div><p className="eyebrow">NBA / TEAM CAP SNAPSHOT</p>
    <h2>Financials</h2><p className="subtle">2026–27 team cap, tax and apron space. Dated reference, not a live cap ledger.</p></div></div>
   {error&&<p role="alert">{error}</p>}
   {!report&&!error&&<p role="status">Loading original published team financial snapshot…</p>}
   {report&&<>
-   <p className="subtle">Source: {report.source} · {report.sourceAsOf} · {rows.length} teams · Original Dart source fingerprint {report.dartSourceSha256.slice(0,12)}</p>
+   <p className="subtle">Source: {report.source} · {report.sourceAsOf} · {rows.length} teams · Source fingerprint {report.dartSourceSha256.slice(0,12)}</p>
    <div className="financial-layout">
     <div className="table-scroll" role="region" tabIndex={0} aria-label="NBA team financial table">
      <table className="stats-table"><thead><tr><th>Team</th><th>Roster</th><th>Cap space</th><th>Tax space</th><th>First apron</th><th>Second apron</th></tr></thead>
@@ -52,6 +52,6 @@ export function FinancialsWorkspace(){
     </div>
    </div>
   </>}
-  <p className="table-note">This read-only panel reflects the same transcribed snapshot used by the authoritative Flutter financial screen. It does not infer player contract balances or current transaction eligibility.</p>
+  <p className="table-note">Dated source snapshot. It does not infer player contract balances or current transaction eligibility.</p>
  </section>;
 }

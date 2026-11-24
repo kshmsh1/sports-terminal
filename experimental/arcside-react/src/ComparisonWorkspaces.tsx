@@ -35,20 +35,20 @@ export function buildTeamRows(snapshot:SeasonSnapshot):TeamRow[]{
  return [...records].map(([key,record])=>{
   const logs=logsBy.get(key)??[],meta=teamMeta.get(key)??{};
   const games=recordNum(record,'games','gp');
-  const complete=games!==null&&games>0&&logs.length>=games;
+  const complete=games!==null&&games>0&&logs.length===games;
   const winsLog=logs.filter(r=>text(r,['result']).toUpperCase().startsWith('W')).length;
   const lossesLog=logs.filter(r=>text(r,['result']).toUpperCase().startsWith('L')).length;
-  const wins=recordNum(record,'wins')??(complete&&winsLog+lossesLog>0?winsLog:null);
-  const losses=recordNum(record,'losses')??(complete&&winsLog+lossesLog>0?lossesLog:null);
+  const wins=recordNum(record,'wins')??(complete&&winsLog+lossesLog===games?winsLog:null);
+  const losses=recordNum(record,'losses')??(complete&&winsLog+lossesLog===games?lossesLog:null);
   const totals:Record<string,number>={};
-  const covered=new Set<string>();
+  const covered=new Map<string,number>();
   for(const log of logs)for(const field of logsFields){
-   const v=num(log[field]);if(v!==null){totals[field]=(totals[field]??0)+v;covered.add(field)}
+   const v=num(log[field]);if(v!==null){totals[field]=(totals[field]??0)+v;covered.set(field,(covered.get(field)??0)+1)}
   }
-  const observed=(field:string)=>complete&&covered.has(field)?totals[field]:null;
+  const observed=(field:string)=>complete&&covered.get(field)===games?totals[field]:null;
   const pts=recordNum(record,'points')??observed('points');
   const opp=recordNum(record,'opponent_points')??observed('opponent_points');
-  const shot=(field:string)=>complete&&covered.has(field)?totals[field]:null;
+  const shot=(field:string)=>complete&&covered.get(field)===games?totals[field]:null;
   const fgM=shot('field_goals_made'),fgA=shot('field_goal_attempts');
   const threeM=shot('three_pointers_made'),threeA=shot('three_point_attempts');
   const ftM=shot('free_throws_made'),ftA=shot('free_throw_attempts');
@@ -220,6 +220,6 @@ export function ComparisonWorkspace({kind,seasons,season,segment,basis,snapshot,
    {tally.filter(x=>selected[x.i]).sort((a,b)=>b.wins-a.wins||b.ties-a.ties).map(r=><p key={r.i}><strong>{selected[r.i]?.label}</strong> · {r.wins} outright leads · {r.ties} shared leads
     {kind==='player'&&onPlayer&&selected[r.i]?.player&&<button onClick={()=>onPlayer(selected[r.i]!.id)}>Player profile</button>}</p>)}
   </div>}
-  <p className="table-note">Source contract: {kind==='player'?'same canonical player-season rows as Stats; rate transformations reused':'team records, standings or sufficiently complete game logs only'}. Missing data never represents zero. This pilot does not yet reproduce all Flutter presets or customization interactions.</p>
+  <p className="table-note">Source: {kind==='player'?'canonical player-season rows with Stats rate transformations':'canonical team records and complete per-field game logs'}. Missing data is not zero.</p>
  </section>;
 }

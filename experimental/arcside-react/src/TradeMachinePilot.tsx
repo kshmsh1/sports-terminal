@@ -60,11 +60,12 @@ const sample=[
  {id:'b',label:'Player B',originTeam:'BBB',destinationTeam:'AAA',type:'player',salary:'8000000',metadata:'{}'}
 ] as RawDraft[];
 export function TradeMachinePilot(){
- const [teamA,setTeamA]=useState('AAA'),[teamB,setTeamB]=useState('BBB');
- const [salaryA,setSalaryA]=useState('140000000'),[salaryB,setSalaryB]=useState('140000000');
+ const [teamA,setTeamA]=useState(''),[teamB,setTeamB]=useState('');
+ const [salaryA,setSalaryA]=useState(''),[salaryB,setSalaryB]=useState('');
  const [extraTeams,setExtraTeams]=useState<{name:string;salary:string}[]>([]);
  const [asOf,setAsOf]=useState('2026-11-20');
- const [drafts,setDrafts]=useState<RawDraft[]>(sample),[dirty,setDirty]=useState(false);
+ const [drafts,setDrafts]=useState<RawDraft[]>([]),[dirty,setDirty]=useState(false);
+ const [example,setExample]=useState(false);
  const [details,setDetails]=useState(false);
  const [publishedContracts,setPublishedContracts]=useState<DatedContractSnapshot|null>(null);
  const [publishedError,setPublishedError]=useState('');
@@ -97,7 +98,7 @@ export function TradeMachinePilot(){
  const routeSourceDraft=()=>{
   const item=publishedDraft.find(x=>x.id===sourceDraftId);
   if(!item||!item.tradable||item.frozen||!sourceAssetDestination||
-   item.team===sourceAssetDestination)return;
+   item.team===sourceAssetDestination||drafts.some(d=>d.id===item.id))return;
   setDirty(true);
   setDrafts(prev=>[...prev,{id:item.id,label:item.label,originTeam:item.team,
    destinationTeam:sourceAssetDestination,type:'draftPick',salary:'0',
@@ -114,7 +115,7 @@ export function TradeMachinePilot(){
   setSelectedTpeByTeam(prev=>({...prev,[tpeTeam]:item.id}));
   setDirty(true);setSourceTpeId('');
  };
- const publishedTeams=[...new Set((publishedContracts?.records??[]).map(x=>x.team))].sort();
+ const publishedTeams=[...new Set([...(publishedContracts?.records??[]).map(x=>x.team),...(capLedger?.teams??[]).map(x=>x.team)])].sort();
  const applyOriginalLedger=()=>{
   const entries=participating.map(team=>capLedger?.teams.find(row=>row.team===team));
   if(entries.some(x=>!x)){
@@ -127,7 +128,7 @@ export function TradeMachinePilot(){
  };
  const publishedPlayers=(team:string)=>(publishedContracts?.records??[]).filter(x=>x.team===team&&x.salaries['2026-27']>0);
  const addPublishedPlayer=(recordId:string,destinationTeam:string)=>{
-  const item=publishedContracts?.records.find(x=>x.id===recordId);if(!item)return;
+  const item=publishedContracts?.records.find(x=>x.id===recordId);if(!item||drafts.some(d=>d.id==='published-'+item.id)||!participating.includes(item.team)||!participating.includes(destinationTeam)||item.team===destinationTeam)return;
   setDirty(true);
   setDrafts(prev=>[...prev,{id:'published-'+item.id,label:item.player,originTeam:item.team,
    destinationTeam,type:'player',salary:String(item.salaries['2026-27']),metadata:JSON.stringify({
@@ -158,7 +159,7 @@ export function TradeMachinePilot(){
    assignments.push({asset:{id:d.id,label:d.label,originTeam:d.originTeam,
     type:d.type,salary,metadata},destinationTeam:d.destinationTeam});
   }
-  if(errors.length)return {errors,scenario:null,report:null};
+  if(errors.length||drafts.length===0)return {errors,scenario:null,report:null};
   const capContexts=Object.fromEntries(teams.map((team,i)=>
    [team,originalCapContext(team,salaries[i]!,capLedger,usingOriginalLedger)]));
   const scenario:TradeScenario={id:'phase3-review',name:'Review scenario',operatingSeason:'2026-27',
@@ -169,18 +170,20 @@ export function TradeMachinePilot(){
  },[teamA,teamB,salaryA,salaryB,extraTeams,drafts,asOf,capLedger,usingOriginalLedger,draftSource,selectedTpeByTeam]);
  const update=(index:number,patch:Partial<RawDraft>)=>{setDirty(true);
   setDrafts(old=>old.map((d,i)=>i===index?{...d,...patch}:d))};
- const add=()=>{setDirty(true);setDrafts(old=>[...old,{id:'new-'+old.length,label:'New asset',
+ const add=()=>{setDirty(true);setDrafts(old=>[...old,{id:'manual-'+crypto.randomUUID(),label:'New asset',
   originTeam:teamA,destinationTeam:teamB,type:'player',salary:'0',metadata:'{}'}])};
  return <section className="panel trade-pilot" aria-label="Trade Machine experimental model">
-  <div className="panel-title"><div><p className="eyebrow">REACT PHASE 3 / INDEPENDENT DART-CONTRACT PORT</p>
-   <h2>Trade Machine · CBA validation pilot</h2><p className="subtle">2026–27 modeled cap rules. Original Flutter source ledgers can now supply dated cap values; independently ported TypeScript validator remains a pilot. Not an approved trade transaction engine or full production Trade Machine.</p></div></div>
+  <div className="panel-title"><div><p className="eyebrow">NBA / FRONT OFFICE</p>
+   <h2>Trade Machine</h2><p className="subtle">Build a hypothetical 2026–27 trade using dated NBA cap, salary and draft records. Modeled checks are incomplete and do not establish CBA legality.</p></div></div>
+  <div className="trade-start"><p className="subtle">{example?"Hypothetical example · illustrative teams and salaries, not NBA records.":"Select real teams, apply the dated payroll ledgers, then add assets."}</p><button onClick={()=>{setExample(false);setTeamA("");setTeamB("");setSalaryA("");setSalaryB("");setDrafts([]);setExtraTeams([]);setUsingOriginalLedger(false);setSelectedTpeByTeam({});setTpeTeam("");setPickFirst("");setPickSecond("");setSourceDraftId("");setSourceTpeId("");setSourceAssetDestination("");setAllTeamSource("");setAllTeamDestination("");setAllTeamPlayer("");setDirty(false)}}>New trade</button><button onClick={()=>{setExample(true);setDrafts(sample);setTeamA("AAA");setTeamB("BBB");setSalaryA("140000000");setSalaryB("140000000");setExtraTeams([]);setUsingOriginalLedger(false);setSelectedTpeByTeam({});setTpeTeam("");setDirty(false)}}>Reset example</button></div>
+  <datalist id="trade-team-options">{publishedTeams.map(team=><option value={team} key={team}/>)}</datalist>
   <div className="trade-grid">
-   <label>First team identifier<input aria-label="Trade first team" value={teamA} onChange={e=>{setDirty(true);setUsingOriginalLedger(false);setTeamA(e.target.value.toUpperCase())}}/></label>
+   <label>First team identifier<input list="trade-team-options" placeholder="Choose NBA team" aria-label="Trade first team" value={teamA} onChange={e=>{setDirty(true);setUsingOriginalLedger(false);setTeamA(e.target.value.toUpperCase())}}/></label>
    <label>First team payroll ($)<input aria-label="First team salary" inputMode="numeric" value={salaryA} onChange={e=>{setDirty(true);setUsingOriginalLedger(false);setSalaryA(e.target.value)}}/></label>
-   <label>Second team identifier<input aria-label="Trade second team" value={teamB} onChange={e=>{setDirty(true);setUsingOriginalLedger(false);setTeamB(e.target.value.toUpperCase())}}/></label>
+   <label>Second team identifier<input list="trade-team-options" placeholder="Choose NBA team" aria-label="Trade second team" value={teamB} onChange={e=>{setDirty(true);setUsingOriginalLedger(false);setTeamB(e.target.value.toUpperCase())}}/></label>
    <label>Second team payroll ($)<input aria-label="Second team salary" inputMode="numeric" value={salaryB} onChange={e=>{setDirty(true);setUsingOriginalLedger(false);setSalaryB(e.target.value)}}/></label>
    {extraTeams.map((team,index)=><div key={index} className="trade-extra-team">
-    <label>Participating team {index+3}<input aria-label={'Trade team '+(index+3)}
+    <label>Participating team {index+3}<input list="trade-team-options" placeholder="Choose NBA team" aria-label={'Trade team '+(index+3)}
      value={team.name} onChange={e=>{setDirty(true);setExtraTeams(xs=>xs.map((x,i)=>i===index?{...x,name:e.target.value.toUpperCase()}:x));setUsingOriginalLedger(false)}}/></label>
     <label>Team {index+3} payroll ($)<input aria-label={'Trade team '+(index+3)+' salary'}
      inputMode="decimal" value={team.salary} onChange={e=>{setDirty(true);setExtraTeams(xs=>xs.map((x,i)=>i===index?{...x,salary:e.target.value}:x));setUsingOriginalLedger(false)}}/></label>
@@ -189,7 +192,7 @@ export function TradeMachinePilot(){
    <label>As-of date<input aria-label="Trade as-of date" type="date" value={asOf} onChange={e=>{setDirty(true);setAsOf(e.target.value)}}/></label>
   </div>
   <div className="trade-actions"><button disabled={extraTeams.length>=3}
-   onClick={()=>{setDirty(true);setUsingOriginalLedger(false);setExtraTeams(xs=>[...xs,{name:['CCC','DDD','EEE'][xs.length],salary:'140000000'}])}}>
+   onClick={()=>{setDirty(true);setUsingOriginalLedger(false);setExtraTeams(xs=>[...xs,{name:example?['CCC','DDD','EEE'][xs.length]:'',salary:example?'140000000':''}])}}>
    Add participating team (2–5)</button></div>
   <fieldset className="trade-published-assets"><legend>Original Flutter 2026–27 team-cap reference</legend>
    <p className="subtle">Reference contains {capLedger?.teams.length??0} source-backed cap/salary ledgers; not a live clearing feed. Payroll uses Flutter Trade Machine's salary-position total, distinct from cap ledger total. Source SHA: {capLedger?.dartSalarySourceSha256.slice(0,12)??'unavailable'}.</p>
@@ -285,13 +288,13 @@ export function TradeMachinePilot(){
    <button onClick={()=>{setDirty(true);setDrafts(prev=>prev.filter((_,n)=>n!==i))}}>Remove asset {i+1}</button>
   </fieldset>)}</div>
   <div className="trade-actions">
-   <button onClick={add}>Add asset</button>
-   <button onClick={()=>{setDrafts(sample);setTeamA('AAA');setTeamB('BBB');setSalaryA('140000000');setSalaryB('140000000');setExtraTeams([]);setAsOf('2026-11-20');setUsingOriginalLedger(false);setSelectedTpeByTeam({});setTpeTeam('');setDirty(false)}}>Reset example</button>
+   <button disabled={!teamA||!teamB} onClick={add}>Add asset</button>
    <button onClick={()=>setDetails(x=>!x)} aria-expanded={details}>Show modeled validation details</button>
   </div>
-  {info.errors.length>0&&<div role="alert">{info.errors.join(' ')}</div>}
+  {!drafts.length&&<p className="subtle trade-empty">No assets assigned. Add source-backed players or picks to begin a trade scenario.</p>}
+  {dirty&&info.errors.length>0&&<div role="alert">{info.errors.join(' ')}</div>}
   {info.report&&<div className="trade-results" aria-label="Modeled validation results">
-   <p role="status">{info.report.isValid?'No modeled blocking errors':'Modeled transaction has blocking errors'} · {info.report.errorCount} errors · {info.report.warningCount} warnings{dirty?' · modified scenario':' · example scenario'}</p>
+   <p role="status">{info.report.isValid?'No modeled blocking errors':'Modeled transaction has blocking errors'} · {info.report.errorCount} errors · {info.report.warningCount} warnings{example?' · illustrative example':' · hypothetical scenario'}</p>
    <div className="table-scroll"><table className="stats-table"><thead><tr><th>Team</th><th>Outgoing matching</th><th>Incoming matching</th><th>Post-trade payroll</th><th>Max incoming</th><th>Projected roster</th><th>Apron</th></tr></thead>
     <tbody>{Object.values(info.report.teamSummaries).map(t=><tr key={t.team}><td>{t.team}</td>
      <td>{t.outgoingSalary.toLocaleString()}</td><td>{t.incomingSalary.toLocaleString()}</td>
@@ -301,6 +304,6 @@ export function TradeMachinePilot(){
     <p key={i}><strong>{f.severity.toUpperCase()} · {f.code}</strong> · {f.team??'Scenario'}: {f.message}</p>):
     <p>No findings on this modeled scenario.</p>}</div>}
   </div>}
-  <p className="table-note">The original Flutter Trade Machine is authoritative. This experimental UI models up to five teams and can import dated source-labeled player salary records across participating teams, but still lacks live salary updates, complete draft conveyance/Stepien eligibility, verified exception use and a full production transaction workflow; it cannot confirm CBA legality. Full production feature parity remains blocked.</p>
+  <p className="table-note">Dated source inputs, not live clearing data. Full draft conveyance, Stepien eligibility, exception use and CBA coverage remain incomplete; the original Flutter reference remains available.</p>
  </section>;
 }
