@@ -1,0 +1,59 @@
+# Arcside Phase 4A/4B — source-qualified recovery and acceptance
+
+Status: **Code implemented on PR #97; actual owner-local NBA corpus acceptance pending.** The previous 9,101 missing references are a sum of missing game IDs per captured scope, not a guaranteed 9,101 recoverable distinct games.
+
+## Phase 4A
+
+The existing canonical game builder initially reads the Wyatt historical game source. The separately captured NBA.com traditional player game logs include entire additional season/segment groups. The new tool `tools/phase4_recover_capture_games.py` validates each missing game against source date, season, NBA game/team/player IDs, two teams, complementary home/away matchup and consistent final scores before inserting canonical game, team-game, player-game and source-provenance rows. Ambiguous source records are rejected and reported rather than guessed.
+
+The original full v5 static compiler replaces the output tree, which can delete captured NBA.com materializations. For recovery, `tools/phase4_publish_recovered_games.py` updates the existing v5 game index incrementally, preserving old references and the NBA.com capture tree, while backing up index, manifest, season and coverage metadata. It calls the existing source-aware box-score detail materializer.
+
+On your Mac, run from the existing Phase 4 branch:
+
+```bash
+cd ~/sports_terminal
+git fetch origin
+git switch phase4/react-product-migration
+git pull --ff-only
+python3 -m unittest discover -s test -p 'phase4_*test.py' -v
+python3 tools/phase4_recover_capture_games.py
+```
+
+The last command is preview-only. Inspect the generated ignored JSON report `experimental/arcside-react/evidence/coverage/phase4a-recovery.json` for counts qualified and rejected by reason. When ready to apply, the first command below creates an SQLite-consistent database backup; inspect its printed path. The second previews how many public game-index rows are missing. The third updates original v5 static metadata and publishes real detail files from the previously captured data:
+
+```bash
+python3 tools/phase4_recover_capture_games.py --apply
+python3 tools/phase4_publish_recovered_games.py
+python3 tools/phase4_publish_recovered_games.py --apply
+python3 tools/phase4_warehouse_audit.py --verify-details
+node experimental/arcside-react/scripts/phase4_source_coverage.mjs
+```
+
+Acceptance: zero contradictory or duplicate canonical identities; existing game/detail records retained; actual published player box-score details valid; each still-missing captured game explained by a source-specific rejection reason. Report actual recovered numbers **only after** the owner's local audit. Never run the resetting canonical builder against the sole local database merely for this recovery; the standalone importer is safer. Do not run the old full v5 static compiler over this archive unless captured source preservation is separately established.
+
+## Phase 4B
+
+The new `tools/phase4_materialize_with_without.py` consumes the event-level Wyatt play-by-play table identified in the existing warehouse inventory. Event ordering, player-to-team identities, game clocks, substitution transitions, and scores are validated. A time interval contributes minutes only once the five on-court players for both teams are evidenced. Earlier unverified time is excluded. A contradicted lineup fails closed. Source-quality and covered seconds are included in the output rather than implied to represent a full NBA season.
+
+The pair output's available numerical metrics are team-on-court PTS and +/- per 36, plus observed together/apart minutes. They are not personal player box-score totals, nor complete-season stats. Scores are suppressed when scoreboard reconciliation fails; all unavailable metrics remain blank. Both the React page and output explain partial coverage and units.
+
+Preview a season, inspect the ignored local coverage report, then publish source-qualified rows:
+
+```bash
+python3 tools/phase4_materialize_with_without.py --season 2022-23
+python3 tools/phase4_materialize_with_without.py --season 2022-23 --publish
+node experimental/arcside-react/scripts/phase4_source_coverage.mjs
+```
+
+To attempt all historical source-supported scopes **after checking a representative season**, run:
+
+```bash
+python3 tools/phase4_materialize_with_without.py --publish
+node experimental/arcside-react/scripts/phase4_source_coverage.mjs
+```
+
+A season with no verified stints remains unpublished; the generator refuses to overwrite unrelated prior lineup data. The full warehouse and multi-million-event PBP exist only on your Mac, so the definitive number of published splits is currently unknown. Coverage is not 100% until established by independent evidence.
+
+## CI and rollback
+
+The Historical Research Quality GitHub workflow includes synthetic tests for strict captured-game ingestion and partial lineup reconstruction. These confirm safe behavior on fixtures, **not real historical coverage**. The 4C–4F migration packages, retained performance failure, exhaustive CBA review and native/device gates are unchanged. Keep Flutter as an executable fallback.
