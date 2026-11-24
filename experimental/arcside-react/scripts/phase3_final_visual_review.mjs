@@ -19,6 +19,7 @@ const context=await browser.newContext({viewport:{width:1440,height:900}});
 const pages={Flutter:await context.newPage(),React:await context.newPage()};
 const rl=createInterface({input:process.stdin,output:process.stdout});
 const checks=[],issues=[],runtimeErrors=[];
+let paused=false;
 let sourceVerified=false;
 try{
  for(const [app,url] of Object.entries(host)){
@@ -81,7 +82,7 @@ try{
    const input=(await rl.question('Review outcome [PASS / FAIL / BLOCKED] (optional notes after a colon): ')).trim();
    if(input.toUpperCase()==='PAUSE')throw Error('OPERATOR_PAUSE');
    const match=input.match(/^(PASS|FAIL|BLOCKED)(?:\s*[:—-]\s*(.+))?$/i);
-   if(match){result=match[1].toUpperCase();details=(match[2]??'').trim();}
+   if(match){result=match[1].toUpperCase();details=(match[2]??details).trim();}
    else if(input.length>=15){details=input;console.log('Observation captured. Please explicitly select PASS, FAIL, or BLOCKED.');}
    else console.log('Please type PASS, FAIL, or BLOCKED; the review has not advanced.');
   }
@@ -119,8 +120,13 @@ try{
   console.log(module.title+': '+result+' · screenshots recorded; '+checks.length+'/'+finalModules.length+' reviewed');
  }
 }catch(error){
- runtimeErrors.push(String(error?.message??error));
- console.error('Review interrupted without signoff:',String(error?.message??error));
+ if(String(error?.message??error)==='OPERATOR_PAUSE'){
+  paused=true;
+  console.log('Review paused. Previous saved screenshots and checkpoint remain intact.');
+ }else{
+  runtimeErrors.push(String(error?.message??error));
+  console.error('Review interrupted without signoff:',String(error?.message??error));
+ }
 }finally{
  await mkdir(root,{recursive:true});
  const assessment=assessFinalVisual({checks,
@@ -130,7 +136,7 @@ try{
   manifestSha256:sourceHash,physicalHumanReview:true,
   browser:browser.version(),checks,issues,runtimeErrors,
   ...assessment,
-  status:runtimeErrors.length?'INCOMPLETE_OR_ERROR':assessment.status};
+  status:paused?'PAUSED_WITH_CHECKPOINT':runtimeErrors.length?'INCOMPLETE_OR_ERROR':assessment.status};
  await writeFile(path.join(root,'final-visual-review.json'),JSON.stringify(result,null,2)+'\n');
  const lines=['# Arcside — Phase 3 final visual/functional review','',
   'Result: **'+result.status+'**','Original NBA v5 manifest SHA-256: '+sourceHash,'',
@@ -166,5 +172,5 @@ try{
  console.log(JSON.stringify({status:result.status,modules:checks.length,issues,
   runtimeErrors,report:path.join(root,'final-visual-review.md')},null,2));
  rl.close();await context.close();await browser.close();
- if(result.status!=='OPERATOR_VISUAL_SAMPLE_PASS_ONLY')process.exitCode=1;
+ if(!paused&&result.status!=='OPERATOR_VISUAL_SAMPLE_PASS_ONLY')process.exitCode=1;
 }
