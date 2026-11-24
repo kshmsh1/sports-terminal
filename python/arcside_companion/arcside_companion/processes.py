@@ -26,6 +26,10 @@ async def terminate(proc: asyncio.subprocess.Process) -> None:
 async def command(args: list[str], cwd: Path, timeout: float = 90, *, env: dict | None = None,
                   stdin: bytes | None = None, on_start=None) -> dict:
     """No shell=True. Executables may still execute arbitrary trusted code."""
+    # Strip service secrets from any child, including callers that omit env.
+    env = dict(os.environ if env is None else env)
+    for secret in ("ARCSIDE_COMPANION_TOKEN", "ARCSIDE_COLLAB_ADMIN_KEY"):
+        env.pop(secret, None)
     proc = await asyncio.create_subprocess_exec(
         *args, cwd=str(cwd), stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
@@ -59,16 +63,21 @@ async def command(args: list[str], cwd: Path, timeout: float = 90, *, env: dict 
         assert proc.stdout is not None and proc.stderr is not None
         return await asyncio.gather(capture(proc.stdout), capture(proc.stderr), send_input(), proc.wait())
 
+    task = asyncio.create_task(collect())
     try:
         if on_start:
             on_start(proc)
-        (out, out_truncated), (err, err_truncated), _, _ = await asyncio.wait_for(collect(), timeout=timeout)
+        (out, out_truncated), (err, err_truncated), _, _ = await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
     except asyncio.TimeoutError:
         await terminate(proc)
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
         return {"returncode": 124, "stdout": "", "stderr": f"Process timed out after {timeout}s",
                 "timed_out": True}
     except BaseException:
         await terminate(proc)
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
         raise
     return {"returncode": proc.returncode,
             "stdout": out.decode("utf-8", "replace"),
@@ -92,6 +101,8 @@ def interpreter_for(root: Path, name: str = "default") -> Path:
 
 def run_env(root: Path, interpreter: Path) -> dict[str, str]:
     values = os.environ.copy()
+    for secret in ("ARCSIDE_COMPANION_TOKEN", "ARCSIDE_COLLAB_ADMIN_KEY"):
+        values.pop(secret, None)
     values["ARCSIDE_WORKSPACE"] = str(root)
     values["PYTHONUNBUFFERED"] = "1"
     values["MPLBACKEND"] = "Agg"

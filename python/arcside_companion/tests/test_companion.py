@@ -311,3 +311,13 @@ def test_non_ascii_and_non_string_tokens_are_rejected():
         assert not sec.authorized("é")
         assert not sec.authorized({"token":"test-secret"})
         assert not sec.authorized("x" * 10000)
+
+
+def test_child_process_does_not_inherit_service_credentials(client, monkeypatch):
+    monkeypatch.setenv("ARCSIDE_COMPANION_TOKEN", "synthetic-execution-secret")
+    monkeypatch.setenv("ARCSIDE_COLLAB_ADMIN_KEY", "synthetic-room-secret")
+    source = "import os; print(any(k in os.environ for k in ('ARCSIDE_COMPANION_TOKEN', 'ARCSIDE_COLLAB_ADMIN_KEY')))"
+    response = client.post("/api/run", json={"mode": "selection", "source": source}, headers=auth())
+    assert response.status_code == 200
+    assert response.json()["returncode"] == 0
+    assert response.json()["stdout"].strip() == "False"

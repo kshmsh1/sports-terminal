@@ -4,6 +4,7 @@ and already captured NBA.com traditional game logs. Never scrapes or mutates inp
 from __future__ import annotations
 
 import argparse
+import os
 import collections
 import hashlib
 import json
@@ -181,7 +182,7 @@ def audit(db_path: Path, static: Path, verify_details=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--database", type=Path, default=ROOT / "data/warehouse/nba_history.sqlite")
+    parser.add_argument("--database", type=Path, default=Path(os.environ["SPORTS_TERMINAL_NBA_HISTORY_DB"]) if os.environ.get("SPORTS_TERMINAL_NBA_HISTORY_DB") else ROOT / "data/warehouse/nba_history.sqlite")
     parser.add_argument("--static", type=Path, default=ROOT / "web/data/nba_static")
     parser.add_argument("--output", type=Path, default=ROOT / "experimental/arcside-react/evidence/coverage/warehouse-audit.json")
     parser.add_argument("--verify-details", action="store_true", help="Parse every referenced box score; otherwise check file presence.")

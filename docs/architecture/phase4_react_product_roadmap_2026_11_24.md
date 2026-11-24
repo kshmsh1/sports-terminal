@@ -58,3 +58,18 @@ bash scripts/launch_arcside.sh --platform --fast
 ```
 
 Original Flutter fallback: `bash scripts/open_terminal.sh --flutter`. No database deletion, source rebuild, new data ingestion, public deployment, or retirement of Flutter is authorized by this document.
+
+## Phase 4 implementation checkpoint — PR #97
+
+The React product branch now includes the source-backed Trade Machine, NBA Home, global search, canonical profile statistics and legacy Flutter saved-trade import, route-scoped fetching, chart resize and zoom optimization, and local Labs trust-boundary improvements. The cross-engine dated-source trade suite ran 1,112 cases with zero semantic mismatches on commit 480466d7; the 27 original synthetic goldens remain separate. This proves base-engine agreement for the tested cases, not complete CBA coverage, correctness of the original engine, or UI-level legality certification.
+
+Local acceptance still requires original warehouse and native-device evidence. Run from the repository root:
+
+```bash
+python3 tools/phase4_warehouse_audit.py --verify-details
+node experimental/arcside-react/scripts/phase4_source_coverage.mjs
+```
+
+The first command opens SQLite read-only, compares canonical game identities and existing captured NBA.com game IDs to the published index, and verifies referenced game detail payloads. It honors SPORTS_TERMINAL_NBA_HISTORY_DB or accepts --database. No source ingestion or fabrication takes place. The second inventories published coverage. Preserve the reports in evidence/coverage (gitignored). For chart acceptance, run `bash scripts/phase3_release_compare.sh --diagnose-chart` after rebuilding, and retain the prior failed p95 comparison until a matched rerun passes unchanged thresholds.
+
+Native companion and collaborative workspaces are loopback-only, credential-gated, trusted-project tools, not an OS sandbox. Service credentials are isolated from one another and from normal child process environments. Native execution remains as the user's account; external dependencies and imported content still require trust. Native Safari/VoiceOver, Windows/NVDA, GPU/compositor and total-memory acceptance remain open. Do not retire the Flutter fallback or mark full production migration certified on the strength of CI alone.

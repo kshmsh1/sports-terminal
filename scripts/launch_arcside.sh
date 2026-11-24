@@ -40,9 +40,9 @@ if [[ "$SKIP_INSTALL" == 0 ]]; then
     "$LAB_PY" -m pip install -q numpy pandas scipy scikit-learn matplotlib polars plotly
   fi
 fi
+unset ARCSIDE_COMPANION_TOKEN ARCSIDE_COLLAB_ADMIN_KEY
 ARCSIDE_COMPANION_TOKEN="$("$LAB_PY" -c 'import secrets;print(secrets.token_urlsafe(32))')"
 ARCSIDE_COLLAB_ADMIN_KEY="$("$LAB_PY" -c 'import secrets;print(secrets.token_urlsafe(32))')"
-export ARCSIDE_COMPANION_TOKEN ARCSIDE_COLLAB_ADMIN_KEY
 export ARCSIDE_HIDE_TOKEN_IN_OUTPUT=1
 collab_pid=; python_pid=; web_pid=
 cleanup() {
@@ -68,11 +68,11 @@ if [[ "$MODE" == auto ]]; then
     echo "Use --platform after generating your original NBA static v5 corpus."
   fi
 fi
-"$LAB_PY" -m arcside_collab --db "$RUNTIME/collaboration.sqlite" \
+ARCSIDE_COLLAB_ADMIN_KEY="$ARCSIDE_COLLAB_ADMIN_KEY" "$LAB_PY" -m arcside_collab --db "$RUNTIME/collaboration.sqlite" \
   --port 8767 --allow-origin http://127.0.0.1:8765 \
   --allow-origin http://localhost:8765 >"$RUNTIME/collab.log" 2>&1 &
 collab_pid=$!
-"$LAB_PY" -m arcside_companion --workspace "$WORKSPACE" --port 8766 \
+ARCSIDE_COMPANION_TOKEN="$ARCSIDE_COMPANION_TOKEN" "$LAB_PY" -m arcside_companion --workspace "$WORKSPACE" --port 8766 \
   --allow-origin http://127.0.0.1:8765 \
   --allow-origin http://localhost:8765 >"$RUNTIME/python.log" 2>&1 &
 python_pid=$!
