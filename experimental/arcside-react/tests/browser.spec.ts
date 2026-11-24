@@ -448,6 +448,8 @@ test('financial table does not inherit truncated player-grid columns',async({pag
 });
 test('with/without table uses readable column widths and content-driven height',async({page})=>{
  await page.goto('/with-without?season=2025-26&segment=regular&basis=perGame');
+ await page.getByLabel('With/without team').selectOption('CHI');
+ await page.getByLabel('With/without player A').selectOption('synthetic-0');
  const table=page.getByRole('region',{name:'Synthetic Player 0 published splits'});
  await expect(table.getByRole('columnheader',{name:'With teammate',exact:true})).toBeVisible();
  const clipped=await table.locator('th,td').evaluateAll(cells=>cells.filter(e=>e.scrollWidth>e.clientWidth+1).map(e=>e.textContent));
