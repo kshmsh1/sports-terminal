@@ -6,18 +6,27 @@ cd "$ROOT"
 
 FORCE_STATIC=0
 WEB_PORT=''
+FRONTEND="${ARCSIDE_FRONTEND:-react}"
+OPEN_BROWSER=1
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
     --rebuild-static) FORCE_STATIC=1 ;;
+    --react) FRONTEND=react ;;
+    --flutter) FRONTEND=flutter ;;
+    --no-browser) OPEN_BROWSER=0 ;;
     --web-port) shift; WEB_PORT="${1:-}"; if [[ ! "$WEB_PORT" =~ ^[0-9]+$ ]]; then echo 'Missing numeric --web-port' >&2;exit 2;fi ;;
     *)
       echo "Unknown option: $1" >&2
-      echo "Usage: bash scripts/open_terminal.sh [--rebuild-static] [--web-port PORT]" >&2
+      echo "Usage: bash scripts/open_terminal.sh [--react|--flutter] [--rebuild-static] [--web-port PORT] [--no-browser]" >&2
       exit 2
       ;;
   esac
   shift
 done
+if [[ "$FRONTEND" != react && "$FRONTEND" != flutter ]]; then
+  echo 'ARCSIDE_FRONTEND must be react or flutter.' >&2
+  exit 2
+fi
 
 find_history_db() {
   local candidates=(
@@ -160,10 +169,35 @@ else
   echo "2026-27 schedule snapshot is not available; Schedule Snapshot will show setup guidance." >&2
 fi
 
-echo "Resolving Flutter dependencies..."
-flutter pub get
+if [[ "$FRONTEND" == react ]]; then
+  command -v node >/dev/null 2>&1 || {
+    echo 'Node.js is required for the React frontend.' >&2
+    exit 1
+  }
+  if [[ ! -f "$ROOT/experimental/arcside-react/node_modules/vite/bin/vite.js" ]]; then
+    echo 'React dependencies missing. Run (cd experimental/arcside-react && npm ci) first.' >&2
+    exit 1
+  fi
+  PORT="${WEB_PORT:-8765}"
+  echo "Opening React-first Arcside on http://127.0.0.1:$PORT/stats ..."
+  echo 'Fallback: bash scripts/open_terminal.sh --flutter'
+  if [[ "$OPEN_BROWSER" == 1 ]]; then
+    if command -v open >/dev/null 2>&1; then
+      open "http://127.0.0.1:$PORT/stats" || true
+    elif command -v xdg-open >/dev/null 2>&1; then
+      xdg-open "http://127.0.0.1:$PORT/stats" >/dev/null 2>&1 || true
+    fi
+  fi
+  cd "$ROOT/experimental/arcside-react"
+  exec node node_modules/vite/bin/vite.js dev --host 127.0.0.1 --port "$PORT" --strictPort
+fi
 
-echo "Opening Sports Terminal in Chrome..."
+echo "Resolving original Flutter reference dependencies..."
+flutter pub get
+echo 'Opening Flutter Arcside reference in Chrome...'
+if [[ "$OPEN_BROWSER" == 0 ]]; then
+  echo 'Flutter CLI opens a browser when running with -d chrome; use the standalone release pair for headless comparisons.'
+fi
 if [[ -n "$WEB_PORT" ]]; then
   exec flutter run -d chrome --web-port "$WEB_PORT" --web-hostname 127.0.0.1
 fi
