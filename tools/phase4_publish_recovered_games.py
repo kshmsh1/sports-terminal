@@ -36,6 +36,8 @@ def atomic_json(path, value):
 def refresh(db_path, static, backups, *, apply=False, details=True):
     index_path = static / "games/index.json"
     manifest_path = static / "manifest.json"
+    seasons_path = static / "seasons.json"
+    coverage_path = static / "history/coverage.json"
     if not db_path.is_file() or not index_path.is_file() or not manifest_path.is_file():
         raise FileNotFoundError("Expected local canonical database and published v5 files")
     old_index = json.loads(index_path.read_text(encoding="utf-8"))
@@ -50,6 +52,7 @@ def refresh(db_path, static, backups, *, apply=False, details=True):
     with sqlite3.connect(db_path.resolve().as_uri()+"?mode=ro", uri=True) as db:
         db.row_factory = sqlite3.Row
         new_rows = game_index(db)
+        new_coverage = [dict(x) for x in db.execute("SELECT * FROM canon_coverage WHERE league_id='NBA' ORDER BY season_id,domain")]
     new_by_key = {str(row.get("game_key")): row for row in new_rows}
     if len(new_by_key) != len(new_rows):
         raise ValueError("Duplicate keys in canonical games")
@@ -60,11 +63,26 @@ def refresh(db_path, static, backups, *, apply=False, details=True):
         new = new_by_key[key]
         if str(old.get("nba_game_id") or "") != str(new.get("nba_game_id") or ""):
             raise ValueError("Game identity changed: " + key)
+        for name in ("season_id", "season_type"):
+            if str(old.get(name) or "") != str(new.get(name) or ""):
+                raise ValueError("Existing game season/segment changed: " + key)
         for retained in ("file", "box_score_available", "box_score_source"):
             if retained in old:
                 new[retained] = old[retained]
     additions = sorted(set(new_by_key) - set(old_by_key))
     output_index = sorted(new_rows, key=lambda g: (str(g.get("game_date") or ""), str(g["game_key"])))
+    previous_seasons = json.loads(seasons_path.read_text(encoding="utf-8"))
+    if not isinstance(previous_seasons, list):
+        raise ValueError("Original seasons index is not an array")
+    season_counts = {}
+    for game in output_index:
+        season = str(game.get("season_id") or "")
+        season_counts[season] = season_counts.get(season, 0) + 1
+    updated_seasons = copy.deepcopy(previous_seasons)
+    for item in updated_seasons:
+        season = str(item.get("season_id") or "")
+        if season in season_counts:
+            item["games"] = season_counts[season]
     report = {"contract":"arcside-phase4a-index-publication-v1",
               "original":len(old_index),"candidate":len(new_rows),
               "additions":len(additions),"samples":additions[:25],
@@ -75,6 +93,7 @@ def refresh(db_path, static, backups, *, apply=False, details=True):
     folder=backups/("phase4a-index-before-"+stamp)
     folder.mkdir(parents=True,exist_ok=False)
     for name,source in (("index.json",index_path),("manifest.json",manifest_path),
+                        ("seasons.json",seasons_path),("coverage.json",coverage_path),
                         ("detail_manifest.json",static/"games/detail_manifest.json")):
         if source.is_file():
             (folder/name).write_bytes(source.read_bytes())
@@ -84,12 +103,15 @@ def refresh(db_path, static, backups, *, apply=False, details=True):
     updated_manifest["phase4a_recovery"]={"games_added":len(additions),"source":"NBA.com captured leaguegamelog; validated canonical identities"}
     try:
         atomic_json(index_path,output_index)
+        atomic_json(seasons_path,updated_seasons)
+        atomic_json(coverage_path,new_coverage)
         atomic_json(manifest_path,updated_manifest)
         if details:
             subprocess.run([sys.executable,str(ROOT/"tools/materialize_static_nba_game_details.py"),
                             "--database",str(db_path),"--output",str(static),"--force"],check=True)
     except Exception:
         for name,target in (("index.json",index_path),("manifest.json",manifest_path),
+                            ("seasons.json",seasons_path),("coverage.json",coverage_path),
                             ("detail_manifest.json",static/"games/detail_manifest.json")):
             saved=folder/name
             if saved.is_file():
