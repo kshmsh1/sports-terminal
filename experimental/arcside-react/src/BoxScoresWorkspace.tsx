@@ -40,6 +40,7 @@ export function BoxScoresWorkspace({onPlayer}:{onPlayer?:(id:string)=>void}){
   return ()=>controller.abort();
  },[selected]);
  const seasons=useMemo(()=>[...new Set(games.map(g=>val(g,'season_id','')).filter(Boolean))].sort().reverse(),[games]);
+ const coverage=useMemo(()=>{const dates=games.map(g=>val(g,'game_date','').split(/[T ]/)[0]).filter(date=>/^\d{4}-\d{2}-\d{2}$/.test(date)).sort();return dates.length?{earliest:dates[0],latest:dates[dates.length-1]}:null},[games]);
  const filtered=useMemo(()=>games.filter(g=>(year==='All'||val(g,'season_id')===year)&&
   (type==='All'||segment(g)===type)&&
   [val(g,'game_date'),team(g,true),team(g,false),val(g,'game_key')].join(' ').toLowerCase().includes(query.trim().toLowerCase())),
@@ -54,7 +55,7 @@ export function BoxScoresWorkspace({onPlayer}:{onPlayer?:(id:string)=>void}){
   .sort((a,b)=>(num(b,'pts')??-1)-(num(a,'pts')??-1));
  return <section className="panel box-workspace" aria-label="Historical NBA box scores">
   <div className="panel-title"><div><p className="eyebrow">NBA / ORIGINAL HISTORICAL ARCHIVE</p><h2>Box Scores</h2>
-   <p className="subtle">Select games by date and open published box-score files. Absent player statistics are not inferred.</p></div></div>
+   <p className="subtle">Browse published games and inspect available box scores. Absent player statistics are not inferred.</p>{coverage&&<p className="subtle">Archive dates: {coverage.earliest} – {coverage.latest} · {games.length.toLocaleString()} published game records · {seasons.length} seasons in index</p>}</div></div>
   <div className="toolbar"><label>Season<select aria-label="Box score season" value={year} onChange={e=>setYear(e.target.value)}><option>All</option>{seasons.map(s=><option key={s}>{s}</option>)}</select></label>
    <label>Season type<select aria-label="Box score segment" value={type} onChange={e=>setType(e.target.value)}><option>All</option><option value="regular">Regular season</option><option value="playoffs">Playoffs</option></select></label>
    <label>Search games<input aria-label="Search historical games" placeholder="Team, date, game ID" value={query} onChange={e=>setQuery(e.target.value)}/></label></div>

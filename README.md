@@ -5,6 +5,8 @@
 
 Arcside is a multi-sport web product with an NBA-first data platform. After login, users land on a league-selection home. NBA is the first fully enabled league; NFL, NHL, MLB, MLS, F1, Premier League, WNBA, ATP, WTA, PGA and IPL remain explicit future league surfaces until source-backed datasets are added.
 
+**Architecture status:** staged React-first development has been selected. [Phase 3 closeout and Phase 4 implementation roadmap](docs/architecture/phase4_react_product_roadmap_2026_11_24.md) records the known validation gaps and follow-up work. Flutter remains a working reference and fallback.
+
 ## NBA website
 
 The original Flutter NBA experience includes the modules listed below. The new React-first development shell currently exposes source-backed pilot implementations of many of them, not yet feature-complete replacements:
