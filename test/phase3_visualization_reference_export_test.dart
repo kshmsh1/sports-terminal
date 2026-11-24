@@ -108,6 +108,6 @@ void main(){
   expect(cases.any((c)=>(c['plotted'] as List).length>=20),isTrue,
    reason:'No populated source-backed sample');
   // ignore: avoid_print
-  print('ARCSIDE_FLUTTER_VIS_REFERENCE: '+file.path);
+  print('ARCSIDE_FLUTTER_VIS_REFERENCE: ${file.path}');
  });
 }

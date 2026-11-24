@@ -3,7 +3,7 @@
 // This emits actual JSON responses from the ORIGINAL Dart TradeMachineEngine.
 // Human-review before checking in as an accepted golden baseline.
 import 'dart:convert';
-import '../../../lib/services/trade_machine_engine.dart';
+import 'package:sports_terminal/services/trade_machine_engine.dart';
 
 Map<String, dynamic> reportJson(TradeValidationReport report) => {
  'isValid':report.isValid,'errorCount':report.errorCount,'warningCount':report.warningCount,
