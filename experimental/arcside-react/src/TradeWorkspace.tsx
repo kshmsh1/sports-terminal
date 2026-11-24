@@ -10,7 +10,7 @@ import type {TradeContext} from './TradeWorkspaceModel';
 
 type Sources={contracts:DatedContractSnapshot;ledger:TeamCapLedgerSnapshot;draft:OriginalDraftExceptions;financial:TeamFinancialReport;context:TradeContext};
 type Mode='on'|'off'|'deadline';
-type SavedTrade={id:string;savedAt:string;teams:string[];date:string;mode:Mode;routes:{id:string;origin:string;destination:string;salary:number}[];tpes:Record<string,string>};
+type SavedTrade={id:string;savedAt:string;teams:string[];date:string;mode:Mode;routes:{id:string;origin:string;destination:string;salary:number}[];tpes:Record<string,string>;renounced?:string[]};
 const savedKey='arcside.react.trade.snapshots.v1';
 const loadSaved=():SavedTrade[]=>{try{const raw=JSON.parse(localStorage.getItem(savedKey)??'[]');return Array.isArray(raw)?raw.filter(x=>x&&typeof x.id==='string'&&Array.isArray(x.teams)&&Array.isArray(x.routes)&&typeof x.date==='string'&&typeof x.savedAt==='string'):[]}catch{return []}};
 type AssetTab='Active roster'|'Draft picks'|'Draft rights'|'Cash'|'Free agents'|'Exceptions';
@@ -34,6 +34,7 @@ export function TradeWorkspace(){
  const [query,setQuery]=useState(''),[routedOnly,setRoutedOnly]=useState(false);
  const [date,setDate]=useState('2026-11-24'),[assignments,setAssignments]=useState<TradeAssignment[]>([]);
  const [tpes,setTpes]=useState<Record<string,string>>({}),[pending,setPending]=useState<TradeAsset|null>(null),[destination,setDestination]=useState('');
+ const [renounced,setRenounced]=useState<string[]>([]);
  const [mode,setMode]=useState<Mode>('on'),[position,setPosition]=useState('All'),[saved,setSaved]=useState<SavedTrade[]>(loadSaved),[signSalary,setSignSalary]=useState<Record<string,string>>({});
  const effectiveDate=mode==='deadline'?'2027-02-04':date;
  const [cashAmount,setCashAmount]=useState(''),[addTeam,setAddTeam]=useState(''),[notice,setNotice]=useState('');
@@ -72,14 +73,17 @@ export function TradeWorkspace(){
   setTeams(prev=>prev.includes(team)?prev.filter(x=>x!==team):prev.length<5?[...prev,team]:prev);
  }
  function viewTeam(team:string){setActive(team);setTab('Active roster');setQuery('');setPosition('All');setPending(null);setNotice('')}
- function clearRoutes(){setAssignments([]);setTpes({});setPending(null);setNotice('');setCashAmount('')}
+ function clearRoutes(){setAssignments([]);setTpes({});setRenounced([]);setPending(null);setNotice('');setCashAmount('')}
  function removeTeam(team:string){
   if(teams.length<=2)return;
   const next=teams.filter(x=>x!==team);setTeams(next);
   setAssignments(prev=>prev.filter(x=>x.asset.originTeam!==team&&x.destinationTeam!==team));
-  setTpes(prev=>Object.fromEntries(Object.entries(prev).filter(([t])=>t!==team)));
+  const remaining=assignments.filter(x=>x.asset.originTeam!==team&&x.destinationTeam!==team);
+  setTpes(prev=>Object.fromEntries(Object.entries(prev).filter(([id])=>remaining.some(a=>a.asset.id===id))));
+  setRenounced(prev=>prev.filter(id=>!sources?.context.freeAgents.some(x=>x.id===id&&sameTeam(x.team,team))));
   setPending(null);if(active===team)viewTeam(next[0]);setNotice('Removed team and its related routes.');
  }
+ function removeRoute(id:string){setAssignments(prev=>prev.filter(x=>x.asset.id!==id));setTpes(prev=>Object.fromEntries(Object.entries(prev).filter(([key])=>key!==id)))}
  function route(asset:TradeAsset){
   if(!canRoute(asset))return;
   setPending(asset);setDestination(teams.find(x=>x!==asset.originTeam)??'');setNotice('');
@@ -101,7 +105,7 @@ export function TradeWorkspace(){
  function saveTrade(){
   if(!assignments.length||!sourceScenario)return;
   const entry:SavedTrade={id:crypto.randomUUID(),savedAt:new Date().toISOString(),teams:[...teams],date,mode,
-   routes:assignments.map(a=>({id:a.asset.id,origin:a.asset.originTeam,destination:a.destinationTeam,salary:a.asset.salary})),tpes:{...tpes}};
+   routes:assignments.map(a=>({id:a.asset.id,origin:a.asset.originTeam,destination:a.destinationTeam,salary:a.asset.salary})),tpes:{...tpes},renounced:[...renounced]};
   if(persistSaved([entry,...saved].slice(0,40)))setNotice('Trade snapshot saved to Recent Trades.');
  }
  function restoreTrade(entry:SavedTrade){
@@ -121,14 +125,15 @@ export function TradeWorkspace(){
    if(!asset){setNotice('Saved asset no longer matches the published source; nothing was loaded.');return}
    restored.push({asset,destinationTeam:a.destination});
   }
-  const validTpes=Object.fromEntries(Object.entries(entry.tpes??{}).filter(([team,id])=>restoredTeams.includes(team)&&sources.draft.exceptions.some(x=>x.id===id&&sameTeam(x.team,team))));
+  const validTpes=Object.fromEntries(Object.entries(entry.tpes??{}).filter(([asset,id])=>restored.some(a=>a.asset.id===asset&&sources.draft.exceptions.some(x=>x.id===id&&sameTeam(x.team,a.destinationTeam)))));
+  setRenounced((Array.isArray(entry.renounced)?entry.renounced:[]).filter(id=>sources.context.freeAgents.some(x=>x.id===id&&restoredTeams.includes(canonicalTeam(x.team)))&&!restored.some(a=>a.asset.id===id)));
   setTeams(restoredTeams);setDate(entry.date);setMode(['on','off','deadline'].includes(entry.mode)?entry.mode:'on');setAssignments(restored);setTpes(validTpes);viewTeam(restoredTeams[0]);setStage('build');setNotice('Saved scenario reopened against the current dated source.');
  }
  const positionFor=(name:string)=>sources?.context.positions[name]??sources?.context.twoWays.find(x=>person(x.player)===person(name)&&sameTeam(x.team,active))?.position??'Unknown';
  const filtered=(label:string,id:string)=>label.toLowerCase().includes(query.trim().toLowerCase())&&(!routedOnly||assignments.some(x=>x.asset.id===id));
  const routeButton=(asset:TradeAsset,blocked=false)=>{
   const existing=assignments.find(x=>x.asset.id===asset.id);
-  return existing?<button className="trade-route-button" onClick={()=>setAssignments(prev=>prev.filter(x=>x.asset.id!==asset.id))} aria-label={'Remove route for '+asset.label}>→ {existing.destinationTeam} · Remove</button>:
+  return existing?<button className="trade-route-button" onClick={()=>removeRoute(asset.id)} aria-label={'Remove route for '+asset.label}>→ {existing.destinationTeam} · Remove</button>:
    <button className="trade-route-button" disabled={blocked||!canRoute(asset)} onClick={()=>route(asset)} aria-label={'Route '+asset.label}>{blocked?'Restricted':'→ Route'}</button>;
  };
  return <section className="trade-workspace" aria-label="NBA Trade Machine">
@@ -196,14 +201,15 @@ export function TradeWorkspace(){
       {tab==='Cash'&&<div className="trade-inner"><h3>Cash considerations</h3><p>Available to send: {money(cash?.availableToSend)} · Available to receive: {money(cash?.availableToReceive)}</p>
        <label>Cash amount ($)<input aria-label="Cash amount" inputMode="decimal" value={cashAmount} onChange={e=>setCashAmount(e.target.value)}/></label><button disabled={!cash||assignments.some(x=>x.asset.id==='cash:'+active)} onClick={addCash}>Route cash</button>
        {cash?.restricted&&<p className="trade-negative">Source reports a second-apron cash-sending restriction; modeled checks apply.</p>}</div>}
-      {tab==='Exceptions'&&<div className="trade-inner"><h3>Receiving-team traded-player exceptions</h3><p className="subtle">A TPE is used by the acquiring team, not transferred as an asset.</p><label>Use exception for {active}<select aria-label={'TPE for '+active} value={tpes[active]??''} onChange={e=>setTpes(prev=>({...prev,[active]:e.target.value}))}><option value="">No exception selected</option>{activeTpes.map(t=><option key={t.id} value={t.id} disabled={t.available<=0||t.expires<effectiveDate}>{t.sourceTransaction} · {money(t.available)} · {t.expires}</option>)}</select></label></div>}
+      {tab==='Exceptions'&&<div className="trade-inner"><h3>Receiving-team traded-player exceptions</h3><p className="subtle">Assign an exception to a routed incoming player in the trade flow. Exceptions are never transferred.</p>{activeTpes.map(t=><article className="trade-free-agent" key={t.id}><strong>{t.sourceTransaction} · {money(t.available)}</strong><p className="subtle">Expires {t.expires} · {t.available<=0?'Exhausted':t.expires<effectiveDate?'Expired':'Dated capacity'}</p></article>)}{!activeTpes.length&&<p className="empty">No published exceptions for {active}.</p>}</div>}
       {tab==='Draft rights'&&<div className="trade-draft-list">{rights.filter(p=>filtered(p.player,p.id)).map(p=><article key={p.id}><div><strong>{p.player} (draft rights)</strong><p>{p.position} · {p.note}</p></div>{routeButton(rightAsset(p))}</article>)}{!rights.length&&<p className="empty">No source-certified draft-rights records for {active}.</p>}</div>}
       {tab==='Free agents'&&<div className="trade-inner">{freeAgents.filter(p=>filtered(p.player,p.id)).map(p=>{
-       const amount=parseTradeAmount(signSalary[p.id]??String(p.minimum??'')),asset=amount===null?null:signAndTradeAsset(p,amount);
+       const amount=parseTradeAmount(signSalary[p.id]??String(p.minimum??'')),asset=amount===null?null:signAndTradeAsset(p,amount),isRenounced=renounced.includes(p.id);
        return <article className="trade-free-agent" key={p.id}><strong>{p.player}</strong><p className="subtle">{p.position} · {p.rights} · Cap hold {money(p.capHold)}</p>
-        {p.minimum!==null&&p.maximum!==null?<><label>Sign-and-trade salary ($)<input aria-label={p.player+' sign-and-trade salary'} inputMode="decimal" value={signSalary[p.id]??String(p.minimum)} onChange={e=>setSignSalary(prev=>({...prev,[p.id]:e.target.value}))}/></label>
+        <button onClick={()=>{if(isRenounced)setRenounced(prev=>prev.filter(id=>id!==p.id));else{removeRoute(p.id);setRenounced(prev=>[...prev,p.id])}}}>{isRenounced?'Restore cap hold':'Renounce hold'}</button>
+        {isRenounced?<p className="subtle">Modeled cap hold renounced. No trade route.</p>:p.minimum!==null&&p.maximum!==null?<><label>Sign-and-trade salary ($)<input aria-label={p.player+' sign-and-trade salary'} inputMode="decimal" value={signSalary[p.id]??String(p.minimum)} onChange={e=>setSignSalary(prev=>({...prev,[p.id]:e.target.value}))}/></label>
          <p className="subtle">Published modeled range: {money(p.minimum)}–{money(p.maximum)}</p>{asset?routeButton(asset):<p role="alert">Enter a salary within the published range.</p>}</>:<p className="subtle">No verified sign-and-trade salary range.</p>}</article>
-      })}{!freeAgents.length&&<p className="empty">No source-certified free-agent rights for {active}.</p>}<p className="subtle">Sign-and-trade modeling does not establish signing eligibility or complete cap-hold accounting.</p></div>}
+      })}{!freeAgents.length&&<p className="empty">No source-certified free-agent rights for {active}.</p>}<p className="subtle">Sign-and-trade modeling does not establish signing eligibility. Renounced holds affect only the illustrative cap-room display, matching the original video workflow, not the modeled apron ledger.</p></div>}
      </section>
      <section className="trade-board trade-flow" aria-label="Trade flow">
       {pending&&<div className="trade-route-dialog" role="group" aria-label="Route selected asset"><h3>Route {pending.label}</h3><p className="subtle">{pending.originTeam} · {pending.type==='draftPick'?'Draft interest':money(pending.salary)}</p>
@@ -211,8 +217,9 @@ export function TradeWorkspace(){
        <div className="row-wrap"><button className="trade-primary" onClick={confirmRoute}>Confirm route</button><button onClick={()=>setPending(null)}>Cancel</button></div></div>}
       {!assignments.length&&!pending&&<div className="trade-flow-empty"><span aria-hidden="true">⇄</span><h3>Start building the trade</h3><p>Choose an asset, set its destination, then review the modeled checks.</p><div><small>1 · Choose an asset</small><small>2 · Set destination</small><small>3 · Resolve blockers</small></div></div>}
       {!!assignments.length&&<><div className="trade-inner"><div className="row-wrap trade-flow-heading"><h3>Trade flow · {assignments.length} assets</h3><button disabled={!sourceScenario} onClick={saveTrade}>Save snapshot</button></div>{teams.map(t=><article className="trade-flow-team" key={t}><h4><Badge team={t}/>{nameForTeam(t)}</h4>
-       {['Outgoing','Incoming'].map(direction=><div key={direction}><small>{direction}</small>{assignments.filter(x=>direction==='Outgoing'?x.asset.originTeam===t:x.destinationTeam===t).map(x=><div className="trade-flow-row" key={x.asset.id}><span>{x.asset.label} <small>{x.asset.originTeam} → {x.destinationTeam}</small></span><strong>{x.asset.type==='draftPick'?'Pick':compact(x.asset.salary)}</strong>{direction==='Outgoing'&&<button aria-label={'Remove '+x.asset.label} onClick={()=>setAssignments(prev=>prev.filter(a=>a.asset.id!==x.asset.id))}>×</button>}</div>)}</div>)}
-       {report?.teamSummaries[t]&&<p className="subtle">Projected modeled payroll {money(report.teamSummaries[t].postTradeSalary)} · Roster {report.teamSummaries[t].projectedRosterPlayers}</p>}</article>)}</div>
+       {['Outgoing','Incoming'].map(direction=><div key={direction}><small>{direction}</small>{assignments.filter(x=>direction==='Outgoing'?x.asset.originTeam===t:x.destinationTeam===t).map(x=><div className="trade-flow-row" key={x.asset.id}><span>{x.asset.label} <small>{x.asset.originTeam} → {x.destinationTeam}</small></span><strong>{x.asset.type==='draftPick'?'Pick':x.asset.type==='draftRights'?'Rights':x.asset.metadata?.two_way?'Two-way':compact(x.asset.salary)}</strong>{direction==='Outgoing'&&<button aria-label={'Remove '+x.asset.label} onClick={()=>removeRoute(x.asset.id)}>×</button>}{direction==='Incoming'&&x.asset.type==='player'&&!x.asset.metadata?.two_way&&!x.asset.metadata?.sign_and_trade&&<label className="trade-acquisition">Acquisition<select aria-label={'Acquisition for '+x.asset.label} value={tpes[x.asset.id]??''} onChange={e=>setTpes(prev=>({...prev,[x.asset.id]:e.target.value}))}><option value="">Salary matching</option>{sources.draft.exceptions.filter(v=>sameTeam(v.team,t)).map(v=><option key={v.id} value={v.id} disabled={v.available<=0||v.expires<effectiveDate}>{v.sourceTransaction} · {compact(v.available)}</option>)}</select></label>}</div>)}</div>)}
+       {renounced.some(id=>sources.context.freeAgents.some(x=>x.id===id&&sameTeam(x.team,t)))&&<p className="subtle">Illustrative cap holds renounced: {money(sources.context.freeAgents.filter(x=>sameTeam(x.team,t)&&renounced.includes(x.id)).reduce((n,x)=>n+x.capHold,0))}</p>}
+       {report?.teamSummaries[t]&&<p className="subtle">Projected modeled payroll {money(report.teamSummaries[t].postTradeSalary)} · Roster {report.teamSummaries[t].projectedRosterPlayers} · Outgoing {compact(report.teamSummaries[t].outgoingSalary)} · Incoming {compact(report.teamSummaries[t].incomingSalary)} · Match limit {compact(report.teamSummaries[t].maximumIncomingSalary)}</p>}</article>)}</div>
        {report?<div className="trade-inner trade-validation" aria-label="Modeled validation results"><h3 className={report.errorCount?'trade-negative':'trade-positive'}>{report.errorCount?'Modeled blockers found':'No modeled blocking errors'}</h3><p role="status">{report.errorCount} errors · {report.warningCount} warnings · {mode==='off'?'Restrictions bypassed · ':''}Not CBA approval</p>
         {report.findings.map((f,i)=><p key={i} className={'trade-finding '+(f.severity==='error'?'trade-negative':'')}><strong>{f.team??'Scenario'} · {f.code}</strong><br/>{f.message}</p>)}</div>:<p role="alert" className="trade-inner">Select a valid date within 2026–27 and confirm all source contexts.</p>}</>}
       {notice&&<p role="status" className="trade-inner">{notice}</p>}

@@ -569,3 +569,27 @@ test('NBA Home reads published dashboard and global search opens a canonical his
  await expect(page).toHaveURL(/\/player\/synthetic-0/);
  await expect(page.getByRole('heading',{name:'Synthetic Player 0',exact:true})).toBeVisible();
 });
+
+test('source-gated trade rights, sign-and-trade ranges and snapshots are available',async({page})=>{
+ await page.goto('/trade?season=2025-26&segment=regular&basis=perGame');
+ await page.getByRole('button',{name:'Boston Celtics',exact:true}).click();
+ await page.getByRole('button',{name:'Philadelphia 76ers',exact:true}).click();
+ await page.getByRole('button',{name:'→ Build a Trade',exact:true}).click();
+ await page.getByRole('button',{name:'Draft rights',exact:true}).click();
+ await page.getByRole('button',{name:'Route Justinian Jessup (draft rights)',exact:true}).click();
+ await page.getByRole('button',{name:'Confirm route'}).click();
+ await page.getByRole('group',{name:'Participating teams'}).getByRole('button',{name:'PHI',exact:true}).click();
+ await page.getByRole('button',{name:'Free agents',exact:true}).click();
+ await page.getByLabel('Kyle Lowry sign-and-trade salary').fill('100');
+ await expect(page.getByRole('button',{name:'Route Kyle Lowry (sign-and-trade)',exact:true})).toHaveCount(0);
+ await page.getByLabel('Kyle Lowry sign-and-trade salary').fill('3876529');
+ await page.getByRole('button',{name:'Route Kyle Lowry (sign-and-trade)',exact:true}).click();
+ await page.getByRole('button',{name:'Confirm route'}).click();
+ await page.getByRole('button',{name:'Save snapshot'}).click();
+ await expect(page.getByText('Trade snapshot saved to Recent Trades.')).toBeVisible();
+ await page.reload();
+ await page.getByRole('button',{name:/^Recent Trades/}).click();
+ await page.getByRole('button',{name:'Open snapshot'}).click();
+ await expect(page.getByLabel('Trade flow')).toContainText('Justinian Jessup');
+ await expect(page.getByLabel('Trade flow')).toContainText('Kyle Lowry');
+});

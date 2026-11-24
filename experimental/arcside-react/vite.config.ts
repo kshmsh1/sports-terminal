@@ -195,7 +195,7 @@ const originalTradeContext=()=>{
   date:field(x,'date'),summary:field(x,'summary'),teams:[...(x.match(/teams:\s*\[([^\]]*)\]/)?.[1]??'').matchAll(/'([^']+)'/g)].map(y=>y[1])}));
  const rights=[...supplemental.matchAll(/NbaTradeDraftRight\(([\s\S]*?)\),/g)].map(x=>x[1]).filter(x=>field(x,'id')!==null).map(x=>({
   id:field(x,'id'),team:field(x,'team'),player:field(x,'player'),position:field(x,'position'),note:field(x,'note')??''}));
- const freeAgents=[...supplemental.matchAll(/NbaTradeFreeAgentRight\(([\s\S]*?)\),/g)].map(x=>x[1]).filter(x=>field(x,'id')!==null).map(x=>({
+ const freeAgents=[...supplemental.matchAll(/NbaTradeFreeAgentRight\(([\s\S]*?)\),/g)].map(x=>x[1]).filter(x=>field(x,'id')?.startsWith('fa-right:')).map(x=>({
   id:field(x,'id'),team:field(x,'team'),player:field(x,'player'),position:field(x,'position'),capHold:number(x,'capHold'),rights:field(x,'rights'),
   minimum:number(x,'signAndTradeMinimum'),maximum:number(x,'signAndTradeMaximum')}));
  const posBlock=video.match(/_playerPositionReference\s*=\s*<String,\s*String>\{([\s\S]*?)\};/)?.[1]??'';

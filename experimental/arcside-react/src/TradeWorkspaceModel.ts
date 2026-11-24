@@ -3,7 +3,7 @@ import type {DatedContractRecord,OriginalDraftAsset,TeamCapLedgerRecord,Original
 import type {TeamFinancialRecord} from './FinancialsWorkspace';
 import type {TradeAsset,TradeAssignment,TradeScenario,TradeReport} from './tradeEngine';
 import {nba2026Cap,validateTrade} from './tradeEngine';
-import {reviewTeamTpes} from './TradeMachinePilot';
+
 
 export const nbaTeams=[
  ['ATL','Atlanta Hawks','East'],['BOS','Boston Celtics','East'],['BKN','Brooklyn Nets','East'],
@@ -87,8 +87,35 @@ export function buildSourceScenario(teams:string[],assignments:TradeAssignment[]
  return {id:'arcside-source-trade',name:'2026–27 trade',operatingSeason:'2026-27',teams,assignments,capContexts,asOfDateIso:date+'T00:00:00Z'};
 }
 export function evaluateSourceTrade(s:TradeScenario,ctx:TradeContext,selections:Record<string,string>,exceptions:OriginalTradeException[],date:string):TradeReport{
- const r=reviewTeamTpes(validateTrade(s),s,selections,exceptions.map(x=>({...x,team:canonicalTeam(x.team)})),date);
+ const r=validateTrade(s);
  const findings=[...r.findings];
+ // Per-asset receiving mechanisms, matching the video-screen workflow. A whole
+ // over-capacity exception group is invalid; never silently absorb only part.
+ const grouped=new Map<string,TradeAssignment[]>();
+ for(const assignment of s.assignments){
+  const id=selections[assignment.asset.id];if(!id)continue;
+  const tpe=exceptions.find(x=>x.id===id&&sameTeam(x.team,assignment.destinationTeam));
+  const team=assignment.destinationTeam,context=s.capContexts[team],assetId=assignment.asset.id;
+  const fail=(code:string,message:string)=>findings.push({code,message,severity:'error',team,assetId});
+  if(assignment.asset.type!=='player'||assignment.asset.metadata?.two_way===true||assignment.asset.metadata?.sign_and_trade===true||!tpe||!context){fail('TPE_MISSING','No eligible receiving-team exception for this asset.');continue}
+  if(tpe.available<=0||tpe.expires<date){fail('TPE_EXPIRED','Selected exception is expired or exhausted.');continue}
+  if(context.teamSalary>context.secondApron||r.teamSummaries[team].postTradeSalary>context.secondApron){fail('TPE_APRON','Selected exception is blocked by the modeled second-apron restriction.');continue}
+  grouped.set(id,[...(grouped.get(id)??[]),assignment]);
+ }
+ const absorbed:Record<string,number>={};
+ for(const [id,group] of grouped){
+  const tpe=exceptions.find(x=>x.id===id)!;
+  const total=group.reduce((n,x)=>n+x.asset.salary,0),team=group[0].destinationTeam;
+  if(total>tpe.available+100000){findings.push({code:'TPE_AMOUNT',message:'Grouped incoming salary exceeds available exception capacity plus modeled allowance.',severity:'error',team});continue}
+  absorbed[team]=(absorbed[team]??0)+total;
+  for(const a of group)findings.push({code:'TPE_OK',message:a.asset.label+' modeled via '+tpe.sourceTransaction,severity:'info',team,assetId:a.asset.id});
+ }
+ for(const [team,amount] of Object.entries(absorbed)){
+  const summary=r.teamSummaries[team];
+  if(Math.max(0,summary.incomingSalary-amount)<=summary.maximumIncomingSalary+.01){
+   for(let i=findings.length-1;i>=0;i--)if(findings[i].team===team&&findings[i].code==='SALARY_MATCH')findings.splice(i,1);
+  }
+ }
  for(const team of s.teams){
   const cash=ctx.cash.find(x=>sameTeam(x.team,team));
   if(!cash)continue;
