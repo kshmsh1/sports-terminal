@@ -105,6 +105,8 @@ def lookup(db):
             teams[("id", ident(nba_id))].add(str(key))
         if abbr:
             teams[("abbr", str(abbr).upper())].add(str(key))
+    for abbr, key in db.execute("SELECT source_abbreviation,team_key FROM canon_team_source_xref WHERE source_abbreviation<>''"):
+        teams[("abbr", str(abbr).upper())].add(str(key))
     players = collections.defaultdict(set)
     for key, nba_id in db.execute("SELECT player_key,nba_id FROM canon_dim_player"):
         if ident(nba_id):
@@ -117,7 +119,15 @@ def choose_team(teams, row):
     abbr = str(row.get("TEAM_ABBREVIATION") or "").strip().upper()
     if not team_id or not abbr:
         return None
-    choices = teams.get(("id", team_id), set()) & teams.get(("abbr", abbr), set())
+    by_id = teams.get(("id", team_id), set())
+    by_abbr = teams.get(("abbr", abbr), set())
+    # Stable team IDs remain valid across historical abbreviation changes.
+    # Reject contradictory aliases; don't reject an old abbreviation only
+    # because it is absent from the current canonical team display name.
+    if len(by_id) == 1:
+        choice = next(iter(by_id))
+        return choice if not by_abbr or choice in by_abbr else None
+    choices = by_id & by_abbr
     return next(iter(choices)) if len(choices) == 1 else None
 
 
