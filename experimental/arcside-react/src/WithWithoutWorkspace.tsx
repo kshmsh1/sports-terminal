@@ -67,7 +67,7 @@ export function WithWithoutWorkspace({rows,season,segment,basis}:{
       <h3>{item.title}</h3>
       <p className="subtle">Season baseline · {basis} · {segment}</p>
       <div className="table-scroll" role="region" aria-label={item.title+' published splits'} tabIndex={0}>
-       <table className="stats-table"><thead><tr><th>Metric</th><th>Season baseline</th><th>With teammate</th><th>Without teammate</th><th>Shift</th></tr></thead>
+       <table className="stats-table"><thead><tr><th scope="col">Metric</th><th scope="col">Season baseline</th><th scope="col">With teammate</th><th scope="col">Without teammate</th><th scope="col">Shift</th></tr></thead>
         <tbody>{selectedKeys.map(k=>{
          const values=line(item.split,k);
          const diff=values.with!==null&&values.without!==null?values.with-values.without:null;

@@ -451,7 +451,7 @@ test('with/without table uses readable column widths and content-driven height',
  await page.getByLabel('With/without team').selectOption('CHI');
  await page.getByLabel('With/without player A').selectOption('synthetic-0');
  const table=page.getByRole('region',{name:'Synthetic Player 0 published splits'});
- await expect(table.getByRole('columnheader',{name:'With teammate',exact:true})).toBeVisible();
+ await expect(table.locator('thead th[scope=col]').filter({hasText:/^With teammate$/})).toBeVisible();
  const clipped=await table.locator('th,td').evaluateAll(cells=>cells.filter(e=>e.scrollWidth>e.clientWidth+1).map(e=>e.textContent));
  expect(clipped).toEqual([]);
 });
@@ -496,7 +496,7 @@ test('financial source thresholds, roster and cap allocation match the dated ori
  expect(data.leagueSourceSha256).toMatch(/^[a-f0-9]{64}$/);
  const atl=data.teams.find((r:{team:string})=>r.team==='ATL');
  await page.goto('/financials?season=2025-26&segment=regular&basis=perGame');
- await expect(page.getByRole('columnheader',{name:'Hard cap'})).toBeVisible();
+ await expect(page.locator('.financials-workspace thead th[scope=col]').filter({hasText:/^Hard cap$/})).toBeVisible();
  await page.getByLabel('Find financial team').fill('ATL');
  const table=page.getByRole('region',{name:'NBA team financial table'});
  await expect(table.getByRole('row')).toHaveCount(2);

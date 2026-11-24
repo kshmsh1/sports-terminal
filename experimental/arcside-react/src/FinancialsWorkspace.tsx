@@ -34,7 +34,7 @@ export function FinancialsWorkspace(){
    <p className="subtle">Source: {report.source} · {report.sourceAsOf} · {rows.length} teams · Source fingerprint {report.dartSourceSha256.slice(0,12)}</p>
    <div className="financial-layout">
     <div className="table-scroll" role="region" tabIndex={0} aria-label="NBA team financial table">
-     <table className="stats-table"><thead><tr><th>Team</th><th>Roster</th><th>Cap space</th><th>Tax space</th><th>First apron</th><th>Second apron</th><th>Hard cap</th></tr></thead>
+     <table className="stats-table"><thead><tr><th scope="col">Team</th><th scope="col">Roster</th><th scope="col">Cap space</th><th scope="col">Tax space</th><th scope="col">First apron</th><th scope="col">Second apron</th><th scope="col">Hard cap</th></tr></thead>
       <tbody>{shown.map(row=><tr key={row.team} className={team?.team===row.team?'selected-financial':''}>
        <td><button onClick={()=>setSelected(row.team)} aria-pressed={team?.team===row.team} className="sort-button">{displayTeam(row.team)}</button></td>
        <td className="numeric">{row.standardRoster} + {row.twoWayRoster} two-way</td><td className={'numeric '+roomClass(row.capSpace)}>{dollars(row.capSpace)}</td>
