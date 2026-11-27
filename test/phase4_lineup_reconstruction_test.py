@@ -1,6 +1,6 @@
 """Synthetic Phase 4B event-level reconstruction tests, not historical coverage."""
 import unittest
-from tools.phase4_materialize_with_without import process_game, summarize_games, ident, clock_seconds
+from tools.phase4_materialize_with_without import process_game, summarize_games, ident, clock_seconds, reconcile_period_minutes
 
 
 def event(n, clock, type_=1, p1=None, t1=None, p2=None, t2=None, score=None):
@@ -75,6 +75,16 @@ class LineupTest(unittest.TestCase):
         stints,_,report=process_game(events,game,players)
         self.assertEqual(report["periods_verified"],1)
         self.assertEqual(sum(s["seconds"] for s in stints),720)
+
+    def test_five_player_minute_conservation(self):
+        game,players,events=fixture()
+        stints,_,_=process_game(events,game,players)
+        valid,player_minutes=reconcile_period_minutes(stints,720)
+        self.assertTrue(valid)
+        self.assertEqual(sum(v for (side,_),v in player_minutes.items()
+                             if side=="home"),5*720)
+        malformed=[dict(stints[0],home=frozenset({"only-one"}))]
+        self.assertFalse(reconcile_period_minutes(malformed,720)[0])
 
     def test_missing_starting_five_is_rejected(self):
         game,players,events=fixture()
