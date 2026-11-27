@@ -104,6 +104,30 @@ class RecoveryTest(unittest.TestCase):
         self.assertIsNone(choose_team(teams,{"TEAM_ID":"999",
                               "TEAM_ABBREVIATION":"CHP"},"1961-62"))
 
+    def test_official_boxscore_resolves_only_verified_neutral_designation(self):
+        data=rows()
+        for row in data:
+            row["MATCHUP"]=row["TEAM_ABBREVIATION"]+" @ OTHER"
+        self.write(data)
+        initial=recover_capture_games(self.conn,self.root)
+        self.assertEqual(initial["counts"]["home_away_collision"],1)
+        file=self.root/"nba_com/pbp_live/boxscore/2025-26/regular/0000000001.json"
+        file.parent.mkdir(parents=True)
+        file.write_text(json.dumps({"game":{
+            "gameId":"0000000001","gameStatus":3,
+            "homeTeam":{"teamId":100,"score":50,"players":[{"personId":1}]},
+            "awayTeam":{"teamId":200,"score":40,"players":[{"personId":6}]}
+        }}))
+        checked=recover_capture_games(self.conn,self.root)
+        self.assertEqual(checked["counts"].get("qualified_missing_games"),1)
+        self.assertEqual(checked["counts"]["official_home_assignment"],1)
+        bad=json.loads(file.read_text())
+        bad["game"]["awayTeam"]["score"]=99
+        file.write_text(json.dumps(bad))
+        refused=recover_capture_games(self.conn,self.root)
+        self.assertEqual(refused["counts"]["home_away_collision"],1)
+        self.assertEqual(refused["counts"].get("qualified_missing_games",0),0)
+
     def test_incremental_index_publication_preserves_other_static_data(self):
         from tools.phase4_publish_recovered_games import refresh
         self.write(rows())
