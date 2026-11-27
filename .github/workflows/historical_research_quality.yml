@@ -35,6 +35,9 @@ jobs:
       - name: Compile historical backend
         run: python -m compileall -q backend/app tools
 
+      - name: Phase 4 historical recovery and verified lineup contracts
+        run: python -m unittest discover -s test -p 'phase4_*test.py' -v
+
       - name: Raw historical import contract
         run: python backend/scripts/historical_import_contract_test.py
 

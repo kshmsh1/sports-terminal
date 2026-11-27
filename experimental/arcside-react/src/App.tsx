@@ -5,14 +5,17 @@ import type {MetricKey,Row} from './engine';
 import {advancedKeys,bases,buildRows,formatMetric,metrics,overviewKeys,sortRows,stintRows} from './engine';
 
 import {dossierName,dossierSegments} from './ProfileDossier';
+import {GlobalSearch} from './GlobalSearch';
+const HomeWorkspace=lazy(()=>import('./HomeWorkspace').then(m=>({default:m.HomeWorkspace})));
 const AdvancedStatsTable=lazy(()=>import('./AdvancedStatsTable').then(m=>({default:m.AdvancedStatsTable})));
 const Chart=lazy(()=>import('./Chart').then(m=>({default:m.Chart})));
+const CanonicalProfileStats=lazy(()=>import('./CanonicalProfileStats').then(m=>({default:m.CanonicalProfileStats})));
 const PlayerProfileTables=lazy(()=>import('./ProfileTable').then(m=>({default:m.PlayerProfileTables})));
 const ProfileSummary=lazy(()=>import('./ProfileContext').then(m=>({default:m.ProfileSummary})));
 const ProfileContracts=lazy(()=>import('./ProfileContext').then(m=>({default:m.ProfileContracts})));
 const ProfileHonors=lazy(()=>import('./ProfileContext').then(m=>({default:m.ProfileHonors})));
 const ProfileSourceContext=lazy(()=>import('./ProfileContext').then(m=>({default:m.ProfileSourceContext})));
-const TradeMachinePilot=lazy(()=>import('./TradeMachinePilot').then(m=>({default:m.TradeMachinePilot})));
+const TradeWorkspace=lazy(()=>import('./TradeWorkspace').then(m=>({default:m.TradeWorkspace})));
 const ComparisonWorkspace=lazy(()=>import('./ComparisonWorkspaces').then(m=>({default:m.ComparisonWorkspace})));
 const BoxScoresWorkspace=lazy(()=>import('./BoxScoresWorkspace').then(m=>({default:m.BoxScoresWorkspace})));
 const FinancialsWorkspace=lazy(()=>import('./FinancialsWorkspace').then(m=>({default:m.FinancialsWorkspace})));
@@ -37,9 +40,9 @@ function urlFor(v:ViewState):string {
 }
 const qualify=(r:Row,segment:SeasonType)=> (r.values.gp??0)>=(segment==='regular'?50:4);
 const metricLabel=(m:MetricKey)=>metrics.find(x=>x.key===m)?.label??m;
-const allowedRoutes=['/stats','/advanced','/visualizations','/trade','/player-compare','/team-compare','/box-scores','/financials','/with-without','/teams','/games','/franchise-history','/workspaces/python','/workspaces/sheets'];
+const allowedRoutes=['/home','/stats','/advanced','/visualizations','/trade','/player-compare','/team-compare','/box-scores','/financials','/with-without','/teams','/games','/franchise-history','/workspaces/python','/workspaces/sheets'];
 function labelFor(route:string):string {
- return ({'/stats':'Stats','/advanced':'Advanced Stats','/visualizations':'Visualizations',
+ return ({'/home':'NBA Home','/stats':'Stats','/advanced':'Advanced Stats','/visualizations':'Visualizations',
  '/trade':'Trade Machine',
  '/player-compare':'Player Compare','/team-compare':'Team Compare',
  '/box-scores':'Box Scores','/financials':'Financials','/with-without':'With/Without',
@@ -53,6 +56,7 @@ export function App(){
  const [manifest,setManifest]=useState<Manifest|null>(null);
  const [seasons,setSeasons]=useState<Season[]>([]);
  const [snapshot,setSnapshot]=useState<SeasonSnapshot|null>(null);
+ const needsShard=['/stats','/advanced','/visualizations','/player-compare','/team-compare','/with-without'].includes(view.path)||view.path.startsWith('/team/');
  const [error,setError]=useState('');
  const [loading,setLoading]=useState(true);
  const [search,setSearch]=useState('');
@@ -88,18 +92,18 @@ export function App(){
   return ()=>controller.abort();
  },[]);
  useEffect(()=>{
-  if(!view.season||!manifest)return;
+  if(!needsShard||!view.season||!manifest){setSnapshot(null);return;}
   const controller=new AbortController();setSnapshot(null);setError('');setLoading(true);
   getSeason(view.season,view.segment,controller.signal).then(value=>{if(!controller.signal.aborted)setSnapshot(value)}).catch(e=>{
    if(!controller.signal.aborted)setError(String(e.message??e));
   }).finally(()=>{if(!controller.signal.aborted)setLoading(false)});
   return ()=>controller.abort();
- },[view.season,view.segment,manifest]);
+ },[view.season,view.segment,manifest,needsShard]);
  useEffect(()=>{
   if(!view.path.startsWith('/player/')){setDossier(null);return;}
   const controller=new AbortController();setDossier(null);
   const key=decodeURIComponent(view.path.slice('/player/'.length));
-  getPlayerDossier(key,controller.signal).then(setDossier).catch(e=>{
+  getPlayerDossier(key,controller.signal).then(value=>{if(!controller.signal.aborted)setDossier(value)}).catch(e=>{
    if(!controller.signal.aborted)setError(String(e.message??e));
   });
   return ()=>controller.abort();
@@ -126,15 +130,16 @@ export function App(){
   if(push)history.pushState({},'',u);else history.replaceState({},'',u);
   setView(next);
  }
- function navigate(path:string){change({path},true);window.scrollTo({top:0})}
- const rows=useMemo(()=>snapshot?buildRows(snapshot,view.basis):[],[snapshot,view.basis]);
+ function navigate(path:string){setError('');change({path},true);window.scrollTo({top:0})}
+ const rowsNeeded=['/stats','/advanced','/visualizations','/with-without'].includes(view.path);
+ const rows=useMemo(()=>rowsNeeded&&snapshot?buildRows(snapshot,view.basis):[],[snapshot,view.basis,rowsNeeded]);
  const teams=useMemo(()=>['All',...new Set(rows.flatMap(r=>r.team.split(/[,/ ]+/).filter(x=>/^[A-Z]{2,4}$/.test(x))))].sort(),[rows]);
  const positions=['All','PG','SG','SF','PF','C','G','F'];
- const filtered=useMemo(()=>sortRows(rows.filter(r=>{
+ const filtered=useMemo(()=>view.path==='/stats'?sortRows(rows.filter(r=>{
   const matches=(r.player+' '+r.team+' '+r.position).toLowerCase().includes(search.toLowerCase().trim());
   return matches&&(team==='All'||r.team.split(/[,/ ]+/).includes(team))&&
    (position==='All'||r.position===position)&&(!qualified||qualify(r,view.segment));
- }),sort,descending),[rows,search,team,position,qualified,view.segment,sort,descending]);
+ }),sort,descending):[],[rows,search,team,position,qualified,view.segment,view.path,sort,descending]);
  const visible=useMemo(()=>{
   const list:{row:Row;stint:boolean;parent:string}[]=[];
   for(const row of filtered){
@@ -172,14 +177,15 @@ export function App(){
    <nav>{allowedRoutes.map(route=><a key={route} href={urlFor({...view,path:route})}
     className={view.path===route?'nav-link chosen':'nav-link'} aria-current={view.path===route?'page':undefined}
     onClick={e=>{e.preventDefault();navigate(route)}}>{labelFor(route)}</a>)}</nav>
-   <div className="sidebar-foot"><span className="dot"/> REACT-FIRST BETA
-    <p>Local development platform. Some workflows are still being completed.</p></div>
+   <div className="sidebar-foot"><span className="dot"/> ARCSIDE REACT
+    <p>Primary development frontend · migration validation in progress.</p></div>
   </aside>
   <div className="main-frame">
    <header className="topbar">
     <div><div className="crumb">NBA / {labelFor(view.path)}</div>
      <div className="top-title">{labelFor(view.path)}</div></div>
     <div className="top-actions">
+     <GlobalSearch onNavigate={navigate}/>
      <span className="manifest-pill">{manifest?'NBA STATIC v'+manifest.static_schema_version:'SOURCE UNVERIFIED'}</span>
      <button onClick={()=>setTheme(x=>x==='dark'?'light':'dark')}
       aria-label={'Switch to '+(theme==='dark'?'light':'dark')+' theme'}>{theme==='dark'?'Light mode':'Dark mode'}</button>
@@ -189,12 +195,12 @@ export function App(){
     {!["/trade","/financials","/box-scores"].includes(view.path)&&<div className="workbench-controls">
      <label>Season<select value={view.season} onChange={e=>change({season:e.target.value})}
       disabled={!seasons.length}>{seasons.map(s=><option key={s.season_id} value={s.season_id}>{s.label??s.season_id}</option>)}</select></label>
-     <fieldset className="segment-controls"><legend>Season type</legend>
+     {view.path!=='/home'&&<fieldset className="segment-controls"><legend>Season type</legend>
       <button className={view.segment==='regular'?'selected':''} aria-pressed={view.segment==='regular'}
        onClick={()=>change({segment:'regular'})}>Regular season</button>
       <button className={view.segment==='playoffs'?'selected':''} aria-pressed={view.segment==='playoffs'}
-       onClick={()=>change({segment:'playoffs'})}>Playoffs</button></fieldset>
-     {view.path!=='/team-compare'&&<label>Rate basis<select value={view.basis} onChange={e=>change({basis:e.target.value as RateBasis})}>
+       onClick={()=>change({segment:'playoffs'})}>Playoffs</button></fieldset>}
+     {view.path!=='/team-compare'&&view.path!=='/home'&&<label>Rate basis<select value={view.basis} onChange={e=>change({basis:e.target.value as RateBasis})}>
        {bases.map(b=><option value={b.value} key={b.value}>{b.label}</option>)}</select></label>}
      <span className="workbench-caption">Season context</span>
     </div>}
@@ -204,6 +210,7 @@ export function App(){
     {!allowedRoutes.includes(view.path)&&!view.path.startsWith('/player/')&&!view.path.startsWith('/team/')&&!view.path.startsWith('/game/')&&
      <div className="panel"><h2>Route not found</h2><button onClick={()=>navigate('/stats')}>Return to Stats</button></div>}
     <Suspense fallback={<p role="status" className="loading">Loading selected Arcside workspace…</p>}>
+    {view.path==='/home'&&<HomeWorkspace season={view.season} onNavigate={navigate}/>}
     {view.path==='/advanced'&&<AdvancedStatsTable rows={rows}
       basis={view.basis} segment={view.segment} season={view.season}
       onPlayer={id=>navigate('/player/'+encodeURIComponent(id))}/>}
@@ -256,7 +263,7 @@ export function App(){
       Source-verified team stints only. Scroll inside the table to inspect additional rows.</p>
     </section>}
     {view.path==='/visualizations'&&<Chart rows={rows} basis={view.basis} segment={view.segment}/>}
-     {view.path==='/trade'&&<TradeMachinePilot/>}
+     {view.path==='/trade'&&<TradeWorkspace/>}
     {view.path==='/player-compare'&&<ComparisonWorkspace key="player-comparison" kind="player" seasons={seasons}
      onContext={context=>change(context)}
      season={view.season} segment={view.segment} basis={view.basis} snapshot={snapshot}
@@ -314,6 +321,7 @@ export function App(){
         onClick={()=>change({segment:'playoffs'})}>Playoffs</button>
        <span>{dossierSegments(dossier)[view.segment].length} original published rows</span>
       </div>
+      <CanonicalProfileStats key={view.path} dossier={dossier} playerKey={String((dossier.profile as JsonRow|undefined)?.player_key??decodeURIComponent(view.path.slice('/player/'.length)))} segment={view.segment} basis={view.basis} season={view.season} activeSnapshot={snapshot}/>
       <PlayerProfileTables dossier={dossier} segment={view.segment} basis={view.basis}/>
       <ProfileContracts dossier={dossier} dated={datedContracts} registry={registryContracts}
         playerKey={decodeURIComponent(view.path.slice('/player/'.length))}

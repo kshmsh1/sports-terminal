@@ -6,7 +6,8 @@ const rows=(v:unknown):JsonRow[]=>Array.isArray(v)?v.filter((x):x is JsonRow=>x!
 const obj=(v:unknown):JsonRow=>v&&typeof v==='object'&&!Array.isArray(v)?v as JsonRow:{};
 const str=(v:unknown,missing='—')=>v===undefined||v===null||v===''?missing:String(v);
 const amount=(x:unknown)=>typeof x==='number'&&Number.isFinite(x)?'$'+Math.round(x).toLocaleString():'—';
-const norm=(x:string)=>x.toLowerCase().replace(/[^a-z0-9]/g,'');
+const norm=(x:string)=>x.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const normalizeTeam=(x:string)=>({BRK:'BKN',CHO:'CHA',PHO:'PHX'} as Record<string,string>)[x]??x;
 export function TeamsDirectory({onTeam}:{onTeam:(id:string)=>void}){
  const [teams,setTeams]=useState<JsonRow[]>([]),[query,setQuery]=useState(''),[error,setError]=useState('');
  useEffect(()=>{const controller=new AbortController();getTeamIndex(controller.signal).then(setTeams)
@@ -37,9 +38,10 @@ export function teamCareerSeasons(dossier:JsonRow,segment:'regular'|'playoffs'){
 }
 export function joinTeamRoster(contracts:DatedContractSnapshot|null,abbr:string,snapshot:SeasonSnapshot|null){
  const players=snapshot?buildRows(snapshot,'perGame'):[];
- const mapped=new Map(players.map(p=>[norm(p.player),p]));
- return (contracts?.records??[]).filter(c=>c.team===abbr&&Number(c.salaries['2026-27']??0)>0)
-  .map(c=>({contract:c,previous:mapped.get(norm(c.player))}))
+ const mapped=new Map<string,typeof players>();
+ for(const player of players){const key=norm(player.player);mapped.set(key,[...(mapped.get(key)??[]),player])}
+ return (contracts?.records??[]).filter(c=>normalizeTeam(c.team)===normalizeTeam(abbr)&&Number(c.salaries['2026-27']??0)>0)
+  .map(c=>{const candidates=mapped.get(norm(c.player))??[];return {contract:c,previous:candidates.length===1?candidates[0]:undefined}})
   .sort((a,b)=>(b.previous?.values.min??-1)-(a.previous?.values.min??-1)||
    b.contract.salaries['2026-27']-a.contract.salaries['2026-27']);
 }
@@ -58,7 +60,7 @@ export function TeamDetailWorkspace({teamKey,snapshot,onPlayer,onGame,onTeam}:{
    const items=results[0].value,salary=results[1].status==='fulfilled'?results[1].value:null;
    if(controller.signal.aborted)return;
    setIndex(items);setContracts(salary);
-   setDossier(await getTeamDossier(teamKey,items,controller.signal));
+   const data=await getTeamDossier(teamKey,items,controller.signal);if(!controller.signal.aborted)setDossier(data);
   }).catch(e=>{if(!controller.signal.aborted)setError(String(e.message??e))})
    .finally(()=>{if(!controller.signal.aborted)setLoading(false)});
   return ()=>controller.abort();

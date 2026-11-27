@@ -40,7 +40,7 @@ class Security:
         return resolved
 
     def authorized(self, token: str | None) -> bool:
-        return isinstance(token, str) and hmac.compare_digest(self.token, token)
+        return isinstance(token, str) and token.isascii() and len(token) <= 512 and hmac.compare_digest(self.token, token)
 
     def check_origin(self, origin: str | None) -> bool:
         # Browser callers always supply Origin. Non-browser automation still

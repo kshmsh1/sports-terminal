@@ -1534,19 +1534,38 @@ def validate_canonical_integrity(db: sqlite3.Connection) -> dict[str, int]:
 
 def build_coverage(db: sqlite3.Connection) -> int:
     db.execute("DELETE FROM canon_coverage")
-    domains = [("player_season", "canon_fact_player_season", "league_id", "season_id", "primary_source"), ("team_season", "canon_fact_team_season", "league_id", "season_id", "primary_source"), ("player_game", "canon_fact_player_game", "league_id", "season_id", "source_key"), ("game", "canon_dim_game", "league_id", "season_id", None), ("award", "canon_fact_award", "league_id", "season_id", "source_key"), ("all_star", "canon_fact_all_star", "league_id", "season_id", "source_key")]
+    domains = [("player_season", "canon_fact_player_season", "league_id", "season_id", "primary_source"), ("team_season", "canon_fact_team_season", "league_id", "season_id", "primary_source"), ("player_game", "canon_fact_player_game", "league_id", "season_id", "source_key"), ("award", "canon_fact_award", "league_id", "season_id", "source_key"), ("all_star", "canon_fact_all_star", "league_id", "season_id", "source_key")]
     inserted = 0
     for domain, table, league_col, season_col, source_col in domains:
         if not table_exists(db, table):
             continue
-        query = f"SELECT {q(league_col)},{q(season_col)},COUNT(*)," + (f"COUNT(DISTINCT {q(source_col)}),GROUP_CONCAT(DISTINCT {q(source_col)})" if source_col else "1,'wyatt_nbadb'") + f" FROM {q(table)} GROUP BY {q(league_col)},{q(season_col)}"
+        query = (f"SELECT {q(league_col)},{q(season_col)},COUNT(*),"
+                 f"COUNT(DISTINCT {q(source_col)}),GROUP_CONCAT(DISTINCT {q(source_col)}) "
+                 f"FROM {q(table)} GROUP BY {q(league_col)},{q(season_col)}")
         for league, season, count, source_count, source_list in db.execute(query):
             if season is None:
                 continue
             sources = sorted(set(str(source_list or "").split(",")))
-            db.execute("INSERT OR REPLACE INTO canon_coverage VALUES (?,?,?,?,?,?)", (domain, league, season, int(count), int(source_count), json.dumps([source for source in sources if source])))
+            db.execute("INSERT OR REPLACE INTO canon_coverage VALUES (?,?,?,?,?,?)",
+                       (domain, league, season, int(count), int(source_count),
+                        json.dumps([source for source in sources if source])))
             inserted += 1
-    db.commit()
+    # The previous game coverage field hardcoded wyatt_nbadb even when a
+    # recovered NBA.com game was the only game present in a segment.
+    if table_exists(db, "canon_dim_game") and table_exists(db, "canon_game_source_xref"):
+        query = """
+            SELECT g.league_id,g.season_id,COUNT(DISTINCT g.game_key),
+                   COUNT(DISTINCT x.source_key),GROUP_CONCAT(DISTINCT x.source_key)
+            FROM canon_dim_game g
+            LEFT JOIN canon_game_source_xref x ON x.game_key=g.game_key
+            GROUP BY g.league_id,g.season_id
+        """
+        for league, season, count, source_count, source_list in db.execute(query):
+            if season is None:continue
+            sources=sorted(set(str(source_list or "").split(","))- {""})
+            db.execute("INSERT OR REPLACE INTO canon_coverage VALUES (?,?,?,?,?,?)",
+                       ("game",league,season,int(count),int(source_count),json.dumps(sources)))
+            inserted+=1
     return inserted
 
 
@@ -1581,10 +1600,34 @@ def main() -> int:
         player_seasons = build_player_seasons(db, policy, player_ids, player_names, team_ids, team_abbrs)
         team_seasons = build_team_seasons(db, policy, team_ids, team_abbrs)
         games, team_games = build_games(db, policy, team_ids, team_abbrs)
+        # Phase 4A: captured NBA.com logs can contain entire season segments
+        # absent from the Wyatt source. Recover only source-qualified games
+        # before Gonzalo date/game matching; retain the original on rebuild.
+        try:
+            from tools.phase4_recover_capture_games import recover_capture_games, STATIC
+        except ModuleNotFoundError:
+            from phase4_recover_capture_games import recover_capture_games, STATIC
+        capture_recovery = recover_capture_games(db, STATIC, apply=True)
+        recovered_games = capture_recovery["counts"].get("inserted_games", 0)
+        games += recovered_games
+        team_games += 2 * recovered_games
         pbp_view = create_play_by_play_view(db)
         player_games = 0 if args.skip_player_games else build_player_games(
             db, player_ids, player_names, team_ids, team_abbrs, policy
         )
+        # Two independent sources may describe one player in the same game.
+        # Prefer established historical player-game facts; never double-count.
+        deduplicated_captured_player_games = db.execute("""
+            DELETE FROM canon_fact_player_game
+            WHERE source_key='nba_com' AND player_key IS NOT NULL
+              AND EXISTS (
+                SELECT 1 FROM canon_fact_player_game AS other
+                WHERE other.game_key=canon_fact_player_game.game_key
+                  AND other.player_key=canon_fact_player_game.player_key
+                  AND other.team_key=canon_fact_player_game.team_key
+                  AND other.source_key<>'nba_com'
+              )
+        """).rowcount
         derived_playoff_player_seasons = (
             0 if args.skip_player_games else build_playoff_player_seasons_from_games(db)
         )
@@ -1641,6 +1684,8 @@ def main() -> int:
             "fieldProvenance": provenance,
             "coverageRows": coverage_rows,
             "playByPlayView": pbp_view,
+            "nbaComCaptureRecovery": capture_recovery,
+            "deduplicatedCapturedPlayerGames": deduplicated_captured_player_games,
         }
         build_id = datetime.now(timezone.utc).strftime("canon-%Y%m%dT%H%M%S%fZ")
         db.execute("INSERT INTO canon_build_manifest VALUES (?,?,?,?,?,?,?,?)", (build_id, str(policy.get("canonicalSchemaVersion", "1")), now_iso(), int(source_summary[1]), int(source_summary[2]), int(source_summary[0]), json.dumps(counts, sort_keys=True), json.dumps([])))

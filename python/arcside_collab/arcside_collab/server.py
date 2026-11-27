@@ -76,6 +76,8 @@ def _workbook(snapshot: Any) -> dict:
     seen=set()
     total=0
     for sheet in sheets:
+        if not isinstance(sheet,dict):
+            raise ValueError("Invalid sheet object")
         name=sheet.get("name")
         if not isinstance(name,str) or not 1<=len(name)<=64 or "!" in name or name in seen:
             raise ValueError("Invalid or duplicate sheet name")
@@ -167,7 +169,7 @@ def create_app(db_path: Path, *, origins: list[str] | None = None,
             raise HTTPException(403,"Loopback Host required")
 
     def role(room:str,token:str)->str|None:
-        if not ROOM_RE.fullmatch(room) or not token:
+        if not ROOM_RE.fullmatch(room) or not isinstance(token,str) or not token or len(token)>512 or not token.isascii():
             return None
         provided=_hash(token)
         rows=db.execute("SELECT token_hash,role FROM grants WHERE room=?",(room,)).fetchall()
@@ -191,6 +193,15 @@ def create_app(db_path: Path, *, origins: list[str] | None = None,
         if row is None:raise HTTPException(404,"Room not found")
         return {"revision":row["revision"],"snapshot":json.loads(row["snapshot"])}
 
+    @app.middleware("http")
+    async def private_responses(request:Request,call_next):
+        response=await call_next(request)
+        if request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"]="no-store"
+            response.headers["X-Content-Type-Options"]="nosniff"
+            response.headers["Referrer-Policy"]="no-referrer"
+        return response
+
     @app.get("/health")
     def health()->dict:
         return {"service":"arcside-collab","ready":True}
@@ -199,7 +210,7 @@ def create_app(db_path: Path, *, origins: list[str] | None = None,
     async def create_room(request:Request,body:RoomRequest)->dict:
         trusted(request.headers)
         credential=request.headers.get("authorization","")
-        if not credential.startswith("Bearer ") or not hmac.compare_digest(credential[7:],admin_token):
+        if not credential.startswith("Bearer ") or not credential[7:].isascii() or len(credential[7:])>512 or not hmac.compare_digest(credential[7:],admin_token):
             raise HTTPException(401,"Room creation key required")
         try:
             snapshot=_workbook(body.snapshot)

@@ -17,6 +17,7 @@ export function WithWithoutWorkspace({rows,season,segment,basis}:{
  const [loaded,setLoaded]=useState<{key:string;data:WithWithoutData}|null>(null);
  const sourceKey=season+':'+segment;
  const data=loaded?.key===sourceKey?loaded.data:null;
+ const teamUnits=data?.units==='team_on_court_per36';
  const [loading,setLoading]=useState(false),[error,setError]=useState('');
  const [selectedKeys,setSelectedKeys]=useState(keys);
  const teams=useMemo(()=>[...new Set(rows.flatMap(asTeam))].sort(),[rows]);
@@ -58,6 +59,7 @@ export function WithWithoutWorkspace({rows,season,segment,basis}:{
   {error&&<p role="alert">{error}</p>}
   {!loading&&data&&!data.available&&<p className="empty">{data.message}</p>}
   {data?.available&&<p className="subtle">Lineup source: {data.source||'Published source unspecified'} · {data.rows.length} pair records · {season} {segment}</p>}
+  {data?.available&&teamUnits&&<p className="subtle" role="status">Verified {data.coverage?.games_with_stints??'—'} of {data.coverage?.canonical_games??'—'} indexed games · {data.coverage?.accepted_periods??'—'} reconstructed periods. These are partial, source-verified minutes, not full-season estimates.</p>}
   <div className="row-wrap comparison-actions">{keys.map(k=><label key={k} className="check"><input type="checkbox"
    checked={selectedKeys.includes(k)} onChange={e=>setSelectedKeys(prev=>e.target.checked?[...prev,k]:prev.filter(x=>x!==k))}/>{labels[k]??k.toUpperCase()}</label>)}</div>
   <div className="withwithout-grids">
@@ -71,8 +73,8 @@ export function WithWithoutWorkspace({rows,season,segment,basis}:{
         <tbody>{selectedKeys.map(k=>{
          const values=line(item.split,k);
          const diff=values.with!==null&&values.without!==null?values.with-values.without:null;
-         return <tr key={k}><th scope="row">{labels[k]??k.toUpperCase()}</th>
-          <td className="numeric">{item.row?formatMetric(k as keyof Row['values'],item.row.values[k as keyof Row['values']]??null):'—'}</td>
+         return <tr key={k}><th scope="row">{teamUnits&&k==='pts'?'Team PTS/36':teamUnits&&k==='plus_minus'?'Team +/-/36':labels[k]??k.toUpperCase()}</th>
+          <td className="numeric">{teamUnits&&(k==='pts'||k==='plus_minus')?'—':item.row?formatMetric(k as keyof Row['values'],item.row.values[k as keyof Row['values']]??null):'—'}</td>
           <td className="numeric">{fmt(values.with)}</td><td className="numeric">{fmt(values.without)}</td>
           <td className="numeric">{diff===null?'—':(diff>=0?'+':'')+diff.toFixed(1)}</td>
          </tr>})}</tbody></table>
@@ -81,6 +83,6 @@ export function WithWithoutWorkspace({rows,season,segment,basis}:{
        <p className="subtle">No confirmed pair-level split for this orientation. Season totals cannot establish with/without values.</p>}
      </div>)}
   </div>
-  <p className="table-note">Published pair splits are shown in their recorded units. The rate-basis selector changes the season baseline only; it does not rescale split data without verified denominators.</p>
+  <p className="table-note">{teamUnits?'Verified pair minutes use only reconstructable play-by-play periods. PTS/36 and +/-/36 are team on-court rates, not individual player box-score totals; missing scoring or other metrics are intentionally blank. The season baseline has different units and is not compared for these measures.':'Published pair splits are shown in their recorded units. The rate-basis selector changes the season baseline only; it does not rescale split data without verified denominators.'}</p>
  </section>;
 }
