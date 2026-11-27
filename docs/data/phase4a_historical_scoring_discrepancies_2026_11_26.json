@@ -1,0 +1,157 @@
+{
+  "contract": "arcside-phase4a-independent-final-score-review-v1",
+  "status": "review_only_not_applied",
+  "source_note": "Historical final results independently checked against Basketball-Reference season schedules. NBA.com primary evidence and player-level corrections still required to repair the original captured traditional logs. Never synthesize player stats or append rejected games from this file.",
+  "games": [
+    {
+      "game_id": "0026000172",
+      "date": "1961-01-13",
+      "home_abbr": "BOS",
+      "home_score": 123,
+      "away_abbr": "PHW",
+      "away_score": 121,
+      "source_url": "https://www.basketball-reference.com/teams/BOS/1961_games.html",
+      "player_point_reconciliation": "pending"
+    },
+    {
+      "game_id": "0026000231",
+      "date": "1961-02-07",
+      "home_abbr": "STL",
+      "home_score": 127,
+      "away_abbr": "PHW",
+      "away_score": 124,
+      "source_url": "https://www.basketball-reference.com/teams/PHW/1961_games.html",
+      "player_point_reconciliation": "pending"
+    },
+    {
+      "game_id": "0026000296",
+      "date": "1961-03-04",
+      "home_abbr": "STL",
+      "home_score": 104,
+      "away_abbr": "DET",
+      "away_score": 102,
+      "source_url": "https://www.basketball-reference.com/teams/DET/1961_games.html",
+      "player_point_reconciliation": "pending"
+    },
+    {
+      "game_id": "0026000316",
+      "date": "1961-03-12",
+      "home_abbr": "NYK",
+      "home_score": 106,
+      "away_abbr": "DET",
+      "away_score": 120,
+      "source_url": "https://www.basketball-reference.com/teams/NYK/1961_games.html",
+      "player_point_reconciliation": "pending"
+    },
+    {
+      "game_id": "0027000380",
+      "date": "1971-01-09",
+      "home_abbr": "PHL",
+      "home_score": 123,
+      "away_abbr": "PHX",
+      "away_score": 112,
+      "source_url": "https://www.basketball-reference.com/teams/PHO/1971_games.html",
+      "player_point_reconciliation": "pending"
+    },
+    {
+      "game_id": "0027000575",
+      "date": "1971-02-23",
+      "home_abbr": "BLT",
+      "home_score": 107,
+      "away_abbr": "LAL",
+      "away_score": 114,
+      "source_url": "https://www.basketball-reference.com/teams/LAL/1971_games.html",
+      "player_point_reconciliation": "pending"
+    },
+    {
+      "game_id": "0027500484",
+      "date": "1976-02-14",
+      "home_abbr": "POR",
+      "home_score": 108,
+      "away_abbr": "SEA",
+      "away_score": 122,
+      "source_url": "https://www.basketball-reference.com/teams/POR/1976_games.html",
+      "player_point_reconciliation": "pending"
+    },
+    {
+      "game_id": "0027500694",
+      "date": "1976-04-03",
+      "home_abbr": "CHI",
+      "home_score": 97,
+      "away_abbr": "DET",
+      "away_score": 93,
+      "source_url": "https://www.basketball-reference.com/teams/CHI/1976_games.html",
+      "player_point_reconciliation": "pending"
+    },
+    {
+      "game_id": "0027500728",
+      "date": "1976-04-10",
+      "home_abbr": "HOU",
+      "home_score": 110,
+      "away_abbr": "DET",
+      "away_score": 99,
+      "source_url": "https://www.basketball-reference.com/teams/HOU/1976_games.html",
+      "player_point_reconciliation": "pending"
+    },
+    {
+      "game_id": "0027500735",
+      "date": "1976-04-11",
+      "home_abbr": "NOJ",
+      "home_score": 112,
+      "away_abbr": "DET",
+      "away_score": 105,
+      "source_url": "https://www.basketball-reference.com/teams/NOJ/1976_games.html",
+      "player_point_reconciliation": "pending"
+    },
+    {
+      "game_id": "0027600088",
+      "date": "1976-11-07",
+      "home_abbr": "ATL",
+      "home_score": 107,
+      "away_abbr": "CLE",
+      "away_score": 97,
+      "source_url": "https://www.basketball-reference.com/teams/ATL/1977_games.html",
+      "player_point_reconciliation": "pending"
+    },
+    {
+      "game_id": "0027600187",
+      "date": "1976-11-27",
+      "home_abbr": "DEN",
+      "home_score": 122,
+      "away_abbr": "IND",
+      "away_score": 113,
+      "source_url": "https://www.basketball-reference.com/teams/DEN/1977_games.html",
+      "player_point_reconciliation": "pending"
+    },
+    {
+      "game_id": "0027600221",
+      "date": "1976-12-03",
+      "home_abbr": "IND",
+      "home_score": 112,
+      "away_abbr": "CLE",
+      "away_score": 109,
+      "source_url": "https://www.basketball-reference.com/teams/IND/1977_games.html",
+      "player_point_reconciliation": "pending"
+    },
+    {
+      "game_id": "0027600668",
+      "date": "1977-03-04",
+      "home_abbr": "DET",
+      "home_score": 92,
+      "away_abbr": "BOS",
+      "away_score": 94,
+      "source_url": "https://www.basketball-reference.com/teams/BOS/1977_games.html",
+      "player_point_reconciliation": "pending"
+    },
+    {
+      "game_id": "0027603009",
+      "date": "1976-12-11",
+      "home_abbr": "CLE",
+      "home_score": 94,
+      "away_abbr": "ATL",
+      "away_score": 95,
+      "source_url": "https://www.basketball-reference.com/teams/ATL/1977_games.html",
+      "player_point_reconciliation": "pending"
+    }
+  ]
+}
