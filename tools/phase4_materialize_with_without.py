@@ -149,6 +149,32 @@ def scoreboard_is_valid(events, away_final, home_final):
     return saw and previous==(away_final,home_final)
 
 
+def reconcile_period_minutes(stints, duration):
+    # Every accepted interval has exactly five distinct players on each team,
+    # a positive time span, and a period total no greater than regulation.
+    elapsed=0.0
+    seconds_by_player=collections.Counter()
+    for stint in stints:
+        seconds=stint["seconds"]
+        if not isinstance(seconds,(int,float)) or seconds<0:
+            return False,seconds_by_player
+        for side in ("home","away"):
+            if len(stint[side])!=5:
+                return False,seconds_by_player
+            for player in stint[side]:
+                seconds_by_player[(side,player)]+=seconds
+        elapsed+=seconds
+    if elapsed>duration+1e-7:
+        return False,seconds_by_player
+    if any(v>duration+1e-7 for v in seconds_by_player.values()):
+        return False,seconds_by_player
+    for side in ("home","away"):
+        observed=sum(v for (team,_),v in seconds_by_player.items() if team==side)
+        if abs(observed-5*elapsed)>1e-6:
+            return False,seconds_by_player
+    return True,seconds_by_player
+
+
 def period_event_diagnostics(events, duration):
     """Allow source ordering noise only within equal-clock event groups.
 
@@ -268,8 +294,9 @@ def process_game(events, game, player_keys):
             if all(len(on[side])==5 for side in on) and t_prev>0 and event_type(pevents[-1])==13:
                 local.append({"seconds":t_prev,"home":frozenset(on["home"]),
                               "away":frozenset(on["away"]),"points":(0,0)})
+            minutes_ok,_=reconcile_period_minutes(local,duration)
             verified_seconds=sum(x["seconds"] for x in local)
-            if verified_seconds>duration:
+            if not minutes_ok or verified_seconds>duration:
                 reasons["period_duration_not_conserved"]+=1
                 continue
             if verified_seconds>0:
@@ -284,6 +311,8 @@ def process_game(events, game, player_keys):
             for e in pevents:
                 score=score_tuple(field(e,"score"))
                 if score is not None:previous_score=score
+    if stints:
+        reasons["time_conservation_checked"]=1
     return stints,rosters,dict(reasons)|{"score_verified":int(score_ok)}
 
 
