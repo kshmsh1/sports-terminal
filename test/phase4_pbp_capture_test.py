@@ -17,6 +17,15 @@ class PbpCaptureTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             verify({"game":{"gameId":"0022500001","actions":[]}},"0022500001")
 
+    def test_player_boxscore_rosters_are_verified(self):
+        sample={"game":{"gameId":"0022500001",
+                       "homeTeam":{"players":[{"personId":1,"starter":"1"}]},
+                       "awayTeam":{"players":[{"personId":2,"starter":"1"}]}}}
+        self.assertEqual(verify(sample,"0022500001","boxscore"),2)
+        with self.assertRaises(ValueError):
+            verify({"game":{"gameId":"0022500001","homeTeam":{},"awayTeam":{}}},
+                   "0022500001","boxscore")
+
     def test_dry_run_does_not_request_or_write_capture(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder)
