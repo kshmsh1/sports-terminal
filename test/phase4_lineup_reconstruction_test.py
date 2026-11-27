@@ -22,7 +22,7 @@ def fixture():
     players={str(i):"nba_"+str(i) for i in range(1,12)}
     events=[event(1,"12:00",12)]
     for i in range(1,6):
-        events.append(event(i+1,"11:45",1,str(i),"100",str(i+5),"200",
+        events.append(event(i+1,"11:45",5,str(i),"100",str(i+5),"200",
                             score="0 - 0"))
     events.extend([
         event(7,"10:00",1,"6","200",score="2 - 0"),
