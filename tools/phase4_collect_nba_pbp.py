@@ -59,8 +59,16 @@ def collect(database,season,segment,destination,report,*,fetch=False,limit=0,del
     games=game_ids(database,season,segment)
     if selected_ids:
         selected={str(v).zfill(10) for v in selected_ids}
-        if not selected.issubset(set(games)):
-            raise ValueError("Requested game ID not in canonical season/segment")
+        known=set(games)
+        capture=ROOT/"web/data/nba_static/nba_com/surfaces/players_boxscores_traditional/default"/season/(segment+".json")
+        if capture.is_file():
+            payload=json.loads(capture.read_text(encoding="utf-8"))
+            for table in payload.get("tables",[]):
+                for row in table.get("rows",[]):
+                    gid=str(row.get("GAME_ID") or "")
+                    if gid.isdigit() and len(gid)<=10: known.add(gid.zfill(10))
+        if not selected.issubset(known):
+            raise ValueError("Requested game ID absent from canonical and captured season/segment sources")
         games=sorted(selected)
     result={"contract":"arcside-nba-cdn-playbyplay-capture-v1","source":BASE+KINDS[kind],"kind":kind,
             "season":season,"segment":segment,"planned_games":len(games),
