@@ -12,10 +12,16 @@ import re
 import sqlite3
 from pathlib import Path
 
-from tools.phase4_materialize_with_without import (
-    DEFAULT_DB,DEFAULT_STATIC,ident,iter_game_events,load_game_catalog,
-    player_identity_catalog,process_game,reconcile_period_minutes,source_pbp_table
-)
+try:
+    from tools.phase4_materialize_with_without import (
+        DEFAULT_DB,DEFAULT_STATIC,ident,iter_game_events,load_game_catalog,
+        player_identity_catalog,process_game,source_pbp_table
+    )
+except ModuleNotFoundError:
+    from phase4_materialize_with_without import (
+        DEFAULT_DB,DEFAULT_STATIC,ident,iter_game_events,load_game_catalog,
+        player_identity_catalog,process_game,source_pbp_table
+    )
 
 def duration(raw):
     s=str(raw or "")
