@@ -54,13 +54,14 @@ def verify(payload,game_id,kind="pbp"):
     return len(actions)
 
 
-def collect(database,season,segment,destination,report,*,fetch=False,limit=0,delay=1.5,kind="pbp",selected_ids=None):
+def collect(database,season,segment,destination,report,*,fetch=False,limit=0,delay=1.5,kind="pbp",selected_ids=None,capture_root=None):
     if kind not in KINDS:raise ValueError("Unsupported NBA capture type")
     games=game_ids(database,season,segment)
     if selected_ids:
         selected={str(v).zfill(10) for v in selected_ids}
         known=set(games)
-        capture=ROOT/"web/data/nba_static/nba_com/surfaces/players_boxscores_traditional/default"/season/(segment+".json")
+        root=Path(capture_root) if capture_root else ROOT/"web/data/nba_static"
+        capture=root/"nba_com/surfaces/players_boxscores_traditional/default"/season/(segment+".json")
         if capture.is_file():
             payload=json.loads(capture.read_text(encoding="utf-8"))
             for table in payload.get("tables",[]):
@@ -132,6 +133,7 @@ def main():
     p.add_argument("--season",required=True)
     p.add_argument("--segment",choices=("regular","playoffs"),required=True)
     p.add_argument("--output",type=Path,default=DEFAULT_OUT)
+    p.add_argument("--capture-root",type=Path,default=ROOT/"web/data/nba_static",help="Trusted captured traditional source root for unresolved game IDs")
     p.add_argument("--report",type=Path,default=DEFAULT_REPORT)
     p.add_argument("--kind",choices=tuple(KINDS),default="pbp",help="Play-by-play actions or player boxscore")
     p.add_argument("--game-id",action="append",default=[],help="Limit capture to a known NBA game ID (repeatable)")
@@ -144,7 +146,7 @@ def main():
     actual_report=args.report.with_name(args.report.stem+"-"+args.kind+args.report.suffix)
     result=collect(args.database,args.season,args.segment,args.output,actual_report,
                    fetch=args.fetch,limit=args.limit,delay=args.delay,kind=args.kind,
-                   selected_ids=args.game_id)
+                   selected_ids=args.game_id,capture_root=args.capture_root)
     print(json.dumps({"planned_games":result["planned_games"],"counts":result["counts"],
                       "report":str(actual_report)},indent=2))
 
