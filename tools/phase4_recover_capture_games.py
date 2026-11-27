@@ -115,13 +115,25 @@ def lookup(db):
     return teams, players
 
 
-def choose_team(teams, row):
+# Season-bound historical aliases: the Wyatt warehouse may separately register
+# an abbreviation entity and its NBA franchise identity. Resolve only exact
+# verified NBA IDs and exact historical seasons, never abbreviation alone.
+HISTORICAL_FRANCHISE_ALIASES = {
+    ("1961-62", "1610612764", "CHP"): "nba_team_1610612764",
+    ("1976-77", "1610612751", "NYN"): "nba_team_1610612751",
+}
+
+
+def choose_team(teams, row, season=None):
     team_id = ident(row.get("TEAM_ID"))
     abbr = str(row.get("TEAM_ABBREVIATION") or "").strip().upper()
     if not team_id or not abbr:
         return None
     by_id = teams.get(("id", team_id), set())
     by_abbr = teams.get(("abbr", abbr), set())
+    historical=HISTORICAL_FRANCHISE_ALIASES.get((season,team_id,abbr))
+    if historical and by_id == {historical}:
+        return historical
     # Stable team IDs remain valid across historical abbreviation changes.
     # Reject contradictory aliases; don't reject an old abbreviation only
     # because it is absent from the current canonical team display name.
@@ -154,7 +166,7 @@ def candidate(season, segment, game_id, rows, teams, players, digest):
         if key in players_seen:
             return None, "duplicate_player_game"
         players_seen.add(key)
-        if not choose_team(teams, row):
+        if not choose_team(teams, row, season):
             return None, "unresolved_team_identity"
         if matchup.startswith(abbr + " VS. ") or matchup.startswith(abbr + " VS "):
             directions[tid].add("home")
@@ -174,8 +186,8 @@ def candidate(season, segment, game_id, rows, teams, players, digest):
         direction = next(iter(directions[tid]))
         if direction in by_direction:
             return None, "home_away_collision"
-        by_direction[direction] = (tid, part, choose_team(teams, part[0]))
-        if len({choose_team(teams, x) for x in part}) != 1:
+        by_direction[direction] = (tid, part, choose_team(teams, part[0], season))
+        if len({choose_team(teams, x, season) for x in part}) != 1:
             return None, "team_identity_changed"
     if set(by_direction) != {"home", "away"}:
         return None, "missing_home_or_away"
