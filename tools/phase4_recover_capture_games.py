@@ -28,7 +28,8 @@ DB = ROOT / "data/warehouse/nba_history.sqlite"
 
 def ident(value):
     raw = str(value or "").strip()
-    return (raw.lstrip("0") or "0") if raw.isdigit() else ""
+    m = re.fullmatch(r"(\d+)(?:\.0+)?", raw)
+    return (m.group(1).lstrip("0") or "0") if m else ""
 
 
 def date_iso(value):
@@ -278,6 +279,7 @@ def recover_capture_games(db, static=STATIC, *, apply=False):
     key_set = {row[0] for row in db.execute("SELECT game_key FROM canon_dim_game")}
     counts = collections.Counter()
     examples = collections.defaultdict(list)
+    unresolved = []
     seen = set()
     for season, segment, gid, rows, source, digest in captured_groups(static):
         counts["captured_game_groups"] += 1
@@ -299,11 +301,26 @@ def recover_capture_games(db, static=STATIC, *, apply=False):
         seen.add(gid)
         if reason:
             counts[reason] += 1
-            if reason != "already_canonical" and len(examples[reason]) < 12:
-                examples[reason].append({"scope":season+"|"+segment,"game_id":gid})
+            if reason != "already_canonical":
+                if len(examples[reason]) < 12:
+                    examples[reason].append({"scope":season+"|"+segment,"game_id":gid})
+                by_team = collections.defaultdict(list)
+                for row in rows:
+                    by_team[(str(row.get("TEAM_ID")),str(row.get("TEAM_ABBREVIATION")))].append(row)
+                unresolved.append({"scope":season+"|"+segment,"game_id":gid,"reason":reason,
+                    "source":str(source.relative_to(static)), "sha256":digest,
+                    "dates":sorted({str(r.get("GAME_DATE")) for r in rows}),
+                    "teams":[{"id":tid,"abbr":abbr,"rows":len(part),
+                              "matchups":sorted({str(r.get("MATCHUP")) for r in part}),
+                              "results":sorted({str(r.get("WL")) for r in part}),
+                              "points":sum(numeric(r.get("PTS")) or 0 for r in part),
+                              "missing_points":sum(numeric(r.get("PTS")) is None for r in part),
+                              "id_candidates":sorted(team_map.get(("id",ident(tid)),set())),
+                              "abbr_candidates":sorted(team_map.get(("abbr",abbr.upper()),set()))}
+                             for (tid,abbr),part in sorted(by_team.items())]})
     return {"contract":"arcside-phase4a-capture-game-recovery-v1",
             "applied":bool(apply),"counts":dict(sorted(counts.items())),
-            "examples":dict(examples),
+            "examples":dict(examples),"unresolved":unresolved,
             "caveat":"Qualification requires actual NBA.com team/date/matchup/player evidence. No historical game counts are assumed."}
 
 
