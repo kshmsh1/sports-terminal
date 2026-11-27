@@ -108,7 +108,6 @@ def collect(database,season,segment,destination,report,*,fetch=False,limit=0,del
         if delay:time.sleep(delay)
     counts["unattempted"]+=max(0,len(games)-sum(counts.values()))
     result["counts"]=counts
-    report=report.with_name(report.stem+"-"+kind+report.suffix)
     report.parent.mkdir(parents=True,exist_ok=True)
     report.write_text(json.dumps(result,indent=2)+"\n",encoding="utf-8")
     return result
@@ -128,10 +127,11 @@ def main():
     args=p.parse_args()
     if not args.database.is_file():p.error("Missing canonical warehouse")
     if args.limit<0 or args.delay<0:p.error("Limit and delay must be nonnegative")
-    result=collect(args.database,args.season,args.segment,args.output,args.report,
+    actual_report=args.report.with_name(args.report.stem+"-"+args.kind+args.report.suffix)
+    result=collect(args.database,args.season,args.segment,args.output,actual_report,
                    fetch=args.fetch,limit=args.limit,delay=args.delay,kind=args.kind)
     print(json.dumps({"planned_games":result["planned_games"],"counts":result["counts"],
-                      "report":str(args.report)},indent=2))
+                      "report":str(actual_report)},indent=2))
 
 
 if __name__=="__main__":
