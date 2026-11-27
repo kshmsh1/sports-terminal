@@ -144,7 +144,7 @@ def choose_team(teams, row, season=None):
     return next(iter(choices)) if len(choices) == 1 else None
 
 
-def candidate(season, segment, game_id, rows, teams, players, digest):
+def candidate(season, segment, game_id, rows, teams, players, digest, *, official_home_id=None, official_digest=None):
     dates = {date_iso(row.get("GAME_DATE")) for row in rows}
     if None in dates or len(dates) != 1:
         return None, "missing_or_conflicting_dates"
@@ -168,7 +168,9 @@ def candidate(season, segment, game_id, rows, teams, players, digest):
         players_seen.add(key)
         if not choose_team(teams, row, season):
             return None, "unresolved_team_identity"
-        if matchup.startswith(abbr + " VS. ") or matchup.startswith(abbr + " VS "):
+        if official_home_id:
+            directions[tid].add("home" if tid==official_home_id else "away")
+        elif matchup.startswith(abbr + " VS. ") or matchup.startswith(abbr + " VS "):
             directions[tid].add("home")
         elif matchup.startswith(abbr + " @ "):
             directions[tid].add("away")
@@ -208,7 +210,45 @@ def candidate(season, segment, game_id, rows, teams, players, digest):
         "season": season, "segment": segment, "date": date,
         "home": home, "away": away, "score": score, "sha256": digest,
         "player_keys": players,
+        "official_boxscore_sha256": official_digest,
     }, None
+
+
+def official_home_reconciliation(static, season, segment, game_id, rows):
+    """Authorize an ambiguous home/away designation ONLY from an exact NBA
+    game-specific, team-verified and score-reconciled official boxscore.
+    """
+    path=(static/"nba_com/pbp_live/boxscore"/season/segment/(game_id.zfill(10)+".json"))
+    if not path.is_file():return None
+    raw=path.read_bytes()
+    try:
+        game=json.loads(raw).get("game")
+        if not isinstance(game,dict) or ident(game.get("gameId"))!=game_id:
+            return None
+        if game.get("gameStatus") not in (None,3,"3"):
+            return None
+        home,away=game.get("homeTeam"),game.get("awayTeam")
+        if not isinstance(home,dict) or not isinstance(away,dict):
+            return None
+        home_id=ident(home.get("teamId"))
+        away_id=ident(away.get("teamId"))
+        if not home_id or not away_id or home_id==away_id:
+            return None
+        score={}
+        for row in rows:
+            team_id=ident(row.get("TEAM_ID"))
+            point=numeric(row.get("PTS"))
+            if not team_id or point is None:return None
+            score[team_id]=score.get(team_id,0)+point
+        if set(score)!={home_id,away_id}:
+            return None
+        if score[home_id]!=numeric(home.get("score")) or score[away_id]!=numeric(away.get("score")):
+            return None
+        if not all(isinstance(side.get("players"),list) and side["players"] for side in (home,away)):
+            return None
+        return home_id,hashlib.sha256(raw).hexdigest()
+    except (ValueError,TypeError,AttributeError):
+        return None
 
 
 def insert(db, item):
@@ -216,6 +256,7 @@ def insert(db, item):
     key = item["game_key"]
     hs, aws = item["score"]["home"], item["score"]["away"]
     provenance = json.dumps({"source": "nba_com/leaguegamelog", "sha256": item["sha256"],
+                             "official_boxscore_sha256":item.get("official_boxscore_sha256"),
                              "scope": item["season"] + "|" + item["segment"]}, sort_keys=True)
     db.execute(
         "INSERT INTO canon_dim_game "
@@ -301,6 +342,14 @@ def recover_capture_games(db, static=STATIC, *, apply=False):
             reason = "already_canonical"
         else:
             item, reason = candidate(season,segment,gid,rows,team_map,player_map,digest)
+            if reason=="home_away_collision":
+                official=official_home_reconciliation(static,season,segment,gid,rows)
+                if official:
+                    resolved,remaining=candidate(season,segment,gid,rows,team_map,player_map,digest,
+                                                 official_home_id=official[0],official_digest=official[1])
+                    if remaining is None:
+                        item,reason=resolved,None
+                        counts["official_home_assignment"]+=1
             if not reason and item["game_key"] in key_set:
                 reason = "canonical_key_collision"
             if not reason:
