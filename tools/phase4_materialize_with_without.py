@@ -78,9 +78,10 @@ def participant(e, n, sides, player_keys):
 
 
 def active_slots(e):
-    # Bench technicals, timeouts, replay and administrative events are not
-    # evidence of court presence. Free-throw shooters may be technical shooters.
-    return {1:(1,2,3),2:(1,3),4:(1,),5:(1,2),10:(1,2,3)}.get(event_type(e),())
+    # Free throws, timeouts and administrative rows are not reliable
+    # evidence of lineup membership. Event participants outside the
+    # directly active role are ignored for opening lineup discovery.
+    return {1:(1,),2:(1,),4:(1,),5:(1,2)}.get(event_type(e),())
 
 
 def inferred_openers(events, sides, player_keys):
