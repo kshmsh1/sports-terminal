@@ -260,14 +260,16 @@ def process_game(events, game, player_keys):
         for e,t in zip(pevents,clocks):
             fully_known=all(len(on[side])==5 for side in on)
             if fully_known and t<t_prev:
-                local.append({"seconds":t_prev-t,"home":frozenset(on["home"]),
+                local.append({"seconds":t_prev-t,"period":period,"start":t_prev,"end":t,
+                              "home":frozenset(on["home"]),
                               "away":frozenset(on["away"]),"points":(0,0)})
             t_prev=t
             value=score_tuple(field(e,"score"))
             if value is not None:
                 diff=(value[0]-previous_score[0],value[1]-previous_score[1])
                 if score_ok and fully_known and (diff[0]>0 or diff[1]>0):
-                    local.append({"seconds":0,"home":frozenset(on["home"]),
+                    local.append({"seconds":0,"period":period,"start":t,"end":t,
+                                  "home":frozenset(on["home"]),
                                   "away":frozenset(on["away"]),"points":diff})
                 previous_score=value
             if event_type(e)==8:
@@ -293,7 +295,8 @@ def process_game(events, game, player_keys):
                 if not valid:break
         if valid:
             if all(len(on[side])==5 for side in on) and t_prev>0 and event_type(pevents[-1])==13:
-                local.append({"seconds":t_prev,"home":frozenset(on["home"]),
+                local.append({"seconds":t_prev,"period":period,"start":t_prev,"end":0,
+                              "home":frozenset(on["home"]),
                               "away":frozenset(on["away"]),"points":(0,0)})
             minutes_ok,_=reconcile_period_minutes(local,duration)
             verified_seconds=sum(x["seconds"] for x in local)
