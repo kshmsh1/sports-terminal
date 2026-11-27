@@ -85,6 +85,25 @@ class RecoveryTest(unittest.TestCase):
         report=recover_capture_games(self.conn,self.root)
         self.assertEqual(report["counts"]["unresolved_team_identity"],1)
 
+    def test_season_specific_historical_franchise_aliases(self):
+        from tools.phase4_recover_capture_games import choose_team, lookup
+        self.conn.execute("INSERT INTO canon_dim_team "
+                          "(team_key,canonical_name,abbreviation,league_id,nba_team_id) "
+                          "VALUES (?,?,?,?,?)",
+                          ("nba_team_1610612764","Washington franchise","WAS",
+                           "NBA","1610612764"))
+        self.conn.execute("INSERT INTO canon_dim_team "
+                          "(team_key,canonical_name,abbreviation,league_id,nba_team_id) "
+                          "VALUES (?,?,?,?,?)",
+                          ("team_nba_chp","Chicago Packers alias","CHP","NBA",None))
+        teams,_=lookup(self.conn)
+        self.assertEqual(choose_team(teams,{"TEAM_ID":"1610612764",
+                         "TEAM_ABBREVIATION":"CHP"},"1961-62"),"nba_team_1610612764")
+        self.assertIsNone(choose_team(teams,{"TEAM_ID":"1610612764",
+                              "TEAM_ABBREVIATION":"CHP"},"2025-26"))
+        self.assertIsNone(choose_team(teams,{"TEAM_ID":"999",
+                              "TEAM_ABBREVIATION":"CHP"},"1961-62"))
+
     def test_incremental_index_publication_preserves_other_static_data(self):
         from tools.phase4_publish_recovered_games import refresh
         self.write(rows())
