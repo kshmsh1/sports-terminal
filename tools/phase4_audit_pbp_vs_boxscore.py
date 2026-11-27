@@ -49,13 +49,19 @@ def check(game,stints,box,keys,tolerance=2.0):
         roster=raw.get("players")
         if not isinstance(roster,list):
             return "missing_official_players"
+        starters=set()
         for p in roster:
             token=ident(p.get("personId"))
             mapped=keys.get(token)
             if not mapped:continue
+            if str(p.get("starter")).lower() in ("true","1"):starters.add(mapped)
             stats=p.get("statistics") or {}
             seconds=duration(stats.get("minutes"))
             if seconds is not None:listed[mapped]=seconds
+        first=next((st for st in stints if st.get("period")==1
+                    and st.get("start")==720 and st["seconds"]>0),None)
+        if first is not None and len(starters)==5 and first[side]!=starters:
+            return "official_starting_five_mismatch"
         recorded=collections.Counter()
         for st in stints:
             for player in st[side]:
