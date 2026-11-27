@@ -28,7 +28,8 @@ CONTRACT = "arcside-phase4b-verified-pbp-pair-splits-v1"
 
 def ident(v):
     s = str(v or "").strip()
-    return (s.lstrip("0") or "0") if s.isdigit() else ""
+    m = re.fullmatch(r"(\d+)(?:\.0+)?", s)
+    return (m.group(1).lstrip("0") or "0") if m else ""
 
 
 def num(v):
@@ -46,10 +47,10 @@ def field(row, key):
 
 
 def clock_seconds(raw):
-    m = re.fullmatch(r"\s*(\d{1,2}):(\d{2})(?:\.\d+)?\s*", str(raw or ""))
-    if not m or int(m.group(2)) >= 60:
+    m = re.fullmatch(r"\s*(\d{1,2}):(\d{2}(?:\.\d+)?)\s*", str(raw or ""))
+    if not m or float(m.group(2)) >= 60:
         return None
-    return int(m.group(1))*60+int(m.group(2))
+    return int(m.group(1))*60+float(m.group(2))
 
 
 def score_tuple(raw):
@@ -74,6 +75,33 @@ def participant(e, n, sides, player_keys):
         return None
     player_key = player_keys.get(player_id)
     return (sides[team_id],player_key) if player_key else None
+
+
+def active_slots(e):
+    # Bench technicals, timeouts, replay and administrative events are not
+    # evidence of court presence. Free-throw shooters may be technical shooters.
+    return {1:(1,2,3),2:(1,3),4:(1,),5:(1,2),10:(1,2,3)}.get(event_type(e),())
+
+
+def inferred_openers(events, sides, player_keys):
+    # A player's first appearance as an outgoing substitution or an active
+    # participant proves opening presence if no earlier incoming swap exists.
+    first = {"home":{}, "away":{}}
+    for e in events:
+        if event_type(e)==8:
+            out=participant(e,1,sides,player_keys)
+            inc=participant(e,2,sides,player_keys)
+            if not out or not inc or out[0]!=inc[0]:
+                return None
+            first[out[0]].setdefault(out[1],True)
+            first[inc[0]].setdefault(inc[1],False)
+        else:
+            for n in active_slots(e):
+                p=participant(e,n,sides,player_keys)
+                if p:
+                    first[p[0]].setdefault(p[1],True)
+    on={side:{p for p,started in items.items() if started} for side,items in first.items()}
+    return on if all(len(v)==5 for v in on.values()) else None
 
 
 def starter_fives(events, sides, player_keys):
@@ -171,7 +199,7 @@ def process_game(events, game, player_keys):
                 score=score_tuple(field(e,"score"))
                 if score is not None:previous_score=score
             continue
-        on={"home":set(),"away":set()}
+        on=inferred_openers(pevents,sides,player_keys) or {"home":set(),"away":set()}
         local=[]
         t_prev=duration
         valid=True
@@ -200,7 +228,7 @@ def process_game(events, game, player_keys):
                 on[outgoing[0]].discard(outgoing[1])
                 on[outgoing[0]].add(incoming[1])
             else:
-                for n in (1,2,3):
+                for n in active_slots(e):
                     part=participant(e,n,sides,player_keys)
                     if part and part[1] not in on[part[0]]:
                         if len(on[part[0]])==5:
@@ -210,7 +238,7 @@ def process_game(events, game, player_keys):
                         on[part[0]].add(part[1])
                 if not valid:break
         if valid:
-            if all(len(on[side])==5 for side in on) and t_prev>0:
+            if all(len(on[side])==5 for side in on) and t_prev>0 and event_type(pevents[-1])==13:
                 local.append({"seconds":t_prev,"home":frozenset(on["home"]),
                               "away":frozenset(on["away"]),"points":(0,0)})
             verified_seconds=sum(x["seconds"] for x in local)
@@ -342,7 +370,7 @@ def iter_game_events(db,table,catalog):
     """Stream in game/event order. Never load the entire multi-million-event PBP."""
     current_id=None;current_rows=[]
     # One indexed or external-sort scan, not 160 table scans.
-    ids=[str(g["nba_game_id"]) for g in catalog.values() if g["nba_game_id"]]
+    ids=sorted({variant for token,g in catalog.items() for variant in (str(g["nba_game_id"]),token,token.zfill(10))})
     if not ids:
         return
     # A season-sized run scans only its target NBA game IDs; an all-season
