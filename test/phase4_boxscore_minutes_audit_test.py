@@ -7,6 +7,26 @@ class BoxscoreAuditTest(unittest.TestCase):
         self.assertEqual(duration("PT25M01.00S"),1501)
         self.assertEqual(duration("25:01"),1501)
         self.assertIsNone(duration("unknown"))
+    def test_official_starting_five_mismatch_rejected(self):
+        g={"nba_game_id":"0022500001","home_nba_id":"100","away_nba_id":"200",
+           "home_score":2,"away_score":0}
+        home=[{"personId":i,"starter":True,
+               "statistics":{"minutes":"PT12M00S"}} for i in range(1,6)]
+        away=[{"personId":i,"starter":True,
+               "statistics":{"minutes":"PT12M00S"}} for i in range(6,11)]
+        box={"game":{"gameId":"0022500001",
+             "homeTeam":{"teamId":100,"score":2,"players":home},
+             "awayTeam":{"teamId":200,"score":0,"players":away}}}
+        keys={str(i):"p"+str(i) for i in range(1,12)}
+        stint=[{"period":1,"start":720,"end":700,"seconds":20,
+                "home":frozenset("p"+str(i) for i in range(1,6)),
+                "away":frozenset("p"+str(i) for i in range(6,11)),
+                "points":(0,0)}]
+        self.assertIsNone(check(g,stint,box,keys))
+        stint[0]["home"]=frozenset(["p11","p2","p3","p4","p5"])
+        self.assertEqual(check(g,stint,box,keys),
+                         "official_starting_five_mismatch")
+
     def test_player_time_cannot_exceed_official_boxscore(self):
         g={"nba_game_id":"0022500001","home_nba_id":"100","away_nba_id":"200",
            "home_score":2,"away_score":0}
