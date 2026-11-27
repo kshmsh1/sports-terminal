@@ -100,3 +100,15 @@ python3 tools/phase4_materialize_live_nba_pbp.py --season 2025-26 --segment regu
 ```
 
 Only after reviewing the generated Q1 report and testing against real official game files should `--publish` be considered. Publication still carries explicit `nba_live/q1_starters_and_actions` provenance and first-quarter partial coverage; full-season comparisons must not treat it as equivalent to entire-game data.
+
+### Targeted 4A neutral-site official boxscores
+
+Ten remaining home/away collisions are specific 2024-25 and 2025-26 regular-season games. Their captured traditional game logs are already on the owner machine; those IDs can be passed to the official source collector even before recovery into canonical tables. The source collector refuses IDs not present in the canonical DB or captured source. Game-specific NBA official homeTeam / awayTeam is accepted **only when** both team IDs, final scores, and nonempty boxscore player lists agree with the captured player rows. Otherwise the original rejection is preserved.
+
+```bash
+python3 tools/phase4_collect_nba_pbp.py --season 2024-25 --segment regular --kind boxscore --fetch --delay 2 --game-id 0022400147 --game-id 0022400621 --game-id 0022400633 --game-id 0022401229 --game-id 0022401230
+python3 tools/phase4_collect_nba_pbp.py --season 2025-26 --segment regular --kind boxscore --fetch --delay 2 --game-id 0022500147 --game-id 0022500578 --game-id 0022500602 --game-id 0022501229 --game-id 0022501230
+python3 tools/phase4_recover_capture_games.py
+```
+
+The first two commands are opt-in HTTP downloads; each stops on 403/429 and caches source response. The third previews local recovery only. If the official source does not support a game, do not infer home assignment from date or tournament context. The 15 older scoring inconsistencies require independently audited player-level statistics and official scores, not merely an override of the result field.
