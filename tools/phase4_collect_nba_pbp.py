@@ -18,7 +18,8 @@ import urllib.request
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
-BASE="https://cdn.nba.com/static/json/liveData/playbyplay/playbyplay_"
+BASE="https://cdn.nba.com/static/json/liveData/"
+KINDS={"pbp":"playbyplay/playbyplay_","boxscore":"boxscore/boxscore_"}
 DEFAULT_DB=ROOT/"data/warehouse/nba_history.sqlite"
 DEFAULT_OUT=ROOT/"web/data/nba_static/nba_com/pbp_live"
 DEFAULT_REPORT=ROOT/"experimental/arcside-react/evidence/coverage/phase4b-pbp-capture.json"
@@ -33,12 +34,17 @@ def game_ids(database,season,segment):
     return sorted({v.zfill(10) for v in values if v.isdigit() and len(v)<=10})
 
 
-def verify(payload,game_id):
+def verify(payload,game_id,kind="pbp"):
     if not isinstance(payload,dict):
         raise ValueError("Not an NBA JSON object")
     game=payload.get("game")
     if not isinstance(game,dict) or str(game.get("gameId") or "")!=game_id:
         raise ValueError("PBP JSON game ID does not match")
+    if kind=="boxscore":
+        teams=[game.get("homeTeam"),game.get("awayTeam")]
+        if any(not isinstance(team,dict) or not isinstance(team.get("players"),list) for team in teams):
+            raise ValueError("Missing NBA boxscore player rosters")
+        return sum(len(team["players"]) for team in teams)
     actions=game.get("actions")
     if not isinstance(actions,list) or not actions:
         raise ValueError("Missing PBP actions")
@@ -48,9 +54,10 @@ def verify(payload,game_id):
     return len(actions)
 
 
-def collect(database,season,segment,destination,report,*,fetch=False,limit=0,delay=1.5):
+def collect(database,season,segment,destination,report,*,fetch=False,limit=0,delay=1.5,kind="pbp"):
+    if kind not in KINDS:raise ValueError("Unsupported NBA capture type")
     games=game_ids(database,season,segment)
-    result={"contract":"arcside-nba-cdn-playbyplay-capture-v1","source":BASE,
+    result={"contract":"arcside-nba-cdn-playbyplay-capture-v1","source":BASE+KINDS[kind],"kind":kind,
             "season":season,"segment":segment,"planned_games":len(games),
             "fetch":fetch,"generated_at":dt.datetime.now(dt.timezone.utc).isoformat(),
             "counts":{},"failures":[],"captured":[]}
@@ -58,11 +65,11 @@ def collect(database,season,segment,destination,report,*,fetch=False,limit=0,del
             "unattempted":0,"rate_limited":0}
     attempts=0
     for game_id in games:
-        target=destination/season/segment/(game_id+".json")
+        target=destination/kind/season/segment/(game_id+".json")
         if target.exists():
             try:
                 raw=target.read_bytes()
-                n=verify(json.loads(raw),game_id)
+                n=verify(json.loads(raw),game_id,kind)
                 counts["verified_cached"]+=1
                 result["captured"].append({"game_id":game_id,"sha256":hashlib.sha256(raw).hexdigest(),"actions":n,"cached":True})
                 continue
@@ -75,7 +82,7 @@ def collect(database,season,segment,destination,report,*,fetch=False,limit=0,del
             continue
         attempts+=1
         try:
-            req=urllib.request.Request(BASE+game_id+".json",headers={
+            req=urllib.request.Request(BASE+KINDS[kind]+game_id+".json",headers={
                 "User-Agent":"ArcsideDataResearch/1.0 (source-qualified archive)",
                 "Accept":"application/json"})
             with urllib.request.urlopen(req,timeout=25) as response:
@@ -101,6 +108,7 @@ def collect(database,season,segment,destination,report,*,fetch=False,limit=0,del
         if delay:time.sleep(delay)
     counts["unattempted"]+=max(0,len(games)-sum(counts.values()))
     result["counts"]=counts
+    report=report.with_name(report.stem+"-"+kind+report.suffix)
     report.parent.mkdir(parents=True,exist_ok=True)
     report.write_text(json.dumps(result,indent=2)+"\n",encoding="utf-8")
     return result
@@ -113,6 +121,7 @@ def main():
     p.add_argument("--segment",choices=("regular","playoffs"),required=True)
     p.add_argument("--output",type=Path,default=DEFAULT_OUT)
     p.add_argument("--report",type=Path,default=DEFAULT_REPORT)
+    p.add_argument("--kind",choices=tuple(KINDS),default="pbp",help="Play-by-play actions or player boxscore")
     p.add_argument("--fetch",action="store_true",help="Opt in to spaced NBA CDN HTTP requests")
     p.add_argument("--limit",type=int,default=10,help="Maximum new HTTP attempts; 0 = uncapped")
     p.add_argument("--delay",type=float,default=1.5,help="Seconds between requests")
@@ -120,7 +129,7 @@ def main():
     if not args.database.is_file():p.error("Missing canonical warehouse")
     if args.limit<0 or args.delay<0:p.error("Limit and delay must be nonnegative")
     result=collect(args.database,args.season,args.segment,args.output,args.report,
-                   fetch=args.fetch,limit=args.limit,delay=args.delay)
+                   fetch=args.fetch,limit=args.limit,delay=args.delay,kind=args.kind)
     print(json.dumps({"planned_games":result["planned_games"],"counts":result["counts"],
                       "report":str(args.report)},indent=2))
 
