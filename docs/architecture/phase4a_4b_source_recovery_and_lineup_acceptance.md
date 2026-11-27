@@ -75,3 +75,16 @@ python3 tools/phase4_collect_nba_pbp.py --season 2024-25 --segment playoffs --fe
 Raw NBA Live V3 action rows have a different schema from Wyatt legacy play-by-play and require an independently validated adapter before statistical materialization. Existing 4B partial splits should not be promoted to full-season player stats.
 
 NBA.com requested source data, if accessible: full action-level play-by-play JSON for 2023-24, 2024-25, 2025-26; complete game box scores including players' actual minutes and starters for the same IDs; official final scores for the 25 historical contradictions. Preserve original JSON, game IDs, URLs and capture timestamps. Avoid screenshots when raw machine-readable responses are available.
+
+### Official starter and minute audit (code added)
+
+NBA Live data is available in two distinct raw feeds: `playbyplay/playbyplay_{gameId}.json` and `boxscore/boxscore_{gameId}.json`. The source collector supports `--kind pbp` (default) and `--kind boxscore`, storing immutable raw JSON under `web/data/nba_static/nba_com/pbp_live/<kind>/<season>/<segment>/<game-id>.json`. It is opt-in and does not convert modern action formats to the historical Wyatt format.
+
+```bash
+python3 tools/phase4_collect_nba_pbp.py --season 2022-23 --segment regular --kind boxscore --fetch --limit 10 --delay 2
+python3 tools/phase4_audit_pbp_vs_boxscore.py --season 2022-23
+```
+
+The external minute audit verifies official final score, team identity, optional opening five (only when the reconstructed first interval starts at 12:00 and the boxscore has exactly five starter flags) and upper bounds for each reconstructed player's court seconds. It does not certify an exact score-event attribution, full-game minutes, possessions or individual shooting statistics. A valid audit must have `verified_player_minute_upper_bound > 0`, zero mismatches on published games and separately validated possession rules before production approval.
+
+The legacy reconstruction still rejects descending-clock violations and incomplete periods. No fabricated clock repair is performed; NBA.com V3 source capture and conversion must be separately certified. There is no safe basis for publishing final 2023-26 splits until that adapter exists.
