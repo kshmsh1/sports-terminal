@@ -88,3 +88,15 @@ python3 tools/phase4_audit_pbp_vs_boxscore.py --season 2022-23
 The external minute audit verifies official final score, team identity, optional opening five (only when the reconstructed first interval starts at 12:00 and the boxscore has exactly five starter flags) and upper bounds for each reconstructed player's court seconds. It does not certify an exact score-event attribution, full-game minutes, possessions or individual shooting statistics. A valid audit must have `verified_player_minute_upper_bound > 0`, zero mismatches on published games and separately validated possession rules before production approval.
 
 The legacy reconstruction still rejects descending-clock violations and incomplete periods. No fabricated clock repair is performed; NBA.com V3 source capture and conversion must be separately certified. There is no safe basis for publishing final 2023-26 splits until that adapter exists.
+
+### Modern NBA Live V3 source-qualified Q1 adapter
+
+The new `tools/phase4_materialize_live_nba_pbp.py` uses captured NBA Live play-by-play actions and matching official boxscore starters. It reconstructs only quarter 1, requires exactly five independently identified starters on both teams, handles explicitly paired out/in substitution actions at an identical clock, verifies that official player-minute upper bounds are respected, and fails closed for ambiguous substitutions, final-score discrepancies or clock reversals. Scores at substitution timestamps are suppressed if attribution is ambiguous. This is not a full-game player-stat or possession engine.
+
+```bash
+python3 tools/phase4_collect_nba_pbp.py --season 2025-26 --segment regular --kind pbp --fetch --limit 10 --delay 2
+python3 tools/phase4_collect_nba_pbp.py --season 2025-26 --segment regular --kind boxscore --fetch --limit 10 --delay 2
+python3 tools/phase4_materialize_live_nba_pbp.py --season 2025-26 --segment regular
+```
+
+Only after reviewing the generated Q1 report and testing against real official game files should `--publish` be considered. Publication still carries explicit `nba_live/q1_starters_and_actions` provenance and first-quarter partial coverage; full-season comparisons must not treat it as equivalent to entire-game data.
