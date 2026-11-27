@@ -149,6 +149,28 @@ def scoreboard_is_valid(events, away_final, home_final):
     return saw and previous==(away_final,home_final)
 
 
+def period_event_diagnostics(events, duration):
+    """Allow source ordering noise only within equal-clock event groups.
+
+    Reordering across distinct clock values can move a basket between lineup
+    configurations, so such periods are rejected rather than guessed.
+    """
+    clocks=[clock_seconds(field(e,"pctimestring")) for e in events]
+    if any(t is None or t<0 or t>duration for t in clocks):
+        return None,"invalid_period_clock"
+    if any(a<b for a,b in zip(clocks,clocks[1:])):
+        return None,"invalid_period_clock"
+    return clocks,None
+
+
+def scoreboard_final(events):
+    latest=None
+    for e in events:
+        value=score_tuple(field(e,"score"))
+        if value is not None: latest=value
+    return latest
+
+
 def process_game(events, game, player_keys):
     """Extract only stints for which both on-court fives are directly known.
 
@@ -197,8 +219,8 @@ def process_game(events, game, player_keys):
     previous_score=(0,0)
     for period, pevents in sorted(periods.items()):
         duration=720 if period<=4 else 300
-        clocks=[clock_seconds(field(e,"pctimestring")) for e in pevents]
-        if any(t is None or t>duration for t in clocks) or any(a<b for a,b in zip(clocks,clocks[1:])):
+        clocks,clock_issue=period_event_diagnostics(pevents,duration)
+        if clock_issue:
             reasons["invalid_period_clock"]+=1
             for e in pevents:
                 score=score_tuple(field(e,"score"))
@@ -461,6 +483,11 @@ def main():
                  "message":"Partial coverage: only fully reconstructed periods are represented."}
         destination=args.static/"lineups"/season/segment/"with_without.json"
         if args.publish and payload["rows"]:
+            # No certified scoring is silently published from unchecked events.
+            # In particular, published score metrics are not complete-season
+            # player statistics and all coverage limits must accompany data.
+            if stats.get("accepted_periods",0)==0 or stats.get("verified_seconds",0)<=0:
+                raise ValueError("Refusing lineup publication without verified time: "+str(scope))
             if destination.exists():
                 previous=json.loads(destination.read_text(encoding="utf-8"))
                 if previous.get("contract") != CONTRACT:
