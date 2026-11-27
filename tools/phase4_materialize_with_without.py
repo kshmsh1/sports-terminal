@@ -166,8 +166,13 @@ def process_game(events, game, player_keys):
         events=sorted(events,key=lambda e:int(field(e,"eventnum")))
     except (ValueError,TypeError):
         return [],{},{"invalid_event_number":1}
-    if len({field(e,"eventnum") for e in events})!=len(events):
-        return [],{},{"duplicate_event_number":1}
+    unique={}
+    for e in events:
+        n=int(field(e,"eventnum"))
+        if n in unique and unique[n]!=e:
+            return [],{},{"conflicting_duplicate_event_number":1}
+        unique[n]=e
+    events=list(unique.values())
     periods=collections.defaultdict(list)
     rosters={"home":set(),"away":set()}
     for e in events:
@@ -399,26 +404,26 @@ def build(db,*,season=None):
     catalog=load_game_catalog(db,season)
     players=player_identity_catalog(db)
     table=source_pbp_table(db)
-    games=[]
     total=collections.Counter()
-    for game,events in iter_game_events(db,table,catalog):
-        stints,rosters,reasons=process_game(events,game,players)
-        scope=(game["season"],game["segment"])
-        total[scope,"source_games"]+=1
-        total[scope,"accepted_periods"]+=reasons.get("periods_verified",0)
-        total[scope,"verified_seconds"]+=sum(s["seconds"] for s in stints)
-        if stints:total[scope,"games_with_stints"]+=1
-        if reasons.get("score_verified"):total[scope,"score_verified_games"]+=1
-        for reason,value in reasons.items():
-            if reason not in ("periods_verified","score_verified"):
-                total[scope,"rejection_"+reason]+=value
-        games.append((game,stints,rosters,reasons))
-    rows,_,_=summarize_games(games)
+    def reconstructed_games():
+        for game,events in iter_game_events(db,table,catalog):
+            stints,rosters,reasons=process_game(events,game,players)
+            scope=(game["season"],game["segment"])
+            total[scope,"source_games"]+=1
+            total[scope,"accepted_periods"]+=reasons.get("periods_verified",0)
+            total[scope,"verified_seconds"]+=sum(s["seconds"] for s in stints)
+            if stints:total[scope,"games_with_stints"]+=1
+            if reasons.get("score_verified"):total[scope,"score_verified_games"]+=1
+            for reason,value in reasons.items():
+                if reason not in ("periods_verified","score_verified"):
+                    total[scope,"rejection_"+reason]+=value
+            yield game,stints,rosters,reasons
+    rows,_,_=summarize_games(reconstructed_games())
     coverage={}
-    scopes={ (g["season"],g["segment"]) for g in catalog.values()}
-    for scope in sorted(scopes):
+    scope_counts=collections.Counter((g["season"],g["segment"]) for g in catalog.values())
+    for scope in sorted(scope_counts):
         counts={metric:n for (sc,metric),n in total.items() if sc==scope}
-        counts["canonical_games"]=sum((g["season"],g["segment"])==scope for g in catalog.values())
+        counts["canonical_games"]=scope_counts[scope]
         counts["published_pair_rows"]=len(rows.get(scope,[]))
         coverage[scope]=counts
     return rows,coverage
