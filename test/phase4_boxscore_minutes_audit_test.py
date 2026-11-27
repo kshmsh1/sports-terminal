@@ -41,7 +41,7 @@ class BoxscoreAuditTest(unittest.TestCase):
                 "away":frozenset(["p2"]),"points":(0,0)}]
         keys={"1":"p1","2":"p2"}
         self.assertIsNone(check(g,stint,official,keys))
-        stint[0]["seconds"]=601
+        stint[0]["seconds"]=603
         self.assertEqual(check(g,stint,official,keys),
                          "reconstructed_minutes_exceed_boxscore")
         official["game"]["homeTeam"]["score"]=3
