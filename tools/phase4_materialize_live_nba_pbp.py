@@ -192,6 +192,7 @@ def materialize(db,static,season,segment):
         if not pbp.is_file() or not box.is_file():
             counts["missing_source_pair"]+=1
             continue
+        counts["source_pairs_seen"]+=1
         try:
             stints,rosters,reasons=native_q1(json.loads(pbp.read_text()),
                               json.loads(box.read_text()),game,players)
@@ -210,7 +211,7 @@ def materialize(db,static,season,segment):
     rows,_,_=summarize_games(accepted)
     scope=(season,segment)
     return rows.get(scope,[]),{"canonical_games":len(games),
-                                  "source_games":sum(v for k,v in counts.items() if k=="games_verified")+counts["invalid_capture"],
+                                  "source_games":counts["source_pairs_seen"],
                                   **dict(counts),"examples":dict(samples)}
 
 
