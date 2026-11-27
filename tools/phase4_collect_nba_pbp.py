@@ -99,6 +99,7 @@ def collect(database,season,segment,destination,report,*,fetch=False,limit=0,del
             counts["failed"]+=1
             result["failures"].append({"game_id":game_id,"error":str(exc)})
         if delay:time.sleep(delay)
+    counts["unattempted"]+=max(0,len(games)-sum(counts.values()))
     result["counts"]=counts
     report.parent.mkdir(parents=True,exist_ok=True)
     report.write_text(json.dumps(result,indent=2)+"\n",encoding="utf-8")
