@@ -57,3 +57,21 @@ A season with no verified stints remains unpublished; the generator refuses to o
 ## CI and rollback
 
 The Historical Research Quality GitHub workflow includes synthetic tests for strict captured-game ingestion and partial lineup reconstruction. These confirm safe behavior on fixtures, **not real historical coverage**. The 4C–4F migration packages, retained performance failure, exhaustive CBA review and native/device gates are unchanged. Keep Flutter as an executable fallback.
+
+## November 26 corrective implementation and release gates
+
+Owner-local 2022-23 results: 2,558 accepted PBP periods across regular/playoffs. That is not certified full-game individual or possession accuracy.
+
+Historical aliases now resolve strictly by season+NBA team ID+abbreviation: CHP / 1610612764 / 1961-62 and NYN / 1610612751 / 1976-77. Re-run preview before --apply: 162 candidates were previously rejected only for this identity conflict. Remaining 25 cases (10 home/away conflicts, 12 score contradictions, 3 tied final point sums) require independent game-specific score/box-score verification. Never override those inconsistencies simply to force acceptance.
+
+New opt-in NBA.com capture utility: `tools/phase4_collect_nba_pbp.py`. This uses canonical game IDs, verifies response `gameId` and `actions` array, caches original responses, spaces requests, defaults to ten requests, and stops on HTTP 403/429. It never alters canonical tables or publishes lineups. Respect source terms and never bypass access restrictions.
+
+```bash
+python3 tools/phase4_collect_nba_pbp.py --season 2025-26 --segment regular
+python3 tools/phase4_collect_nba_pbp.py --season 2025-26 --segment regular --fetch --limit 10 --delay 2
+python3 tools/phase4_collect_nba_pbp.py --season 2024-25 --segment playoffs --fetch --limit 10 --delay 2
+```
+
+Raw NBA Live V3 action rows have a different schema from Wyatt legacy play-by-play and require an independently validated adapter before statistical materialization. Existing 4B partial splits should not be promoted to full-season player stats.
+
+NBA.com requested source data, if accessible: full action-level play-by-play JSON for 2023-24, 2024-25, 2025-26; complete game box scores including players' actual minutes and starters for the same IDs; official final scores for the 25 historical contradictions. Preserve original JSON, game IDs, URLs and capture timestamps. Avoid screenshots when raw machine-readable responses are available.
