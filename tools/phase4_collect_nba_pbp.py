@@ -54,9 +54,14 @@ def verify(payload,game_id,kind="pbp"):
     return len(actions)
 
 
-def collect(database,season,segment,destination,report,*,fetch=False,limit=0,delay=1.5,kind="pbp"):
+def collect(database,season,segment,destination,report,*,fetch=False,limit=0,delay=1.5,kind="pbp",selected_ids=None):
     if kind not in KINDS:raise ValueError("Unsupported NBA capture type")
     games=game_ids(database,season,segment)
+    if selected_ids:
+        selected={str(v).zfill(10) for v in selected_ids}
+        if not selected.issubset(set(games)):
+            raise ValueError("Requested game ID not in canonical season/segment")
+        games=sorted(selected)
     result={"contract":"arcside-nba-cdn-playbyplay-capture-v1","source":BASE+KINDS[kind],"kind":kind,
             "season":season,"segment":segment,"planned_games":len(games),
             "fetch":fetch,"generated_at":dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -121,6 +126,7 @@ def main():
     p.add_argument("--output",type=Path,default=DEFAULT_OUT)
     p.add_argument("--report",type=Path,default=DEFAULT_REPORT)
     p.add_argument("--kind",choices=tuple(KINDS),default="pbp",help="Play-by-play actions or player boxscore")
+    p.add_argument("--game-id",action="append",default=[],help="Limit capture to a known NBA game ID (repeatable)")
     p.add_argument("--fetch",action="store_true",help="Opt in to spaced NBA CDN HTTP requests")
     p.add_argument("--limit",type=int,default=10,help="Maximum new HTTP attempts; 0 = uncapped")
     p.add_argument("--delay",type=float,default=1.5,help="Seconds between requests")
@@ -129,7 +135,8 @@ def main():
     if args.limit<0 or args.delay<0:p.error("Limit and delay must be nonnegative")
     actual_report=args.report.with_name(args.report.stem+"-"+args.kind+args.report.suffix)
     result=collect(args.database,args.season,args.segment,args.output,actual_report,
-                   fetch=args.fetch,limit=args.limit,delay=args.delay,kind=args.kind)
+                   fetch=args.fetch,limit=args.limit,delay=args.delay,kind=args.kind,
+                   selected_ids=args.game_id)
     print(json.dumps({"planned_games":result["planned_games"],"counts":result["counts"],
                       "report":str(actual_report)},indent=2))
 
